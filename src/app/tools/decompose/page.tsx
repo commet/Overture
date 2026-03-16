@@ -9,7 +9,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { decomposeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { DecomposeAnalysis, DecomposeSubtask } from '@/stores/types';
-import { ScenarioCards } from '@/components/ui/ScenarioCards';
+import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw } from 'lucide-react';
@@ -34,21 +34,46 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 사용자가 �
 
 반드시 JSON만 응답하세요. 마크다운 코드블록이나 설명을 추가하지 마세요.`;
 
-const DECOMPOSE_SCENARIOS = [
+const DECOMPOSE_CHIPS = [
   {
-    emoji: '\u{1F4CA}',
-    label: '\uACBD\uC601\uC9C4 \uBCF4\uACE0 \uACFC\uC81C',
-    template: '\uB300\uD45C\uB2D8\uC774 \uB0B4\uB144 \uB3D9\uB0A8\uC544 \uC2DC\uC7A5 \uC9C4\uCD9C \uC804\uB7B5\uC744 \uC774\uBC88 \uB2EC\uAE4C\uC9C0 \uBCF4\uACE0\uD558\uB77C\uACE0 \uD588\uC74C. \uC2DC\uC7A5 \uB9AC\uC11C\uCE58\uBD80\uD130 \uC7AC\uBB34 \uBAA8\uB378\uAE4C\uC9C0 \uD544\uC694\uD55C\uB370, \uAE30\uAC04\uC740 2\uC8FC\uBC16\uC5D0 \uC5C6\uACE0 \uD300\uC6D0\uC740 \uB098 \uD3EC\uD568 3\uBA85.',
+    key: 'source',
+    label: '과제 출처',
+    options: [
+      { value: 'executive', label: '경영진 지시', emoji: '👔' },
+      { value: 'client', label: '고객 요청', emoji: '🤝' },
+      { value: 'self', label: '자체 기획', emoji: '💡' },
+      { value: 'team', label: '팀 이슈', emoji: '👥' },
+    ],
   },
   {
-    emoji: '\u{1F50D}',
-    label: '\uACBD\uC7C1\uC0AC \uBD84\uC11D',
-    template: '\uACBD\uC7C1\uC0AC A\uAC00 \uC2E0\uC81C\uD488\uC744 \uCD9C\uC2DC\uD588\uB294\uB370, \uC6B0\uB9AC \uC81C\uD488\uACFC \uC9C1\uC811 \uACBD\uC7C1\uD558\uB294 \uAE30\uB2A5\uC774 \uD3EC\uD568\uB428. \uACBD\uC601\uC9C4\uC774 \uB300\uC751 \uC804\uB7B5\uC744 \uC694\uCCAD. \uC2DC\uC7A5 \uBC18\uC751 \uBD84\uC11D\uACFC \uC6B0\uB9AC \uC81C\uD488 \uD3EC\uC9C0\uC154\uB2DD \uC7AC\uAC80\uD1A0\uAC00 \uD544\uC694.',
+    key: 'output',
+    label: '필요한 결과물',
+    options: [
+      { value: 'report', label: '보고서' },
+      { value: 'plan', label: '기획서/전략' },
+      { value: 'analysis', label: '분석' },
+      { value: 'proposal', label: '제안서' },
+      { value: 'decision', label: '의사결정 근거' },
+    ],
   },
   {
-    emoji: '\u{1F680}',
-    label: '\uC2E0\uADDC \uD504\uB85C\uC81D\uD2B8 \uAE30\uD68D',
-    template: '\uD300\uC5D0\uC11C AI \uAE30\uBC18 \uACE0\uAC1D \uC9C0\uC6D0 \uCC57\uBD07\uC744 \uB3C4\uC785\uD558\uB824\uACE0 \uD568. \uAE30\uC220 \uC120\uC815\uBD80\uD130 \uD30C\uC77C\uB7FF\uAE4C\uC9C0 3\uAC1C\uC6D4 \uB85C\uB4DC\uB9F5\uC774 \uD544\uC694. \uC608\uC0B0 \uC81C\uD55C \uC788\uACE0, \uAE30\uC874 \uC2DC\uC2A4\uD15C\uACFC \uC5F0\uB3D9 \uD544\uC218.',
+    key: 'timeline',
+    label: '기한',
+    options: [
+      { value: 'urgent', label: '급함 (1주 이내)', emoji: '🔥' },
+      { value: 'normal', label: '2-4주' },
+      { value: 'relaxed', label: '1개월+' },
+    ],
+  },
+  {
+    key: 'audience',
+    label: '보고 대상',
+    options: [
+      { value: 'executive', label: '경영진' },
+      { value: 'client', label: '클라이언트' },
+      { value: 'team', label: '팀 내부' },
+      { value: 'investor', label: '투자자' },
+    ],
   },
 ];
 
@@ -76,15 +101,18 @@ export default function DecomposePage() {
     return () => clearInterval(interval);
   }, [current?.status]);
 
-  const handleAnalyze = async () => {
-    if (!inputText.trim()) return;
+  const handleAnalyze = async (contextOrText?: Record<string, string>, text?: string) => {
+    const prompt = text
+      ? buildContextPrompt(DECOMPOSE_CHIPS, contextOrText || {}, text)
+      : inputText;
+    if (!prompt.trim()) return;
     setError('');
-    const id = createItem(inputText);
+    const id = createItem(prompt);
     updateItem(id, { status: 'analyzing' });
 
     try {
       const analysis = await callLLMJson<DecomposeAnalysis>(
-        [{ role: 'user', content: inputText }],
+        [{ role: 'user', content: prompt }],
         { system: SYSTEM_PROMPT, maxTokens: 2000 }
       );
       updateItem(id, { analysis, status: 'review' });
@@ -181,33 +209,19 @@ export default function DecomposePage() {
 
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">어떤 과제를 분해할까요?</h2>
-            <p className="text-[12px] text-[var(--text-secondary)]">시나리오를 선택하거나 직접 입력하세요.</p>
-          </div>
-          <ScenarioCards
-            title="빠르게 시작하기"
-            scenarios={DECOMPOSE_SCENARIOS}
-            onSelect={(t) => setInputText(t)}
-          />
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="대표님이 내년 동남아 시장 진출 전략을 이번 달까지 보고하라고 했음. 시장 리서치부터 재무 모델까지 필요한데, 기간은 2주밖에 없고 팀원은 나 포함 3명..."
-            className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
-            rows={5}
+        <Card>
+          <GuidedInput
+            chipGroups={DECOMPOSE_CHIPS}
+            textLabel="과제를 한두 문장으로 적어주세요"
+            textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
+            textHint="맥락을 선택하면 AI가 더 정확하게 분석합니다. 선택은 자유입니다."
+            onSubmit={handleAnalyze}
           />
           {error && (
-            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
             </div>
           )}
-          <div className="flex justify-end">
-            <Button onClick={handleAnalyze} disabled={!inputText.trim()}>
-              <Sparkles size={14} /> AI 분석 시작
-            </Button>
-          </div>
         </Card>
       )}
 

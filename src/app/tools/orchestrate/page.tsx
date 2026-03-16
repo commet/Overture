@@ -9,7 +9,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep } from '@/stores/types';
-import { ScenarioCards } from '@/components/ui/ScenarioCards';
+import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock } from 'lucide-react';
@@ -42,21 +42,34 @@ const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: strin
   { value: 'both', label: '협업', icon: '🤝' },
 ];
 
-const ORCHESTRATE_SCENARIOS = [
+const ORCHESTRATE_CHIPS = [
   {
-    emoji: '\u{1F4DD}',
-    label: '\uBCF4\uACE0\uC11C/\uAE30\uD68D\uC11C \uC791\uC131',
-    template: '\uC2DC\uB9AC\uC988 A \uD22C\uC790 \uC720\uCE58\uC6A9 \uC0AC\uC5C5\uACC4\uD68D\uC11C \uC791\uC131. \uC2DC\uC7A5 \uBD84\uC11D, \uC7AC\uBB34 \uBAA8\uB378, \uD300 \uC18C\uAC1C, \uAE30\uC220 \uC124\uBA85\uC774 \uD544\uC694. \uAE30\uD55C 2\uC8FC. \uD300\uC6D0 3\uBA85.',
+    key: 'projectType',
+    label: '프로젝트 유형',
+    options: [
+      { value: 'report', label: '보고서/기획서', emoji: '📝' },
+      { value: 'product', label: '제품/기능 개발', emoji: '💻' },
+      { value: 'research', label: '리서치/분석', emoji: '🔬' },
+      { value: 'campaign', label: '마케팅/캠페인', emoji: '📢' },
+    ],
   },
   {
-    emoji: '\u{1F4BB}',
-    label: '\uC81C\uD488/\uAE30\uB2A5 \uAC1C\uBC1C',
-    template: 'AI \uAE30\uBC18 \uACE0\uAC1D \uC9C0\uC6D0 \uCC57\uBD07 \uAC1C\uBC1C. \uC694\uAD6C\uC0AC\uD56D \uC815\uC758\uBD80\uD130 \uD30C\uC77C\uB7FF \uBC30\uD3EC\uAE4C\uC9C0. \uBC31\uC5D4\uB4DC 2\uBA85, \uD504\uB860\uD2B8 1\uBA85, PM 1\uBA85. 6\uC8FC \uC2A4\uD504\uB9B0\uD2B8.',
+    key: 'teamSize',
+    label: '팀 규모',
+    options: [
+      { value: 'solo', label: '혼자' },
+      { value: 'small', label: '2-3명' },
+      { value: 'medium', label: '4명+' },
+    ],
   },
   {
-    emoji: '\u{1F52C}',
-    label: '\uB9AC\uC11C\uCE58/\uBD84\uC11D \uD504\uB85C\uC81D\uD2B8',
-    template: '\uACBD\uC7C1\uC0AC 5\uAC1C\uC0AC\uC758 \uC81C\uD488 \uC804\uB7B5 \uBE44\uAD50 \uBD84\uC11D. \uACF5\uAC1C \uB370\uC774\uD130 \uC218\uC9D1, \uC0AC\uC6A9\uC790 \uB9AC\uBDF0 \uBD84\uC11D, SWOT \uC815\uB9AC, \uACBD\uC601\uC9C4 \uBCF4\uACE0\uC6A9 \uB371 \uC791\uC131. 1\uC8FC \uAE30\uD55C.',
+    key: 'timeline',
+    label: '기간',
+    options: [
+      { value: 'week', label: '1주', emoji: '🔥' },
+      { value: 'month', label: '2-4주' },
+      { value: 'quarter', label: '1개월+' },
+    ],
   },
 ];
 
@@ -82,15 +95,18 @@ export default function OrchestratePage() {
     return () => clearInterval(interval);
   }, [current?.status]);
 
-  const handleAnalyze = async () => {
-    if (!inputText.trim()) return;
+  const handleAnalyze = async (contextOrNull?: Record<string, string>, guidedText?: string) => {
+    const prompt = guidedText
+      ? buildContextPrompt(ORCHESTRATE_CHIPS, contextOrNull || {}, guidedText)
+      : inputText;
+    if (!prompt.trim()) return;
     setError('');
     const id = createItem();
-    updateItem(id, { input_text: inputText, status: 'analyzing' });
+    updateItem(id, { input_text: prompt, status: 'analyzing' });
 
     try {
       const analysis = await callLLMJson<OrchestrateAnalysis>(
-        [{ role: 'user', content: inputText }],
+        [{ role: 'user', content: prompt }],
         { system: SYSTEM_PROMPT, maxTokens: 2500 }
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
@@ -163,33 +179,20 @@ export default function OrchestratePage() {
 
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">어떤 워크플로우를 설계할까요?</h2>
-            <p className="text-[12px] text-[var(--text-secondary)]">시나리오를 선택하거나 직접 설명하세요.</p>
-          </div>
-          <ScenarioCards
-            title="빠르게 시작하기"
-            scenarios={ORCHESTRATE_SCENARIOS}
-            onSelect={(t) => setInputText(t)}
-          />
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="시리즈 A 투자 유치용 사업계획서. 시장 분석, 재무 모델, 팀 소개, 기술 설명이 필요. 기한 2주. 팀원 3명."
-            className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none"
-            rows={4}
+        <Card>
+          <GuidedInput
+            chipGroups={ORCHESTRATE_CHIPS}
+            textLabel="최종 결과물과 현재 상황을 적어주세요"
+            textPlaceholder="투자 유치용 사업계획서 작성. 시장 분석, 재무 모델 필요."
+            textHint="프로젝트 유형과 팀 규모를 선택하면 더 현실적인 워크플로우를 설계합니다."
+            submitLabel="워크플로우 설계"
+            onSubmit={handleAnalyze}
           />
           {error && (
-            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
             </div>
           )}
-          <div className="flex justify-end">
-            <Button onClick={handleAnalyze} disabled={!inputText.trim()}>
-              <Sparkles size={14} /> 워크플로우 설계
-            </Button>
-          </div>
         </Card>
       )}
 
