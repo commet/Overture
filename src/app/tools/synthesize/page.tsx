@@ -10,6 +10,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { synthesizeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { SynthesizeAnalysis, SynthesizeSource } from '@/stores/types';
+import { ScenarioCards } from '@/components/ui/ScenarioCards';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale } from 'lucide-react';
