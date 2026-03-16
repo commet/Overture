@@ -10,8 +10,10 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { synthesizeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { SynthesizeAnalysis, SynthesizeSource } from '@/stores/types';
-import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
+import { InterviewInput, buildInterviewPrompt } from '@/components/ui/InterviewInput';
+import type { InterviewStep } from '@/components/ui/InterviewInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
+import type { InputMode } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -42,26 +44,54 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 사용자가 �
 
 반드시 JSON만 응답하세요.`;
 
-const SYNTHESIZE_CHIPS = [
+const SYNTHESIZE_INTERVIEW: InterviewStep[] = [
   {
     key: 'sourceType',
-    label: '비교할 소스 유형',
+    question: '어떤 것들을 비교하고 싶으세요?',
+    label: '소스 유형',
+    type: 'chips',
     options: [
       { value: 'ai_tools', label: 'AI 도구별 답변', emoji: '🤖' },
       { value: 'team', label: '팀원/부서 의견', emoji: '👥' },
       { value: 'research', label: '리서치 자료', emoji: '📑' },
       { value: 'external', label: '외부 보고서', emoji: '🌐' },
+      { value: 'options', label: '선택지/대안 비교', emoji: '⚖️' },
     ],
   },
   {
     key: 'purpose',
-    label: '합성 목적',
+    question: '비교해서 뭘 하려는 건가요?',
+    label: '비교 목적',
+    type: 'chips',
     options: [
       { value: 'decision', label: '의사결정' },
       { value: 'report', label: '보고서 작성' },
       { value: 'strategy', label: '전략 수립' },
       { value: 'comparison', label: '단순 비교' },
+      { value: 'consensus', label: '합의점 도출' },
     ],
+  },
+  {
+    key: 'importance',
+    question: '이 결정이 얼마나 중요한가요?',
+    label: '중요도',
+    hint: '중요도에 따라 분석 깊이가 달라집니다.',
+    type: 'chips',
+    options: [
+      { value: 'critical', label: '매우 중요 (되돌리기 어려움)', emoji: '🔴' },
+      { value: 'moderate', label: '중간' },
+      { value: 'low', label: '가볍게 참고', emoji: '🟢' },
+    ],
+  },
+  {
+    key: 'content',
+    question: '비교할 내용을 붙여넣어주세요',
+    label: '비교 내용',
+    hint: '각 소스를 구분해서 붙여넣으면 더 정확하게 분석합니다.',
+    type: 'textarea',
+    placeholder: 'ChatGPT 답변:\n시장 규모는 약 500억 원으로...\n\nClaude 답변:\n해당 시장은 300~700억 원 사이로...',
+    required: true,
+    rows: 8,
   },
 ];
 
@@ -78,7 +108,7 @@ export default function SynthesizePage() {
   ]);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'auto' | 'guided'>('auto');
+  const [mode, setMode] = useState<InputMode>('interview');
 
   useEffect(() => {
     loadItems();
@@ -95,14 +125,13 @@ export default function SynthesizePage() {
     return () => clearInterval(interval);
   }, [current?.status]);
 
-  const handleAnalyze = async (contextOrNull?: Record<string, string>, guidedText?: string) => {
+  const handleAnalyze = async (prompt?: string) => {
     setError('');
     let userContent = '';
     const sources: SynthesizeSource[] = [];
 
-    if (guidedText) {
-      // From GuidedInput
-      userContent = buildContextPrompt(SYNTHESIZE_CHIPS, contextOrNull || {}, guidedText);
+    if (prompt) {
+      userContent = prompt;
     } else if (inputMode === 'bulk') {
       if (!bulkInput.trim()) return;
       userContent = bulkInput;
@@ -186,11 +215,11 @@ export default function SynthesizePage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">산출물 합성</h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">조율</h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-            {mode === 'auto'
+            {mode === 'direct'
               ? '결과물을 붙여넣으면 AI가 쟁점을 찾고, 당신은 판단만 합니다.'
-              : '소스를 하나씩 추가하고 단계별로 비교 분석합니다.'}
+              : '질문에 답한 후 내용을 붙여넣으면 더 정확하게 분석합니다.'}
           </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
@@ -222,28 +251,13 @@ export default function SynthesizePage() {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <div className="space-y-4">
-          {mode === 'auto' ? (
+          {mode === 'direct' ? (
             <Card className="space-y-3">
               <div>
                 <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">비교할 결과물을 붙여넣으세요</h2>
                 <p className="text-[12px] text-[var(--text-secondary)]">여러 AI 답변이나 의견을 한 번에 붙여넣으면 AI가 자동으로 분리하고 분석합니다.</p>
               </div>
-              <textarea
-                value={bulkInput}
-                onChange={(e) => setBulkInput(e.target.value)}
-                placeholder={"ChatGPT 답변:\n시장 규모는 약 500억 원으로...\n\nClaude 답변:\n해당 시장은 300~700억 원 사이로..."}
-                className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
-                rows={8}
-              />
-              <div className="flex justify-end">
-                <Button onClick={() => handleAnalyze()} disabled={!bulkInput.trim()}>
-                  <Sparkles size={14} /> AI 분석 시작
-                </Button>
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
                 <button
                   onClick={() => setInputMode('bulk')}
                   className={`px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-colors cursor-pointer ${
@@ -261,66 +275,81 @@ export default function SynthesizePage() {
                   소스별 입력
                 </button>
               </div>
-
               {inputMode === 'bulk' ? (
-                <Card>
-                  <GuidedInput
-                    chipGroups={SYNTHESIZE_CHIPS}
-                    textLabel="비교할 결과물을 붙여넣으세요"
-                    textPlaceholder="ChatGPT 답변: ... / Claude 답변: ..."
-                    textHint="소스 유형과 목적을 선택하면 쟁점 분석이 더 정확해집니다."
-                    onSubmit={handleAnalyze}
+                <>
+                  <textarea
+                    value={bulkInput}
+                    onChange={(e) => setBulkInput(e.target.value)}
+                    placeholder={"ChatGPT 답변:\n시장 규모는 약 500억 원으로...\n\nClaude 답변:\n해당 시장은 300~700억 원 사이로..."}
+                    className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
+                    rows={8}
                   />
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {individualSources.map((source, i) => (
-                    <Card key={i} className="space-y-2 animate-fade-in">
-                      <div className="flex items-center justify-between">
-                        <input
-                          type="text"
-                          value={source.name}
-                          onChange={(e) => updateIndividualSource(i, 'name', e.target.value)}
-                          placeholder={`소스 ${i + 1} (예: ChatGPT, Claude, 리서치팀)`}
-                          className="flex-1 bg-transparent text-[14px] font-semibold placeholder:text-[var(--text-secondary)] focus:outline-none"
-                        />
-                        {individualSources.length > 2 && (
-                          <button onClick={() => removeIndividualSource(i)} className="p-1 hover:text-red-500 cursor-pointer">
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
-                      <textarea
-                        value={source.content}
-                        onChange={(e) => updateIndividualSource(i, 'content', e.target.value)}
-                        placeholder="이 소스의 결과물이나 의견을 붙여넣으세요"
-                        className="w-full bg-[#fafbfc] border border-[var(--border)] rounded-lg px-3 py-2 text-[14px] leading-[1.6] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] resize-none"
-                        rows={4}
-                      />
-                    </Card>
-                  ))}
-                  {individualSources.length < 5 && (
-                    <Button variant="ghost" size="sm" onClick={addIndividualSource}>
-                      <PlusCircle size={14} /> 소스 추가
+                  <div className="flex justify-end">
+                    <Button onClick={() => handleAnalyze()} disabled={!bulkInput.trim()}>
+                      <Sparkles size={14} /> AI 분석 시작
                     </Button>
-                  )}
-                </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {individualSources.map((source, i) => (
+                      <div key={i} className="space-y-2 p-3 rounded-lg border border-[var(--border)] animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <input
+                            type="text"
+                            value={source.name}
+                            onChange={(e) => updateIndividualSource(i, 'name', e.target.value)}
+                            placeholder={`소스 ${i + 1} (예: ChatGPT, Claude, 리서치팀)`}
+                            className="flex-1 bg-transparent text-[14px] font-semibold placeholder:text-[var(--text-secondary)] focus:outline-none"
+                          />
+                          {individualSources.length > 2 && (
+                            <button onClick={() => removeIndividualSource(i)} className="p-1 hover:text-red-500 cursor-pointer">
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          value={source.content}
+                          onChange={(e) => updateIndividualSource(i, 'content', e.target.value)}
+                          placeholder="이 소스의 결과물이나 의견을 붙여넣으세요"
+                          className="w-full bg-[#fafbfc] border border-[var(--border)] rounded-lg px-3 py-2 text-[14px] leading-[1.6] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                          rows={4}
+                        />
+                      </div>
+                    ))}
+                    {individualSources.length < 5 && (
+                      <Button variant="ghost" size="sm" onClick={addIndividualSource}>
+                        <PlusCircle size={14} /> 소스 추가
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={() => handleAnalyze()} disabled={individualSources.filter((s) => s.content.trim()).length < 2}>
+                      <Sparkles size={14} /> AI 분석 시작
+                    </Button>
+                  </div>
+                </>
               )}
-
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
                   <AlertTriangle size={14} /> {error}
                 </div>
               )}
-
-              {inputMode === 'individual' && (
-                <div className="flex justify-end">
-                  <Button onClick={() => handleAnalyze()} disabled={individualSources.filter((s) => s.content.trim()).length < 2}>
-                    <Sparkles size={14} /> AI 분석 시작
-                  </Button>
+            </Card>
+          ) : (
+            <Card>
+              <InterviewInput
+                steps={SYNTHESIZE_INTERVIEW}
+                submitLabel="AI 분석 시작"
+                onSubmit={(answers) => handleAnalyze(buildInterviewPrompt(SYNTHESIZE_INTERVIEW, answers))}
+              />
+              {error && (
+                <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
+                  <AlertTriangle size={14} /> {error}
                 </div>
               )}
-            </div>
+            </Card>
           )}
         </div>
       )}
@@ -452,7 +481,7 @@ export default function SynthesizePage() {
         <div className="space-y-4 animate-fade-in">
           <Card className="!border-[var(--success)] !border-2">
             <div className="flex items-center gap-2 text-[var(--success)] text-[13px] font-bold mb-3">
-              <Check size={14} /> 산출물 합성 완료
+              <Check size={14} /> 조율 완료
             </div>
             <div className="space-y-3 text-[14px]">
               <div>
@@ -489,7 +518,7 @@ export default function SynthesizePage() {
                   router.push('/tools/persona-feedback');
                 }}
               >
-                <Send size={14} /> 페르소나 피드백 받기
+                <Send size={14} /> 리허설 받기
               </Button>
               <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
             </div>

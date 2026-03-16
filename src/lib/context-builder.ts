@@ -105,7 +105,7 @@ export function buildProjectItemsContext(projectId: string): string {
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis) {
-      parts.push(`[과제 분해] 핵심 질문: ${latest.selected_question || latest.analysis.surface_task}`);
+      parts.push(`[주제 파악] 핵심 질문: ${latest.selected_question || latest.analysis.surface_task}`);
     }
   }
 

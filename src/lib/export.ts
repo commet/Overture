@@ -16,7 +16,7 @@ export function decomposeToMarkdown(item: DecomposeItem): string {
 
   const selectedQ = item.selected_question || analysis.hidden_questions[0]?.question || '';
 
-  return `## 과제 분해 시트
+  return `## 주제 파악 시트
 
 ### 표면 과제
 ${analysis.surface_task}
@@ -50,7 +50,7 @@ export function synthesizeToMarkdown(item: SynthesizeItem): string {
     })
     .join('\n');
 
-  return `## 산출물 합성 결과
+  return `## 조율 결과
 
 ### 소스별 핵심 주장
 ${sources}
@@ -77,7 +77,7 @@ export function orchestrateToMarkdown(item: OrchestrateItem): string {
 
   const goal = item.analysis?.goal_summary || item.input_text;
 
-  return `## 오케스트레이션 맵
+  return `## 역할 편성
 
 **최종 목표**: ${goal}
 

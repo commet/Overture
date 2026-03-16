@@ -109,7 +109,7 @@ export default function RefinementLoopPage() {
             <Card className="text-center py-12">
               <RefreshCw size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
               <p className="text-[var(--text-secondary)] text-[14px]">아직 정제 루프가 없습니다.</p>
-              <p className="text-[var(--text-secondary)] text-[12px] mt-1">페르소나 피드백 결과에서 &ldquo;정제 루프 시작&rdquo; 버튼을 눌러 시작하세요.</p>
+              <p className="text-[var(--text-secondary)] text-[12px] mt-1">리허설 결과에서 &ldquo;정제 루프 시작&rdquo; 버튼을 눌러 시작하세요.</p>
             </Card>
           ) : (
             loops.map((loop) => {
@@ -284,7 +284,7 @@ export default function RefinementLoopPage() {
                 </>
               ) : (
                 <p className="text-[13px] text-[var(--text-secondary)] mb-3">
-                  미해결 이슈가 없습니다. 새로운 페르소나 피드백을 추가하거나 루프를 종료하세요.
+                  미해결 이슈가 없습니다. 새로운 리허설을 추가하거나 루프를 종료하세요.
                 </p>
               )}
 

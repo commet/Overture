@@ -105,7 +105,7 @@ export function generateProjectBrief(project: Project): string {
       const questions = result.first_questions || [];
       const wantsMore = result.wants_more || [];
 
-      sections.push(`### ${result.overall_reaction ? result.overall_reaction : '페르소나 피드백'}`);
+      sections.push(`### ${result.overall_reaction ? result.overall_reaction : '리허설'}`);
       if (questions.length > 0) {
         sections.push('**예상 질문**');
         questions.forEach((q) => sections.push(`- ${q}`));

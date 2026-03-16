@@ -81,7 +81,7 @@ export default function PersonaFeedbackPage() {
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content);
-      setHandoffTitle(`${handoff.from === 'decompose' ? '과제 분해' : handoff.from === 'orchestrate' ? '오케스트레이션' : '산출물 합성'} 결과물`);
+      setHandoffTitle(`${handoff.from === 'decompose' ? '주제 파악' : handoff.from === 'orchestrate' ? '역할 편성' : '조율'} 결과물`);
       setActiveTab('feedback');
       clearHandoff();
     }
@@ -164,7 +164,7 @@ export default function PersonaFeedbackPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">페르소나 피드백</h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">리허설</h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           보고서를 보낼 사람의 시점에서 미리 피드백을 받습니다. 보내기 전에.
         </p>

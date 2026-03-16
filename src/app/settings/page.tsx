@@ -196,7 +196,7 @@ export default function SettingsPage() {
 
       <Modal open={resetModal} onClose={() => setResetModal(false)} title="데이터 초기화">
         <p className="text-[14px] text-[var(--text-primary)] mb-4">
-          모든 과제 분해, 산출물 합성, 오케스트레이션 맵, 페르소나, 피드백 이력이 영구 삭제됩니다.
+          모든 주제 파악, 조율, 역할 편성, 리허설 이력이 영구 삭제됩니다.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setResetModal(false)}>취소</Button>

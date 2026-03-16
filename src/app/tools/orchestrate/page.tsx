@@ -9,8 +9,10 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep } from '@/stores/types';
-import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
+import { InterviewInput, buildInterviewPrompt } from '@/components/ui/InterviewInput';
+import type { InterviewStep } from '@/components/ui/InterviewInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
+import type { InputMode } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -48,34 +50,76 @@ const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: strin
   { value: 'both', label: '협업', icon: '🤝' },
 ];
 
-const ORCHESTRATE_CHIPS = [
+const ORCHESTRATE_INTERVIEW: InterviewStep[] = [
+  {
+    key: 'goal',
+    question: '어떤 결과물을 만들어야 하나요?',
+    label: '최종 목표',
+    hint: '최종 목표를 구체적으로 적어주세요.',
+    type: 'textarea',
+    placeholder: '투자 유치용 사업계획서를 2주 안에 완성해야 함',
+    required: true,
+    rows: 3,
+  },
   {
     key: 'projectType',
+    question: '어떤 유형의 프로젝트인가요?',
     label: '프로젝트 유형',
+    type: 'chips',
     options: [
       { value: 'report', label: '보고서/기획서', emoji: '📝' },
       { value: 'product', label: '제품/기능 개발', emoji: '💻' },
       { value: 'research', label: '리서치/분석', emoji: '🔬' },
       { value: 'campaign', label: '마케팅/캠페인', emoji: '📢' },
+      { value: 'operations', label: '운영/프로세스', emoji: '⚙️' },
+      { value: 'event', label: '행사/프레젠테이션', emoji: '🎤' },
     ],
   },
   {
     key: 'teamSize',
+    question: '함께 작업하는 사람은 몇 명인가요?',
     label: '팀 규모',
+    type: 'chips',
     options: [
       { value: 'solo', label: '혼자' },
       { value: 'small', label: '2-3명' },
-      { value: 'medium', label: '4명+' },
+      { value: 'medium', label: '4-7명' },
+      { value: 'large', label: '8명+' },
     ],
   },
   {
     key: 'timeline',
+    question: '기간이 어떻게 되나요?',
     label: '기간',
+    type: 'chips',
     options: [
-      { value: 'week', label: '1주', emoji: '🔥' },
+      { value: 'days', label: '며칠', emoji: '🔥' },
+      { value: 'week', label: '1주' },
       { value: 'month', label: '2-4주' },
       { value: 'quarter', label: '1개월+' },
     ],
+  },
+  {
+    key: 'aiPreference',
+    question: 'AI에게 어느 정도 맡기고 싶으세요?',
+    label: 'AI 활용 선호',
+    hint: '워크플로우 설계 시 AI 비중을 참고합니다.',
+    type: 'chips',
+    options: [
+      { value: 'maximum', label: 'AI 최대 활용', emoji: '🤖' },
+      { value: 'balanced', label: '균형 있게' },
+      { value: 'minimum', label: '사람 중심', emoji: '🧠' },
+    ],
+  },
+  {
+    key: 'context',
+    question: '추가로 공유할 맥락이 있나요?',
+    label: '추가 맥락',
+    hint: '현재 진행 상황, 제약 조건 등',
+    type: 'textarea',
+    placeholder: '예: 시장 분석 자료는 이미 있고, 재무 모델이 핵심',
+    required: false,
+    rows: 2,
   },
 ];
 
@@ -89,7 +133,7 @@ export default function OrchestratePage() {
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'auto' | 'guided'>('auto');
+  const [mode, setMode] = useState<InputMode>('interview');
 
   useEffect(() => {
     loadItems();
@@ -122,18 +166,16 @@ export default function OrchestratePage() {
     return () => clearInterval(interval);
   }, [current?.status]);
 
-  const handleAnalyze = async (contextOrNull?: Record<string, string>, guidedText?: string) => {
-    const prompt = guidedText
-      ? buildContextPrompt(ORCHESTRATE_CHIPS, contextOrNull || {}, guidedText)
-      : inputText;
-    if (!prompt.trim()) return;
+  const handleAnalyze = async (prompt?: string) => {
+    const finalPrompt = prompt || inputText;
+    if (!finalPrompt.trim()) return;
     setError('');
     const id = createItem();
-    updateItem(id, { input_text: prompt, status: 'analyzing' });
+    updateItem(id, { input_text: finalPrompt, status: 'analyzing' });
 
     try {
       const analysis = await callLLMJson<OrchestrateAnalysis>(
-        [{ role: 'user', content: prompt }],
+        [{ role: 'user', content: finalPrompt }],
         { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500 }
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
@@ -188,11 +230,11 @@ export default function OrchestratePage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">오케스트레이션 맵</h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">역할 편성</h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-            {mode === 'auto'
-              ? '목표를 설명하면 AI가 전체 워크플로우를 설계합니다.'
-              : '단계별로 직접 워크플로우를 구성합니다.'}
+            {mode === 'direct'
+              ? '목표를 입력하면 AI가 전체 워크플로우를 설계합니다.'
+              : '질문에 답하면 상황에 맞는 워크플로우를 설계합니다.'}
           </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
@@ -224,7 +266,7 @@ export default function OrchestratePage() {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          {mode === 'auto' ? (
+          {mode === 'direct' ? (
             <div className="space-y-4">
               <div>
                 <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">최종 결과물을 설명해주세요</h2>
@@ -244,13 +286,10 @@ export default function OrchestratePage() {
               </div>
             </div>
           ) : (
-            <GuidedInput
-              chipGroups={ORCHESTRATE_CHIPS}
-              textLabel="최종 결과물과 현재 상황을 적어주세요"
-              textPlaceholder="투자 유치용 사업계획서 작성. 시장 분석, 재무 모델 필요."
-              textHint="프로젝트 유형과 팀 규모를 선택하면 더 현실적인 워크플로우를 설계합니다."
+            <InterviewInput
+              steps={ORCHESTRATE_INTERVIEW}
               submitLabel="워크플로우 설계"
-              onSubmit={handleAnalyze}
+              onSubmit={(answers) => handleAnalyze(buildInterviewPrompt(ORCHESTRATE_INTERVIEW, answers))}
             />
           )}
           {error && (
@@ -448,7 +487,7 @@ export default function OrchestratePage() {
                       router.push('/tools/persona-feedback');
                     }}
                   >
-                    <Send size={14} /> 페르소나 피드백 받기
+                    <Send size={14} /> 리허설 받기
                   </Button>
                   <CopyButton getText={() => orchestrateToMarkdown(current)} label="마크다운 복사" />
                 </div>

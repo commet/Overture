@@ -87,7 +87,7 @@ export function FeedbackResult({ record, personas }: FeedbackResultProps) {
   };
 
   const getFullText = () => {
-    let text = `## 페르소나 피드백 결과\n\n**자료**: ${record.document_title}\n**관점**: ${record.feedback_perspective} | **강도**: ${record.feedback_intensity}\n\n`;
+    let text = `## 리허설 결과\n\n**자료**: ${record.document_title}\n**관점**: ${record.feedback_perspective} | **강도**: ${record.feedback_intensity}\n\n`;
     for (const result of record.results) {
       const p = personas.find((persona) => persona.id === result.persona_id);
       text += `### ${p?.name || '페르소나'} (${p?.role || ''})\n\n`;

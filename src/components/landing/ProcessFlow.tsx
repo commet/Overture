@@ -17,7 +17,7 @@ interface ProcessStep {
 const steps: ProcessStep[] = [
   {
     icon: <Layers size={18} />,
-    title: '질문',
+    title: '주제 파악',
     subtitle: '풀어야 할 진짜 문제 찾기',
     before: '"경쟁사 분석해줘"라고 AI에게 바로 시킴',
     after: '"경쟁사보다 우리 고객의 미충족 니즈가 먼저 아닌가?" 발견',
@@ -27,7 +27,7 @@ const steps: ProcessStep[] = [
   },
   {
     icon: <Map size={18} />,
-    title: '설계',
+    title: '역할 편성',
     subtitle: 'AI와 사람의 역할 경계 긋기',
     before: '모든 걸 AI에게 맡기거나, 모든 걸 직접 함',
     after: '"시장 데이터 수집은 AI, 내부 정치 판단은 내가, 3단계에서 검증"',
@@ -37,7 +37,7 @@ const steps: ProcessStep[] = [
   },
   {
     icon: <GitMerge size={18} />,
-    title: '판단',
+    title: '조율',
     subtitle: '서로 다른 AI 결과에서 내 결론 내리기',
     before: '"종합해줘"라고 다시 AI에게 맡기면 표면적 합의만 남음',
     after: '쟁점별로 왜 다른지 분석하고, 내 맥락에서 하나의 결론 도출',
@@ -47,7 +47,7 @@ const steps: ProcessStep[] = [
   },
   {
     icon: <Users size={18} />,
-    title: '검증',
+    title: '리허설',
     subtitle: '보내기 전에 상대방 반응 시뮬레이션',
     before: '보고서를 보냈는데 "그래서 ROI가 얼마야?"에 막힘',
     after: 'CFO 시점 사전 검증 → 약점 보완 후 보고. 실제 반응 기록 → 점점 정확해짐',

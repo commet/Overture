@@ -7,10 +7,10 @@ import { useState } from 'react';
 
 const navItems = [
   { href: '/project', label: '프로젝트' },
-  { href: '/tools/decompose', label: '과제 분해' },
-  { href: '/tools/synthesize', label: '산출물 합성' },
-  { href: '/tools/orchestrate', label: '오케스트레이션 맵' },
-  { href: '/tools/persona-feedback', label: '페르소나 피드백' },
+  { href: '/tools/decompose', label: '주제 파악' },
+  { href: '/tools/synthesize', label: '조율' },
+  { href: '/tools/orchestrate', label: '역할 편성' },
+  { href: '/tools/persona-feedback', label: '리허설' },
   { href: '/tools/refinement-loop', label: '정제 루프' },
 ];
 

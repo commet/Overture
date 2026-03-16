@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
   description:
-    'AI 오케스트레이션 이전의 판단을 구조화하는 사고 도구. 과제 분해, 산출물 합성, 워크플로우 설계, 페르소나 피드백.',
+    'AI 오케스트레이션 이전의 판단을 구조화하는 사고 도구. 주제 파악, 역할 편성, 조율, 리허설.',
 };
 
 export default function RootLayout({
