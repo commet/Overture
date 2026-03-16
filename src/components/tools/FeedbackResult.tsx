@@ -5,8 +5,14 @@ import { Card } from '@/components/ui/Card';
 import { Tab } from '@/components/ui/Tab';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { Badge } from '@/components/ui/Badge';
-import type { Persona, FeedbackRecord } from '@/stores/types';
-import { User, MessageCircleQuestion, ThumbsUp, AlertTriangle, Search } from 'lucide-react';
+import type { Persona, FeedbackRecord, RefinementIssue } from '@/stores/types';
+import { User, MessageCircleQuestion, ThumbsUp, AlertTriangle, Search, Star, Check, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { useAccuracyStore } from '@/stores/useAccuracyStore';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRouter } from 'next/navigation';
+import { generateId } from '@/lib/uuid';
 
 interface FeedbackResultProps {
   record: FeedbackRecord;
@@ -26,6 +32,60 @@ export function FeedbackResult({ record, personas }: FeedbackResultProps) {
   const activeResult = record.results.find((r) => r.persona_id === activeTab);
   const activePersona = personas.find((p) => p.id === activeTab);
 
+  const { addRating } = useAccuracyStore();
+  const { addJudgment } = useJudgmentStore();
+  const router = useRouter();
+  const { createLoop, addIteration, setActiveLoopId } = useRefinementStore();
+  const [ratingState, setRatingState] = useState<Record<string, {
+    score: number;
+    accurateAspects: string[];
+    inaccurateAspects: string[];
+    saved: boolean;
+  }>>({});
+
+  const toggleAspect = (personaId: string, aspect: string, type: 'accurate' | 'inaccurate') => {
+    setRatingState(prev => {
+      const current = prev[personaId] || { score: 0, accurateAspects: [], inaccurateAspects: [], saved: false };
+      const key = type === 'accurate' ? 'accurateAspects' : 'inaccurateAspects';
+      const otherKey = type === 'accurate' ? 'inaccurateAspects' : 'accurateAspects';
+      const list = current[key].includes(aspect) ? current[key].filter(a => a !== aspect) : [...current[key], aspect];
+      const otherList = current[otherKey].filter(a => a !== aspect);
+      return { ...prev, [personaId]: { ...current, [key]: list, [otherKey]: otherList } };
+    });
+  };
+
+  const setRatingScore = (personaId: string, score: number) => {
+    setRatingState(prev => ({
+      ...prev,
+      [personaId]: { ...(prev[personaId] || { score: 0, accurateAspects: [], inaccurateAspects: [], saved: false }), score }
+    }));
+  };
+
+  const saveRating = (personaId: string) => {
+    const rating = ratingState[personaId];
+    if (!rating || rating.score === 0) return;
+
+    addRating({
+      feedback_record_id: record.id,
+      persona_id: personaId,
+      accuracy_score: rating.score,
+      which_aspects_accurate: rating.accurateAspects,
+      which_aspects_inaccurate: rating.inaccurateAspects,
+    });
+
+    addJudgment({
+      type: 'feedback_accuracy',
+      context: `${record.document_title} - persona feedback`,
+      decision: `${rating.score}/5`,
+      original_ai_suggestion: '',
+      user_changed: rating.score < 4,
+      project_id: record.project_id,
+      tool: 'persona-feedback',
+    });
+
+    setRatingState(prev => ({ ...prev, [personaId]: { ...prev[personaId], saved: true } }));
+  };
+
   const getFullText = () => {
     let text = `## 페르소나 피드백 결과\n\n**자료**: ${record.document_title}\n**관점**: ${record.feedback_perspective} | **강도**: ${record.feedback_intensity}\n\n`;
     for (const result of record.results) {
@@ -41,6 +101,68 @@ export function FeedbackResult({ record, personas }: FeedbackResultProps) {
       text += `### 종합 분석\n${record.synthesis}\n`;
     }
     return text;
+  };
+
+  const handleStartLoop = () => {
+    if (!record.project_id) return;
+
+    // Extract issues from feedback results
+    const issues: RefinementIssue[] = [];
+    for (const result of record.results) {
+      const persona = personas.find(p => p.id === result.persona_id);
+      const pName = persona?.name || 'Unknown';
+
+      for (const concern of result.concerns) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'concern',
+          text: concern,
+          resolved: false,
+        });
+      }
+      for (const q of result.first_questions) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'question',
+          text: q,
+          resolved: false,
+        });
+      }
+      for (const w of result.wants_more) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'wants_more',
+          text: w,
+          resolved: false,
+        });
+      }
+    }
+
+    const loopId = createLoop(
+      record.project_id,
+      record.document_title || '정제 루프',
+    );
+
+    addIteration(loopId, {
+      iteration_number: 1,
+      trigger_reason: '초기 피드백',
+      issues_from_feedback: issues,
+      constraints_added: [],
+      feedback_record_id: record.id,
+      delta_summary: '초기 분석 결과에 대한 이해관계자 피드백',
+      unresolved_count: issues.length,
+      total_issue_count: issues.length,
+      convergence_score: 0,
+    });
+
+    setActiveLoopId(loopId);
+    router.push('/tools/refinement-loop');
   };
 
   return (
@@ -128,8 +250,91 @@ export function FeedbackResult({ record, personas }: FeedbackResultProps) {
               ))}
             </ul>
           </Card>
+
+          {/* Accuracy Rating */}
+          {!ratingState[activeTab]?.saved ? (
+            <Card className="!bg-[var(--bg)] !border-dashed">
+              <p className="text-[13px] font-bold text-[var(--text-primary)] mb-3">이 피드백의 정확도를 평가해주세요</p>
+
+              {/* Star rating */}
+              <div className="flex items-center gap-1 mb-3">
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <button
+                    key={score}
+                    onClick={() => setRatingScore(activeTab, score)}
+                    className="cursor-pointer p-0.5"
+                  >
+                    <Star
+                      size={20}
+                      className={`transition-colors ${
+                        score <= (ratingState[activeTab]?.score || 0)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-[var(--border)]'
+                      }`}
+                    />
+                  </button>
+                ))}
+                {ratingState[activeTab]?.score > 0 && (
+                  <span className="text-[12px] text-[var(--text-secondary)] ml-2">{ratingState[activeTab].score}/5</span>
+                )}
+              </div>
+
+              {/* Aspect checkboxes */}
+              <div className="space-y-2 mb-3">
+                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">어떤 부분이 정확했나요?</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['질문 예측', '칭찬 포인트', '우려/지적', '추가 요구'].map((aspect) => {
+                    const isAccurate = ratingState[activeTab]?.accurateAspects?.includes(aspect);
+                    const isInaccurate = ratingState[activeTab]?.inaccurateAspects?.includes(aspect);
+                    return (
+                      <div key={aspect} className="flex items-center gap-1">
+                        <button
+                          onClick={() => toggleAspect(activeTab, aspect, 'accurate')}
+                          className={`px-2 py-1 rounded text-[11px] font-medium border cursor-pointer ${
+                            isAccurate ? 'border-[var(--success)] bg-[var(--collab)] text-[var(--success)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                          }`}
+                        >
+                          ✓ {aspect}
+                        </button>
+                        <button
+                          onClick={() => toggleAspect(activeTab, aspect, 'inaccurate')}
+                          className={`px-2 py-1 rounded text-[11px] font-medium border cursor-pointer ${
+                            isInaccurate ? 'border-red-300 bg-red-50 text-red-500' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                          }`}
+                        >
+                          ✗
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button size="sm" onClick={() => saveRating(activeTab)} disabled={!ratingState[activeTab]?.score}>
+                평가 저장
+              </Button>
+            </Card>
+          ) : (
+            <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium py-2">
+              <Check size={14} /> 정확도 평가가 저장되었습니다
+            </div>
+          )}
         </div>
       ) : null}
+
+      {record.project_id && record.results.length > 0 && (
+        <Card className="!bg-[var(--checkpoint)] !border-amber-200 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[13px] font-bold text-[var(--text-primary)]">이 피드백을 반영하여 반복 개선하시겠어요?</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">피드백의 우려사항을 제약조건으로 변환하여 다시 분석합니다.</p>
+            </div>
+            <Button size="sm" onClick={handleStartLoop}>
+              <RefreshCw size={14} /> 정제 루프 시작
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { decomposeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
-import type { DecomposeAnalysis, DecomposeSubtask } from '@/stores/types';
+import type { DecomposeAnalysis, DecomposeSubtask, DecomposeItem } from '@/stores/types';
 import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -17,6 +17,7 @@ import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
+import { findSimilarItems } from '@/lib/similarity';
 import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -94,6 +95,7 @@ export default function DecomposePage() {
   const [customQuestion, setCustomQuestion] = useState('');
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'auto' | 'guided'>('auto');
+  const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
 
   useEffect(() => {
     loadItems();
@@ -110,6 +112,20 @@ export default function DecomposePage() {
     }, 2000);
     return () => clearInterval(interval);
   }, [current?.status]);
+
+  // Find similar past analyses
+  useEffect(() => {
+    if (!inputText || inputText.length < 8) {
+      setSimilarItems([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const doneItems = items.filter((i) => i.status === 'done' && i.analysis);
+      const matches = findSimilarItems(inputText, doneItems.map(i => ({ ...i, input_text: i.input_text || '' })));
+      setSimilarItems(matches as Array<DecomposeItem & { similarity: number }>);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputText, items]);
 
   const handleAnalyze = async (contextOrText?: Record<string, string>, text?: string) => {
     const prompt = text
@@ -272,6 +288,36 @@ export default function DecomposePage() {
               textHint="맥락을 선택하면 AI가 더 정확하게 분석합니다. 각 항목은 결과물의 방향성을 결정하는 데 도움이 됩니다."
               onSubmit={handleAnalyze}
             />
+          )}
+          {similarItems.length > 0 && (
+            <div className="border-t border-[var(--border)] pt-4 mt-2">
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">
+                📂 유사한 과거 분석 ({similarItems.length}건)
+              </p>
+              <div className="space-y-2">
+                {similarItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg)] hover:bg-[var(--ai)] transition-colors cursor-pointer"
+                    onClick={() => setInputText(item.input_text || '')}
+                  >
+                    <div className="text-[11px] font-bold text-[var(--accent)] bg-[var(--ai)] px-1.5 py-0.5 rounded shrink-0">
+                      {Math.round(item.similarity * 100)}%
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[var(--text-primary)] truncate">
+                        {item.analysis?.surface_task || item.input_text?.slice(0, 50)}
+                      </p>
+                      {item.selected_question && (
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">
+                          핵심 질문: {item.selected_question}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">

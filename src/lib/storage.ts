@@ -6,6 +6,8 @@ export const STORAGE_KEYS = {
   FEEDBACK_HISTORY: 'sot_feedback_history',
   PROJECTS:          'sot_projects',
   JUDGMENTS:         'sot_judgments',
+  REFINEMENT_LOOPS:  'sot_refinement_loops',
+  ACCURACY_RATINGS:  'sot_accuracy_ratings',
   SETTINGS: 'sot_settings',
 } as const;
 

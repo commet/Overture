@@ -10,6 +10,7 @@ const navItems = [
   { href: '/tools/synthesize', label: '산출물 합성' },
   { href: '/tools/orchestrate', label: '오케스트레이션 맵' },
   { href: '/tools/persona-feedback', label: '페르소나 피드백' },
+  { href: '/tools/refinement-loop', label: '정제 루프' },
 ];
 
 export function Header() {

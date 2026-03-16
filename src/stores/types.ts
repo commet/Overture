@@ -23,6 +23,8 @@ export interface DecomposeAnalysis {
 export interface DecomposeItem {
   id: string;
   project_id?: string;
+  loop_id?: string;
+  iteration_number?: number;
   input_text: string;
   analysis: DecomposeAnalysis | null;
   selected_question: string;
@@ -60,6 +62,8 @@ export interface SynthesizeAnalysis {
 export interface SynthesizeItem {
   id: string;
   project_id?: string;
+  loop_id?: string;
+  iteration_number?: number;
   raw_input: string;
   sources: SynthesizeSource[];
   analysis: SynthesizeAnalysis | null;
@@ -92,6 +96,8 @@ export interface OrchestrateAnalysis {
 export interface OrchestrateItem {
   id: string;
   project_id?: string;
+  loop_id?: string;
+  iteration_number?: number;
   input_text: string;
   analysis: OrchestrateAnalysis | null;
   steps: OrchestrateStep[];
@@ -137,6 +143,8 @@ export interface PersonaFeedbackResult {
 export interface FeedbackRecord {
   id: string;
   project_id?: string;
+  loop_id?: string;
+  iteration_number?: number;
   document_title: string;
   document_text: string;
   persona_ids: string[];
@@ -186,6 +194,60 @@ export interface JudgmentRecord {
   user_changed: boolean;
   project_id?: string;
   tool: string;
+  created_at: string;
+}
+
+// ─── Refinement Loop ───
+
+export interface RefinementIssue {
+  id: string;
+  source_persona_id: string;
+  source_persona_name: string;
+  category: 'concern' | 'question' | 'wants_more';
+  text: string;
+  resolved: boolean;
+  resolved_at_iteration?: number;
+}
+
+export interface RefinementIteration {
+  iteration_number: number;
+  trigger_reason: string;
+  issues_from_feedback: RefinementIssue[];
+  constraints_added: string[];
+  decompose_item_id?: string;
+  orchestrate_item_id?: string;
+  synthesize_item_id?: string;
+  feedback_record_id?: string;
+  delta_summary: string;
+  unresolved_count: number;
+  total_issue_count: number;
+  convergence_score: number;
+  created_at: string;
+}
+
+export interface RefinementLoop {
+  id: string;
+  project_id: string;
+  name: string;
+  goal: string;
+  iterations: RefinementIteration[];
+  status: 'active' | 'converged' | 'stopped_by_user';
+  max_iterations: number;
+  convergence_threshold: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Persona Accuracy ───
+
+export interface PersonaAccuracyRating {
+  id: string;
+  feedback_record_id: string;
+  persona_id: string;
+  accuracy_score: number;
+  accuracy_notes?: string;
+  which_aspects_accurate: string[];
+  which_aspects_inaccurate: string[];
   created_at: string;
 }
 

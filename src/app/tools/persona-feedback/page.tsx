@@ -14,6 +14,7 @@ import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
+import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { Plus, Trash2, ArrowLeft, Pencil, Loader2 } from 'lucide-react';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
@@ -55,6 +56,7 @@ ${recentLogs || '(없음)'}
 export default function PersonaFeedbackPage() {
   const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackLog, deleteFeedbackLog, addFeedbackRecord, getPersona } = usePersonaStore();
   const { loadSettings } = useSettingsStore();
+  const { loadRatings } = useAccuracyStore();
   const [activeTab, setActiveTab] = useState('personas');
   const [showForm, setShowForm] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
@@ -71,7 +73,8 @@ export default function PersonaFeedbackPage() {
   useEffect(() => {
     loadData();
     loadSettings();
-  }, [loadData, loadSettings]);
+    loadRatings();
+  }, [loadData, loadSettings, loadRatings]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
