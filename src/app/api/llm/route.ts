@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
-const DAILY_LIMIT = 30;
+const DAILY_LIMIT = 5;
 
 function getRateLimitKey(req: NextRequest): string {
   return req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anonymous';
