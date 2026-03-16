@@ -15,6 +15,8 @@ import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -64,6 +66,7 @@ const SYNTHESIZE_CHIPS = [
 
 export default function SynthesizePage() {
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useSynthesizeStore();
+  const { addJudgment, loadJudgments } = useJudgmentStore();
   const router = useRouter();
   const { setHandoff } = useHandoffStore();
   const [inputMode, setInputMode] = useState<'bulk' | 'individual'>('bulk');
@@ -78,7 +81,8 @@ export default function SynthesizePage() {
 
   useEffect(() => {
     loadItems();
-  }, [loadItems]);
+    loadJudgments();
+  }, [loadItems, loadJudgments]);
 
   const current = getCurrentItem();
 
@@ -114,7 +118,7 @@ export default function SynthesizePage() {
     try {
       const analysis = await callLLMJson<SynthesizeAnalysis>(
         [{ role: 'user', content: userContent }],
-        { system: SYSTEM_PROMPT, maxTokens: 2500 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500 }
       );
       updateItem(id, { analysis, status: 'review' });
     } catch (err) {
@@ -125,10 +129,23 @@ export default function SynthesizePage() {
 
   const handleJudgment = (conflictId: string, judgment: string) => {
     if (!current || !currentId || !current.analysis) return;
+    const conflict = current.analysis.conflicts.find(c => c.id === conflictId);
     const conflicts = current.analysis.conflicts.map((c) =>
       c.id === conflictId ? { ...c, user_judgment: judgment } : c
     );
     updateItem(currentId, { analysis: { ...current.analysis, conflicts } });
+
+    if (conflict && judgment.trim()) {
+      addJudgment({
+        type: 'conflict_resolution',
+        context: conflict.topic,
+        decision: judgment,
+        original_ai_suggestion: `${conflict.side_a.source}: ${conflict.side_a.position}`,
+        user_changed: true,
+        project_id: current.project_id,
+        tool: 'synthesize',
+      });
+    }
   };
 
   const handleJudgmentReasoning = (conflictId: string, reasoning: string) => {

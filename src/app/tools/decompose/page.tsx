@@ -15,6 +15,8 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -82,6 +84,7 @@ const DECOMPOSE_CHIPS = [
 
 export default function DecomposePage() {
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useDecomposeStore();
+  const { addJudgment, loadJudgments } = useJudgmentStore();
   const router = useRouter();
   const { setHandoff } = useHandoffStore();
   const { getOrCreateProject, addRef } = useProjectStore();
@@ -94,7 +97,8 @@ export default function DecomposePage() {
 
   useEffect(() => {
     loadItems();
-  }, [loadItems]);
+    loadJudgments();
+  }, [loadItems, loadJudgments]);
 
   const current = getCurrentItem();
 
@@ -119,7 +123,7 @@ export default function DecomposePage() {
     try {
       const analysis = await callLLMJson<DecomposeAnalysis>(
         [{ role: 'user', content: prompt }],
-        { system: SYSTEM_PROMPT, maxTokens: 2000 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2000 }
       );
       updateItem(id, { analysis, status: 'review' });
     } catch (err) {
@@ -129,8 +133,20 @@ export default function DecomposePage() {
   };
 
   const handleSelectQuestion = (question: string) => {
-    if (!current || !currentId) return;
+    if (!current || !currentId || !current.analysis) return;
     updateItem(currentId, { selected_question: question });
+
+    // Record judgment
+    const isCustom = !current.analysis.hidden_questions.some(hq => hq.question === question);
+    addJudgment({
+      type: 'hidden_question_selection',
+      context: current.analysis.surface_task,
+      decision: question,
+      original_ai_suggestion: current.analysis.hidden_questions[0]?.question || '',
+      user_changed: isCustom,
+      project_id: current.project_id,
+      tool: 'decompose',
+    });
   };
 
   const handleConfirm = () => {
@@ -151,7 +167,7 @@ export default function DecomposePage() {
         : current.input_text;
       const analysis = await callLLMJson<DecomposeAnalysis>(
         [{ role: 'user', content: prompt }],
-        { system: SYSTEM_PROMPT, maxTokens: 2000 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT, current?.project_id), maxTokens: 2000 }
       );
       updateItem(currentId, { analysis, status: 'review' });
     } catch (err) {
@@ -162,9 +178,22 @@ export default function DecomposePage() {
 
   const handleUpdateSubtaskActor = (index: number, actor: 'ai' | 'human' | 'both') => {
     if (!current || !currentId || !current.analysis) return;
+    const original = current.analysis.decomposition[index];
     const decomposition = [...current.analysis.decomposition];
     decomposition[index] = { ...decomposition[index], actor };
     updateItem(currentId, { analysis: { ...current.analysis, decomposition } });
+
+    if (original.actor !== actor) {
+      addJudgment({
+        type: 'actor_override',
+        context: original.task,
+        decision: actor,
+        original_ai_suggestion: original.actor,
+        user_changed: true,
+        project_id: current.project_id,
+        tool: 'decompose',
+      });
+    }
   };
 
   const actorIcon = (actor: string) => {

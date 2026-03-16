@@ -15,6 +15,8 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -79,6 +81,7 @@ const ORCHESTRATE_CHIPS = [
 export default function OrchestratePage() {
   const store = useOrchestrateStore();
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem, updateStep, removeStep, addStep, reorderSteps } = store;
+  const { addJudgment, loadJudgments } = useJudgmentStore();
   const router = useRouter();
   const { handoff, clearHandoff, setHandoff } = useHandoffStore();
   const { addRef } = useProjectStore();
@@ -89,7 +92,8 @@ export default function OrchestratePage() {
 
   useEffect(() => {
     loadItems();
-  }, [loadItems]);
+    loadJudgments();
+  }, [loadItems, loadJudgments]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -129,7 +133,7 @@ export default function OrchestratePage() {
     try {
       const analysis = await callLLMJson<OrchestrateAnalysis>(
         [{ role: 'user', content: prompt }],
-        { system: SYSTEM_PROMPT, maxTokens: 2500 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500 }
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
     } catch (err) {
@@ -144,6 +148,23 @@ export default function OrchestratePage() {
   };
 
   const steps = current?.steps || [];
+
+  const handleStepActorChange = (stepIndex: number, newActor: 'ai' | 'human' | 'both') => {
+    if (!currentId) return;
+    const step = steps[stepIndex];
+    if (step && step.actor !== newActor) {
+      addJudgment({
+        type: 'actor_override',
+        context: step.task,
+        decision: newActor,
+        original_ai_suggestion: step.actor,
+        user_changed: true,
+        project_id: current?.project_id,
+        tool: 'orchestrate',
+      });
+    }
+    updateStep(currentId, stepIndex, { actor: newActor });
+  };
   const stats = steps.length > 0 ? {
     ai: steps.filter((s) => s.actor === 'ai').length,
     human: steps.filter((s) => s.actor === 'human').length,
@@ -302,7 +323,7 @@ export default function OrchestratePage() {
                             {actorOptions.map((opt) => (
                               <button
                                 key={opt.value}
-                                onClick={() => { if (currentId) updateStep(currentId, i, { actor: opt.value }); }}
+                                onClick={() => handleStepActorChange(i, opt.value)}
                                 className={`px-2 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer ${
                                   step.actor === opt.value
                                     ? 'border-[var(--accent)] bg-white shadow-sm'
