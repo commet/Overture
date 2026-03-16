@@ -1,16 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Layers, GitMerge, Map, Users, ArrowRight, ChevronDown } from 'lucide-react';
+import { Layers, GitMerge, Map, Users, ArrowRight } from 'lucide-react';
 
 interface ProcessStep {
-  number: number;
   icon: React.ReactNode;
   title: string;
-  action: string;
-  detail: string;
-  example: string;
+  subtitle: string;
+  before: string;
+  after: string;
   href: string;
   color: string;
   bgColor: string;
@@ -18,45 +16,41 @@ interface ProcessStep {
 
 const steps: ProcessStep[] = [
   {
-    number: 1,
     icon: <Layers size={18} />,
-    title: '분해',
-    action: '진짜 질문 찾기',
-    detail: '받은 과제 이면의 숨겨진 질문을 AI가 찾아내고, 당신이 선택합니다.',
-    example: '"경쟁사 분석" → "우리 제품의 미충족 니즈 파악이 먼저 아닌가?"',
+    title: '질문',
+    subtitle: '풀어야 할 진짜 문제 찾기',
+    before: '"경쟁사 분석해줘"라고 AI에게 바로 시킴',
+    after: '"경쟁사보다 우리 고객의 미충족 니즈가 먼저 아닌가?" 발견',
     href: '/tools/decompose',
     color: 'text-[#2d4a7c]',
     bgColor: 'bg-[var(--ai)]',
   },
   {
-    number: 2,
     icon: <Map size={18} />,
     title: '설계',
-    action: 'AI/사람 역할 배정',
-    detail: 'AI가 워크플로우를 자동 설계하고, 체크포인트를 배치합니다.',
-    example: '"시장 조사는 AI, 내부 정치 판단은 사람, 3단계에서 검증"',
+    subtitle: 'AI와 사람의 역할 경계 긋기',
+    before: '모든 걸 AI에게 맡기거나, 모든 걸 직접 함',
+    after: '"시장 데이터 수집은 AI, 내부 정치 판단은 내가, 3단계에서 검증"',
     href: '/tools/orchestrate',
     color: 'text-[#8b6914]',
     bgColor: 'bg-[var(--human)]',
   },
   {
-    number: 3,
     icon: <GitMerge size={18} />,
-    title: '합성',
-    action: '하나의 판단으로',
-    detail: '여러 AI 결과의 합의점과 쟁점을 분석하고, 쟁점에서 당신이 판단합니다.',
-    example: '"ChatGPT는 500억, Claude는 300억 → 왜 다른지 분석 → 내 판단: 400억"',
+    title: '판단',
+    subtitle: '서로 다른 AI 결과에서 내 결론 내리기',
+    before: '"종합해줘"라고 다시 AI에게 맡기면 표면적 합의만 남음',
+    after: '쟁점별로 왜 다른지 분석하고, 내 맥락에서 하나의 결론 도출',
     href: '/tools/synthesize',
     color: 'text-[#2d6b2d]',
     bgColor: 'bg-[var(--collab)]',
   },
   {
-    number: 4,
     icon: <Users size={18} />,
     title: '검증',
-    action: '이해관계자 시뮬레이션',
-    detail: '"김 CFO라면 뭐라고 할까?" — 보내기 전에 반응을 미리 확인합니다.',
-    example: '"ROI 근거가 부족합니다" → 수정 후 보고 → 실제 반응 기록 → 점점 정확해짐',
+    subtitle: '보내기 전에 상대방 반응 시뮬레이션',
+    before: '보고서를 보냈는데 "그래서 ROI가 얼마야?"에 막힘',
+    after: 'CFO 시점 사전 검증 → 약점 보완 후 보고. 실제 반응 기록 → 점점 정확해짐',
     href: '/tools/persona-feedback',
     color: 'text-purple-700',
     bgColor: 'bg-purple-50',
@@ -64,87 +58,51 @@ const steps: ProcessStep[] = [
 ];
 
 export function ProcessFlow() {
-  const [expandedStep, setExpandedStep] = useState<number | null>(null);
-
   return (
-    <section className="py-8">
+    <section className="py-10">
       <div className="text-center mb-8">
         <h2 className="text-[18px] font-bold text-[var(--text-primary)]">
-          하나의 사고 프로세스, 네 단계
+          네 단계의 사고 프로세스
         </h2>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          각 도구는 독립적으로도, 연결해서도 사용할 수 있습니다
+          AI에게 시키기 전에 거쳐야 할 판단의 구조
         </p>
       </div>
 
-      {/* Process flow - connected steps */}
-      <div className="relative">
-        {/* Connection line (desktop) */}
-        <div className="hidden md:block absolute top-8 left-[calc(12.5%+16px)] right-[calc(12.5%+16px)] h-0.5 bg-[var(--border)]" />
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-2">
-          {steps.map((step, i) => (
-            <div key={step.number} className="relative">
-              {/* Mobile connector */}
-              {i > 0 && (
-                <div className="md:hidden flex justify-center -mt-2 mb-2">
-                  <div className="w-0.5 h-4 bg-[var(--border)]" />
+      <div className="space-y-4 max-w-2xl mx-auto">
+        {steps.map((step, i) => (
+          <Link key={i} href={step.href} className="block group">
+            <div className={`rounded-xl border border-[var(--border)] overflow-hidden transition-all duration-200 hover:border-[var(--accent)] hover:shadow-md hover:shadow-[var(--accent)]/5 hover:-translate-y-0.5`}>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-3.5">
+                <div className={`w-9 h-9 rounded-lg ${step.bgColor} ${step.color} flex items-center justify-center shrink-0`}>
+                  {step.icon}
                 </div>
-              )}
-
-              {/* Step node */}
-              <div
-                className="group cursor-pointer"
-                onClick={() => setExpandedStep(expandedStep === i ? null : i)}
-              >
-                {/* Number + icon circle */}
-                <div className="flex md:justify-center mb-3">
-                  <div className={`relative z-10 w-10 h-10 rounded-full ${step.bgColor} ${step.color} flex items-center justify-center font-bold text-[14px] shadow-sm ring-4 ring-[var(--bg)]`}>
-                    {step.icon}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-[var(--text-secondary)]">{i + 1}</span>
+                    <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{step.title}</h3>
+                    <span className="text-[12px] text-[var(--text-secondary)]">—</span>
+                    <span className={`text-[12px] font-semibold ${step.color}`}>{step.subtitle}</span>
                   </div>
                 </div>
-
-                {/* Content */}
-                <div className="md:text-center px-2">
-                  <div className="flex md:justify-center items-center gap-1.5 mb-0.5">
-                    <span className="text-[11px] font-bold text-[var(--text-secondary)]">STEP {step.number}</span>
-                  </div>
-                  <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{step.title}</h3>
-                  <p className={`text-[12px] font-semibold ${step.color} mt-0.5`}>{step.action}</p>
-                </div>
-
-                {/* Expand indicator */}
-                <div className="flex md:justify-center mt-2">
-                  <ChevronDown
-                    size={14}
-                    className={`text-[var(--text-secondary)] transition-transform duration-200 ${
-                      expandedStep === i ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
+                <ArrowRight size={14} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
               </div>
 
-              {/* Expanded detail */}
-              {expandedStep === i && (
-                <div className="mt-2 mx-1 animate-fade-in">
-                  <div className={`rounded-xl p-4 ${step.bgColor} border border-opacity-20`}>
-                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{step.detail}</p>
-                    <div className="mt-3 bg-white/60 rounded-lg px-3 py-2">
-                      <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1">예시</p>
-                      <p className="text-[12px] text-[var(--text-primary)] italic">{step.example}</p>
-                    </div>
-                    <Link
-                      href={step.href}
-                      className={`inline-flex items-center gap-1 mt-3 text-[12px] font-semibold ${step.color} hover:underline`}
-                    >
-                      사용해보기 <ArrowRight size={12} />
-                    </Link>
-                  </div>
+              {/* Before/After comparison - always visible */}
+              <div className="grid grid-cols-2 border-t border-[var(--border)]">
+                <div className="px-4 py-2.5 bg-red-50/40 border-r border-[var(--border)]">
+                  <p className="text-[10px] font-bold text-red-400 mb-0.5">WITHOUT</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{step.before}</p>
                 </div>
-              )}
+                <div className={`px-4 py-2.5 ${step.bgColor}/40`}>
+                  <p className={`text-[10px] font-bold ${step.color} mb-0.5`}>WITH OVERTURE</p>
+                  <p className="text-[12px] text-[var(--text-primary)] leading-relaxed font-medium">{step.after}</p>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
+          </Link>
+        ))}
       </div>
     </section>
   );
