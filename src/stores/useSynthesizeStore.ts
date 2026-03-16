@@ -1,0 +1,65 @@
+import { create } from 'zustand';
+import type { SynthesizeItem, SynthesizeSource } from '@/stores/types';
+import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
+import { generateId } from '@/lib/uuid';
+
+interface SynthesizeState {
+  items: SynthesizeItem[];
+  currentId: string | null;
+  loadItems: () => void;
+  createItem: () => string;
+  updateItem: (id: string, data: Partial<SynthesizeItem>) => void;
+  deleteItem: (id: string) => void;
+  setCurrentId: (id: string | null) => void;
+  getCurrentItem: () => SynthesizeItem | undefined;
+}
+
+export const useSynthesizeStore = create<SynthesizeState>((set, get) => ({
+  items: [],
+  currentId: null,
+
+  loadItems: () => {
+    const items = getStorage<SynthesizeItem[]>(STORAGE_KEYS.SYNTHESIZE_LIST, []);
+    set({ items });
+  },
+
+  createItem: () => {
+    const now = new Date().toISOString();
+    const newItem: SynthesizeItem = {
+      id: generateId(),
+      raw_input: '',
+      sources: [],
+      analysis: null,
+      final_synthesis: '',
+      status: 'input',
+      created_at: now,
+      updated_at: now,
+    };
+    const items = [...get().items, newItem];
+    set({ items, currentId: newItem.id });
+    setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+    return newItem.id;
+  },
+
+  updateItem: (id, data) => {
+    const items = get().items.map((item) =>
+      item.id === id ? { ...item, ...data, updated_at: new Date().toISOString() } : item
+    );
+    set({ items });
+    setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+  },
+
+  deleteItem: (id) => {
+    const items = get().items.filter((item) => item.id !== id);
+    const currentId = get().currentId === id ? null : get().currentId;
+    set({ items, currentId });
+    setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+  },
+
+  setCurrentId: (id) => set({ currentId: id }),
+
+  getCurrentItem: () => {
+    const { items, currentId } = get();
+    return items.find((item) => item.id === currentId);
+  },
+}));
