@@ -4,9 +4,9 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'SOT — 전략기획자의 AI 오케스트레이션 도구',
+  title: 'Overture — Think before you orchestrate',
   description:
-    '전략기획의 핵심 역량을 AI 시대에 누구나 사용할 수 있는 인터랙티브 웹 도구로 변환한 오픈소스 프로젝트',
+    'AI 오케스트레이션 이전의 판단을 구조화하는 사고 도구. 과제 분해, 산출물 합성, 워크플로우 설계, 페르소나 피드백.',
 };
 
 export default function RootLayout({

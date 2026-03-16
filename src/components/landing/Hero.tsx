@@ -2,7 +2,7 @@ export function Hero() {
   return (
     <section className="text-center max-w-2xl mx-auto pt-12 md:pt-16 pb-8">
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--ai)] text-[#2d4a7c] text-[12px] font-semibold mb-5">
-        Thinking Stack for AI Orchestration
+        Think before you orchestrate
       </div>
       <h1 className="text-[32px] md:text-[38px] font-extrabold text-[var(--primary)] leading-[1.2] tracking-tight">
         AI에게 시키기 전에,

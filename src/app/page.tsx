@@ -68,7 +68,7 @@ export default function HomePage() {
           </p>
         </div>
         <p className="mt-6 text-[12px] text-[var(--text-secondary)]">
-          Strategic Orchestration Toolkit — 오픈소스 프로젝트
+          Overture — 오픈소스 프로젝트
         </p>
       </section>
     </div>
