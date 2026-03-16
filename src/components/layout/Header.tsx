@@ -19,8 +19,11 @@ export function Header() {
   return (
     <header className="bg-[var(--surface)] border-b border-[var(--border)] sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-[var(--primary)] font-extrabold text-[18px] tracking-tight">
-          Overture
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
+            <span className="text-white text-[12px] font-black">O</span>
+          </div>
+          <span className="text-[var(--primary)] font-extrabold text-[17px] tracking-tight">Overture</span>
         </Link>
 
         {/* Desktop nav */}

@@ -210,13 +210,34 @@ export default function DecomposePage() {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          <GuidedInput
-            chipGroups={DECOMPOSE_CHIPS}
-            textLabel="과제를 한두 문장으로 적어주세요"
-            textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
-            textHint="맥락을 선택하면 AI가 더 정확하게 분석합니다. 선택은 자유입니다."
-            onSubmit={handleAnalyze}
-          />
+          {mode === 'auto' ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">과제를 입력하세요</h2>
+                <p className="text-[12px] text-[var(--text-secondary)]">자연어로 적으면 AI가 분석합니다. 한 문장이면 충분합니다.</p>
+              </div>
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="경쟁사가 AI 챗봇을 출시해서 대표가 우리도 빨리 만들라고 함"
+                className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none"
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button onClick={() => handleAnalyze()} disabled={!inputText.trim()}>
+                  <Sparkles size={14} /> AI 분석 시작
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <GuidedInput
+              chipGroups={DECOMPOSE_CHIPS}
+              textLabel="과제를 한두 문장으로 적어주세요"
+              textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
+              textHint="맥락을 선택하면 AI가 더 정확하게 분석합니다. 각 항목은 결과물의 방향성을 결정하는 데 도움이 됩니다."
+              onSubmit={handleAnalyze}
+            />
+          )}
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}

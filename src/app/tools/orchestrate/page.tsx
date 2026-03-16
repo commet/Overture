@@ -180,14 +180,35 @@ export default function OrchestratePage() {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          <GuidedInput
-            chipGroups={ORCHESTRATE_CHIPS}
-            textLabel="최종 결과물과 현재 상황을 적어주세요"
-            textPlaceholder="투자 유치용 사업계획서 작성. 시장 분석, 재무 모델 필요."
-            textHint="프로젝트 유형과 팀 규모를 선택하면 더 현실적인 워크플로우를 설계합니다."
-            submitLabel="워크플로우 설계"
-            onSubmit={handleAnalyze}
-          />
+          {mode === 'auto' ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">최종 결과물을 설명해주세요</h2>
+                <p className="text-[12px] text-[var(--text-secondary)]">한두 문장이면 충분합니다. AI가 전체 워크플로우를 자동으로 설계합니다.</p>
+              </div>
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="투자 유치용 사업계획서를 2주 안에 완성해야 함"
+                className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none"
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button onClick={() => handleAnalyze()} disabled={!inputText.trim()}>
+                  <Sparkles size={14} /> 워크플로우 설계
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <GuidedInput
+              chipGroups={ORCHESTRATE_CHIPS}
+              textLabel="최종 결과물과 현재 상황을 적어주세요"
+              textPlaceholder="투자 유치용 사업계획서 작성. 시장 분석, 재무 모델 필요."
+              textHint="프로젝트 유형과 팀 규모를 선택하면 더 현실적인 워크플로우를 설계합니다."
+              submitLabel="워크플로우 설계"
+              onSubmit={handleAnalyze}
+            />
+          )}
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}

@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #1a1a2e;
-  --primary-light: #2d3561;
-  --accent: #4a6fa5;
-  --bg: #f5f6fa;
+  --primary: #16163a;
+  --primary-light: #2a2d52;
+  --accent: #3b6dcc;
+  --accent-light: #5b8ae0;
+  --bg: #f7f8fb;
   --surface: #ffffff;
-  --border: #e2e4ea;
-  --text-primary: #1a1a2e;
-  --text-secondary: #8b8fa3;
-  --ai: #e8edf6;
-  --human: #fef3e2;
-  --collab: #e8f5e8;
+  --border: #e4e6ed;
+  --text-primary: #16163a;
+  --text-secondary: #7c819a;
+  --ai: #eaeff8;
+  --human: #fef4e4;
+  --collab: #eaf5ea;
   --checkpoint: #fffbf0;
-  --success: #2d6b2d;
+  --success: #1d7d3f;
+  --danger: #dc3545;
 }
 
 @theme inline {
@@ -31,46 +33,65 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Animations ── */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-@keyframes pulse-skeleton {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
-.animate-skeleton {
-  animation: pulse-skeleton 1.5s ease-in-out infinite;
-  background: linear-gradient(90deg, var(--border) 25%, #f0f1f5 50%, var(--border) 75%);
-  background-size: 200% 100%;
+  animation: fade-in 0.25s ease-out;
 }
 
 @keyframes slide-down {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-slide-down {
   animation: slide-down 0.3s ease-out;
 }
 
-/* Scrollbar */
+@keyframes pulse-skeleton {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+.animate-skeleton {
+  animation: pulse-skeleton 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--border) 25%, #eef0f4 50%, var(--border) 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* ── Smooth transitions globally ── */
+button, a, input, textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
 }
