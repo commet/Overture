@@ -9,6 +9,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep } from '@/stores/types';
+import { ScenarioCards } from '@/components/ui/ScenarioCards';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock } from 'lucide-react';
@@ -39,6 +40,24 @@ const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: strin
   { value: 'ai', label: 'AI', icon: '🤖' },
   { value: 'human', label: '사람', icon: '🧠' },
   { value: 'both', label: '협업', icon: '🤝' },
+];
+
+const ORCHESTRATE_SCENARIOS = [
+  {
+    emoji: '\u{1F4DD}',
+    label: '\uBCF4\uACE0\uC11C/\uAE30\uD68D\uC11C \uC791\uC131',
+    template: '\uC2DC\uB9AC\uC988 A \uD22C\uC790 \uC720\uCE58\uC6A9 \uC0AC\uC5C5\uACC4\uD68D\uC11C \uC791\uC131. \uC2DC\uC7A5 \uBD84\uC11D, \uC7AC\uBB34 \uBAA8\uB378, \uD300 \uC18C\uAC1C, \uAE30\uC220 \uC124\uBA85\uC774 \uD544\uC694. \uAE30\uD55C 2\uC8FC. \uD300\uC6D0 3\uBA85.',
+  },
+  {
+    emoji: '\u{1F4BB}',
+    label: '\uC81C\uD488/\uAE30\uB2A5 \uAC1C\uBC1C',
+    template: 'AI \uAE30\uBC18 \uACE0\uAC1D \uC9C0\uC6D0 \uCC57\uBD07 \uAC1C\uBC1C. \uC694\uAD6C\uC0AC\uD56D \uC815\uC758\uBD80\uD130 \uD30C\uC77C\uB7FF \uBC30\uD3EC\uAE4C\uC9C0. \uBC31\uC5D4\uB4DC 2\uBA85, \uD504\uB860\uD2B8 1\uBA85, PM 1\uBA85. 6\uC8FC \uC2A4\uD504\uB9B0\uD2B8.',
+  },
+  {
+    emoji: '\u{1F52C}',
+    label: '\uB9AC\uC11C\uCE58/\uBD84\uC11D \uD504\uB85C\uC81D\uD2B8',
+    template: '\uACBD\uC7C1\uC0AC 5\uAC1C\uC0AC\uC758 \uC81C\uD488 \uC804\uB7B5 \uBE44\uAD50 \uBD84\uC11D. \uACF5\uAC1C \uB370\uC774\uD130 \uC218\uC9D1, \uC0AC\uC6A9\uC790 \uB9AC\uBDF0 \uBD84\uC11D, SWOT \uC815\uB9AC, \uACBD\uC601\uC9C4 \uBCF4\uACE0\uC6A9 \uB371 \uC791\uC131. 1\uC8FC \uAE30\uD55C.',
+  },
 ];
 
 export default function OrchestratePage() {
@@ -146,9 +165,14 @@ export default function OrchestratePage() {
       {(!current || current.status === 'input') && !currentId && (
         <Card className="space-y-4">
           <div>
-            <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">최종적으로 만들고 싶은 결과물과 현재 상황을 설명해주세요</h2>
-            <p className="text-[12px] text-[var(--text-secondary)]">AI가 전체 워크플로우를 자동으로 설계하고, 각 단계의 담당과 체크포인트를 배치합니다.</p>
+            <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">어떤 워크플로우를 설계할까요?</h2>
+            <p className="text-[12px] text-[var(--text-secondary)]">시나리오를 선택하거나 직접 설명하세요.</p>
           </div>
+          <ScenarioCards
+            title="빠르게 시작하기"
+            scenarios={ORCHESTRATE_SCENARIOS}
+            onSelect={(t) => setInputText(t)}
+          />
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
