@@ -4,6 +4,8 @@ export const STORAGE_KEYS = {
   ORCHESTRATE_LIST: 'sot_orchestrate_list',
   PERSONAS: 'sot_personas',
   FEEDBACK_HISTORY: 'sot_feedback_history',
+  PROJECTS:          'sot_projects',
+  JUDGMENTS:         'sot_judgments',
   SETTINGS: 'sot_settings',
 } as const;
 

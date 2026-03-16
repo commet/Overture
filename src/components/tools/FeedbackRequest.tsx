@@ -17,14 +17,16 @@ interface FeedbackRequestProps {
     intensity: string;
   }) => void;
   loading?: boolean;
+  initialContent?: string;
+  initialTitle?: string;
 }
 
 const perspectives = ['전반적 인상', '논리 구조', '실행 가능성', '리스크', '숫자/데이터'];
 const intensities = ['부드럽게', '솔직하게', '까다롭게'];
 
-export function FeedbackRequest({ personas, onSubmit, loading }: FeedbackRequestProps) {
-  const [documentTitle, setDocumentTitle] = useState('');
-  const [documentText, setDocumentText] = useState('');
+export function FeedbackRequest({ personas, onSubmit, loading, initialContent, initialTitle }: FeedbackRequestProps) {
+  const [documentTitle, setDocumentTitle] = useState(initialTitle || '');
+  const [documentText, setDocumentText] = useState(initialContent || '');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [perspective, setPerspective] = useState('전반적 인상');
   const [intensity, setIntensity] = useState('솔직하게');

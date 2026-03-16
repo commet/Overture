@@ -12,7 +12,10 @@ import type { OrchestrateAnalysis, OrchestrateStep } from '@/stores/types';
 import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
-import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useHandoffStore } from '@/stores/useHandoffStore';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
   '워크플로우를 설계하고 있습니다...',
@@ -76,6 +79,9 @@ const ORCHESTRATE_CHIPS = [
 export default function OrchestratePage() {
   const store = useOrchestrateStore();
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem, updateStep, removeStep, addStep, reorderSteps } = store;
+  const router = useRouter();
+  const { handoff, clearHandoff, setHandoff } = useHandoffStore();
+  const { addRef } = useProjectStore();
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
@@ -84,6 +90,22 @@ export default function OrchestratePage() {
   useEffect(() => {
     loadItems();
   }, [loadItems]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (handoff && handoff.from === 'decompose') {
+      const id = createItem();
+      updateItem(id, {
+        input_text: handoff.content,
+        project_id: handoff.projectId,
+      });
+      if (handoff.projectId) {
+        addRef(handoff.projectId, { tool: 'orchestrate', itemId: id, label: '워크플로우 설계' });
+      }
+      setInputText(handoff.content);
+      clearHandoff();
+    }
+  }, []);  // Run once on mount
 
   const current = getCurrentItem();
 
@@ -389,7 +411,25 @@ export default function OrchestratePage() {
                 <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
                   <ArrowRight size={14} /> 새 맵
                 </Button>
-                <CopyButton getText={() => orchestrateToMarkdown(current)} label="마크다운 복사" />
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const content = orchestrateToMarkdown(current!);
+                      setHandoff({
+                        from: 'orchestrate',
+                        fromItemId: current!.id,
+                        content,
+                        projectId: current!.project_id,
+                      });
+                      router.push('/tools/persona-feedback');
+                    }}
+                  >
+                    <Send size={14} /> 페르소나 피드백 받기
+                  </Button>
+                  <CopyButton getText={() => orchestrateToMarkdown(current)} label="마크다운 복사" />
+                </div>
               </>
             )}
           </div>

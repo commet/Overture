@@ -13,6 +13,7 @@ import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
+import { useHandoffStore } from '@/stores/useHandoffStore';
 import { Plus, Trash2, ArrowLeft, Pencil, Loader2 } from 'lucide-react';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
@@ -63,11 +64,24 @@ export default function PersonaFeedbackPage() {
   const [logDate, setLogDate] = useState('');
   const [logContext, setLogContext] = useState('');
   const [logFeedback, setLogFeedback] = useState('');
+  const { handoff, clearHandoff } = useHandoffStore();
+  const [handoffContent, setHandoffContent] = useState<string>('');
+  const [handoffTitle, setHandoffTitle] = useState<string>('');
 
   useEffect(() => {
     loadData();
     loadSettings();
   }, [loadData, loadSettings]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (handoff) {
+      setHandoffContent(handoff.content);
+      setHandoffTitle(`${handoff.from === 'decompose' ? '과제 분해' : handoff.from === 'orchestrate' ? '오케스트레이션' : '산출물 합성'} 결과물`);
+      setActiveTab('feedback');
+      clearHandoff();
+    }
+  }, []);  // Run once on mount
 
   const handleSavePersona = (data: Partial<Persona>) => {
     if (editingPersona) {
@@ -255,7 +269,13 @@ export default function PersonaFeedbackPage() {
       )}
 
       {activeTab === 'feedback' && (
-        <FeedbackRequest personas={personas} onSubmit={handleFeedbackSubmit} loading={feedbackLoading} />
+        <FeedbackRequest
+          personas={personas}
+          onSubmit={handleFeedbackSubmit}
+          loading={feedbackLoading}
+          initialContent={handoffContent}
+          initialTitle={handoffTitle}
+        />
       )}
 
       {activeTab === 'result' && latestFeedback && (

@@ -13,7 +13,9 @@ import type { SynthesizeAnalysis, SynthesizeSource } from '@/stores/types';
 import { GuidedInput, buildContextPrompt } from '@/components/ui/GuidedInput';
 import { ModeToggle } from '@/components/ui/ModeToggle';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
-import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useHandoffStore } from '@/stores/useHandoffStore';
+import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
   '소스를 분리하고 있습니다...',
@@ -62,6 +64,8 @@ const SYNTHESIZE_CHIPS = [
 
 export default function SynthesizePage() {
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useSynthesizeStore();
+  const router = useRouter();
+  const { setHandoff } = useHandoffStore();
   const [inputMode, setInputMode] = useState<'bulk' | 'individual'>('bulk');
   const [bulkInput, setBulkInput] = useState('');
   const [individualSources, setIndividualSources] = useState<SynthesizeSource[]>([
@@ -452,7 +456,25 @@ export default function SynthesizePage() {
             <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setBulkInput(''); }}>
               <ArrowRight size={14} /> 새 합성
             </Button>
-            <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const content = synthesizeToMarkdown(current!);
+                  setHandoff({
+                    from: 'synthesize',
+                    fromItemId: current!.id,
+                    content,
+                    projectId: current!.project_id,
+                  });
+                  router.push('/tools/persona-feedback');
+                }}
+              >
+                <Send size={14} /> 페르소나 피드백 받기
+              </Button>
+              <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
+            </div>
           </div>
         </div>
       )}

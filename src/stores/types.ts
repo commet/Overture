@@ -22,6 +22,7 @@ export interface DecomposeAnalysis {
 
 export interface DecomposeItem {
   id: string;
+  project_id?: string;
   input_text: string;
   analysis: DecomposeAnalysis | null;
   selected_question: string;
@@ -58,6 +59,7 @@ export interface SynthesizeAnalysis {
 
 export interface SynthesizeItem {
   id: string;
+  project_id?: string;
   raw_input: string;
   sources: SynthesizeSource[];
   analysis: SynthesizeAnalysis | null;
@@ -89,6 +91,7 @@ export interface OrchestrateAnalysis {
 
 export interface OrchestrateItem {
   id: string;
+  project_id?: string;
   input_text: string;
   analysis: OrchestrateAnalysis | null;
   steps: OrchestrateStep[];
@@ -133,6 +136,7 @@ export interface PersonaFeedbackResult {
 
 export interface FeedbackRecord {
   id: string;
+  project_id?: string;
   document_title: string;
   document_text: string;
   persona_ids: string[];
@@ -140,6 +144,48 @@ export interface FeedbackRecord {
   feedback_intensity: string;
   results: PersonaFeedbackResult[];
   synthesis: string;
+  created_at: string;
+}
+
+// ─── Project ───
+
+export interface ProjectRef {
+  tool: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback';
+  itemId: string;
+  label: string;
+  linkedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  refs: ProjectRef[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Handoff (transient, not persisted) ───
+
+export interface Handoff {
+  from: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback';
+  fromItemId: string;
+  content: string;
+  projectId?: string;
+}
+
+// ─── Judgment Record ───
+
+export interface JudgmentRecord {
+  id: string;
+  type: 'hidden_question_selection' | 'conflict_resolution' | 'actor_override' | 'feedback_accuracy';
+  context: string;
+  decision: string;
+  reasoning?: string;
+  original_ai_suggestion: string;
+  user_changed: boolean;
+  project_id?: string;
+  tool: string;
   created_at: string;
 }
 
