@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
+import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -493,6 +494,16 @@ export default function SynthesizePage() {
               <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
             </div>
           </div>
+          <NextStepGuide
+            currentTool="synthesize"
+            projectId={current?.project_id}
+            onSendTo={(href) => {
+              if (!current) return;
+              const content = synthesizeToMarkdown(current);
+              setHandoff({ from: 'synthesize', fromItemId: current.id, content, projectId: current.project_id });
+              router.push(href);
+            }}
+          />
         </div>
       )}
     </div>

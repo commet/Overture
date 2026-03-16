@@ -15,6 +15,7 @@ import { callLLMJson, callLLM } from '@/lib/llm';
 import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
+import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Plus, Trash2, ArrowLeft, Pencil, Loader2 } from 'lucide-react';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
@@ -282,7 +283,15 @@ export default function PersonaFeedbackPage() {
       )}
 
       {activeTab === 'result' && latestFeedback && (
-        <FeedbackResult record={latestFeedback} personas={personas} />
+        <>
+          <FeedbackResult record={latestFeedback} personas={personas} />
+          {latestFeedback?.project_id && (
+            <NextStepGuide
+              currentTool="persona-feedback"
+              projectId={latestFeedback.project_id}
+            />
+          )}
+        </>
       )}
 
       {activeTab === 'history' && (

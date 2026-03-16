@@ -6,6 +6,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
+  { href: '/project', label: '프로젝트' },
   { href: '/tools/decompose', label: '과제 분해' },
   { href: '/tools/synthesize', label: '산출물 합성' },
   { href: '/tools/orchestrate', label: '오케스트레이션 맵' },

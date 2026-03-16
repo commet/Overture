@@ -17,6 +17,7 @@ import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
+import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -454,6 +455,18 @@ export default function OrchestratePage() {
               </>
             )}
           </div>
+          {current.status === 'done' && (
+            <NextStepGuide
+              currentTool="orchestrate"
+              projectId={current?.project_id}
+              onSendTo={(href) => {
+                if (!current) return;
+                const content = orchestrateToMarkdown(current);
+                setHandoff({ from: 'orchestrate', fromItemId: current.id, content, projectId: current.project_id });
+                router.push(href);
+              }}
+            />
+          )}
         </div>
       )}
     </div>

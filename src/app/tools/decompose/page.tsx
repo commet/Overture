@@ -18,6 +18,7 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { findSimilarItems } from '@/lib/similarity';
+import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -543,6 +544,18 @@ export default function DecomposePage() {
               <CopyButton getText={() => decomposeToMarkdown(current)} label="마크다운 복사" />
             </div>
           </div>
+          <NextStepGuide
+            currentTool="decompose"
+            projectId={current.project_id}
+            onSendTo={(href) => {
+              if (!current.analysis) return;
+              const projectId = current.project_id || getOrCreateProject(current.analysis.surface_task.slice(0, 30));
+              if (!current.project_id) updateItem(currentId!, { project_id: projectId });
+              addRef(projectId, { tool: 'decompose', itemId: current.id, label: current.analysis.surface_task });
+              setHandoff({ from: 'decompose', fromItemId: current.id, content: decomposeToMarkdown(current), projectId });
+              router.push(href);
+            }}
+          />
         </div>
       )}
     </div>
