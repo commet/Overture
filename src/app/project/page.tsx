@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { generateProjectBrief } from '@/lib/project-brief';
+import { OutputSelector } from '@/components/ui/OutputSelector';
 import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
 import Link from 'next/link';
 import { Layers, Map, GitMerge, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download } from 'lucide-react';
@@ -269,6 +270,9 @@ export default function ProjectPage() {
               ))}
             </div>
           )}
+
+          {/* Output formats */}
+          <OutputSelector project={currentProject} />
 
           {/* Next step guide */}
           {nextStep && (

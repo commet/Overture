@@ -10,8 +10,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={`
-          bg-[var(--surface)] border-[1.5px] border-[var(--border)] rounded-xl p-5
-          ${hoverable ? 'transition-all duration-200 hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-md cursor-pointer' : ''}
+          bg-[var(--surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-6
+          shadow-[var(--shadow-xs)]
+          ${hoverable ? 'transition-all duration-300 ease-[var(--ease-spring)] hover:border-[var(--accent)]/40 hover:-translate-y-1 hover:shadow-[var(--shadow-md)] cursor-pointer' : ''}
           ${className}
         `}
         {...props}
