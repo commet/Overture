@@ -43,17 +43,20 @@ export function UseCaseFlow() {
   const active = scenes.find((s) => s.key === activeKey)!;
 
   return (
-    <section className="bg-[var(--primary)] text-white overflow-hidden">
-      <div className="max-w-5xl mx-auto px-6 py-24 md:py-32">
+    <section className="border-t border-[var(--border-subtle)]">
+      <div className="max-w-5xl mx-auto px-6 py-28 md:py-36">
         {/* Header */}
         <div className="max-w-xl mb-16">
-          <p className="text-[12px] font-medium tracking-[0.2em] uppercase text-white/30 mb-4">
-            Three scenes
-          </p>
-          <h2 className="text-[28px] md:text-[36px] font-bold leading-tight tracking-tight">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px w-8 bg-[var(--border)]" />
+            <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
+              Three scenes
+            </span>
+          </div>
+          <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
             전략기획자가 매일 하던 일에
             <br />
-            <span className="text-white/50">새로운 이름이 붙었습니다.</span>
+            <span className="text-[var(--text-secondary)]">새로운 이름이 붙었습니다.</span>
           </h2>
         </div>
 
@@ -65,8 +68,8 @@ export function UseCaseFlow() {
               onClick={() => setActiveKey(s.key)}
               className={`shrink-0 px-5 py-3 rounded-xl text-[14px] font-medium transition-all duration-300 cursor-pointer border ${
                 activeKey === s.key
-                  ? 'bg-white/10 border-white/20 text-white'
-                  : 'border-white/5 text-white/30 hover:text-white/60 hover:border-white/10'
+                  ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-primary)] shadow-sm'
+                  : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border)]'
               }`}
             >
               {s.role}
@@ -77,25 +80,25 @@ export function UseCaseFlow() {
         {/* Scene content */}
         <div className="animate-fade-in" key={activeKey}>
           {/* Situation */}
-          <p className="text-[16px] md:text-[18px] text-white/70 leading-relaxed max-w-2xl mb-10">
+          <p className="text-[16px] md:text-[18px] text-[var(--text-secondary)] leading-relaxed max-w-2xl mb-10">
             {active.situation}
           </p>
 
           {/* Before/After */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
-              <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-red-400/60 mb-3">
+            <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-6">
+              <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-red-500/60 mb-3">
                 AI에게 바로 시키면
               </p>
-              <p className="text-[14px] text-white/40 leading-relaxed">
+              <p className="text-[14px] text-[var(--text-tertiary)] leading-relaxed">
                 {active.naive}
               </p>
             </div>
-            <div className="rounded-2xl bg-white/[0.06] border border-white/[0.1] p-6">
-              <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[var(--accent-light)] mb-3">
+            <div className="rounded-2xl bg-[var(--surface)] border border-[var(--accent)]/15 p-6">
+              <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[var(--accent)] mb-3">
                 Overture를 거치면
               </p>
-              <p className="text-[14px] text-white/70 leading-relaxed">
+              <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
                 {active.strategic}
               </p>
             </div>
@@ -103,8 +106,8 @@ export function UseCaseFlow() {
 
           {/* Result */}
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 max-w-[24px] bg-white/20" />
-            <p className="text-[14px] font-medium text-white/50">
+            <div className="h-px w-6 bg-[var(--border)]" />
+            <p className="text-[14px] font-medium text-[var(--text-secondary)]">
               {active.result}
             </p>
           </div>

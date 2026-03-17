@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #16163a;
-  --primary-light: #2a2d52;
+  --primary: #1a1a1a;
+  --primary-light: #2e2e2e;
   --accent: #3b6dcc;
   --accent-light: #5b8ae0;
-  --bg: #f5f6fa;
+  --bg: #f8f7f5;
   --surface: #ffffff;
-  --border: #e2e4ec;
-  --border-subtle: #eceef4;
-  --text-primary: #16163a;
-  --text-secondary: #7c819a;
-  --text-tertiary: #a0a4b8;
+  --border: #e5e2dc;
+  --border-subtle: #eeebe6;
+  --text-primary: #1a1a1a;
+  --text-secondary: #868279;
+  --text-tertiary: #b0aa9f;
 
-  /* Semantic */
+  /* Semantic — unchanged */
   --ai: #eaeff8;
   --human: #fef4e4;
   --collab: #eaf5ea;
@@ -21,14 +21,14 @@
   --success: #1d7d3f;
   --danger: #dc3545;
 
-  /* Premium shadows — tinted to background hue */
-  --shadow-xs: 0 1px 2px rgba(22, 22, 58, 0.04);
-  --shadow-sm: 0 2px 8px rgba(22, 22, 58, 0.05);
-  --shadow-md: 0 4px 16px rgba(22, 22, 58, 0.06), 0 1px 3px rgba(22, 22, 58, 0.04);
-  --shadow-lg: 0 8px 32px rgba(22, 22, 58, 0.08), 0 2px 6px rgba(22, 22, 58, 0.03);
-  --shadow-xl: 0 16px 48px rgba(22, 22, 58, 0.1), 0 4px 12px rgba(22, 22, 58, 0.04);
+  /* Shadows — warm tint */
+  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.05);
+  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.06), 0 1px 3px rgba(26, 26, 26, 0.04);
+  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.08), 0 2px 6px rgba(26, 26, 26, 0.03);
+  --shadow-xl: 0 16px 48px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(26, 26, 26, 0.04);
 
-  /* Premium easing — spring-like cubic-bezier */
+  /* Easing */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
   --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
@@ -44,11 +44,11 @@
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text-primary);
-  --shadow-xs: 0 1px 2px rgba(22, 22, 58, 0.04);
-  --shadow-sm: 0 2px 8px rgba(22, 22, 58, 0.05);
-  --shadow-md: 0 4px 16px rgba(22, 22, 58, 0.06), 0 1px 3px rgba(22, 22, 58, 0.04);
-  --shadow-lg: 0 8px 32px rgba(22, 22, 58, 0.08), 0 2px 6px rgba(22, 22, 58, 0.03);
-  --shadow-xl: 0 16px 48px rgba(22, 22, 58, 0.1), 0 4px 12px rgba(22, 22, 58, 0.04);
+  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.05);
+  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.06), 0 1px 3px rgba(26, 26, 26, 0.04);
+  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.08), 0 2px 6px rgba(26, 26, 26, 0.03);
+  --shadow-xl: 0 16px 48px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(26, 26, 26, 0.04);
 }
 
 html {
@@ -78,7 +78,7 @@ body {
   color: white;
 }
 
-/* ── Animations — spring-like curves ── */
+/* ── Animations ── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -117,7 +117,7 @@ body {
 }
 .animate-skeleton {
   animation: pulse-skeleton 1.5s ease-in-out infinite;
-  background: linear-gradient(90deg, var(--border) 25%, #eef0f4 50%, var(--border) 75%);
+  background: linear-gradient(90deg, var(--border) 25%, #eeeae5 50%, var(--border) 75%);
   background-size: 200% 100%;
 }
 
@@ -142,20 +142,9 @@ body {
   background: var(--text-secondary);
 }
 
-/* ── Premium global transitions ── */
+/* ── Global transitions ── */
 button, a, input, textarea {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
   transition-duration: 200ms;
   transition-timing-function: var(--ease-spring);
-}
-
-/* ── Subtle noise overlay for depth ── */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }

@@ -24,7 +24,7 @@ export const Field = forwardRef<HTMLTextAreaElement, FieldProps>(
           className={`
             w-full bg-[var(--bg)]/50 border border-[var(--border)] rounded-xl
             px-4 py-3 text-[15px] leading-[1.7] text-[var(--text-primary)]
-            placeholder:text-[#a0a4b8] placeholder:text-[14px]
+            placeholder:text-[var(--text-tertiary)] placeholder:text-[14px]
             focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.06)]
             focus:bg-[var(--surface)]
             resize-none transition-all duration-200 

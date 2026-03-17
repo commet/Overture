@@ -30,7 +30,7 @@ export function Sidebar() {
   if (pathname === '/') return null;
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[#eceef4] p-3 shrink-0">
+    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[var(--border-subtle)] p-3 shrink-0">
       <nav className="flex flex-col gap-0.5 mt-2">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
@@ -54,10 +54,10 @@ export function Sidebar() {
       </nav>
 
       {currentProject && (
-        <div className="mt-auto pt-4 border-t border-[#eceef4]">
+        <div className="mt-auto pt-4 border-t border-[var(--border-subtle)]">
           <div className="flex items-center gap-2 px-3 mb-2">
             <FolderOpen size={13} className="text-[var(--accent)]" />
-            <span className="text-[11px] font-bold text-[#a0a4b8] uppercase tracking-wider">프로젝트</span>
+            <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">프로젝트</span>
           </div>
           <p className="px-3 text-[13px] font-semibold text-[var(--text-primary)] mb-2 truncate">
             {currentProject.name}

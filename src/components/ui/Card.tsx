@@ -10,9 +10,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={`
-          bg-[var(--surface)] border border-[#eceef4] rounded-2xl p-6
+          bg-[var(--surface)] border border-[var(--border-subtle)] rounded-2xl p-6
           shadow-xs
-          ${hoverable ? 'transition-all duration-300  hover:border-[var(--accent)]/40 hover:-translate-y-1 hover:shadow-md cursor-pointer' : ''}
+          ${hoverable ? 'transition-all duration-300  hover:border-[var(--border)] hover:-translate-y-1 hover:shadow-md cursor-pointer' : ''}
           ${className}
         `}
         {...props}

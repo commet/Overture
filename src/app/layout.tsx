@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { LayoutShell } from '@/components/layout/LayoutShell';
 
 export const metadata: Metadata = {
@@ -29,7 +28,6 @@ export default function RootLayout({
         <div className="min-h-screen flex flex-col">
           <Header />
           <div className="flex flex-1">
-            <Sidebar />
             <LayoutShell>
               {children}
             </LayoutShell>

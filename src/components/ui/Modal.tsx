@@ -28,7 +28,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-[var(--primary)]/20 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-[var(--surface)] rounded-[20px] shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-auto animate-fade-in">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#eceef4]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
           <h2 className="text-[16px] font-bold text-[var(--text-primary)]">{title}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer">
             <X size={16} strokeWidth={1.5} />

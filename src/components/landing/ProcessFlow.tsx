@@ -52,69 +52,74 @@ const movements: Movement[] = [
     description: '본 무대에 오르기 전, 이해관계자의 반응을 시뮬레이션합니다. CFO가 뭘 물어볼지, CTO가 어디를 짚을지 미리 연습합니다.',
     href: '/tools/persona-feedback',
     icon: <Users size={20} strokeWidth={1.5} />,
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-50',
+    color: 'text-[#6b4c9a]',
+    bgColor: 'bg-[#f5f0fa]',
   },
 ];
 
 export function ProcessFlow() {
   return (
-    <section className="max-w-5xl mx-auto px-6 py-24 md:py-32">
-      {/* Section header */}
-      <div className="max-w-xl mb-16">
-        <p className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--accent)] mb-4">
-          Four movements
-        </p>
-        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
-          서곡의 네 악장
-        </h2>
-        <p className="mt-4 text-[16px] text-[var(--text-secondary)] leading-relaxed">
-          오케스트라에서 서곡은 본 공연 전에 전체 음악의 주제를 미리 제시하는 곡입니다.
-          Overture는 에이전트가 실행하기 전, 판단의 구조를 네 단계로 설계합니다.
-        </p>
-      </div>
+    <section className="border-t border-[var(--border-subtle)]">
+      <div className="max-w-5xl mx-auto px-6 py-28 md:py-36">
+        {/* Section header — left aligned */}
+        <div className="max-w-xl mb-16">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px w-8 bg-[var(--border)]" />
+            <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
+              Four movements
+            </span>
+          </div>
+          <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
+            서곡의 네 악장
+          </h2>
+          <p className="mt-4 text-[16px] text-[var(--text-secondary)] leading-relaxed">
+            오케스트라에서 서곡은 본 공연 전에 전체 음악의 주제를 미리 제시하는 곡입니다.
+            Overture는 에이전트가 실행하기 전, 판단의 구조를 네 단계로 설계합니다.
+          </p>
+        </div>
 
-      {/* Movements grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {movements.map((m) => (
-          <Link
-            key={m.number}
-            href={m.href}
-            className="group block"
-          >
-            <div className="h-full border border-[#eceef4] rounded-2xl p-7 bg-[var(--surface)] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-[var(--accent)]/30">
-              {/* Number + Metaphor */}
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-[32px] font-extrabold text-[var(--primary)]/10 leading-none select-none">
-                  {m.number}
-                </span>
-                <div>
-                  <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#a0a4b8]">
-                    {m.orchestraMetaphor}
-                  </p>
-                  <h3 className="text-[18px] font-bold text-[var(--text-primary)] tracking-tight">
-                    {m.title}
-                  </h3>
+        {/* Movements grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {movements.map((m) => (
+            <Link
+              key={m.number}
+              href={m.href}
+              className="group block"
+            >
+              <div className="h-full border border-[var(--border-subtle)] rounded-2xl p-7 bg-[var(--surface)] transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-[var(--border)]">
+                {/* Number + Metaphor */}
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-[32px] font-extrabold text-[var(--primary)]/8 leading-none select-none">
+                    {m.number}
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[var(--text-tertiary)]">
+                      {m.orchestraMetaphor}
+                    </p>
+                    <h3 className="text-[18px] font-bold text-[var(--text-primary)] tracking-tight">
+                      {m.title}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-6">
+                  {m.description}
+                </p>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-5 border-t border-[var(--border-subtle)]">
+                  <div className={`w-9 h-9 rounded-xl ${m.bgColor} ${m.color} flex items-center justify-center`}>
+                    {m.icon}
+                  </div>
+                  <span className="text-[13px] font-medium text-[var(--accent)] opacity-0 group-hover:opacity-100 translate-x-[-4px] group-hover:translate-x-0 transition-all duration-300">
+                    시작하기 &rarr;
+                  </span>
                 </div>
               </div>
-
-              {/* Description */}
-              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-6">
-                {m.description}
-              </p>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-5 border-t border-[#eceef4]">
-                <div className={`w-9 h-9 rounded-xl ${m.bgColor} ${m.color} flex items-center justify-center`}>
-                  {m.icon}
-                </div>
-                <span className="text-[13px] font-medium text-[var(--accent)] opacity-0 group-hover:opacity-100 translate-x-[-4px] group-hover:translate-x-0 transition-all duration-300">
-                  시작하기 &rarr;
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   );
