@@ -197,57 +197,120 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           {/* Iterations timeline */}
           <div className="space-y-3">
             <h3 className="text-[14px] font-bold text-[var(--text-primary)]">반복 이력</h3>
-            {activeLoop.iterations.map((iter, i) => (
-              <Card
-                key={i}
-                className={`!p-4 cursor-pointer ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}
-                onClick={() => setExpandedIteration(expandedIteration === i ? null : i)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      iter.convergence_score > 0.7 ? 'bg-[var(--collab)] text-[var(--success)]'
-                      : 'bg-[var(--ai)] text-[#2d4a7c]'
-                    }`}>
-                      {iter.iteration_number}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)]">
-                        반복 {iter.iteration_number}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-secondary)]">
-                        해결 {iter.total_issue_count - iter.unresolved_count}건 · 미해결 {iter.unresolved_count}건 · 수렴률 {Math.round(iter.convergence_score * 100)}%
-                      </p>
-                    </div>
-                  </div>
-                  {expandedIteration === i ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </div>
+            {activeLoop.iterations.map((iter, i) => {
+              const prevIter = i > 0 ? activeLoop.iterations[i - 1] : null;
+              const convergenceDelta = prevIter ? iter.convergence_score - prevIter.convergence_score : iter.convergence_score;
+              const resolvedCount = iter.total_issue_count - iter.unresolved_count;
+              const newIssues = iter.issues_from_feedback.filter(issue => !issue.resolved && (!prevIter || !prevIter.issues_from_feedback.some(pi => pi.text === issue.text)));
 
-                {expandedIteration === i && (
-                  <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2 animate-fade-in">
-                    {iter.delta_summary && (
-                      <p className="text-[12px] text-[var(--text-primary)]">
-                        <span className="font-semibold">변경사항:</span> {iter.delta_summary}
-                      </p>
-                    )}
-                    <div className="space-y-1">
-                      {iter.issues_from_feedback.map((issue) => (
-                        <div key={issue.id} className="flex items-start gap-2 text-[12px]">
-                          {issue.resolved ? (
-                            <Check size={12} className="text-[var(--success)] mt-0.5 shrink-0" />
-                          ) : (
-                            <AlertTriangle size={12} className="text-amber-500 mt-0.5 shrink-0" />
-                          )}
-                          <span className={issue.resolved ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]'}>
-                            [{issue.source_persona_name}] {issue.text}
+              return (
+                <Card
+                  key={i}
+                  className={`!p-4 ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}
+                >
+                  {/* Header */}
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setExpandedIteration(expandedIteration === i ? null : i)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${
+                        iter.convergence_score > 0.7 ? 'bg-[var(--collab)] text-[var(--success)]'
+                        : 'bg-[var(--ai)] text-[#2d4a7c]'
+                      }`}>
+                        {iter.iteration_number}
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                          반복 {iter.iteration_number}
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] mt-0.5">
+                          <span className="text-[var(--success)]">✅ {resolvedCount}건 해결</span>
+                          <span className="text-amber-600">⚠️ {iter.unresolved_count}건 미해결</span>
+                          {newIssues.length > 0 && <span className="text-blue-600">🆕 {newIssues.length}건 새 이슈</span>}
+                          <span className={`font-bold ${convergenceDelta > 0 ? 'text-[var(--success)]' : convergenceDelta < 0 ? 'text-red-500' : 'text-[var(--text-secondary)]'}`}>
+                            {convergenceDelta > 0 ? '+' : ''}{Math.round(convergenceDelta * 100)}%
                           </span>
                         </div>
-                      ))}
+                      </div>
+                    </div>
+
+                    {/* Mini progress bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+                        <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${iter.convergence_score * 100}%` }} />
+                      </div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)]">{Math.round(iter.convergence_score * 100)}%</span>
+                      {expandedIteration === i ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </div>
                   </div>
-                )}
-              </Card>
-            ))}
+
+                  {/* Expanded detail */}
+                  {expandedIteration === i && (
+                    <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-3 animate-fade-in">
+                      {/* Mini process flow */}
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className={`px-2 py-0.5 rounded ${iter.decompose_item_id ? 'bg-[var(--ai)] text-[#2d4a7c]' : 'bg-[var(--bg)] text-[var(--text-secondary)]'}`}>
+                          악보 해석 {iter.decompose_item_id ? '✓' : '—'}
+                        </span>
+                        <span className="text-[var(--border)]">→</span>
+                        <span className={`px-2 py-0.5 rounded ${iter.orchestrate_item_id ? 'bg-[var(--human)] text-[#8b6914]' : 'bg-[var(--bg)] text-[var(--text-secondary)]'}`}>
+                          편곡 {iter.orchestrate_item_id ? '✓' : '—'}
+                        </span>
+                        <span className="text-[var(--border)]">→</span>
+                        <span className={`px-2 py-0.5 rounded ${iter.feedback_record_id ? 'bg-purple-50 text-purple-700' : 'bg-[var(--bg)] text-[var(--text-secondary)]'}`}>
+                          리허설 {iter.feedback_record_id ? '✓' : '—'}
+                        </span>
+                      </div>
+
+                      {/* Delta summary */}
+                      {iter.delta_summary && (
+                        <p className="text-[12px] text-[var(--text-primary)] bg-[var(--bg)] rounded-lg px-3 py-2">
+                          <span className="font-semibold">변경사항:</span> {iter.delta_summary}
+                        </p>
+                      )}
+
+                      {/* Issues detail */}
+                      <div className="space-y-1">
+                        {iter.issues_from_feedback.map((issue) => (
+                          <div key={issue.id} className="flex items-start gap-2 text-[12px]">
+                            {issue.resolved ? (
+                              <Check size={12} className="text-[var(--success)] mt-0.5 shrink-0" />
+                            ) : (
+                              <AlertTriangle size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                            )}
+                            <span className={issue.resolved ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]'}>
+                              <span className="font-medium text-[var(--accent)]">[{issue.source_persona_name}]</span> {issue.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Diff with previous iteration */}
+                      {prevIter && (
+                        <div className="border-t border-[var(--border)] pt-2 mt-2">
+                          <p className="text-[10px] font-bold text-[var(--text-secondary)] mb-2">이전 반복 대비 변화</p>
+                          <div className="grid grid-cols-3 gap-2 text-[11px]">
+                            <div className="bg-[var(--collab)] rounded-lg p-2 text-center">
+                              <p className="font-bold text-[var(--success)]">{resolvedCount - (prevIter.total_issue_count - prevIter.unresolved_count)}건</p>
+                              <p className="text-[var(--success)] text-[9px]">새로 해결</p>
+                            </div>
+                            <div className="bg-[var(--checkpoint)] rounded-lg p-2 text-center">
+                              <p className="font-bold text-amber-700">{iter.unresolved_count}건</p>
+                              <p className="text-amber-600 text-[9px]">여전히 미해결</p>
+                            </div>
+                            <div className="bg-[var(--ai)] rounded-lg p-2 text-center">
+                              <p className="font-bold text-[#2d4a7c]">{newIssues.length}건</p>
+                              <p className="text-[#2d4a7c] text-[9px]">새 이슈 발생</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
 
           {/* Next iteration / controls */}

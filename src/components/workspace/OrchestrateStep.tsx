@@ -9,17 +9,14 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep as OrchestrateStepType } from '@/stores/types';
-import { InterviewInput, buildInterviewPrompt } from '@/components/ui/InterviewInput';
-import type { InterviewStep } from '@/components/ui/InterviewInput';
-import { ModeToggle } from '@/components/ui/ModeToggle';
-import type { InputMode } from '@/components/ui/ModeToggle';
+import { StepEntry } from '@/components/ui/StepEntry';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
+import { FileText, Trash2, Check, Plus, Bot, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { WorkflowGraph } from './WorkflowGraph';
 
 const LOADING_MESSAGES = [
@@ -73,76 +70,34 @@ const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: strin
   { value: 'both', label: '협업', icon: '🤝' },
 ];
 
-const ORCHESTRATE_INTERVIEW: InterviewStep[] = [
+const ORCHESTRATE_ENTRY_STEPS = [
   {
-    key: 'goal',
-    question: '어떤 결과물을 만들어야 하나요?',
-    label: '최종 목표',
-    hint: '최종 목표를 구체적으로 적어주세요.',
-    type: 'textarea',
-    placeholder: '투자 유치용 사업계획서를 2주 안에 완성해야 함',
-    required: true,
-    rows: 3,
-  },
-  {
-    key: 'projectType',
-    question: '어떤 유형의 프로젝트인가요?',
-    label: '프로젝트 유형',
-    type: 'chips',
+    key: 'outputType',
+    question: '어떤 결과물을 만드나요?',
     options: [
-      { value: 'report', label: '보고서/기획서', emoji: '📝' },
-      { value: 'product', label: '제품/기능 개발', emoji: '💻' },
-      { value: 'research', label: '리서치/분석', emoji: '🔬' },
-      { value: 'campaign', label: '마케팅/캠페인', emoji: '📢' },
-      { value: 'operations', label: '운영/프로세스', emoji: '⚙️' },
-      { value: 'event', label: '행사/프레젠테이션', emoji: '🎤' },
+      { value: 'report', emoji: '📝', label: '보고서/기획서', description: '의사결정용 문서' },
+      { value: 'product', emoji: '💻', label: '제품/기능 개발', description: '소프트웨어 빌드' },
+      { value: 'research', emoji: '🔬', label: '리서치/분석', description: '조사와 인사이트 도출' },
+      { value: 'campaign', emoji: '📢', label: '마케팅/캠페인', description: '고객 대상 활동' },
     ],
   },
   {
     key: 'teamSize',
-    question: '함께 작업하는 사람은 몇 명인가요?',
-    label: '팀 규모',
-    type: 'chips',
+    question: '팀 규모는?',
     options: [
-      { value: 'solo', label: '혼자' },
-      { value: 'small', label: '2-3명' },
-      { value: 'medium', label: '4-7명' },
-      { value: 'large', label: '8명+' },
+      { value: 'solo', emoji: '🧑', label: '혼자' },
+      { value: 'small', emoji: '👥', label: '2-3명' },
+      { value: 'medium', emoji: '🏢', label: '4명+' },
     ],
   },
   {
     key: 'timeline',
-    question: '기간이 어떻게 되나요?',
-    label: '기간',
-    type: 'chips',
+    question: '기간은?',
     options: [
-      { value: 'days', label: '며칠', emoji: '🔥' },
-      { value: 'week', label: '1주' },
-      { value: 'month', label: '2-4주' },
-      { value: 'quarter', label: '1개월+' },
+      { value: 'week', emoji: '🔥', label: '1주 이내' },
+      { value: 'month', emoji: '📅', label: '2-4주' },
+      { value: 'quarter', emoji: '🌿', label: '1개월+' },
     ],
-  },
-  {
-    key: 'aiPreference',
-    question: 'AI에게 어느 정도 맡기고 싶으세요?',
-    label: 'AI 활용 선호',
-    hint: '워크플로우 설계 시 AI 비중을 참고합니다.',
-    type: 'chips',
-    options: [
-      { value: 'maximum', label: 'AI 최대 활용', emoji: '🤖' },
-      { value: 'balanced', label: '균형 있게' },
-      { value: 'minimum', label: '사람 중심', emoji: '🧠' },
-    ],
-  },
-  {
-    key: 'context',
-    question: '추가로 공유할 맥락이 있나요?',
-    label: '추가 맥락',
-    hint: '현재 진행 상황, 제약 조건 등',
-    type: 'textarea',
-    placeholder: '예: 시장 분석 자료는 이미 있고, 재무 모델이 핵심',
-    required: false,
-    rows: 2,
   },
 ];
 
@@ -159,7 +114,6 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<InputMode>('interview');
 
   useEffect(() => {
     loadItems();
@@ -258,12 +212,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         <div>
           <h1 className="text-[22px] font-bold text-[var(--text-primary)]">편곡 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 실행 설계</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-            {mode === 'direct'
-              ? '목표를 입력하면 AI가 전체 워크플로우를 설계합니다.'
-              : '질문에 답하면 상황에 맞는 워크플로우를 설계합니다.'}
+            맥락을 선택하고 목표를 입력하면 AI가 전체 워크플로우를 설계합니다.
           </p>
         </div>
-        <ModeToggle mode={mode} onChange={setMode} />
       </div>
 
       {/* History */}
@@ -292,32 +243,25 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          {mode === 'direct' ? (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">최종 결과물을 설명해주세요</h2>
-                <p className="text-[12px] text-[var(--text-secondary)]">한두 문장이면 충분합니다. AI가 전체 워크플로우를 자동으로 설계합니다.</p>
-              </div>
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="투자 유치용 사업계획서를 2주 안에 완성해야 함"
-                className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none"
-                rows={3}
-              />
-              <div className="flex justify-end">
-                <Button onClick={() => handleAnalyze()} disabled={!inputText.trim()}>
-                  <Sparkles size={14} /> 워크플로우 설계
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <InterviewInput
-              steps={ORCHESTRATE_INTERVIEW}
-              submitLabel="워크플로우 설계"
-              onSubmit={(answers) => handleAnalyze(buildInterviewPrompt(ORCHESTRATE_INTERVIEW, answers))}
-            />
-          )}
+          <StepEntry
+            steps={ORCHESTRATE_ENTRY_STEPS}
+            textLabel="최종 결과물과 현재 상황을 한두 문장으로"
+            textPlaceholder="투자 유치용 사업계획서를 2주 안에 완성해야 함"
+            textHint="맥락을 선택하면 더 현실적인 워크플로우를 설계합니다."
+            submitLabel="워크플로우 설계"
+            onSubmit={(selections, text) => {
+              const context = Object.entries(selections)
+                .map(([k, v]) => {
+                  const step = ORCHESTRATE_ENTRY_STEPS.find(s => s.key === k);
+                  const opt = step?.options.find(o => o.value === v);
+                  return opt ? `${step?.question.replace('?', '')}: ${opt.label}` : '';
+                })
+                .filter(Boolean)
+                .join('\n');
+              const fullPrompt = context ? `[맥락]\n${context}\n\n[목표]\n${text}` : text;
+              handleAnalyze(fullPrompt);
+            }}
+          />
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
