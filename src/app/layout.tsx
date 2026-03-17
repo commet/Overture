@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { LayoutShell } from '@/components/layout/LayoutShell';
 
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
@@ -29,9 +30,9 @@ export default function RootLayout({
           <Header />
           <div className="flex flex-1">
             <Sidebar />
-            <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-5xl mx-auto w-full animate-fade-in">
+            <LayoutShell>
               {children}
-            </main>
+            </LayoutShell>
           </div>
         </div>
       </body>

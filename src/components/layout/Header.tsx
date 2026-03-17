@@ -24,24 +24,28 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-[10px] bg-[var(--primary)] flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300">
-              <span className="text-white text-[13px] font-black tracking-tight">O</span>
+            <div className={`w-8 h-8 rounded-[10px] flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300 ${isLanding ? 'bg-white/10 border border-white/20' : 'bg-[var(--primary)]'}`}>
+              <span className={`text-[13px] font-black tracking-tight ${isLanding ? 'text-white' : 'text-white'}`}>O</span>
             </div>
-            <span className="text-[var(--primary)] font-extrabold text-[18px] tracking-tight">Overture</span>
+            <span className={`font-extrabold text-[18px] tracking-tight ${isLanding ? 'text-white' : 'text-[var(--primary)]'}`}>Overture</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-0.5 bg-[var(--bg)]/60 backdrop-blur-sm rounded-full px-1.5 py-1 border border-[#eceef4]">
+          <nav className={`hidden md:flex items-center gap-0.5 rounded-full px-1.5 py-1 border ${
+            isLanding
+              ? 'bg-white/[0.06] border-white/[0.1] backdrop-blur-sm'
+              : 'bg-[var(--bg)]/60 border-[#eceef4] backdrop-blur-sm'
+          }`}>
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200  ${
-                    isActive
-                      ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                    isLanding
+                      ? (isActive ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70')
+                      : (isActive ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]')
                   }`}
                 >
                   {item.label}
@@ -50,10 +54,10 @@ export function Header() {
             })}
             <Link
               href="/settings"
-              className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200  ${
-                pathname === '/settings'
-                  ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                isLanding
+                  ? 'text-white/40 hover:text-white/70'
+                  : (pathname === '/settings' ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]')
               }`}
             >
               설정
@@ -62,7 +66,7 @@ export function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors"
+            className={`md:hidden p-2.5 rounded-lg cursor-pointer transition-colors ${isLanding ? 'text-white hover:bg-white/10' : 'hover:bg-[var(--bg)]'}`}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
