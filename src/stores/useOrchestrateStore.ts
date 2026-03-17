@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { OrchestrateItem, OrchestrateStep } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
 
 interface OrchestrateState {
   items: OrchestrateItem[];
@@ -25,6 +26,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
   loadItems: () => {
     const items = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
     set({ items });
+    // Background sync to Supabase
+    syncToSupabase('orchestrate_items', items);
   },
 
   createItem: () => {
@@ -41,6 +44,7 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     const items = [...get().items, newItem];
     set({ items, currentId: newItem.id });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    upsertToSupabase('orchestrate_items', newItem);
     return newItem.id;
   },
 
@@ -50,6 +54,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     );
     set({ items });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('orchestrate_items', updated);
   },
 
   deleteItem: (id) => {
@@ -57,6 +63,7 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    deleteFromSupabase('orchestrate_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),
@@ -74,6 +81,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     });
     set({ items });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('orchestrate_items', updated);
   },
 
   removeStep: (id, stepIndex) => {
@@ -83,6 +92,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     });
     set({ items });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('orchestrate_items', updated);
   },
 
   addStep: (id) => {
@@ -96,6 +107,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     });
     set({ items });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('orchestrate_items', updated);
   },
 
   reorderSteps: (id, fromIndex, toIndex) => {
@@ -108,5 +121,7 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     });
     set({ items });
     setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('orchestrate_items', updated);
   },
 }));

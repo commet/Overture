@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { PersonaAccuracyRating } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { insertToSupabase, syncToSupabase } from '@/lib/db';
 
 interface AccuracyState {
   ratings: PersonaAccuracyRating[];
@@ -22,6 +23,8 @@ export const useAccuracyStore = create<AccuracyState>((set, get) => ({
   loadRatings: () => {
     const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
     set({ ratings });
+    // Background sync to Supabase
+    syncToSupabase('accuracy_ratings', ratings);
   },
 
   addRating: (data) => {
@@ -33,6 +36,7 @@ export const useAccuracyStore = create<AccuracyState>((set, get) => ({
     const ratings = [...get().ratings, rating];
     set({ ratings });
     setStorage(STORAGE_KEYS.ACCURACY_RATINGS, ratings);
+    insertToSupabase('accuracy_ratings', rating);
   },
 
   getRatingsByPersona: (personaId) =>

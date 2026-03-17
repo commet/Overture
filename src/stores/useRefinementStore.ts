@@ -3,6 +3,7 @@ import type { RefinementLoop, RefinementIteration } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { detectConvergence } from '@/lib/convergence';
+import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
 
 interface RefinementState {
   loops: RefinementLoop[];
@@ -25,6 +26,8 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
   loadLoops: () => {
     const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
     set({ loops });
+    // Background sync to Supabase
+    syncToSupabase('refinement_loops', loops);
   },
 
   createLoop: (projectId, goal, name) => {
@@ -44,6 +47,7 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
     const loops = [...get().loops, loop];
     set({ loops, activeLoopId: loop.id });
     setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    upsertToSupabase('refinement_loops', loop);
     return loop.id;
   },
 
@@ -53,6 +57,8 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
     );
     set({ loops });
     setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    const updated = get().loops.find(l => l.id === id);
+    if (updated) upsertToSupabase('refinement_loops', updated);
   },
 
   deleteLoop: (id) => {
@@ -60,6 +66,7 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
     const activeLoopId = get().activeLoopId === id ? null : get().activeLoopId;
     set({ loops, activeLoopId });
     setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    deleteFromSupabase('refinement_loops', id);
   },
 
   setActiveLoopId: (id) => set({ activeLoopId: id }),
@@ -80,6 +87,8 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
     });
     set({ loops });
     setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    const updated = get().loops.find(l => l.id === loopId);
+    if (updated) upsertToSupabase('refinement_loops', updated);
   },
 
   getLoopsByProject: (projectId) =>

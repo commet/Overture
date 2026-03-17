@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Project, ProjectRef } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
 
 interface ProjectState {
   projects: Project[];
@@ -23,6 +24,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadProjects: () => {
     const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
     set({ projects });
+    // Background sync to Supabase
+    syncToSupabase('projects', projects);
   },
 
   createProject: (name, description = '') => {
@@ -38,6 +41,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const projects = [...get().projects, project];
     set({ projects, currentProjectId: project.id });
     setStorage(STORAGE_KEYS.PROJECTS, projects);
+    upsertToSupabase('projects', project);
     return project.id;
   },
 
@@ -47,6 +51,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     );
     set({ projects });
     setStorage(STORAGE_KEYS.PROJECTS, projects);
+    const updated = get().projects.find(p => p.id === id);
+    if (updated) upsertToSupabase('projects', updated);
   },
 
   deleteProject: (id) => {
@@ -54,6 +60,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const currentProjectId = get().currentProjectId === id ? null : get().currentProjectId;
     set({ projects, currentProjectId });
     setStorage(STORAGE_KEYS.PROJECTS, projects);
+    deleteFromSupabase('projects', id);
   },
 
   addRef: (projectId, ref) => {
@@ -69,6 +76,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
     set({ projects });
     setStorage(STORAGE_KEYS.PROJECTS, projects);
+    const updated = get().projects.find(p => p.id === projectId);
+    if (updated) upsertToSupabase('projects', updated);
   },
 
   setCurrentProjectId: (id) => set({ currentProjectId: id }),

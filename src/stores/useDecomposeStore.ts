@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { DecomposeItem, DecomposeSubtask } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
 
 interface DecomposeState {
   items: DecomposeItem[];
@@ -21,6 +22,8 @@ export const useDecomposeStore = create<DecomposeState>((set, get) => ({
   loadItems: () => {
     const items = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
     set({ items });
+    // Background sync to Supabase
+    syncToSupabase('decompose_items', items);
   },
 
   createItem: (inputText: string) => {
@@ -38,6 +41,7 @@ export const useDecomposeStore = create<DecomposeState>((set, get) => ({
     const items = [...get().items, newItem];
     set({ items, currentId: newItem.id });
     setStorage(STORAGE_KEYS.DECOMPOSE_LIST, items);
+    upsertToSupabase('decompose_items', newItem);
     return newItem.id;
   },
 
@@ -47,6 +51,8 @@ export const useDecomposeStore = create<DecomposeState>((set, get) => ({
     );
     set({ items });
     setStorage(STORAGE_KEYS.DECOMPOSE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('decompose_items', updated);
   },
 
   deleteItem: (id) => {
@@ -54,6 +60,7 @@ export const useDecomposeStore = create<DecomposeState>((set, get) => ({
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
     setStorage(STORAGE_KEYS.DECOMPOSE_LIST, items);
+    deleteFromSupabase('decompose_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),

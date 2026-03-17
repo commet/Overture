@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Persona, FeedbackLog, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { upsertToSupabase, deleteFromSupabase, syncToSupabase, insertToSupabase } from '@/lib/db';
 
 interface PersonaState {
   personas: Persona[];
@@ -24,6 +25,9 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     const personas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
     const feedbackHistory = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
     set({ personas, feedbackHistory });
+    // Background sync to Supabase
+    syncToSupabase('personas', personas);
+    syncToSupabase('feedback_records', feedbackHistory);
   },
 
   createPersona: (data) => {
@@ -46,6 +50,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     const personas = [...get().personas, newPersona];
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
+    upsertToSupabase('personas', newPersona);
     return newPersona.id;
   },
 
@@ -55,12 +60,15 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     );
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
+    const updated = get().personas.find(p => p.id === id);
+    if (updated) upsertToSupabase('personas', updated);
   },
 
   deletePersona: (id) => {
     const personas = get().personas.filter((p) => p.id !== id);
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
+    deleteFromSupabase('personas', id);
   },
 
   addFeedbackLog: (personaId, log) => {
@@ -74,6 +82,8 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     });
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
+    const updated = get().personas.find(p => p.id === personaId);
+    if (updated) upsertToSupabase('personas', updated);
   },
 
   deleteFeedbackLog: (personaId, logId) => {
@@ -83,6 +93,8 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     });
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
+    const updated = get().personas.find(p => p.id === personaId);
+    if (updated) upsertToSupabase('personas', updated);
   },
 
   addFeedbackRecord: (record) => {
@@ -91,6 +103,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     const feedbackHistory = [...get().feedbackHistory, newRecord];
     set({ feedbackHistory });
     setStorage(STORAGE_KEYS.FEEDBACK_HISTORY, feedbackHistory);
+    insertToSupabase('feedback_records', newRecord);
     return id;
   },
 

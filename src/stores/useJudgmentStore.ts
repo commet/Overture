@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { JudgmentRecord } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { insertToSupabase, syncToSupabase } from '@/lib/db';
 
 interface JudgmentState {
   judgments: JudgmentRecord[];
@@ -24,6 +25,8 @@ export const useJudgmentStore = create<JudgmentState>((set, get) => ({
   loadJudgments: () => {
     const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
     set({ judgments });
+    // Background sync to Supabase
+    syncToSupabase('judgment_records', judgments);
   },
 
   addJudgment: (data) => {
@@ -35,6 +38,7 @@ export const useJudgmentStore = create<JudgmentState>((set, get) => ({
     const judgments = [...get().judgments, judgment];
     set({ judgments });
     setStorage(STORAGE_KEYS.JUDGMENTS, judgments);
+    insertToSupabase('judgment_records', judgment);
   },
 
   getJudgmentsByProject: (projectId) =>
