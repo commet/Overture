@@ -85,26 +85,26 @@ export function ProcessFlow() {
             className="block group"
             style={{ animationDelay: `${i * 80}ms` }}
           >
-            <div className={`rounded-[var(--radius-lg)] border ${step.borderColor} bg-[var(--surface)] overflow-hidden shadow-[var(--shadow-xs)] transition-all duration-300 ease-[var(--ease-spring)] group-hover:shadow-[var(--shadow-md)] group-hover:-translate-y-1 group-hover:border-[var(--accent)]/30`}>
+            <div className={`rounded-2xl border ${step.borderColor} bg-[var(--surface)] overflow-hidden shadow-xs transition-all duration-300  group-hover:shadow-md group-hover:-translate-y-1 group-hover:border-[var(--accent)]/30`}>
               {/* Header */}
               <div className="flex items-center gap-3.5 px-5 py-4">
-                <div className={`w-10 h-10 rounded-[var(--radius-md)] ${step.bgColor} ${step.color} flex items-center justify-center shrink-0`}>
+                <div className={`w-10 h-10 rounded-xl ${step.bgColor} ${step.color} flex items-center justify-center shrink-0`}>
                   {step.icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-[11px] font-bold text-[var(--text-tertiary)]">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="text-[11px] font-bold text-[#a0a4b8]">{String(i + 1).padStart(2, '0')}</span>
                     <h3 className="text-[15px] font-bold text-[var(--text-primary)] tracking-tight">{step.title}</h3>
                     <span className="text-[12px] text-[var(--border)]">|</span>
                     <span className={`text-[12px] font-medium ${step.color}`}>{step.subtitle}</span>
                   </div>
                 </div>
-                <ArrowRight size={15} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+                <ArrowRight size={15} className="text-[#a0a4b8] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
               </div>
 
               {/* Before/After comparison */}
-              <div className="grid grid-cols-2 border-t border-[var(--border-subtle)]">
-                <div className="px-5 py-3 border-r border-[var(--border-subtle)]">
+              <div className="grid grid-cols-2 border-t border-[#eceef4]">
+                <div className="px-5 py-3 border-r border-[#eceef4]">
                   <p className="text-[10px] font-bold text-red-400/70 mb-1 tracking-wider uppercase">Without</p>
                   <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{step.before}</p>
                 </div>

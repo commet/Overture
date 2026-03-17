@@ -11,19 +11,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    'bg-[var(--primary)] text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:brightness-110',
+    'bg-[var(--primary)] text-white shadow-sm hover:shadow-md hover:brightness-110',
   secondary:
-    'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] shadow-[var(--shadow-xs)] hover:border-[var(--border)]  hover:shadow-[var(--shadow-sm)] hover:bg-[var(--bg)]',
+    'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] shadow-xs hover:border-[var(--border)]  hover:shadow-sm hover:bg-[var(--bg)]',
   ghost:
     'border border-dashed border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--ai)]/30',
   danger:
-    'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:shadow-[var(--shadow-sm)]',
+    'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:shadow-sm',
 };
 
 const sizeStyles: Record<string, string> = {
-  sm: 'px-3.5 py-1.5 text-[13px] rounded-[var(--radius-sm)]',
-  md: 'px-5 py-2.5 text-[14px] rounded-[var(--radius-md)]',
-  lg: 'px-7 py-3 text-[15px] rounded-[var(--radius-md)]',
+  sm: 'px-3.5 py-1.5 text-[13px] rounded-lg',
+  md: 'px-5 py-2.5 text-[14px] rounded-xl',
+  lg: 'px-7 py-3 text-[15px] rounded-xl',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -33,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={`
           inline-flex items-center justify-center gap-2 font-semibold
-          transition-all duration-200 ease-[var(--ease-spring)]
+          transition-all duration-200 
           active:scale-[0.97] active:shadow-none
           disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none
           cursor-pointer

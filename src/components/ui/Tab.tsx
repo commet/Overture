@@ -14,17 +14,17 @@ interface TabProps {
 
 export function Tab({ tabs, activeKey, onChange }: TabProps) {
   return (
-    <div className="flex gap-0.5 bg-[var(--bg)]/60 p-1 rounded-[var(--radius-md)] overflow-x-auto">
+    <div className="flex gap-0.5 bg-[var(--bg)]/60 p-1 rounded-xl overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
           className={`
-            px-4 py-2 text-[13px] font-medium whitespace-nowrap rounded-[var(--radius-sm)]
-            transition-all duration-200 ease-[var(--ease-spring)] cursor-pointer
+            px-4 py-2 text-[13px] font-medium whitespace-nowrap rounded-lg
+            transition-all duration-200  cursor-pointer
             ${
               activeKey === tab.key
-                ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-sm'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }
           `}

@@ -83,10 +83,10 @@ export function UseCaseFlow() {
           <button
             key={uc.key}
             onClick={() => setActiveKey(uc.key)}
-            className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300 ease-[var(--ease-spring)] cursor-pointer ${
+            className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300  cursor-pointer ${
               activeKey === uc.key
-                ? 'bg-[var(--primary)] text-white shadow-[var(--shadow-sm)]'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border)]'
+                ? 'bg-[var(--primary)] text-white shadow-sm'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[#eceef4] hover:text-[var(--text-primary)] hover:border-[var(--border)]'
             }`}
           >
             <span>{uc.emoji}</span>
@@ -97,14 +97,14 @@ export function UseCaseFlow() {
 
       <div className="max-w-2xl mx-auto space-y-4 animate-fade-in" key={activeKey}>
         {/* Situation */}
-        <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-xs)]">
+        <div className="px-5 py-4 rounded-2xl bg-[var(--surface)] border border-[#eceef4] shadow-xs">
           <p className="text-[13px] text-[var(--text-secondary)]">
             <span className="font-bold text-[var(--text-primary)]">상황</span> — {activeCase.situation}
           </p>
         </div>
 
         {/* Without Overture */}
-        <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-red-50/40 border border-red-100/60">
+        <div className="px-5 py-4 rounded-2xl bg-red-50/40 border border-red-100/60">
           <div className="flex items-start gap-2.5">
             <AlertTriangle size={14} className="text-red-400/70 mt-0.5 shrink-0" />
             <div>
@@ -115,7 +115,7 @@ export function UseCaseFlow() {
         </div>
 
         {/* With Overture */}
-        <div className="rounded-[var(--radius-lg)] border border-green-200/60 overflow-hidden shadow-[var(--shadow-xs)]">
+        <div className="rounded-2xl border border-green-200/60 overflow-hidden shadow-xs">
           <div className="px-5 py-3 bg-[var(--collab)]/50 border-b border-green-200/40">
             <p className="text-[11px] font-bold text-[#2d6b2d]/80 flex items-center gap-1.5 tracking-wider uppercase">
               <Lightbulb size={12} /> Overture를 쓰면
@@ -135,7 +135,7 @@ export function UseCaseFlow() {
 
         {/* Result + Difference */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--collab)]/40">
+          <div className="px-5 py-4 rounded-2xl bg-[var(--collab)]/40">
             <div className="flex items-start gap-2.5">
               <Check size={14} className="text-[#2d6b2d] mt-0.5 shrink-0" />
               <div>
@@ -144,7 +144,7 @@ export function UseCaseFlow() {
               </div>
             </div>
           </div>
-          <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--ai)]/40">
+          <div className="px-5 py-4 rounded-2xl bg-[var(--ai)]/40">
             <div className="flex items-start gap-2.5">
               <Lightbulb size={14} className="text-[#2d4a7c] mt-0.5 shrink-0" />
               <div>
