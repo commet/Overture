@@ -6,12 +6,10 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
+  { href: '/workspace', label: '워크스페이스', primary: true },
   { href: '/project', label: '프로젝트' },
-  { href: '/tools/decompose', label: '주제 파악' },
-  { href: '/tools/synthesize', label: '조율' },
-  { href: '/tools/orchestrate', label: '역할 편성' },
-  { href: '/tools/persona-feedback', label: '리허설' },
-  { href: '/tools/refinement-loop', label: '정제 루프' },
+  { href: '/guide', label: '가이드' },
+  { href: '/settings', label: '설정' },
 ];
 
 export function Header() {
@@ -47,16 +45,6 @@ export function Header() {
                 </Link>
               );
             })}
-            <Link
-              href="/settings"
-              className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                pathname === '/settings'
-                  ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              설정
-            </Link>
           </nav>
 
           {/* Mobile menu button */}
@@ -87,17 +75,6 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/settings"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${
-                pathname === '/settings'
-                  ? 'bg-[var(--bg)] text-[var(--primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              설정
-            </Link>
           </div>
         </nav>
       )}
