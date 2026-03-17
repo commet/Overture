@@ -21,7 +21,7 @@ export function generateProjectBrief(project: Project): string {
   // 1. Problem Definition (from decompose)
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
-    sections.push('## 1. 문제 정의');
+    sections.push('## 1. 악보 해석 | 문제 재정의');
     if (latest.analysis) {
       sections.push(`### 표면 과제`);
       sections.push(latest.analysis.surface_task);
@@ -49,7 +49,7 @@ export function generateProjectBrief(project: Project): string {
   // 2. Workflow Design (from orchestrate)
   if (orchestrations.length > 0) {
     const latest = orchestrations[orchestrations.length - 1];
-    sections.push('## 2. 워크플로우 설계');
+    sections.push('## 2. 편곡 | 실행 설계');
     if (latest.analysis) {
       sections.push(`**목표**: ${latest.analysis.goal_summary}`);
       sections.push(`**예상 소요시간**: ${latest.analysis.total_estimated_time}`);
@@ -70,7 +70,7 @@ export function generateProjectBrief(project: Project): string {
   // 3. Synthesis / Judgments (from synthesize)
   if (syntheses.length > 0) {
     const latest = syntheses[syntheses.length - 1];
-    sections.push('## 3. 판단 합성');
+    sections.push('## 3. 조율 (판단 합성)');
     if (latest.analysis) {
       if (latest.analysis.agreements.length > 0) {
         sections.push('### 합의점');
@@ -94,7 +94,7 @@ export function generateProjectBrief(project: Project): string {
   // 4. Stakeholder Validation (from persona feedback)
   if (feedbacks.length > 0) {
     const latest = feedbacks[feedbacks.length - 1];
-    sections.push('## 4. 이해관계자 검증');
+    sections.push('## 4. 리허설 | 사전 검증');
     sections.push(`**대상 자료**: ${latest.document_title}`);
     sections.push(`**관점**: ${latest.feedback_perspective} | **강도**: ${latest.feedback_intensity}`);
     sections.push('');

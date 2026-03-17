@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
+export type StepId = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
 
 interface WorkspaceState {
   activeStep: StepId;

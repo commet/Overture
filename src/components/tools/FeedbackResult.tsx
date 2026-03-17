@@ -93,10 +93,19 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
       const p = personas.find((persona) => persona.id === result.persona_id);
       text += `### ${p?.name || '페르소나'} (${p?.role || ''})\n\n`;
       text += `**전반적 반응**: ${result.overall_reaction}\n\n`;
+      if ((result as any).failure_scenario) {
+        text += `**프리모템 (이 계획이 실패한다면?)**\n${(result as any).failure_scenario}\n\n`;
+      }
+      if ((result as any).untested_assumptions && (result as any).untested_assumptions.length > 0) {
+        text += `**검증 안 된 전제**\n${(result as any).untested_assumptions.map((a: string) => `- ${a}`).join('\n')}\n\n`;
+      }
       text += `**먼저 물어볼 질문**\n${result.first_questions.map((q) => `- ${q}`).join('\n')}\n\n`;
       text += `**칭찬할 부분**\n${result.praise.map((p) => `- ${p}`).join('\n')}\n\n`;
       text += `**우려/지적**\n${result.concerns.map((c) => `- ${c}`).join('\n')}\n\n`;
       text += `**추가로 보고 싶은 것**\n${result.wants_more.map((w) => `- ${w}`).join('\n')}\n\n`;
+      if ((result as any).approval_conditions && (result as any).approval_conditions.length > 0) {
+        text += `**승인 조건**\n${(result as any).approval_conditions.map((c: string) => `- ${c}`).join('\n')}\n\n`;
+      }
     }
     if (record.synthesis) {
       text += `### 종합 분석\n${record.synthesis}\n`;
@@ -205,6 +214,30 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
             <p className="text-[14px] text-[var(--text-primary)] font-medium">{activeResult.overall_reaction}</p>
           </Card>
 
+          {/* Failure Scenario (Premortem) */}
+          {activeResult.failure_scenario && (
+            <Card className="!border-l-4 !border-l-red-400">
+              <div className="flex items-center gap-2 text-[13px] font-bold text-red-600 mb-2">
+                <AlertTriangle size={14} /> 프리모템: 이 계획이 실패한다면?
+              </div>
+              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{activeResult.failure_scenario}</p>
+            </Card>
+          )}
+
+          {/* Untested Assumptions */}
+          {activeResult.untested_assumptions && activeResult.untested_assumptions.length > 0 && (
+            <Card className="!border-l-4 !border-l-amber-400">
+              <div className="flex items-center gap-2 text-[13px] font-bold text-amber-700 mb-2">
+                <AlertTriangle size={14} /> 검증 안 된 전제
+              </div>
+              <ul className="space-y-1">
+                {activeResult.untested_assumptions.map((a: string, i: number) => (
+                  <li key={i} className="text-[13px] text-[var(--text-primary)]">• {a}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           {/* First questions */}
           <Card>
             <div className="flex items-center gap-2 text-[13px] font-bold text-[var(--text-primary)] mb-3">
@@ -255,6 +288,21 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
               ))}
             </ul>
           </Card>
+
+          {/* Approval Conditions */}
+          {activeResult.approval_conditions && activeResult.approval_conditions.length > 0 && (
+            <Card className="!border-l-4 !border-l-[var(--success)]">
+              <div className="flex items-center gap-2 text-[13px] font-bold text-[var(--success)] mb-2">
+                <Check size={14} /> 승인 조건
+              </div>
+              <p className="text-[11px] text-[var(--text-secondary)] mb-2">이것을 보여주면 이 사람이 OK할 것</p>
+              <ul className="space-y-1">
+                {activeResult.approval_conditions.map((c: string, i: number) => (
+                  <li key={i} className="text-[13px] text-[var(--text-primary)]">✓ {c}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {/* Accuracy Rating */}
           {!ratingState[activeTab]?.saved ? (

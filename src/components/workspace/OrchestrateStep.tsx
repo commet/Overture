@@ -255,7 +255,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">역할 편성</h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">편곡 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 실행 설계</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             {mode === 'direct'
               ? '목표를 입력하면 AI가 전체 워크플로우를 설계합니다.'
@@ -338,10 +338,18 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           {/* Goal */}
           {current.analysis && (
             <Card className="!bg-[var(--ai)]">
-              <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-1">
-                <Bot size={14} /> 목표 요약
+              <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
+                <Bot size={14} /> 핵심 방향
               </div>
-              <p className="text-[15px] font-bold text-[var(--text-primary)]">{current.analysis.goal_summary}</p>
+              <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{current.analysis.governing_idea}</p>
+
+              {current.analysis.storyline && (
+                <div className="space-y-2 text-[13px] border-t border-[#2d4a7c]/10 pt-3">
+                  <div><span className="font-semibold text-[#2d4a7c]">상황:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.situation}</span></div>
+                  <div><span className="font-semibold text-[#2d4a7c]">문제:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.complication}</span></div>
+                  <div><span className="font-semibold text-[#2d4a7c]">접근:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.resolution}</span></div>
+                </div>
+              )}
             </Card>
           )}
 
@@ -428,6 +436,16 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                       {step.actor_reasoning && (
                         <p className="text-[11px] text-[var(--text-secondary)]">{step.actor_reasoning}</p>
                       )}
+                      {step.expected_output && (
+                        <p className="text-[11px] text-[var(--accent)] mt-1">
+                          📦 산출물: {step.expected_output}
+                        </p>
+                      )}
+                      {step.judgment && step.actor !== 'ai' && (
+                        <p className="text-[11px] text-amber-700 mt-1 bg-[var(--checkpoint)] rounded px-2 py-1">
+                          ⚖️ 판단: {step.judgment}
+                        </p>
+                      )}
                     </div>
                     {current.status === 'review' && (
                       <button
@@ -471,6 +489,43 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 )}
               </div>
             </Card>
+          )}
+
+          {/* Key Assumptions */}
+          {current.analysis && current.analysis.key_assumptions && current.analysis.key_assumptions.length > 0 && (
+            <Card className="!bg-[var(--checkpoint)]">
+              <h4 className="text-[13px] font-bold text-amber-800 mb-3">핵심 가정</h4>
+              <div className="space-y-2">
+                {current.analysis.key_assumptions.map((ka: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2 text-[12px]">
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      ka.importance === 'high' ? 'bg-red-100 text-red-700' : ka.importance === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}
+                    </span>
+                    <div>
+                      <p className="text-[var(--text-primary)]">{ka.assumption}</p>
+                      <p className="text-[var(--text-secondary)] mt-0.5">
+                        확신도: {ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'}
+                        {ka.if_wrong && ` · 틀리면: ${ka.if_wrong}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Critical Path */}
+          {current.analysis && current.analysis.critical_path && current.analysis.critical_path.length > 0 && (
+            <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)]">
+              <span className="font-semibold">크리티컬 패스:</span>
+              {current.analysis.critical_path.map((idx: number) => (
+                <span key={idx} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-bold">
+                  Step {idx}
+                </span>
+              ))}
+            </div>
           )}
 
           {error && (

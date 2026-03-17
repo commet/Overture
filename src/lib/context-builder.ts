@@ -105,14 +105,14 @@ export function buildProjectItemsContext(projectId: string): string {
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis) {
-      parts.push(`[주제 파악] 핵심 질문: ${latest.selected_question || latest.analysis.surface_task}`);
+      parts.push(`[악보 해석] 핵심 질문: ${latest.selected_question || latest.analysis.surface_task}`);
     }
   }
 
   if (orchestrations.length > 0) {
     const latest = orchestrations[orchestrations.length - 1];
     if (latest.analysis) {
-      parts.push(`[워크플로우] ${latest.steps.length}단계, AI ${latest.analysis.ai_ratio}% / 사람 ${latest.analysis.human_ratio}%`);
+      parts.push(`[편곡] ${latest.steps.length}단계, AI ${latest.analysis.ai_ratio}% / 사람 ${latest.analysis.human_ratio}%`);
     }
   }
 

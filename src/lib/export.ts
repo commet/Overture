@@ -16,7 +16,7 @@ export function decomposeToMarkdown(item: DecomposeItem): string {
 
   const selectedQ = item.selected_question || analysis.hidden_questions[0]?.question || '';
 
-  return `## 주제 파악 시트
+  return `## 악보 해석 | 문제 재정의
 
 ### 표면 과제
 ${analysis.surface_task}
@@ -77,7 +77,7 @@ export function orchestrateToMarkdown(item: OrchestrateItem): string {
 
   const goal = item.analysis?.goal_summary || item.input_text;
 
-  return `## 역할 편성
+  return `## 편곡 | 실행 설계
 
 **최종 목표**: ${goal}
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Layers, GitMerge, Map, Users } from 'lucide-react';
+import { Layers, Map, Users } from 'lucide-react';
 
 interface Movement {
   number: string;
@@ -18,7 +18,7 @@ const movements: Movement[] = [
   {
     number: '01',
     orchestraMetaphor: '악보 해석',
-    title: '주제 파악',
+    title: '문제 재정의',
     description: '주어진 과제 뒤에 숨은 진짜 질문을 찾아냅니다. 경영진이 "중국 진출 검토하라"고 할 때, 진짜 문제가 중국인지 기존 수익 구조인지를 먼저 따져봅니다.',
     href: '/tools/decompose',
     icon: <Layers size={20} strokeWidth={1.5} />,
@@ -27,8 +27,8 @@ const movements: Movement[] = [
   },
   {
     number: '02',
-    orchestraMetaphor: '파트 편성',
-    title: '역할 편성',
+    orchestraMetaphor: '편곡',
+    title: '실행 설계',
     description: '누가 어떤 순서로 움직일지 전체 흐름을 그립니다. AI에게 맡길 것과 사람이 판단할 것의 경계를 설계합니다.',
     href: '/tools/orchestrate',
     icon: <Map size={20} strokeWidth={1.5} />,
@@ -37,18 +37,8 @@ const movements: Movement[] = [
   },
   {
     number: '03',
-    orchestraMetaphor: '파트 조율',
-    title: '조율',
-    description: '서로 다른 관점들 사이에서 하나의 방향을 잡아냅니다. 여러 AI가 다른 답을 낼 때, 내 맥락에서 하나의 결론을 만듭니다.',
-    href: '/tools/synthesize',
-    icon: <GitMerge size={20} strokeWidth={1.5} />,
-    color: 'text-[#2d6b2d]',
-    bgColor: 'bg-[var(--collab)]',
-  },
-  {
-    number: '04',
-    orchestraMetaphor: '무대 리허설',
-    title: '리허설',
+    orchestraMetaphor: '리허설',
+    title: '사전 검증',
     description: '본 무대에 오르기 전, 이해관계자의 반응을 시뮬레이션합니다. CFO가 뭘 물어볼지, CTO가 어디를 짚을지 미리 연습합니다.',
     href: '/tools/persona-feedback',
     icon: <Users size={20} strokeWidth={1.5} />,
@@ -66,11 +56,11 @@ export function ProcessFlow() {
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[var(--border)]" />
             <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
-              Four movements
+              Three movements
             </span>
           </div>
           <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
-            서곡의 네 악장
+            서곡의 세 악장
           </h2>
           <p className="mt-4 text-[16px] text-[var(--text-secondary)] leading-relaxed">
             오케스트라에서 서곡은 본 공연 전에 전체 음악의 주제를 미리 제시하는 곡입니다.

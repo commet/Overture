@@ -98,7 +98,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">정제 루프</h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">합주 연습 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 피드백 반영</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           이해관계자 피드백을 반영하여 반복적으로 개선합니다. 수렴할 때까지.
         </p>
@@ -110,8 +110,8 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           {loops.length === 0 ? (
             <Card className="text-center py-12">
               <RefreshCw size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[var(--text-secondary)] text-[14px]">아직 정제 루프가 없습니다.</p>
-              <p className="text-[var(--text-secondary)] text-[12px] mt-1">리허설 결과에서 &ldquo;정제 루프 시작&rdquo; 버튼을 눌러 시작하세요.</p>
+              <p className="text-[var(--text-secondary)] text-[14px]">아직 합주 연습이 없습니다.</p>
+              <p className="text-[var(--text-secondary)] text-[12px] mt-1">리허설 결과에서 &ldquo;합주 연습 시작&rdquo; 버튼을 눌러 시작하세요.</p>
             </Card>
           ) : (
             loops.map((loop) => {

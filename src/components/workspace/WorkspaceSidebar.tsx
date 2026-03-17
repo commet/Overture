@@ -10,9 +10,8 @@ import { generatePromptChain } from '@/lib/prompt-chain';
 import { generateAgentSpec } from '@/lib/agent-spec';
 import { generateChecklist } from '@/lib/checklist';
 import type { Project } from '@/stores/types';
+import type { StepId } from '@/stores/useWorkspaceStore';
 import { User, FolderOpen, FileText, MessageSquare, Code, CheckSquare } from 'lucide-react';
-
-type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
 
 interface WorkspaceSidebarProps {
   activeStep: StepId;

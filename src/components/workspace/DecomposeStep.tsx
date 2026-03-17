@@ -20,7 +20,7 @@ import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { findSimilarItems } from '@/lib/similarity';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
 
 const LOADING_MESSAGES = [
   '과제를 분석하고 있습니다...',
@@ -268,7 +268,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">주제 파악</h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">악보 해석 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 문제 재정의</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             {mode === 'direct'
               ? '과제를 입력하면 AI가 분석하고, 당신은 핵심 판단만 합니다.'
@@ -390,6 +390,43 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             <p className="text-[14px] text-[var(--text-primary)] mt-1">{current.analysis.surface_task}</p>
           </Card>
 
+          {/* Hypothesis */}
+          {current.analysis.hypothesis && (
+            <Card className="!bg-[var(--ai)]">
+              <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
+                <Lightbulb size={14} /> 가설
+              </div>
+              <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{current.analysis.hypothesis}</p>
+            </Card>
+          )}
+
+          {/* Hidden Assumptions */}
+          {current.analysis.hidden_assumptions && current.analysis.hidden_assumptions.length > 0 && (
+            <Card className="!bg-[var(--checkpoint)]">
+              <div className="flex items-center gap-2 text-[12px] text-amber-700 font-semibold mb-2">
+                <AlertTriangle size={14} /> 숨겨진 전제
+              </div>
+              <p className="text-[11px] text-amber-600 mb-2">이 과제가 의미 있으려면 참이어야 하는 가정들</p>
+              <ul className="space-y-1">
+                {current.analysis.hidden_assumptions.map((a: string, i: number) => (
+                  <li key={i} className="text-[13px] text-amber-800">• {a}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Alternative Framings */}
+          {current.analysis.alternative_framings && current.analysis.alternative_framings.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[13px] font-semibold text-[var(--text-secondary)]">같은 상황을 다르게 볼 수 있는 관점</p>
+              {current.analysis.alternative_framings.map((f: string, i: number) => (
+                <Card key={i} className="!p-3 !bg-[var(--bg)]">
+                  <p className="text-[13px] text-[var(--text-primary)]">{f}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {/* Hidden questions - JUDGMENT POINT */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -465,7 +502,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Bot size={14} className="text-[#2d4a7c]" />
-              <h3 className="text-[16px] font-bold text-[var(--text-primary)]">주제 파악 결과</h3>
+              <h3 className="text-[16px] font-bold text-[var(--text-primary)]">악보 해석 결과</h3>
             </div>
             <div className="space-y-2">
               {current.analysis.decomposition.map((sub, i) => (
@@ -540,7 +577,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         <div className="space-y-4 animate-fade-in">
           <Card className="!border-[var(--success)] !border-2">
             <div className="flex items-center gap-2 text-[var(--success)] text-[13px] font-bold mb-3">
-              <Check size={14} /> 주제 파악 완료
+              <Check size={14} /> 악보 해석 완료
             </div>
             <h3 className="text-[15px] font-bold mb-1">재정의된 질문</h3>
             <p className="text-[14px] text-[var(--text-primary)] mb-4">
@@ -560,7 +597,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           </Card>
           <div className="flex items-center justify-between">
             <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
-              <ArrowRight size={14} /> 새 주제 파악
+              <ArrowRight size={14} /> 새 악보 해석
             </Button>
             <div className="flex gap-2">
               <Button
@@ -582,7 +619,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   onNavigate('orchestrate');
                 }}
               >
-                <Send size={14} /> 역할 편성으로 보내기
+                <Send size={14} /> 편곡으로 보내기
               </Button>
               <CopyButton getText={() => decomposeToMarkdown(current)} label="마크다운 복사" />
             </div>

@@ -6,7 +6,7 @@ import { LayoutShell } from '@/components/layout/LayoutShell';
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
   description:
-    'AI 오케스트레이션 이전의 판단을 구조화하는 사고 도구. 주제 파악, 역할 편성, 조율, 리허설.',
+    'Overture — Think before you orchestrate. 악보 해석, 편곡, 리허설, 합주 연습.',
 };
 
 export default function RootLayout({

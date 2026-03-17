@@ -2,14 +2,12 @@
 
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
-import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useRefinementStore } from '@/stores/useRefinementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { Layers, Map, GitMerge, Users, RefreshCw, Check } from 'lucide-react';
+import { Layers, Map, Users, RefreshCw, Check } from 'lucide-react';
 import { useEffect } from 'react';
-
-type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
+import type { StepId } from '@/stores/useWorkspaceStore';
 
 interface ProcessStepsProps {
   activeStep: StepId;
@@ -26,16 +24,14 @@ interface StepInfo {
 }
 
 const steps: StepInfo[] = [
-  { id: 'decompose', number: 1, label: '주제 파악', icon: <Layers size={16} />, color: 'text-[#2d4a7c]', bgColor: 'bg-[var(--ai)]' },
-  { id: 'orchestrate', number: 2, label: '역할 편성', icon: <Map size={16} />, color: 'text-[#8b6914]', bgColor: 'bg-[var(--human)]' },
-  { id: 'synthesize', number: 3, label: '조율', icon: <GitMerge size={16} />, color: 'text-[#2d6b2d]', bgColor: 'bg-[var(--collab)]' },
-  { id: 'persona-feedback', number: 4, label: '리허설', icon: <Users size={16} />, color: 'text-purple-700', bgColor: 'bg-purple-50' },
+  { id: 'decompose', number: 1, label: '악보 해석', icon: <Layers size={16} />, color: 'text-[#2d4a7c]', bgColor: 'bg-[var(--ai)]' },
+  { id: 'orchestrate', number: 2, label: '편곡', icon: <Map size={16} />, color: 'text-[#8b6914]', bgColor: 'bg-[var(--human)]' },
+  { id: 'persona-feedback', number: 3, label: '리허설', icon: <Users size={16} />, color: 'text-purple-700', bgColor: 'bg-purple-50' },
 ];
 
 export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
   const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
   const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
-  const { items: synthesizeItems, loadItems: loadSynthesize } = useSynthesizeStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
   const { loops, loadLoops } = useRefinementStore();
   const { currentProjectId } = useProjectStore();
@@ -43,10 +39,9 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
   useEffect(() => {
     loadDecompose();
     loadOrchestrate();
-    loadSynthesize();
     loadPersona();
     loadLoops();
-  }, [loadDecompose, loadOrchestrate, loadSynthesize, loadPersona, loadLoops]);
+  }, [loadDecompose, loadOrchestrate, loadPersona, loadLoops]);
 
   const getStatus = (stepId: StepId): 'done' | 'in-progress' | 'not-started' => {
     const pid = currentProjectId;
@@ -58,11 +53,6 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
       }
       case 'orchestrate': {
         const items = pid ? orchestrateItems.filter(o => o.project_id === pid) : orchestrateItems;
-        const latest = items[items.length - 1];
-        return latest?.status === 'done' ? 'done' : latest ? 'in-progress' : 'not-started';
-      }
-      case 'synthesize': {
-        const items = pid ? synthesizeItems.filter(s => s.project_id === pid) : synthesizeItems;
         const latest = items[items.length - 1];
         return latest?.status === 'done' ? 'done' : latest ? 'in-progress' : 'not-started';
       }
@@ -142,7 +132,7 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
             </div>
             <div className="min-w-0">
               <p className={`text-[12px] font-semibold ${activeStep === 'refinement-loop' ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
-                정제 루프
+                합주 연습
               </p>
               <p className="text-[10px] text-[var(--text-secondary)]">
                 {activeLoops[0].iterations.length}회 · 수렴 {Math.round((activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence_score || 0) * 100)}%

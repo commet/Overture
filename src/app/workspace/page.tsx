@@ -2,18 +2,15 @@
 
 import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useWorkspaceStore } from '@/stores/useWorkspaceStore';
+import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { WorkspaceSidebar } from '@/components/workspace/WorkspaceSidebar';
 import { DecomposeStep } from '@/components/workspace/DecomposeStep';
 import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
-import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { PersonaFeedbackStep } from '@/components/workspace/PersonaFeedbackStep';
 import { RefinementLoopStep } from '@/components/workspace/RefinementLoopStep';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { Menu } from 'lucide-react';
-
-type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
@@ -27,7 +24,7 @@ function WorkspaceContent() {
   // Sync URL params with store
   useEffect(() => {
     const step = searchParams.get('step') as StepId | null;
-    if (step && ['decompose', 'orchestrate', 'synthesize', 'persona-feedback', 'refinement-loop'].includes(step)) {
+    if (step && ['decompose', 'orchestrate', 'persona-feedback', 'refinement-loop'].includes(step)) {
       setActiveStep(step);
     }
   }, [searchParams, setActiveStep]);
@@ -40,11 +37,10 @@ function WorkspaceContent() {
   };
 
   const stepLabels: Record<StepId, string> = {
-    'decompose': '주제 파악',
-    'orchestrate': '역할 편성',
-    'synthesize': '조율',
-    'persona-feedback': '리허설',
-    'refinement-loop': '정제 루프',
+    'decompose': '악보 해석 | 문제 재정의',
+    'orchestrate': '편곡 | 실행 설계',
+    'persona-feedback': '리허설 | 사전 검증',
+    'refinement-loop': '합주 연습 | 피드백 반영',
   };
 
   return (
@@ -79,7 +75,7 @@ function WorkspaceContent() {
               <div className="text-center max-w-md">
                 <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">새 프로젝트 시작</h2>
                 <p className="text-[13px] text-[var(--text-secondary)] mb-6">
-                  프로젝트를 만들면 주제 파악부터 리허설까지 하나의 흐름으로 진행합니다.
+                  프로젝트를 만들면 악보 해석부터 리허설까지 하나의 흐름으로 진행합니다.
                 </p>
                 <div className="space-y-3 max-w-sm mx-auto">
                   <input
@@ -125,7 +121,6 @@ function WorkspaceContent() {
             <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
               {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
               {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
-              {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
               {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
               {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
             </div>
@@ -138,17 +133,15 @@ function WorkspaceContent() {
 
       {/* Mobile bottom tab bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-2 py-1.5 z-40">
-        {(['decompose', 'orchestrate', 'synthesize', 'persona-feedback'] as StepId[]).map((step) => {
+        {(['decompose', 'orchestrate', 'persona-feedback'] as StepId[]).map((step) => {
           const icons: Record<string, React.ReactNode> = {
-            'decompose': <span className="text-[16px]">🔍</span>,
-            'orchestrate': <span className="text-[16px]">🗺</span>,
-            'synthesize': <span className="text-[16px]">⚖️</span>,
-            'persona-feedback': <span className="text-[16px]">👥</span>,
+            'decompose': <span className="text-[16px]">🎼</span>,
+            'orchestrate': <span className="text-[16px]">🎹</span>,
+            'persona-feedback': <span className="text-[16px]">🎭</span>,
           };
           const labels: Record<string, string> = {
-            'decompose': '주제',
-            'orchestrate': '역할',
-            'synthesize': '조율',
+            'decompose': '악보',
+            'orchestrate': '편곡',
             'persona-feedback': '리허설',
           };
           return (

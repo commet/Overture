@@ -6,8 +6,7 @@ import { callLLMJson } from '@/lib/llm';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
-
-type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
+import type { StepId } from '@/stores/useWorkspaceStore';
 
 interface QuickChatBarProps {
   activeStep: StepId;
@@ -120,7 +119,7 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
     // Quick local commands first (no LLM needed)
     const lowerInput = input.trim().toLowerCase();
     if (lowerInput === '다음' || lowerInput === '다음 단계' || lowerInput === '다음 단계로') {
-      const stepOrder: StepId[] = ['decompose', 'orchestrate', 'synthesize', 'persona-feedback'];
+      const stepOrder: StepId[] = ['decompose', 'orchestrate', 'persona-feedback'];
       const currentIdx = stepOrder.indexOf(activeStep);
       if (currentIdx >= 0 && currentIdx < stepOrder.length - 1) {
         onNavigate(stepOrder[currentIdx + 1]);
