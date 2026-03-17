@@ -27,7 +27,7 @@ const formats: OutputFormat[] = [
   {
     key: 'brief',
     icon: <FileText size={18} />,
-    label: '프로그램 노트 · 프로젝트 브리프',
+    label: '프로그램 노트 · Project Brief',
     description: '경영진이나 팀에 공유하는 의사결정 기록.',
     generator: generateProjectBrief,
     fileExt: 'md',
@@ -35,7 +35,7 @@ const formats: OutputFormat[] = [
   {
     key: 'prompt-chain',
     icon: <MessageSquare size={18} />,
-    label: '파트보 · 프롬프트 체인',
+    label: '파트보 · Prompt Chain',
     description: 'Claude/ChatGPT에 순서대로 입력할 프롬프트 세트.',
     generator: generatePromptChain,
     fileExt: 'md',
@@ -51,7 +51,7 @@ const formats: OutputFormat[] = [
   {
     key: 'checklist',
     icon: <CheckSquare size={18} />,
-    label: '셋리스트 · 실행 체크리스트',
+    label: '셋리스트 · Execution Checklist',
     description: '각 단계를 하나씩 확인하며 실행하는 체크리스트.',
     generator: generateChecklist,
     fileExt: 'md',
