@@ -12,6 +12,7 @@ import { PersonaForm } from '@/components/tools/PersonaForm';
 import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
+import { buildPersonaAccuracyContext } from '@/lib/context-builder';
 import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
@@ -50,6 +51,8 @@ ${recentLogs || '(없음)'}
   "wants_more": ["추가로 보고 싶어할 정보/분석 1~2개"],
   "overall_reaction": "한 문장으로 이 사람의 전반적 반응"
 }
+
+${buildPersonaAccuracyContext(persona.id)}
 
 반드시 JSON만 응답하세요.`;
 };

@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem } from '@/stores/types';
+import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating } from '@/stores/types';
 
 /**
  * Builds an enhanced system prompt by injecting user patterns and project context.
@@ -124,4 +124,43 @@ export function buildProjectItemsContext(projectId: string): string {
   }
 
   return parts.length > 0 ? parts.join('\n') : '';
+}
+
+/**
+ * Build persona accuracy context to improve future simulations.
+ */
+export function buildPersonaAccuracyContext(personaId: string): string {
+  const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, [])
+    .filter((r) => r.persona_id === personaId);
+
+  if (ratings.length < 2) return '';
+
+  const avg = ratings.reduce((sum, r) => sum + r.accuracy_score, 0) / ratings.length;
+  const lines: string[] = [];
+
+  lines.push(`## 이 페르소나 시뮬레이션의 과거 정확도 (${ratings.length}회 평가, 평균 ${avg.toFixed(1)}/5)`);
+
+  const aspectCounts: Record<string, { accurate: number; inaccurate: number }> = {};
+  for (const r of ratings) {
+    for (const a of r.which_aspects_accurate) {
+      if (!aspectCounts[a]) aspectCounts[a] = { accurate: 0, inaccurate: 0 };
+      aspectCounts[a].accurate++;
+    }
+    for (const a of r.which_aspects_inaccurate) {
+      if (!aspectCounts[a]) aspectCounts[a] = { accurate: 0, inaccurate: 0 };
+      aspectCounts[a].inaccurate++;
+    }
+  }
+
+  const good = Object.entries(aspectCounts).filter(([, v]) => v.accurate > v.inaccurate);
+  const bad = Object.entries(aspectCounts).filter(([, v]) => v.inaccurate >= v.accurate);
+
+  if (good.length > 0) {
+    lines.push(`- 정확했던 부분: ${good.map(([k]) => k).join(', ')} — 이 수준을 유지하세요.`);
+  }
+  if (bad.length > 0) {
+    lines.push(`- 부정확했던 부분: ${bad.map(([k]) => k).join(', ')} — 이 부분을 더 현실적으로 개선하세요.`);
+  }
+
+  return lines.join('\n');
 }

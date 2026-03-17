@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ProcessSteps } from './ProcessSteps';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { User, FolderOpen } from 'lucide-react';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { generateProjectBrief } from '@/lib/project-brief';
+import { generatePromptChain } from '@/lib/prompt-chain';
+import { generateAgentSpec } from '@/lib/agent-spec';
+import { generateChecklist } from '@/lib/checklist';
+import type { Project } from '@/stores/types';
+import { User, FolderOpen, FileText, MessageSquare, Code, CheckSquare } from 'lucide-react';
 
 type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
 
@@ -13,9 +19,17 @@ interface WorkspaceSidebarProps {
   onStepClick: (step: StepId) => void;
 }
 
+const outputFormats = [
+  { key: 'brief', icon: <FileText size={12} />, label: '브리프', gen: generateProjectBrief },
+  { key: 'chain', icon: <MessageSquare size={12} />, label: '체인', gen: generatePromptChain },
+  { key: 'spec', icon: <Code size={12} />, label: 'Spec', gen: generateAgentSpec },
+  { key: 'checklist', icon: <CheckSquare size={12} />, label: '리스트', gen: generateChecklist },
+];
+
 export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarProps) {
   const { personas, loadData } = usePersonaStore();
   const { projects, currentProjectId, loadProjects } = useProjectStore();
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -23,6 +37,18 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
   }, [loadData, loadProjects]);
 
   const currentProject = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
+
+  const handleOutputCopy = async (key: string, gen: (p: Project) => string) => {
+    if (!currentProject) return;
+    try {
+      const text = gen(currentProject);
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      // clipboard failed silently
+    }
+  };
 
   return (
     <aside className="w-60 bg-[var(--bg)] border-r border-[var(--border)] flex flex-col h-full overflow-y-auto">
@@ -77,19 +103,25 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
         )}
       </div>
 
-      {/* Output formats */}
+      {/* Output formats — now functional */}
       {currentProject && (
         <div className="px-3 py-2 border-t border-[var(--border)] mt-auto">
           <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
             Output
           </p>
           <div className="grid grid-cols-2 gap-1">
-            {['📄 브리프', '💬 체인', '⚙️ Spec', '📋 리스트'].map((label, i) => (
+            {outputFormats.map((fmt) => (
               <button
-                key={i}
-                className="px-2 py-1.5 rounded-md text-[10px] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] transition-colors cursor-pointer border border-[var(--border)]"
+                key={fmt.key}
+                onClick={() => handleOutputCopy(fmt.key, fmt.gen)}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors cursor-pointer border ${
+                  copiedKey === fmt.key
+                    ? 'border-[var(--success)] bg-[var(--collab)] text-[var(--success)]'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]'
+                }`}
               >
-                {label}
+                {fmt.icon}
+                {copiedKey === fmt.key ? '복사됨!' : fmt.label}
               </button>
             ))}
           </div>
