@@ -9,6 +9,7 @@ import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
 import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { PersonaFeedbackStep } from '@/components/workspace/PersonaFeedbackStep';
 import { RefinementLoopStep } from '@/components/workspace/RefinementLoopStep';
+import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { Menu } from 'lucide-react';
 
 type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 'refinement-loop';
@@ -53,7 +54,7 @@ function WorkspaceContent() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile header */}
         <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
           <button onClick={toggleSidebar} className="p-1 cursor-pointer">
@@ -65,13 +66,18 @@ function WorkspaceContent() {
         </div>
 
         {/* Step content */}
-        <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
-          {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
-          {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
-          {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
-          {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
-          {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
+            {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
+            {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
+            {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
+            {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
+            {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
+          </div>
         </div>
+
+        {/* Quick chat bar */}
+        <QuickChatBar activeStep={activeStep} onNavigate={handleNavigate} />
       </div>
 
       {/* Mobile bottom tab bar */}
