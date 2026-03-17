@@ -37,6 +37,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
       communication_style: data.communication_style || '',
       known_concerns: data.known_concerns || '',
       relationship_notes: data.relationship_notes || '',
+      influence: data.influence || 'medium',
       extracted_traits: data.extracted_traits || [],
       feedback_logs: [],
       created_at: now,

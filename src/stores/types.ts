@@ -145,10 +145,16 @@ export interface Persona {
   communication_style: string;
   known_concerns: string;
   relationship_notes: string;
+  influence: 'high' | 'medium' | 'low';
   extracted_traits: string[];
   feedback_logs: FeedbackLog[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ClassifiedRisk {
+  text: string;
+  category: 'critical' | 'manageable' | 'unspoken';
 }
 
 export interface PersonaFeedbackResult {
@@ -156,6 +162,7 @@ export interface PersonaFeedbackResult {
   overall_reaction: string;
   failure_scenario: string;
   untested_assumptions: string[];
+  classified_risks: ClassifiedRisk[];
   first_questions: string[];
   praise: string[];
   concerns: string[];

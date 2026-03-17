@@ -29,6 +29,10 @@ const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: strin
 
 [사고 방식]
 - 프리모템: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
+- 리스크 분류: 우려사항을 세 가지로 분류하세요:
+  * "critical" — 핵심 위협. 확률 높고 임팩트 큼. 이걸 해결 안 하면 진행 불가.
+  * "manageable" — 과장된 우려. 무서워 보이지만 대응책이 있거나 임팩트 제한적.
+  * "unspoken" — 침묵의 리스크. 모두 알지만 아무도 꺼내지 않는 문제. 조직 정치, 역량 부족 등.
 - 가정 공격: 자료에 깔린 전제 중 검증되지 않은 것을 찾아 지적하세요.
 - 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건을 제시하세요.
 - 이 사람의 말투와 관심사로 답하세요. 형식적인 동의가 아니라 진짜 지적을 하세요.
@@ -40,6 +44,7 @@ const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: strin
 - 우선순위: ${persona.priorities}
 - 커뮤니케이션 스타일: ${persona.communication_style}
 - 최근 관심사/우려: ${persona.known_concerns}
+- 의사결정 영향력: ${persona.influence || 'medium'}
 - 핵심 성향: ${persona.extracted_traits.join(', ')}
 
 ## 과거 이 사람이 실제로 했던 피드백 (참고)
@@ -54,6 +59,9 @@ ${recentLogs || '(없음)'}
   "overall_reaction": "한 문장으로 이 사람의 전반적 반응",
   "failure_scenario": "이 계획이 실패한다면, 가장 가능성 높은 이유는... (프리모템. 구체적으로)",
   "untested_assumptions": ["자료에서 검증 없이 전제하고 있는 가정 1~3개"],
+  "classified_risks": [
+    {"text": "리스크 설명. 이 사람의 말투로.", "category": "critical 또는 manageable 또는 unspoken"}
+  ],
   "first_questions": ["이 사람이라면 자료를 보자마자 물어볼 질문 3개"],
   "praise": ["구체적으로 칭찬할 부분 1~3개"],
   "concerns": ["우려하거나 지적할 부분 1~3개. 이 사람의 말투로"],

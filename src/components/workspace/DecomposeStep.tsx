@@ -17,7 +17,7 @@ import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { findSimilarItems } from '@/lib/similarity';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Sparkles, Loader2, FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
+import { FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
 
 const LOADING_MESSAGES = [
   '과제를 분석하고 있습니다...',
@@ -30,7 +30,7 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과�
 [사고 방식]
 - 가설 기반: "이 과제가 나온 진짜 이유는 무엇인가?" 가설을 먼저 세우세요.
 - 리프레이밍: 같은 상황을 완전히 다르게 정의할 수 있는지 탐색하세요.
-- 전제 점검: 이 과제가 의미 있으려면 어떤 가정이 참이어야 하는지 밝히세요.
+- 전제 점검: 이 과제가 의미 있으려면 어떤 가정이 참이어야 하는지, 네 가지 축으로 밝히세요: (1) 고객 가치 — 이걸 원하는 사람이 있는가? (2) 실행 가능성 — 만들 수 있는가? (3) 사업성 — 수익이 되는가? (4) 조직 역량 — 우리 팀이 할 수 있는가?
 - 이슈 분해: 하위 과제를 겹치지 않고 빠짐없이 나누세요.
 
 아래 JSON 구조로 응답하세요.
@@ -98,7 +98,6 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [editingQuestion, setEditingQuestion] = useState(false);
   const [customQuestion, setCustomQuestion] = useState('');
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<InputMode>('interview');
   const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
 
   useEffect(() => {
@@ -222,16 +221,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">악보 해석 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 문제 재정의</span></h1>
-          <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-            {mode === 'direct'
-              ? '과제를 입력하면 AI가 분석하고, 당신은 핵심 판단만 합니다.'
-              : '질문에 답하면 AI가 맥락을 이해하고 더 정확하게 분석합니다.'}
-          </p>
-        </div>
-        <ModeToggle mode={mode} onChange={setMode} />
+      <div>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">악보 해석 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 문제 재정의</span></h1>
+        <p className="text-[13px] text-[var(--text-secondary)] mt-1">
+          맥락을 선택하면 AI가 더 정확하게 분석합니다.
+        </p>
       </div>
 
       {/* History items */}
@@ -263,62 +257,24 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          {mode === 'direct' ? (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">과제를 입력하세요</h2>
-                <p className="text-[12px] text-[var(--text-secondary)]">자연어로 적으면 AI가 분석합니다. 한 문장이면 충분합니다.</p>
-              </div>
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="경쟁사가 AI 챗봇을 출시해서 대표가 우리도 빨리 만들라고 함"
-                className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none"
-                rows={3}
-              />
-              <div className="flex justify-end">
-                <Button onClick={() => handleAnalyze()} disabled={!inputText.trim()}>
-                  <Sparkles size={14} /> AI 분석 시작
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <InterviewInput
-              steps={DECOMPOSE_INTERVIEW}
-              submitLabel="AI 분석 시작"
-              onSubmit={(answers) => handleAnalyze(buildInterviewPrompt(DECOMPOSE_INTERVIEW, answers))}
-            />
-          )}
-          {similarItems.length > 0 && (
-            <div className="border-t border-[var(--border)] pt-4 mt-2">
-              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">
-                📂 유사한 과거 분석 ({similarItems.length}건)
-              </p>
-              <div className="space-y-2">
-                {similarItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg)] hover:bg-[var(--ai)] transition-colors cursor-pointer"
-                    onClick={() => setInputText(item.input_text || '')}
-                  >
-                    <div className="text-[11px] font-bold text-[var(--accent)] bg-[var(--ai)] px-1.5 py-0.5 rounded shrink-0">
-                      {Math.round(item.similarity * 100)}%
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[var(--text-primary)] truncate">
-                        {item.analysis?.surface_task || item.input_text?.slice(0, 50)}
-                      </p>
-                      {item.selected_question && (
-                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">
-                          핵심 질문: {item.selected_question}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <StepEntry
+            steps={DECOMPOSE_ENTRY_STEPS}
+            textLabel="핵심 내용을 한두 문장으로"
+            textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
+            textHint="선택한 맥락을 바탕으로 AI가 더 정확하게 분석합니다."
+            onSubmit={(selections, text) => {
+              const context = Object.entries(selections)
+                .map(([k, v]) => {
+                  const step = DECOMPOSE_ENTRY_STEPS.find(s => s.key === k);
+                  const opt = step?.options.find(o => o.value === v);
+                  return opt ? `${step?.question.replace('?', '')}: ${opt.label}` : '';
+                })
+                .filter(Boolean)
+                .join('\n');
+              const fullPrompt = context ? `[맥락]\n${context}\n\n[과제]\n${text}` : text;
+              handleAnalyze(fullPrompt);
+            }}
+          />
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
