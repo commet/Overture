@@ -217,7 +217,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           )}
           {personas.length === 0 && !showForm ? (
             <Card className="text-center py-12">
-              <p className="text-[var(--text-secondary)]">등록된 페르소나가 없습니다.</p>
+              <p className="text-[var(--text-secondary)]">무대에 연주자가 없습니다. 이해관계자를 올려보세요.</p>
               <p className="text-[13px] text-[var(--text-secondary)] mt-1">이해관계자를 추가하면 그 사람의 시점에서 피드백을 받을 수 있습니다.</p>
             </Card>
           ) : (
@@ -321,7 +321,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       {activeTab === 'history' && (
         <div className="space-y-3">
           {feedbackHistory.length === 0 ? (
-            <Card className="text-center py-8"><p className="text-[var(--text-secondary)]">피드백 이력이 없습니다.</p></Card>
+            <Card className="text-center py-8"><p className="text-[var(--text-secondary)]">아직 리허설 기록이 없습니다.</p></Card>
           ) : (
             [...feedbackHistory].reverse().map((record) => (
               <Card key={record.id} hoverable onClick={() => { setLatestFeedback(record); setActiveTab('result'); }}>

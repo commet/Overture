@@ -20,9 +20,9 @@ import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
 
 const LOADING_MESSAGES = [
-  '과제를 분석하고 있습니다...',
-  '숨겨진 질문을 찾고 있습니다...',
-  '역할을 분배하고 있습니다...',
+  '악보를 펼치고 있습니다...',
+  '숨겨진 멜로디를 찾고 있습니다...',
+  '진짜 주제를 읽어내고 있습니다...',
 ];
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과제를 그대로 풀지 마세요. 먼저 이 과제가 정말 풀어야 할 문제인지 따져보세요.

@@ -110,8 +110,8 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           {loops.length === 0 ? (
             <Card className="text-center py-12">
               <RefreshCw size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[var(--text-secondary)] text-[14px]">아직 합주 연습이 없습니다.</p>
-              <p className="text-[var(--text-secondary)] text-[12px] mt-1">리허설 결과에서 &ldquo;합주 연습 시작&rdquo; 버튼을 눌러 시작하세요.</p>
+              <p className="text-[var(--text-secondary)] text-[14px]">아직 합주가 시작되지 않았습니다.</p>
+              <p className="text-[var(--text-secondary)] text-[12px] mt-1">리허설을 먼저 진행하고, 피드백을 반영할 준비가 되면 시작하세요.</p>
             </Card>
           ) : (
             loops.map((loop) => {
@@ -128,7 +128,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{loop.name}</h3>
                         <Badge variant={loop.status === 'active' ? 'ai' : loop.status === 'converged' ? 'both' : 'default'}>
-                          {loop.status === 'active' ? '진행 중' : loop.status === 'converged' ? '수렴 완료' : '중단됨'}
+                          {loop.status === 'active' ? '진행 중' : loop.status === 'converged' ? '하모니 완성' : '중단됨'}
                         </Badge>
                       </div>
                       {project && <p className="text-[12px] text-[var(--text-secondary)]">{project.name}</p>}
@@ -356,11 +356,11 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
               <div className="flex items-center justify-between">
                 <div className="flex gap-2">
                   <Button variant="danger" size="sm" onClick={handleStopLoop}>
-                    <Square size={12} /> 루프 중단
+                    <Square size={12} /> 연습 중단
                   </Button>
                   {convergence && convergence.score > 0.5 && (
                     <Button variant="secondary" size="sm" onClick={handleMarkConverged}>
-                      <Check size={12} /> 수렴 완료
+                      <Check size={12} /> 하모니 완성
                     </Button>
                   )}
                 </div>
@@ -384,8 +384,8 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                 )}
                 <p className="text-[14px] font-semibold text-[var(--text-primary)]">
                   {activeLoop.status === 'converged'
-                    ? `수렴 완료 — ${activeLoop.iterations.length}회 반복, 최종 수렴률 ${Math.round((convergence?.score || 0) * 100)}%`
-                    : `사용자에 의해 중단 — ${activeLoop.iterations.length}회 반복`}
+                    ? `하모니 완성 — ${activeLoop.iterations.length}회 합주, 하모니 ${Math.round((convergence?.score || 0) * 100)}%`
+                    : `연습 중단 — ${activeLoop.iterations.length}회 합주`}
                 </p>
               </div>
             </Card>

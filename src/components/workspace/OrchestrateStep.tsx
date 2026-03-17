@@ -20,9 +20,9 @@ import { FileText, Trash2, Check, Plus, Bot, AlertTriangle, ArrowRight, RotateCc
 import { WorkflowGraph } from './WorkflowGraph';
 
 const LOADING_MESSAGES = [
-  '워크플로우를 설계하고 있습니다...',
-  '단계별 담당을 배정하고 있습니다...',
-  '체크포인트를 배치하고 있습니다...',
+  '각 파트에 역할을 배정하고 있습니다...',
+  '스토리라인을 구성하고 있습니다...',
+  '크리티컬 패스를 짚고 있습니다...',
 ];
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.

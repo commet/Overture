@@ -112,8 +112,8 @@ export default function ProjectPage() {
           {projects.length === 0 ? (
             <Card className="text-center py-12">
               <FileText size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[14px] text-[var(--text-secondary)]">아직 프로젝트가 없습니다.</p>
-              <p className="text-[12px] text-[var(--text-secondary)] mt-1">도구를 사용하고 &ldquo;보내기&rdquo;를 하면 자동으로 프로젝트가 생성됩니다.</p>
+              <p className="text-[14px] text-[var(--text-secondary)]">아직 서곡이 시작되지 않았습니다.</p>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1">악보 해석에서 첫 곡을 시작해보세요.</p>
             </Card>
           ) : (
             <>
@@ -223,7 +223,7 @@ export default function ProjectPage() {
                       {step.summary ? (
                         <p className="text-[13px] text-[var(--text-secondary)] mt-1 truncate">{step.summary}</p>
                       ) : step.status === 'not-started' ? (
-                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">아직 시작하지 않음</p>
+                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">아직 연주 전</p>
                       ) : null}
                     </div>
 

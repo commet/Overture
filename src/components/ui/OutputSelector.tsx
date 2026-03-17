@@ -27,32 +27,32 @@ const formats: OutputFormat[] = [
   {
     key: 'brief',
     icon: <FileText size={18} />,
-    label: '프로젝트 브리프',
-    description: '사람이 읽는 의사결정 기록. 경영진이나 팀에 공유.',
+    label: '프로그램 노트',
+    description: '관객(경영진/팀)이 읽는 의사결정 기록. 공연 해설지.',
     generator: generateProjectBrief,
     fileExt: 'md',
   },
   {
     key: 'prompt-chain',
     icon: <MessageSquare size={18} />,
-    label: '프롬프트 체인',
-    description: 'Claude/ChatGPT에 순서대로 입력할 프롬프트 세트.',
+    label: '파트보',
+    description: '각 연주자(AI)가 순서대로 따라가는 프롬프트 악보.',
     generator: generatePromptChain,
     fileExt: 'md',
   },
   {
     key: 'agent-spec',
     icon: <Code size={18} />,
-    label: 'Agent Spec',
-    description: 'LangGraph/CrewAI 구현의 출발점이 되는 설계서.',
+    label: '총보',
+    description: '지휘자가 보는 전체 설계서. LangGraph/CrewAI 구현의 출발점.',
     generator: generateAgentSpec,
     fileExt: 'yaml',
   },
   {
     key: 'checklist',
     icon: <CheckSquare size={18} />,
-    label: '실행 체크리스트',
-    description: '각 단계를 하나씩 확인하며 실행할 체크리스트.',
+    label: '무대 셋리스트',
+    description: '공연 당일, 순서대로 체크하며 실행하는 리스트.',
     generator: generateChecklist,
     fileExt: 'md',
   },
@@ -87,8 +87,8 @@ export function OutputSelector({ project }: OutputSelectorProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-[14px] font-bold text-[var(--text-primary)]">Output 형식 선택</h3>
-      <p className="text-[12px] text-[var(--text-secondary)]">같은 사고 과정에서 목적에 맞는 형식으로 내보냅니다.</p>
+      <h3 className="text-[14px] font-bold text-[var(--text-primary)]">공연 — 산출물 선택</h3>
+      <p className="text-[12px] text-[var(--text-secondary)]">같은 서곡에서 무대 위 목적에 맞는 형식으로 내보냅니다.</p>
 
       <div className="grid grid-cols-2 gap-2">
         {formats.map((format) => (
