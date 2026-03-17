@@ -22,11 +22,12 @@ export const Field = forwardRef<HTMLTextAreaElement, FieldProps>(
         <textarea
           ref={ref}
           className={`
-            w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px]
-            px-3.5 py-3 text-[15px] leading-[1.7] text-[var(--text-primary)]
-            placeholder:text-[var(--text-secondary)] placeholder:text-[14px]
-            focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)]
-            resize-none transition-all duration-200
+            w-full bg-[var(--bg)]/50 border border-[var(--border)] rounded-[var(--radius-md)]
+            px-4 py-3 text-[15px] leading-[1.7] text-[var(--text-primary)]
+            placeholder:text-[var(--text-tertiary)] placeholder:text-[14px]
+            focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.06)]
+            focus:bg-[var(--surface)]
+            resize-none transition-all duration-200 ease-[var(--ease-spring)]
             ${className}
           `}
           rows={3}

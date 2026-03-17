@@ -26,15 +26,15 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-[var(--surface)] rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-auto animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+      <div className="absolute inset-0 bg-[var(--primary)]/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[var(--surface)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xl)] w-full max-w-lg mx-4 max-h-[85vh] overflow-auto animate-fade-in">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
           <h2 className="text-[16px] font-bold text-[var(--text-primary)]">{title}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer">
-            <X size={18} />
+          <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg)] rounded-[var(--radius-sm)] transition-colors cursor-pointer">
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );

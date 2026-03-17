@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/Card';
 import { AlertTriangle, Check, Lightbulb } from 'lucide-react';
 
 interface UseCase {
@@ -65,24 +64,29 @@ export function UseCaseFlow() {
   const activeCase = useCases.find((uc) => uc.key === activeKey)!;
 
   return (
-    <section className="py-10">
-      <h2 className="text-[18px] font-bold text-[var(--text-primary)] text-center mb-2">
-        실제 업무에서의 차이
-      </h2>
-      <p className="text-[13px] text-[var(--text-secondary)] text-center mb-6">
-        같은 상황, 다른 접근. Overture가 만드는 차이.
-      </p>
+    <section className="py-16">
+      <div className="text-center mb-10">
+        <p className="text-[12px] font-semibold text-[var(--accent)] tracking-widest uppercase mb-3">
+          Real scenarios
+        </p>
+        <h2 className="text-[22px] md:text-[26px] font-bold text-[var(--text-primary)] tracking-tight">
+          실제 업무에서의 차이
+        </h2>
+        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
+          같은 상황, 다른 접근. Overture가 만드는 차이.
+        </p>
+      </div>
 
       {/* Role tabs */}
-      <div className="flex justify-center gap-2 mb-5">
+      <div className="flex justify-center gap-2 mb-8">
         {useCases.map((uc) => (
           <button
             key={uc.key}
             onClick={() => setActiveKey(uc.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300 ease-[var(--ease-spring)] cursor-pointer ${
               activeKey === uc.key
-                ? 'bg-[var(--primary)] text-white shadow-sm'
-                : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ? 'bg-[var(--primary)] text-white shadow-[var(--shadow-sm)]'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border)]'
             }`}
           >
             <span>{uc.emoji}</span>
@@ -93,34 +97,34 @@ export function UseCaseFlow() {
 
       <div className="max-w-2xl mx-auto space-y-4 animate-fade-in" key={activeKey}>
         {/* Situation */}
-        <div className="px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
-          <p className="text-[13px] text-[var(--text-secondary)] font-medium">
+        <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-xs)]">
+          <p className="text-[13px] text-[var(--text-secondary)]">
             <span className="font-bold text-[var(--text-primary)]">상황</span> — {activeCase.situation}
           </p>
         </div>
 
         {/* Without Overture */}
-        <div className="px-4 py-3 rounded-xl bg-red-50/60 border border-red-100">
-          <div className="flex items-start gap-2">
-            <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
+        <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-red-50/40 border border-red-100/60">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle size={14} className="text-red-400/70 mt-0.5 shrink-0" />
             <div>
-              <p className="text-[11px] font-bold text-red-400 mb-1">Overture 없이</p>
+              <p className="text-[11px] font-bold text-red-400/70 mb-1.5 tracking-wider uppercase">Overture 없이</p>
               <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{activeCase.withoutOverture}</p>
             </div>
           </div>
         </div>
 
         {/* With Overture */}
-        <div className="rounded-xl border border-green-200 overflow-hidden">
-          <div className="px-4 py-2.5 bg-[var(--collab)] border-b border-green-200">
-            <p className="text-[11px] font-bold text-[#2d6b2d] flex items-center gap-1.5">
+        <div className="rounded-[var(--radius-lg)] border border-green-200/60 overflow-hidden shadow-[var(--shadow-xs)]">
+          <div className="px-5 py-3 bg-[var(--collab)]/50 border-b border-green-200/40">
+            <p className="text-[11px] font-bold text-[#2d6b2d]/80 flex items-center gap-1.5 tracking-wider uppercase">
               <Lightbulb size={12} /> Overture를 쓰면
             </p>
           </div>
-          <div className="px-4 py-3 space-y-3 bg-white">
+          <div className="px-5 py-4 space-y-3.5 bg-[var(--surface)]">
             {activeCase.withOverture.map((item, i) => (
               <div key={i} className="flex gap-3 items-start">
-                <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--ai)] px-1.5 py-0.5 rounded mt-0.5 shrink-0">
+                <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--ai)] px-2 py-0.5 rounded-full mt-0.5 shrink-0 tracking-wide">
                   {item.step}
                 </span>
                 <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{item.insight}</p>
@@ -131,20 +135,20 @@ export function UseCaseFlow() {
 
         {/* Result + Difference */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="px-4 py-3 rounded-xl bg-[var(--collab)]">
-            <div className="flex items-start gap-2">
+          <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--collab)]/40">
+            <div className="flex items-start gap-2.5">
               <Check size={14} className="text-[#2d6b2d] mt-0.5 shrink-0" />
               <div>
-                <p className="text-[11px] font-bold text-[#2d6b2d] mb-0.5">결과</p>
+                <p className="text-[11px] font-bold text-[#2d6b2d]/80 mb-1 tracking-wider uppercase">결과</p>
                 <p className="text-[12px] text-[#2d6b2d] leading-relaxed">{activeCase.result}</p>
               </div>
             </div>
           </div>
-          <div className="px-4 py-3 rounded-xl bg-[var(--ai)]">
-            <div className="flex items-start gap-2">
+          <div className="px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--ai)]/40">
+            <div className="flex items-start gap-2.5">
               <Lightbulb size={14} className="text-[#2d4a7c] mt-0.5 shrink-0" />
               <div>
-                <p className="text-[11px] font-bold text-[#2d4a7c] mb-0.5">핵심 차이</p>
+                <p className="text-[11px] font-bold text-[#2d4a7c]/80 mb-1 tracking-wider uppercase">핵심 차이</p>
                 <p className="text-[12px] text-[#2d4a7c] leading-relaxed font-medium">{activeCase.difference}</p>
               </div>
             </div>

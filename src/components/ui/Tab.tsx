@@ -14,24 +14,26 @@ interface TabProps {
 
 export function Tab({ tabs, activeKey, onChange }: TabProps) {
   return (
-    <div className="flex gap-1 border-b border-[var(--border)] overflow-x-auto">
+    <div className="flex gap-0.5 bg-[var(--bg)]/60 p-1 rounded-[var(--radius-md)] overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
           className={`
-            px-4 py-2.5 text-[14px] font-medium whitespace-nowrap transition-all duration-200 cursor-pointer
-            border-b-[2.5px] -mb-px
+            px-4 py-2 text-[13px] font-medium whitespace-nowrap rounded-[var(--radius-sm)]
+            transition-all duration-200 ease-[var(--ease-spring)] cursor-pointer
             ${
               activeKey === tab.key
-                ? 'border-[var(--primary)] text-[var(--text-primary)] opacity-100'
-                : 'border-transparent text-[var(--text-secondary)] opacity-60 hover:opacity-80'
+                ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }
           `}
         >
           {tab.label}
           {tab.count !== undefined && (
-            <span className="ml-1.5 text-[11px] bg-[var(--bg)] px-1.5 py-0.5 rounded-full">
+            <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full ${
+              activeKey === tab.key ? 'bg-[var(--bg)]' : 'bg-[var(--surface)]'
+            }`}>
               {tab.count}
             </span>
           )}
