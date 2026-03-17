@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore } from '@/stores/useWorkspaceStore';
+import { useProjectStore } from '@/stores/useProjectStore';
 import { WorkspaceSidebar } from '@/components/workspace/WorkspaceSidebar';
 import { DecomposeStep } from '@/components/workspace/DecomposeStep';
 import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
@@ -17,6 +18,11 @@ type StepId = 'decompose' | 'orchestrate' | 'synthesize' | 'persona-feedback' | 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
   const { activeStep, setActiveStep, sidebarOpen, toggleSidebar } = useWorkspaceStore();
+  const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // Sync URL params with store
   useEffect(() => {
@@ -67,13 +73,63 @@ function WorkspaceContent() {
 
         {/* Step content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
-            {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
-            {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
-            {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
-            {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
-            {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
-          </div>
+          {/* No project — show creation */}
+          {!currentProjectId && (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md">
+                <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">새 프로젝트 시작</h2>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-6">
+                  프로젝트를 만들면 주제 파악부터 리허설까지 하나의 흐름으로 진행합니다.
+                </p>
+                <div className="space-y-3 max-w-sm mx-auto">
+                  <input
+                    type="text"
+                    placeholder="프로젝트 이름 (예: 동남아 진출 전략)"
+                    className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-4 py-3 text-[14px] focus:outline-none focus:border-[var(--accent)]"
+                    id="new-project-name"
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('new-project-name') as HTMLInputElement;
+                      if (input?.value.trim()) {
+                        const pid = createProject(input.value.trim());
+                        setCurrentProjectId(pid);
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-lg bg-[var(--accent)] text-white font-medium text-[14px] hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    프로젝트 시작
+                  </button>
+                </div>
+                {projects.length > 0 && (
+                  <div className="mt-8">
+                    <p className="text-[11px] text-[var(--text-secondary)] mb-3">또는 기존 프로젝트 선택</p>
+                    <div className="space-y-2">
+                      {projects.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setCurrentProjectId(p.id)}
+                          className="w-full text-left px-4 py-2.5 rounded-lg border border-[var(--border)] hover:border-[var(--accent)] text-[13px] font-medium text-[var(--text-primary)] cursor-pointer transition-colors"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentProjectId && (
+            <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
+              {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
+              {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
+              {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
+              {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
+              {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
+            </div>
+          )}
         </div>
 
         {/* Quick chat bar */}

@@ -14,7 +14,7 @@ interface NextStepOption {
 }
 
 interface NextStepGuideProps {
-  currentTool: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback';
+  currentTool: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
   projectId?: string;
   hasDecompose?: boolean;
   hasOrchestrate?: boolean;
@@ -104,6 +104,22 @@ export function NextStepGuide({
         reason: '피드백을 바탕으로 과제의 방향을 재검토하세요.',
       });
     }
+  }
+
+  if (currentTool === 'refinement-loop') {
+    options.push({
+      href: '/tools/decompose',
+      icon: <Layers size={16} />,
+      label: '주제 재파악',
+      reason: '정제 루프의 피드백을 반영하여 과제를 재정의하세요.',
+      primary: true,
+    });
+    options.push({
+      href: '/project',
+      icon: <FileText size={16} />,
+      label: '프로젝트 브리프 생성',
+      reason: '수렴이 완료되었다면 최종 산출물을 생성하세요.',
+    });
   }
 
   // Always show project overview if project exists

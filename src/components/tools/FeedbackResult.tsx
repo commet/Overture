@@ -17,9 +17,10 @@ import { generateId } from '@/lib/uuid';
 interface FeedbackResultProps {
   record: FeedbackRecord;
   personas: Persona[];
+  onNavigate?: (step: string) => void;
 }
 
-export function FeedbackResult({ record, personas }: FeedbackResultProps) {
+export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultProps) {
   const tabs = [
     ...record.results.map((r) => {
       const persona = personas.find((p) => p.id === r.persona_id);
@@ -162,7 +163,11 @@ export function FeedbackResult({ record, personas }: FeedbackResultProps) {
     });
 
     setActiveLoopId(loopId);
-    router.push('/tools/refinement-loop');
+    if (onNavigate) {
+      onNavigate('refinement-loop');
+    } else {
+      router.push('/tools/refinement-loop');
+    }
   };
 
   return (

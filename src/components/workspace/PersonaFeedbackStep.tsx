@@ -291,7 +291,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
 
       {activeTab === 'result' && latestFeedback && (
         <>
-          <FeedbackResult record={latestFeedback} personas={personas} />
+          <FeedbackResult record={latestFeedback} personas={personas} onNavigate={onNavigate} />
           {latestFeedback?.project_id && (
             <NextStepGuide
               currentTool="persona-feedback"

@@ -176,7 +176,7 @@ export interface Project {
 // ─── Handoff (transient, not persisted) ───
 
 export interface Handoff {
-  from: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback';
+  from: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
   fromItemId: string;
   content: string;
   projectId?: string;

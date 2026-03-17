@@ -76,7 +76,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
     // Navigate to decompose
     setHandoff({
-      from: 'persona-feedback',
+      from: 'refinement-loop',
       fromItemId: '',
       content: prompt,
       projectId: activeLoop.project_id,

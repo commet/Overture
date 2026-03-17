@@ -21,7 +21,7 @@ export function ClosingCTA() {
 
           <div className="mt-12">
             <Link
-              href="/tools/decompose"
+              href="/workspace"
               className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[var(--primary)] text-white rounded-full text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md"
             >
               서곡 시작하기
