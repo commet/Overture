@@ -90,7 +90,7 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       if (item.id !== id) return item;
       return {
         ...item,
-        steps: [...item.steps, { task: '', actor: 'ai' as const, actor_reasoning: '', checkpoint: false, checkpoint_reason: '' }],
+        steps: [...item.steps, { task: '', actor: 'ai' as const, actor_reasoning: '', expected_output: '', checkpoint: false, checkpoint_reason: '' }],
         updated_at: new Date().toISOString(),
       };
     });

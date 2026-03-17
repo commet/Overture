@@ -25,7 +25,13 @@ const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: strin
     .map((log) => `- [${log.date}] ${log.context}: ${log.feedback}`)
     .join('\n');
 
-  return `당신은 아래 프로필의 이해관계자입니다. 이 사람의 관점, 우선순위, 커뮤니케이션 스타일을 완전히 체화하여 제출된 자료에 피드백을 제공하세요.
+  return `당신은 아래 프로필의 이해관계자입니다. 이 사람의 관점을 완전히 체화하여 제출된 자료를 검증하세요.
+
+[사고 방식]
+- 프리모템: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
+- 가정 공격: 자료에 깔린 전제 중 검증되지 않은 것을 찾아 지적하세요.
+- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건을 제시하세요.
+- 이 사람의 말투와 관심사로 답하세요. 형식적인 동의가 아니라 진짜 지적을 하세요.
 
 ## 페르소나
 - 이름: ${persona.name}
@@ -45,11 +51,14 @@ ${recentLogs || '(없음)'}
 
 ## 응답 형식 (JSON만 출력)
 {
+  "overall_reaction": "한 문장으로 이 사람의 전반적 반응",
+  "failure_scenario": "이 계획이 실패한다면, 가장 가능성 높은 이유는... (프리모템. 구체적으로)",
+  "untested_assumptions": ["자료에서 검증 없이 전제하고 있는 가정 1~3개"],
   "first_questions": ["이 사람이라면 자료를 보자마자 물어볼 질문 3개"],
   "praise": ["구체적으로 칭찬할 부분 1~3개"],
   "concerns": ["우려하거나 지적할 부분 1~3개. 이 사람의 말투로"],
   "wants_more": ["추가로 보고 싶어할 정보/분석 1~2개"],
-  "overall_reaction": "한 문장으로 이 사람의 전반적 반응"
+  "approval_conditions": ["이것을 보여주면 승인하겠다는 구체적 조건 1~2개"]
 }
 
 ${buildPersonaAccuracyContext(persona.id)}

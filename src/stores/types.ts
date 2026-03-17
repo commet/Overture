@@ -15,6 +15,9 @@ export interface DecomposeSubtask {
 
 export interface DecomposeAnalysis {
   surface_task: string;
+  hypothesis: string;
+  alternative_framings: string[];
+  hidden_assumptions: string[];
   hidden_questions: DecomposeHiddenQuestion[];
   decomposition: DecomposeSubtask[];
   ai_limitations: string[];
@@ -79,15 +82,32 @@ export interface OrchestrateStep {
   task: string;
   actor: 'ai' | 'human' | 'both';
   actor_reasoning: string;
+  expected_output: string;
+  judgment?: string;
   checkpoint: boolean;
   checkpoint_reason: string;
   estimated_time?: string;
   parallel_with?: number;
 }
 
+export interface KeyAssumption {
+  assumption: string;
+  importance: 'high' | 'medium' | 'low';
+  certainty: 'high' | 'medium' | 'low';
+  if_wrong: string;
+}
+
 export interface OrchestrateAnalysis {
+  governing_idea: string;
+  storyline: {
+    situation: string;
+    complication: string;
+    resolution: string;
+  };
   goal_summary: string;
   steps: OrchestrateStep[];
+  key_assumptions: KeyAssumption[];
+  critical_path: number[];
   total_estimated_time: string;
   ai_ratio: number;
   human_ratio: number;
@@ -133,11 +153,14 @@ export interface Persona {
 
 export interface PersonaFeedbackResult {
   persona_id: string;
+  overall_reaction: string;
+  failure_scenario: string;
+  untested_assumptions: string[];
   first_questions: string[];
   praise: string[];
   concerns: string[];
   wants_more: string[];
-  overall_reaction: string;
+  approval_conditions: string[];
 }
 
 export interface FeedbackRecord {

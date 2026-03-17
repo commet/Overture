@@ -27,19 +27,42 @@ const LOADING_MESSAGES = [
   '체크포인트를 배치하고 있습니다...',
 ];
 
-const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 사용자가 설명한 목표와 상황을 분석하여 AI와 사람이 협업하는 최적의 워크플로우를 설계하세요. 아래 JSON 구조로 응답하세요.
+const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
-1. goal_summary: 최종 목표를 명확한 한 문장으로 정리
-2. steps: 3~8개의 단계. 각 단계에 대해:
+[사고 방식]
+- 결론 먼저: "그래서 뭘 하자는 건데?"에 한 문장으로 답할 수 있어야 합니다.
+- 스토리라인: 왜 이 접근인지를 상황→문제→해결 구조로 설명하세요.
+- 기대 산출물: 각 단계가 "뭘 만드는지" 구체적으로 명시하세요. ("시장 조사"가 아니라 "TAM/SAM 분석 1장 + 경쟁사 맵")
+- 판단 포인트: 사람이 결정해야 하는 단계에서는 무엇을 결정하는지, 어떤 선택지가 있는지 보여주세요.
+- 가정 명시: 이 계획이 성립하려면 참이어야 하는 핵심 가정을 밝히세요.
+- 병목 식별: 지연되면 전체가 밀리는 크리티컬 패스를 파악하세요.
+
+아래 JSON 구조로 응답하세요.
+
+1. governing_idea: 의사결정자에게 "그래서?" 하고 물었을 때의 답. 전체 실행의 핵심 방향을 담은 한 문장.
+2. storyline: 접근 방향의 논리를 설명하는 서사 구조.
+   - situation: 현재 상황 (합의된 사실)
+   - complication: 문제 또는 기회 (긴장감을 만드는 것)
+   - resolution: 우리의 접근 방향 (governing_idea를 뒷받침하는 논리)
+3. goal_summary: 최종 목표를 명확한 한 문장으로 정리
+4. steps: 3~8개의 단계. 각 단계에 대해:
    - task: 할 일 (구체적으로)
    - actor: "ai" | "human" | "both"
    - actor_reasoning: 왜 이 담당이 적절한지 한 문장
+   - expected_output: 이 단계의 구체적 기대 산출물 (예: "3개년 매출 시나리오 3개 + 민감도 분석")
+   - judgment: actor가 "human" 또는 "both"일 때, 사람이 무엇을 결정해야 하는지와 고려할 선택지 (actor가 "ai"면 빈 문자열)
    - checkpoint: true/false (사람이 반드시 확인해야 하는 단계인지)
    - checkpoint_reason: checkpoint가 true일 때 이유
    - estimated_time: 예상 소요시간 (예: "30분", "2시간", "1일")
-3. total_estimated_time: 전체 예상 소요시간
-4. ai_ratio: AI 담당 비율 (0~100 정수)
-5. human_ratio: 사람 담당 비율 (0~100 정수)
+5. key_assumptions: 이 계획이 성립하려면 참이어야 하는 핵심 가정 2~4개. 각 가정에 대해:
+   - assumption: 가정 내용
+   - importance: "high" | "medium" | "low"
+   - certainty: "high" | "medium" | "low" (현재 확신도)
+   - if_wrong: 이 가정이 틀리면 계획에 미치는 영향
+6. critical_path: 지연 시 전체 일정에 영향을 주는 단계 번호 배열 (예: [1, 3, 5])
+7. total_estimated_time: 전체 예상 소요시간
+8. ai_ratio: AI 담당 비율 (0~100 정수)
+9. human_ratio: 사람 담당 비율 (0~100 정수)
 
 반드시 JSON만 응답하세요.`;
 
@@ -178,7 +201,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     try {
       const analysis = await callLLMJson<OrchestrateAnalysis>(
         [{ role: 'user', content: finalPrompt }],
-        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 3500 }
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
     } catch (err) {
