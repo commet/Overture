@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from './Button';
 import { Card } from './Card';
-import { ArrowRight, Layers, Map, GitMerge, Users, RefreshCw, FileText } from 'lucide-react';
+import { ArrowRight, Layers, Map, Users, RefreshCw, FileText } from 'lucide-react';
 
 interface NextStepOption {
   href: string;
@@ -14,121 +13,75 @@ interface NextStepOption {
 }
 
 interface NextStepGuideProps {
-  currentTool: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
+  currentTool: 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
   projectId?: string;
-  hasDecompose?: boolean;
-  hasOrchestrate?: boolean;
-  hasSynthesize?: boolean;
-  hasPersonaFeedback?: boolean;
   onSendTo?: (tool: string) => void;
 }
 
 export function NextStepGuide({
   currentTool,
   projectId,
-  hasDecompose,
-  hasOrchestrate,
-  hasSynthesize,
-  hasPersonaFeedback,
   onSendTo,
 }: NextStepGuideProps) {
   const options: NextStepOption[] = [];
 
+  // 악보 해석 → 편곡
   if (currentTool === 'decompose') {
     options.push({
       href: '/tools/orchestrate',
       icon: <Map size={16} />,
-      label: '워크플로우 설계',
-      reason: '발견한 질문을 해결할 AI/사람 역할 분배와 단계별 계획을 세우세요.',
+      label: '편곡으로',
+      reason: '발견한 질문을 해결할 AI/사람 역할 분배와 워크플로우를 설계하세요.',
       primary: true,
     });
-    if (!hasPersonaFeedback) {
-      options.push({
-        href: '/tools/persona-feedback',
-        icon: <Users size={16} />,
-        label: '이해관계자 검증',
-        reason: '과제 방향이 맞는지 주요 이해관계자 시점에서 먼저 확인해보세요.',
-      });
-    }
   }
 
+  // 편곡 → 리허설
   if (currentTool === 'orchestrate') {
     options.push({
       href: '/tools/persona-feedback',
       icon: <Users size={16} />,
-      label: '이해관계자 검증',
-      reason: '워크플로우를 실행하기 전에, 주요 이해관계자가 이 계획에 동의할지 확인하세요.',
+      label: '리허설로',
+      reason: '설계한 워크플로우를 이해관계자 시점에서 검증하세요.',
       primary: true,
     });
-    if (!hasSynthesize) {
-      options.push({
-        href: '/tools/synthesize',
-        icon: <GitMerge size={16} />,
-        label: '결과물 합성',
-        reason: '여러 소스의 결과를 비교하고 하나의 판단을 내려야 한다면.',
-      });
-    }
   }
 
-  if (currentTool === 'synthesize') {
-    options.push({
-      href: '/tools/persona-feedback',
-      icon: <Users size={16} />,
-      label: '이해관계자 검증',
-      reason: '합성된 판단을 보고하기 전에, 이해관계자 반응을 미리 확인하세요.',
-      primary: true,
-    });
-    if (!hasOrchestrate) {
-      options.push({
-        href: '/tools/orchestrate',
-        icon: <Map size={16} />,
-        label: '실행 계획 설계',
-        reason: '판단이 내려졌으니, 이를 실행할 워크플로우를 설계하세요.',
-      });
-    }
-  }
-
+  // 리허설 → 합주 연습
   if (currentTool === 'persona-feedback') {
     options.push({
       href: '/tools/refinement-loop',
       icon: <RefreshCw size={16} />,
-      label: '정제 루프 시작',
-      reason: '피드백의 우려사항을 반영하여 반복 개선하세요. 수렴할 때까지.',
+      label: '합주 연습으로',
+      reason: '피드백의 우려사항을 반영하고, 수렴할 때까지 반복하세요.',
       primary: true,
     });
-    if (!hasDecompose) {
-      options.push({
-        href: '/tools/decompose',
-        icon: <Layers size={16} />,
-        label: '과제 재분해',
-        reason: '피드백을 바탕으로 과제의 방향을 재검토하세요.',
-      });
-    }
   }
 
+  // 합주 연습 → 공연(산출물) 또는 다시 리허설
   if (currentTool === 'refinement-loop') {
-    options.push({
-      href: '/tools/decompose',
-      icon: <Layers size={16} />,
-      label: '주제 재파악',
-      reason: '정제 루프의 피드백을 반영하여 과제를 재정의하세요.',
-      primary: true,
-    });
     options.push({
       href: '/project',
       icon: <FileText size={16} />,
-      label: '프로젝트 브리프 생성',
+      label: '공연 — 산출물 생성',
       reason: '수렴이 완료되었다면 최종 산출물을 생성하세요.',
+      primary: true,
+    });
+    options.push({
+      href: '/tools/persona-feedback',
+      icon: <Users size={16} />,
+      label: '리허설 다시',
+      reason: '수정한 내용을 이해관계자에게 다시 검증받으세요.',
     });
   }
 
-  // Always show project overview if project exists
-  if (projectId) {
+  // 항상 프로젝트 오버뷰 표시 (현재 도구가 refinement-loop이 아닐 때만)
+  if (projectId && currentTool !== 'refinement-loop') {
     options.push({
       href: '/project',
       icon: <FileText size={16} />,
       label: '프로젝트 오버뷰',
-      reason: '전체 사고 과정을 한눈에 확인하고 프로젝트 브리프를 생성하세요.',
+      reason: '전체 사고 과정을 한눈에 확인하고 산출물을 생성하세요.',
     });
   }
 

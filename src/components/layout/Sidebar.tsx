@@ -4,15 +4,14 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { Layers, GitMerge, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw } from 'lucide-react';
+import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw } from 'lucide-react';
 
 const sidebarItems = [
   { href: '/project', label: '프로젝트', icon: FolderOpen },
-  { href: '/tools/decompose', label: '주제 파악', icon: Layers },
-  { href: '/tools/synthesize', label: '조율', icon: GitMerge },
-  { href: '/tools/orchestrate', label: '역할 편성', icon: Map },
+  { href: '/tools/decompose', label: '악보 해석', icon: Layers },
+  { href: '/tools/orchestrate', label: '편곡', icon: Map },
   { href: '/tools/persona-feedback', label: '리허설', icon: Users },
-  { href: '/tools/refinement-loop', label: '정제 루프', icon: RefreshCw },
+  { href: '/tools/refinement-loop', label: '합주 연습', icon: RefreshCw },
   { href: '/guide', label: '사용 가이드', icon: BookOpen },
   { href: '/settings', label: '설정', icon: Settings },
 ];
@@ -65,10 +64,10 @@ export function Sidebar() {
           <div className="space-y-0.5 px-1">
             {currentProject.refs.map((ref) => {
               const toolLabels: Record<string, string> = {
-                'decompose': '주제 파악',
-                'synthesize': '조율',
-                'orchestrate': '역할 편성',
+                'decompose': '악보 해석',
+                'orchestrate': '편곡',
                 'persona-feedback': '리허설',
+                'refinement-loop': '합주 연습',
               };
               const toolHrefs: Record<string, string> = {
                 'decompose': '/tools/decompose',

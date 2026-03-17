@@ -525,16 +525,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
               <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
             </div>
           </div>
-          <NextStepGuide
-            currentTool="synthesize"
-            projectId={current?.project_id}
-            onSendTo={(href) => {
-              if (!current) return;
-              const content = synthesizeToMarkdown(current);
-              setHandoff({ from: 'synthesize', fromItemId: current.id, content, projectId: current.project_id });
-              onNavigate(href.replace('/tools/', ''));
-            }}
-          />
+{/* NextStepGuide removed — synthesize is a standalone utility, not part of the core flow */}
         </div>
       )}
     </div>
