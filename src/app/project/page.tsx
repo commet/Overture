@@ -15,7 +15,7 @@ import { generateProjectBrief } from '@/lib/project-brief';
 import { OutputSelector } from '@/components/ui/OutputSelector';
 import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
 import Link from 'next/link';
-import { Layers, Map, GitMerge, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download } from 'lucide-react';
+import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download } from 'lucide-react';
 
 interface StepStatus {
   tool: string;
@@ -57,13 +57,12 @@ export default function ProjectPage() {
   const getSteps = (): StepStatus[] => {
     const latestDecompose = projectDecompositions[projectDecompositions.length - 1];
     const latestOrchestrate = projectOrchestrations[projectOrchestrations.length - 1];
-    const latestSynthesize = projectSyntheses[projectSyntheses.length - 1];
     const latestFeedback = projectFeedbacks[projectFeedbacks.length - 1];
 
     return [
       {
         tool: 'decompose',
-        label: '질문',
+        label: '악보 해석',
         icon: <Layers size={18} />,
         href: '/tools/decompose',
         status: latestDecompose?.status === 'done' ? 'done' : latestDecompose ? 'in-progress' : 'not-started',
@@ -73,7 +72,7 @@ export default function ProjectPage() {
       },
       {
         tool: 'orchestrate',
-        label: '설계',
+        label: '편곡',
         icon: <Map size={18} />,
         href: '/tools/orchestrate',
         status: latestOrchestrate?.status === 'done' ? 'done' : latestOrchestrate ? 'in-progress' : 'not-started',
@@ -82,18 +81,8 @@ export default function ProjectPage() {
         bgColor: 'bg-[var(--human)]',
       },
       {
-        tool: 'synthesize',
-        label: '판단',
-        icon: <GitMerge size={18} />,
-        href: '/tools/synthesize',
-        status: latestSynthesize?.status === 'done' ? 'done' : latestSynthesize ? 'in-progress' : 'not-started',
-        summary: latestSynthesize?.final_synthesis?.slice(0, 60),
-        color: 'text-[#2d6b2d]',
-        bgColor: 'bg-[var(--collab)]',
-      },
-      {
         tool: 'persona-feedback',
-        label: '검증',
+        label: '리허설',
         icon: <Users size={18} />,
         href: '/tools/persona-feedback',
         status: latestFeedback ? 'done' : 'not-started',
@@ -186,10 +175,10 @@ export default function ProjectPage() {
               <div className="flex-1 h-2 bg-[var(--border)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent)] rounded-full transition-all"
-                  style={{ width: `${(completedSteps / 4) * 100}%` }}
+                  style={{ width: `${(completedSteps / 3) * 100}%` }}
                 />
               </div>
-              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/4</span>
+              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/3</span>
             </div>
           </Card>
 
@@ -249,7 +238,7 @@ export default function ProjectPage() {
           {projectLoops.length > 0 && (
             <div>
               <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                <RefreshCw size={14} className="text-[var(--accent)]" /> 정제 루프
+                <RefreshCw size={14} className="text-[var(--accent)]" /> 합주 연습
               </h3>
               {projectLoops.map((loop) => (
                 <Link key={loop.id} href="/tools/refinement-loop">
@@ -286,7 +275,6 @@ export default function ProjectPage() {
                   <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
                     {nextStep.tool === 'decompose' && '과제의 진짜 질문을 찾아보세요.'}
                     {nextStep.tool === 'orchestrate' && '발견한 질문을 해결할 워크플로우를 설계하세요.'}
-                    {nextStep.tool === 'synthesize' && '여러 결과를 비교하고 하나의 판단을 내리세요.'}
                     {nextStep.tool === 'persona-feedback' && '이해관계자 시점에서 결과물을 검증하세요.'}
                   </p>
                   <Link href={nextStep.href}>
@@ -300,7 +288,7 @@ export default function ProjectPage() {
           )}
 
           {/* All done */}
-          {completedSteps === 4 && (
+          {completedSteps === 3 && (
             <Card className="!bg-[var(--collab)] !border-green-200 text-center py-6">
               <Check size={24} className="mx-auto text-[var(--success)] mb-2" />
               <p className="text-[15px] font-bold text-[var(--success)]">모든 단계를 완료했습니다</p>

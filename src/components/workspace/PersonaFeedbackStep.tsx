@@ -97,7 +97,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content);
-      setHandoffTitle(`${handoff.from === 'decompose' ? '주제 파악' : handoff.from === 'orchestrate' ? '역할 편성' : '조율'} 결과물`);
+      setHandoffTitle(`${handoff.from === 'decompose' ? '악보 해석' : handoff.from === 'orchestrate' ? '편곡' : '리허설'} 결과물`);
       setActiveTab('feedback');
       clearHandoff();
     }
@@ -180,7 +180,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">리허설</h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">리허설 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 사전 검증</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           보고서를 보낼 사람의 시점에서 미리 피드백을 받습니다. 보내기 전에.
         </p>

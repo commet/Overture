@@ -156,7 +156,7 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
 
     const loopId = createLoop(
       record.project_id,
-      record.document_title || '정제 루프',
+      record.document_title || '합주 연습',
     );
 
     addIteration(loopId, {
@@ -383,7 +383,7 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
               <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">피드백의 우려사항을 제약조건으로 변환하여 다시 분석합니다.</p>
             </div>
             <Button size="sm" onClick={handleStartLoop}>
-              <RefreshCw size={14} /> 정제 루프 시작
+              <RefreshCw size={14} /> 합주 연습 시작
             </Button>
           </div>
         </Card>

@@ -20,6 +20,7 @@ import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Sparkles, Loader2, FileText, Trash2, Check, Plus, GripVertical, Flag, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
+import { WorkflowGraph } from './WorkflowGraph';
 
 const LOADING_MESSAGES = [
   '워크플로우를 설계하고 있습니다...',
@@ -353,113 +354,15 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             </Card>
           )}
 
-          {/* Timeline */}
-          <div className="space-y-0">
-            {steps.map((step, i) => (
-              <div
-                key={i}
-                draggable={current.status === 'review'}
-                onDragStart={(e) => handleDragStart(e, i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, i)}
-                className="flex gap-3 animate-slide-down"
-              >
-                <div className="flex flex-col items-center w-8 shrink-0">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${
-                    step.actor === 'ai' ? 'bg-[var(--ai)] text-[#2d4a7c]'
-                    : step.actor === 'human' ? 'bg-[var(--human)] text-[#8b6914]'
-                    : 'bg-[var(--collab)] text-[#2d6b2d]'
-                  }`}>
-                    {i + 1}
-                  </div>
-                  {i < steps.length - 1 && <div className="w-0.5 flex-1 bg-[var(--border)] my-1" />}
-                </div>
-                <Card className={`flex-1 mb-3 ${step.checkpoint ? '!bg-[var(--checkpoint)] !border-amber-300' : ''}`}>
-                  <div className="flex items-start gap-2">
-                    {current.status === 'review' && (
-                      <GripVertical size={16} className="text-[var(--text-secondary)] mt-0.5 cursor-grab shrink-0" />
-                    )}
-                    <div className="flex-1 space-y-2">
-                      {current.status === 'review' ? (
-                        <input
-                          type="text"
-                          value={step.task}
-                          onChange={(e) => { if (currentId) updateStep(currentId, i, { task: e.target.value }); }}
-                          className="w-full bg-transparent text-[14px] font-medium text-[var(--text-primary)] focus:outline-none"
-                        />
-                      ) : (
-                        <p className="text-[14px] font-medium text-[var(--text-primary)]">{step.task}</p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {current.status === 'review' ? (
-                          <>
-                            {actorOptions.map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() => handleStepActorChange(i, opt.value)}
-                                className={`px-2 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer ${
-                                  step.actor === opt.value
-                                    ? 'border-[var(--accent)] bg-white shadow-sm'
-                                    : 'border-transparent hover:bg-white/50'
-                                }`}
-                              >
-                                {opt.icon} {opt.label}
-                              </button>
-                            ))}
-                            <div className="border-l border-[var(--border)] pl-2 ml-1">
-                              <button
-                                onClick={() => { if (currentId) updateStep(currentId, i, { checkpoint: !step.checkpoint }); }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
-                                  step.checkpoint ? 'text-amber-700 bg-amber-100' : 'text-[var(--text-secondary)] hover:text-amber-700'
-                                }`}
-                              >
-                                <Flag size={12} /> 체크포인트
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <Badge variant={step.actor === 'ai' ? 'ai' : step.actor === 'human' ? 'human' : 'both'}>
-                            {actorOptions.find((o) => o.value === step.actor)?.icon} {actorOptions.find((o) => o.value === step.actor)?.label}
-                          </Badge>
-                        )}
-                        {step.estimated_time && (
-                          <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1">
-                            <Clock size={10} /> {step.estimated_time}
-                          </span>
-                        )}
-                      </div>
-                      {step.checkpoint && step.checkpoint_reason && (
-                        <p className="text-[12px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">
-                          ⚑ {step.checkpoint_reason}
-                        </p>
-                      )}
-                      {step.actor_reasoning && (
-                        <p className="text-[11px] text-[var(--text-secondary)]">{step.actor_reasoning}</p>
-                      )}
-                      {step.expected_output && (
-                        <p className="text-[11px] text-[var(--accent)] mt-1">
-                          📦 산출물: {step.expected_output}
-                        </p>
-                      )}
-                      {step.judgment && step.actor !== 'ai' && (
-                        <p className="text-[11px] text-amber-700 mt-1 bg-[var(--checkpoint)] rounded px-2 py-1">
-                          ⚖️ 판단: {step.judgment}
-                        </p>
-                      )}
-                    </div>
-                    {current.status === 'review' && (
-                      <button
-                        onClick={() => { if (currentId) removeStep(currentId, i); }}
-                        className="p-1 hover:text-red-500 text-[var(--text-secondary)] cursor-pointer shrink-0"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </Card>
-              </div>
-            ))}
-          </div>
+          {/* Timeline — parallel track visualization */}
+          <WorkflowGraph
+            steps={steps}
+            analysis={current.analysis}
+            editable={current.status === 'review'}
+            onUpdateActor={(idx, actor) => handleStepActorChange(idx, actor)}
+            onToggleCheckpoint={(idx) => { if (currentId) updateStep(currentId, idx, { checkpoint: !steps[idx].checkpoint }); }}
+            onRemoveStep={(idx) => { if (currentId) removeStep(currentId, idx); }}
+          />
 
           {current.status === 'review' && (
             <Button variant="ghost" onClick={() => { if (currentId) addStep(currentId); }}>

@@ -5,7 +5,6 @@ import { Send, Loader2, MessageSquare, X, Check } from 'lucide-react';
 import { callLLMJson } from '@/lib/llm';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
-import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
 import type { StepId } from '@/stores/useWorkspaceStore';
 
 interface QuickChatBarProps {
@@ -24,11 +23,11 @@ const SYSTEM_PROMPT = `당신은 Overture 워크스페이스의 어시스턴트�
 현재 단계: {step}
 
 사용 가능한 액션:
-- navigate: 다른 단계로 이동. params: { step: "decompose" | "orchestrate" | "synthesize" | "persona-feedback" }
-- update_actor: 역할 편성에서 특정 스텝의 담당자 변경. params: { stepIndex: number, actor: "ai" | "human" | "both" }
-- add_step: 역할 편성에 새 단계 추가. params: { task: string }
-- remove_step: 역할 편성에서 단계 제거. params: { stepIndex: number }
-- select_question: 주제 파악에서 질문 선택. params: { questionIndex: number }
+- navigate: 다른 단계로 이동. params: { step: "decompose" | "orchestrate" | "persona-feedback" }
+- update_actor: 편곡에서 특정 스텝의 담당자 변경. params: { stepIndex: number, actor: "ai" | "human" | "both" }
+- add_step: 편곡에 새 단계 추가. params: { task: string }
+- remove_step: 편곡에서 단계 제거. params: { stepIndex: number }
+- select_question: 악보 해석에서 질문 선택. params: { questionIndex: number }
 - confirm: 현재 단계 확정. params: {}
 - reanalyze: 현재 단계 재분석. params: {}
 - message: 단순 응답 (액션 없음). params: {}

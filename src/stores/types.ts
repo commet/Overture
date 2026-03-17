@@ -1,4 +1,4 @@
-// ─── Decompose (주제 파악) ───
+// ─── Decompose (악보 해석 | 문제 재정의) ───
 
 export interface DecomposeHiddenQuestion {
   question: string;
@@ -37,7 +37,7 @@ export interface DecomposeItem {
   updated_at: string;
 }
 
-// ─── Synthesize (조율) ───
+// ─── Synthesize (조율 — excluded from main flow) ───
 
 export interface SynthesizeSource {
   name: string;
@@ -76,7 +76,7 @@ export interface SynthesizeItem {
   updated_at: string;
 }
 
-// ─── Orchestrate (역할 편성) ───
+// ─── Orchestrate (편곡 | 실행 설계) ───
 
 export interface OrchestrateStep {
   task: string;
