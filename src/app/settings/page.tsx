@@ -9,7 +9,8 @@ import { Modal } from '@/components/ui/Modal';
 import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import type { LLMMode } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check } from 'lucide-react';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2 } from 'lucide-react';
+import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 
 const llmModes: { value: LLMMode; label: string; description: string; icon: React.ReactNode; available: boolean }[] = [
   {
@@ -191,6 +192,81 @@ export default function SettingsPage() {
               <Trash2 size={14} /> 초기화
             </Button>
           </div>
+        </div>
+      </Card>
+
+      {/* Audio Settings */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <Volume2 size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[15px] font-bold">사운드</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[14px] font-medium">전환음</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">단계 전환 시 클래식 서곡 톤을 재생합니다</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={settings.audio_enabled}
+              onClick={() => {
+                const next = !settings.audio_enabled;
+                updateSettings({ audio_enabled: next });
+                if (next) {
+                  resumeAudioContext();
+                  playTransitionTone(settings.audio_volume);
+                }
+              }}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                settings.audio_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+              }`}
+            >
+              <span className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                settings.audio_enabled ? 'translate-x-[22px]' : 'translate-x-[2px]'
+              } mt-[2px]`} />
+            </button>
+          </div>
+          {settings.audio_enabled && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] text-[var(--text-secondary)] w-10 shrink-0">볼륨</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="0.5"
+                  step="0.05"
+                  value={settings.audio_volume}
+                  onChange={(e) => updateSettings({ audio_volume: parseFloat(e.target.value) })}
+                  className="flex-1 accent-[var(--accent)]"
+                />
+                <span className="text-[12px] text-[var(--text-secondary)] w-10 text-right">{Math.round(settings.audio_volume * 200)}%</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+                <div>
+                  <p className="text-[13px] font-medium">앰비언트 드론</p>
+                  <p className="text-[11px] text-[var(--text-secondary)]">공연 전 콘서트홀의 따뜻한 울림</p>
+                </div>
+                <button
+                  onClick={() => {
+                    resumeAudioContext();
+                    if (isAmbientPlaying()) {
+                      stopAmbient();
+                    } else {
+                      startAmbient(settings.audio_volume);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-colors ${
+                    isAmbientPlaying()
+                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                  }`}
+                >
+                  {isAmbientPlaying() ? '정지' : '재생'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 

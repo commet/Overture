@@ -97,6 +97,15 @@ export function generatePromptChain(project: Project): string {
         const promptParts: string[] = [];
         promptParts.push(`당신은 이 분야의 전문가입니다.`);
         promptParts.push('');
+
+        // Context annotation: why this step exists
+        if (step.checkpoint) {
+          promptParts.push(`> 맥락: 이 단계는 핵심 가정을 검증하기 위한 체크포인트입니다.`);
+        } else if (step.actor === 'both') {
+          promptParts.push(`> 맥락: 이 단계는 AI와 사람의 협업이 필요합니다. ${step.actor_reasoning}`);
+        }
+        promptParts.push('');
+
         promptParts.push(`## 과제`);
         promptParts.push(step.task);
         promptParts.push('');

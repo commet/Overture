@@ -16,6 +16,8 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { findSimilarItems } from '@/lib/similarity';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
 
@@ -47,6 +49,7 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과�
    - actor: "ai" | "human" | "both"
    - actor_reasoning: 왜 이 담당이 적절한지 한 문장
 7. ai_limitations: 이 과제에서 AI가 잘 못할 부분 1~2개
+8. reasoning_narrative: 이 핵심 질문에 도달한 사고 과정을 2-3문장으로 서술. "처음에는 X라고 생각했지만, Y를 고려하면 Z가 더 본질적이다" 형태.
 
 반드시 JSON만 응답하세요. 마크다운 코드블록이나 설명을 추가하지 마세요.`;
 
@@ -90,9 +93,10 @@ interface DecomposeStepProps {
 
 export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useDecomposeStore();
-  const { addJudgment, loadJudgments } = useJudgmentStore();
+  const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
   const { setHandoff } = useHandoffStore();
-  const { getOrCreateProject, addRef } = useProjectStore();
+  const { projects, loadProjects, getOrCreateProject, addRef } = useProjectStore();
+  const { settings } = useSettingsStore();
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [editingQuestion, setEditingQuestion] = useState(false);
@@ -103,9 +107,18 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   useEffect(() => {
     loadItems();
     loadJudgments();
-  }, [loadItems, loadJudgments]);
+    loadProjects();
+  }, [loadItems, loadJudgments, loadProjects]);
 
   const current = getCurrentItem();
+
+  // Learning indicator: past judgments being applied
+  const hasLearning = judgments.length >= 3;
+
+  // Coda insights from past projects
+  const codaInsights = projects.filter(
+    (p) => p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently
+  );
 
   // Cycle loading messages
   useEffect(() => {
@@ -144,7 +157,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       );
       updateItem(id, { analysis, status: 'review' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 분석에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
   };
@@ -172,6 +185,10 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       status: 'done',
       final_decomposition: current.analysis.decomposition,
     });
+    if (settings.audio_enabled) {
+      resumeAudioContext();
+      playSuccessTone(settings.audio_volume);
+    }
   };
 
   const handleReanalyze = async () => {
@@ -188,7 +205,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       );
       updateItem(currentId, { analysis, status: 'review' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 분석에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.');
       updateItem(currentId, { status: 'review' });
     }
   };
@@ -226,6 +243,12 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           맥락을 선택하면 AI가 더 정확하게 분석합니다.
         </p>
+        {hasLearning && (
+          <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] mt-2">
+            <Brain size={12} />
+            <span>이전 {judgments.length}건의 판단이 반영되고 있습니다</span>
+          </div>
+        )}
       </div>
 
       {/* History items */}
@@ -254,6 +277,21 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         </div>
       )}
 
+      {/* ─── Coda insights from past projects ─── */}
+      {(!current || current.status === 'input') && !currentId && codaInsights.length > 0 && (
+        <Card className="!bg-[var(--ai)] !p-3">
+          <p className="text-[11px] font-bold text-[#2d4a7c] mb-1.5">이전 무대에서의 깨달음</p>
+          <div className="space-y-1">
+            {codaInsights.slice(0, 2).map((p) => (
+              <p key={p.id} className="text-[12px] text-[var(--text-primary)] leading-relaxed">
+                <span className="font-semibold">{p.name}</span>:{' '}
+                {p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently}
+              </p>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
@@ -275,6 +313,31 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               handleAnalyze(fullPrompt);
             }}
           />
+          {/* Similar past analyses */}
+          {similarItems.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">유사한 이전 분석</p>
+              <div className="space-y-1.5">
+                {similarItems.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => { setCurrentId(item.id); setInputText(''); }}
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer transition-colors"
+                  >
+                    <div>
+                      <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                        {item.analysis?.surface_task || item.input_text.slice(0, 40)}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                        유사도 {Math.round(item.similarity * 100)}%
+                      </p>
+                    </div>
+                    <ArrowRight size={12} className="text-[var(--text-secondary)] shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
@@ -310,6 +373,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               </div>
               <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{current.analysis.hypothesis}</p>
             </Card>
+          )}
+
+          {/* Reasoning Narrative */}
+          {current.analysis.reasoning_narrative && (
+            <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
+              {current.analysis.reasoning_narrative}
+            </p>
           )}
 
           {/* Hidden Assumptions */}

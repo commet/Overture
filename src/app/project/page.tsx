@@ -7,6 +7,7 @@ import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -35,6 +36,7 @@ export default function ProjectPage() {
   const { items: synthesizeItems, loadItems: loadSynthesize } = useSynthesizeStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
   const { loops, loadLoops } = useRefinementStore();
+  const { judgments, loadJudgments, getUserPatterns } = useJudgmentStore();
 
   useEffect(() => {
     loadProjects();
@@ -43,7 +45,8 @@ export default function ProjectPage() {
     loadSynthesize();
     loadPersona();
     loadLoops();
-  }, [loadProjects, loadDecompose, loadOrchestrate, loadSynthesize, loadPersona, loadLoops]);
+    loadJudgments();
+  }, [loadProjects, loadDecompose, loadOrchestrate, loadSynthesize, loadPersona, loadLoops, loadJudgments]);
 
   const currentProject = currentProjectId ? projects.find((p) => p.id === currentProjectId) : null;
 
@@ -259,6 +262,46 @@ export default function ProjectPage() {
               ))}
             </div>
           )}
+
+          {/* Metacognition: 나의 판단 패턴 (Tier 1-E) */}
+          {judgments.length > 0 && (() => {
+            const patterns = getUserPatterns();
+            const projectJudgments = judgments.filter(j => j.project_id === currentProjectId);
+            const actorOverrides = projectJudgments.filter(j => j.type === 'actor_override');
+            const toHuman = actorOverrides.filter(j => j.decision === 'human');
+            const toAi = actorOverrides.filter(j => j.decision === 'ai');
+            return (
+              <Card className="!bg-[var(--bg)]">
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">나의 판단 패턴</h3>
+                <div className="space-y-2 text-[12px] text-[var(--text-secondary)]">
+                  <p>지금까지 <span className="font-bold text-[var(--text-primary)]">{patterns.totalJudgments}건</span>의 판단을 기록했습니다.</p>
+                  {patterns.overrideRate > 0 && (
+                    <p>AI 제안을 <span className="font-bold text-[var(--text-primary)]">{Math.round(patterns.overrideRate * 100)}%</span> 수정했습니다
+                      {toHuman.length > toAi.length ? ' — 주로 AI→사람으로 변경' : toAi.length > toHuman.length ? ' — 주로 사람→AI로 변경' : ''}.
+                    </p>
+                  )}
+                  {projectJudgments.length > 0 && (
+                    <p>이 프로젝트에서 <span className="font-bold text-[var(--text-primary)]">{projectJudgments.length}건</span>의 판단을 내렸습니다.</p>
+                  )}
+                </div>
+              </Card>
+            );
+          })()}
+
+          {/* Similar project hint (Tier 1-E) */}
+          {currentProject && (() => {
+            const otherProjects = projects.filter(p => p.id !== currentProject.id && p.refs.length >= 2);
+            if (otherProjects.length === 0) return null;
+            const latestD = projectDecompositions[projectDecompositions.length - 1];
+            if (!latestD?.analysis?.surface_task) return null;
+            return (
+              <div className="text-[12px] text-[var(--text-secondary)]">
+                {otherProjects.length > 0 && (
+                  <p>이전 프로젝트 {otherProjects.length}건과 비교할 수 있습니다.</p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Output formats */}
           <OutputSelector project={currentProject} />

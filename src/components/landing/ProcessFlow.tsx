@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Layers, Map, Users } from 'lucide-react';
+import { Layers, Map, RefreshCw, Users } from 'lucide-react';
 
 interface Movement {
   number: string;
@@ -45,6 +45,16 @@ const movements: Movement[] = [
     color: 'text-[#6b4c9a]',
     bgColor: 'bg-[#f5f0fa]',
   },
+  {
+    number: '04',
+    orchestraMetaphor: '합주 연습',
+    title: '피드백 반영',
+    description: '이해관계자의 지적을 반영하여 반복적으로 개선합니다. 하모니가 맞을 때까지 연습하고, 수렴하면 무대에 올립니다.',
+    href: '/tools/refinement-loop',
+    icon: <RefreshCw size={20} strokeWidth={1.5} />,
+    color: 'text-[#2d6b2d]',
+    bgColor: 'bg-[var(--collab)]',
+  },
 ];
 
 export function ProcessFlow() {
@@ -56,15 +66,14 @@ export function ProcessFlow() {
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[var(--border)]" />
             <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
-              Three movements
+              The journey
             </span>
           </div>
           <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
-            서곡의 세 악장
+            공연까지의 여정
           </h2>
           <p className="mt-4 text-[16px] text-[var(--text-secondary)] leading-relaxed">
-            오케스트라에서 서곡은 본 공연 전에 전체 음악의 주제를 미리 제시하는 곡입니다.
-            Overture는 에이전트가 실행하기 전, 판단의 구조를 네 단계로 설계합니다.
+            무대에 오르기까지, 네 단계의 준비.
           </p>
         </div>
 

@@ -16,8 +16,13 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Plus, Bot, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { FileText, Trash2, Check, Plus, Bot, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { WorkflowGraph } from './WorkflowGraph';
+import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
+import { ContextChainBlock } from './ContextChainBlock';
+import { JudgmentPoints } from './JudgmentPoints';
 
 const LOADING_MESSAGES = [
   '각 파트에 역할을 배정하고 있습니다...',
@@ -61,6 +66,7 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
 7. total_estimated_time: 전체 예상 소요시간
 8. ai_ratio: AI 담당 비율 (0~100 정수)
 9. human_ratio: 사람 담당 비율 (0~100 정수)
+10. design_rationale: 이 워크플로우 순서와 역할 배정의 근거를 2-3문장으로 설명. 왜 이 순서인지, 왜 이 역할 배정인지.
 
 반드시 JSON만 응답하세요.`;
 
@@ -108,9 +114,11 @@ interface OrchestrateStepProps {
 export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const store = useOrchestrateStore();
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem, updateStep, removeStep, addStep, reorderSteps } = store;
-  const { addJudgment, loadJudgments } = useJudgmentStore();
+  const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
   const { handoff, clearHandoff, setHandoff } = useHandoffStore();
   const { addRef } = useProjectStore();
+  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
+  const { settings } = useSettingsStore();
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
@@ -118,7 +126,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   useEffect(() => {
     loadItems();
     loadJudgments();
-  }, [loadItems, loadJudgments]);
+    loadDecompose();
+  }, [loadItems, loadJudgments, loadDecompose]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -137,6 +146,11 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   }, []);  // Run once on mount
 
   const current = getCurrentItem();
+
+  // Find related decompose item for context chain
+  const relatedDecompose = current?.project_id
+    ? decomposeItems.find(d => d.project_id === current.project_id && d.status === 'done' && d.analysis)
+    : null;
 
   useEffect(() => {
     if (current?.status !== 'analyzing') return;
@@ -160,7 +174,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 분석에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
   };
@@ -168,6 +182,10 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const handleConfirm = () => {
     if (!currentId) return;
     updateItem(currentId, { status: 'done' });
+    if (settings.audio_enabled) {
+      resumeAudioContext();
+      playSuccessTone(settings.audio_volume);
+    }
   };
 
   const steps = current?.steps || [];
@@ -214,6 +232,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             맥락을 선택하고 목표를 입력하면 AI가 전체 워크플로우를 설계합니다.
           </p>
+          {judgments.length >= 3 && (
+            <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] mt-2">
+              <Brain size={12} />
+              <span>이전 {judgments.length}건의 판단이 반영되고 있습니다</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -280,6 +304,19 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── STEP 2: Review & Edit ─── */}
       {(current?.status === 'review' || current?.status === 'done') && (
         <div className="space-y-6 animate-fade-in">
+          {/* Context chain: from decompose */}
+          {relatedDecompose?.analysis && (
+            <ContextChainBlock
+              summary={`악보 해석에서 발견한 핵심 질문: ${relatedDecompose.selected_question || relatedDecompose.analysis.surface_task}`}
+              items={relatedDecompose.analysis.hidden_assumptions.length > 0 ? [{
+                label: '검증되지 않은 전제',
+                count: relatedDecompose.analysis.hidden_assumptions.length,
+                details: relatedDecompose.analysis.hidden_assumptions,
+                color: 'text-amber-700',
+              }] : []}
+            />
+          )}
+
           {/* Goal */}
           {current.analysis && (
             <Card className="!bg-[var(--ai)]">
@@ -287,6 +324,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 <Bot size={14} /> 핵심 방향
               </div>
               <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{current.analysis.governing_idea}</p>
+              {/* 1-B: Hypothesis connection */}
+              {relatedDecompose?.analysis?.hypothesis && (
+                <p className="text-[12px] text-[var(--text-secondary)] mt-1 border-t border-[#2d4a7c]/10 pt-2">
+                  이 방향은 악보 해석에서 발견한 질문 — &apos;{relatedDecompose.selected_question || relatedDecompose.analysis.hidden_questions[0]?.question}&apos; — 에서 도출되었습니다.
+                </p>
+              )}
 
               {current.analysis.storyline && (
                 <div className="space-y-2 text-[13px] border-t border-[#2d4a7c]/10 pt-3">
@@ -361,6 +404,14 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 ))}
               </div>
             </Card>
+          )}
+
+          {/* 2-C: 지휘자의 판단 포인트 */}
+          {current.analysis && <JudgmentPoints steps={steps} />}
+
+          {/* Design rationale */}
+          {current.analysis?.design_rationale && (
+            <p className="text-[12px] text-[var(--text-secondary)] italic">{current.analysis.design_rationale}</p>
           )}
 
           {/* Critical Path */}

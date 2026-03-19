@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
+import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, PersonaFeedbackResult, RefinementLoop } from '@/stores/types';
 
 export function generateProjectBrief(project: Project): string {
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
@@ -13,10 +13,43 @@ export function generateProjectBrief(project: Project): string {
 
   const sections: string[] = [];
 
+  const refinementLoops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, [])
+    .filter((l) => l.project_id === project.id);
+
   // Header
   sections.push(`# ${project.name}`);
   sections.push(`> Overture Project Brief — ${new Date().toLocaleDateString('ko-KR')}`);
   sections.push('');
+
+  // 0. Thought trajectory (사고의 궤적)
+  if (decompositions.length > 0) {
+    const latestD = decompositions[decompositions.length - 1];
+    const latestO = orchestrations.length > 0 ? orchestrations[orchestrations.length - 1] : null;
+    const latestL = refinementLoops.length > 0 ? refinementLoops[refinementLoops.length - 1] : null;
+
+    sections.push('## 사고의 궤적');
+    sections.push(`처음 주어진 과제: ${latestD.input_text}`);
+    if (latestD.analysis) {
+      sections.push(`재정의된 질문: **${latestD.selected_question || latestD.analysis.surface_task}**`);
+      if (latestO?.analysis) {
+        sections.push(`핵심 방향: ${latestO.analysis.governing_idea}`);
+      }
+      sections.push(`이 방향은 "${latestD.analysis.hypothesis}"에서 출발, ${latestD.analysis.hidden_assumptions.length}건의 전제 점검 후 도출.`);
+      if (feedbacks.length > 0) {
+        const latestF = feedbacks[feedbacks.length - 1];
+        const criticalCount = latestF.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical')).length;
+        const unspokenCount = latestF.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'unspoken')).length;
+        if (criticalCount > 0 || unspokenCount > 0) {
+          sections.push(`리허설 주요 리스크: ${criticalCount > 0 ? `🔴 핵심 위협 ${criticalCount}건` : ''} ${unspokenCount > 0 ? `/ 🟣 침묵의 리스크 ${unspokenCount}건` : ''}`);
+        }
+      }
+      if (latestL && latestL.iterations.length > 0) {
+        const lastIter = latestL.iterations[latestL.iterations.length - 1];
+        sections.push(`합주 수렴도: ${Math.round(lastIter.convergence_score * 100)}%`);
+      }
+    }
+    sections.push('');
+  }
 
   // 1. Problem Definition (from decompose)
   if (decompositions.length > 0) {

@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Button } from './Button';
 import { CopyButton } from './CopyButton';
-import { FileText, MessageSquare, Code, CheckSquare, Download } from 'lucide-react';
-import type { Project } from '@/stores/types';
+import { FileText, MessageSquare, Code, CheckSquare, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import type { Project, MetaReflection } from '@/stores/types';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { Field } from './Field';
 import { generateProjectBrief } from '@/lib/project-brief';
 import { generatePromptChain } from '@/lib/prompt-chain';
 import { generateAgentSpec } from '@/lib/agent-spec';
@@ -61,6 +63,25 @@ const formats: OutputFormat[] = [
 export function OutputSelector({ project }: OutputSelectorProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>('');
+  const [codaOpen, setCodaOpen] = useState(false);
+  const [codaForm, setCodaForm] = useState<MetaReflection>({
+    understanding_change: project.meta_reflection?.understanding_change || '',
+    surprising_discovery: project.meta_reflection?.surprising_discovery || '',
+    next_time_differently: project.meta_reflection?.next_time_differently || '',
+    created_at: project.meta_reflection?.created_at || '',
+  });
+  const [codaSaved, setCodaSaved] = useState(!!project.meta_reflection);
+  const { updateProject } = useProjectStore();
+
+  const handleSaveCoda = () => {
+    updateProject(project.id, {
+      meta_reflection: {
+        ...codaForm,
+        created_at: new Date().toISOString(),
+      },
+    });
+    setCodaSaved(true);
+  };
 
   const handleSelect = (format: OutputFormat) => {
     if (selectedKey === format.key) {
@@ -129,6 +150,63 @@ export function OutputSelector({ project }: OutputSelectorProps) {
           </pre>
         </div>
       )}
+
+      {/* Coda: 공연 후 성찰 */}
+      <div className="border-t border-[var(--border-subtle)] pt-4 mt-4">
+        <button
+          onClick={() => setCodaOpen(!codaOpen)}
+          className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors w-full"
+        >
+          {codaOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          코다 · 되돌아보기
+          {codaSaved && <span className="text-[10px] text-[var(--success)] font-medium ml-1">저장됨</span>}
+        </button>
+        {codaOpen && (
+          <div className="mt-4 space-y-4 animate-fade-in">
+            <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+              공연이 끝났습니다. 이 과정을 되돌아보는 것은 다음 무대를 위한 가장 좋은 준비입니다.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
+                  1. 처음 악보를 받았을 때의 이해와 지금의 이해가 어떻게 달라졌습니까?
+                </label>
+                <Field
+                  value={codaForm.understanding_change || ''}
+                  onChange={(e) => setCodaForm(prev => ({ ...prev, understanding_change: e.target.value }))}
+                  rows={2}
+                  placeholder="처음에는 단순한 과제라고 생각했지만..."
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
+                  2. 이 과정에서 가장 놀라운 발견은 무엇이었습니까?
+                </label>
+                <Field
+                  value={codaForm.surprising_discovery || ''}
+                  onChange={(e) => setCodaForm(prev => ({ ...prev, surprising_discovery: e.target.value }))}
+                  rows={2}
+                  placeholder="예상하지 못했던 리스크나 새로운 관점..."
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
+                  3. 다음에 비슷한 과제를 만나면 무엇을 다르게 하겠습니까?
+                </label>
+                <Field
+                  value={codaForm.next_time_differently || ''}
+                  onChange={(e) => setCodaForm(prev => ({ ...prev, next_time_differently: e.target.value }))}
+                  rows={2}
+                  placeholder="이해관계자를 더 일찍 참여시키거나..."
+                />
+              </div>
+              <Button size="sm" onClick={handleSaveCoda}>
+                {codaSaved ? '업데이트' : '성찰 저장'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

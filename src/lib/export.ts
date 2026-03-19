@@ -77,15 +77,58 @@ export function orchestrateToMarkdown(item: OrchestrateItem): string {
 
   const goal = item.analysis?.goal_summary || item.input_text;
 
-  return `## 편곡 | 실행 설계
+  let md = `## 편곡 | 실행 설계\n\n`;
 
-**최종 목표**: ${goal}
+  // Governing idea
+  if (item.analysis?.governing_idea) {
+    md += `### 핵심 방향\n${item.analysis.governing_idea}\n\n`;
+  }
 
-| Step | 담당 | 할 일 | 예상 시간 | 체크포인트 |
-|------|------|-------|----------|-----------|
-${rows}
+  // Storyline
+  if (item.analysis?.storyline) {
+    md += `### 스토리라인\n`;
+    md += `- **상황**: ${item.analysis.storyline.situation}\n`;
+    md += `- **문제**: ${item.analysis.storyline.complication}\n`;
+    md += `- **접근**: ${item.analysis.storyline.resolution}\n\n`;
+  }
 
-${item.analysis ? `**예상 총 소요시간**: ${item.analysis.total_estimated_time}\n**AI 비율**: ${item.analysis.ai_ratio}% | **사람 비율**: ${item.analysis.human_ratio}%` : ''}`;
+  md += `**최종 목표**: ${goal}\n\n`;
+
+  md += `| Step | 담당 | 할 일 | 예상 시간 | 체크포인트 |\n`;
+  md += `|------|------|-------|----------|----------|\n`;
+  md += rows + '\n\n';
+
+  // Key assumptions
+  if (item.analysis?.key_assumptions && item.analysis.key_assumptions.length > 0) {
+    md += `### 핵심 가정\n`;
+    for (const ka of item.analysis.key_assumptions) {
+      md += `- **[${ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}]** ${ka.assumption}`;
+      if (ka.if_wrong) md += ` (틀리면: ${ka.if_wrong})`;
+      md += '\n';
+    }
+    md += '\n';
+  }
+
+  // Judgment points
+  const judgmentSteps = steps.filter(s => s.checkpoint || (s.judgment && s.judgment.trim()));
+  if (judgmentSteps.length > 0) {
+    md += `### 지휘자의 판단 포인트\n`;
+    for (const step of steps) {
+      if (step.checkpoint) {
+        md += `- ⚑ ${step.task}: ${step.checkpoint_reason}\n`;
+      } else if (step.judgment && step.judgment.trim()) {
+        md += `- ⚖ ${step.task}: ${step.judgment}\n`;
+      }
+    }
+    md += '\n';
+  }
+
+  if (item.analysis) {
+    md += `**예상 총 소요시간**: ${item.analysis.total_estimated_time}\n`;
+    md += `**AI 비율**: ${item.analysis.ai_ratio}% | **사람 비율**: ${item.analysis.human_ratio}%`;
+  }
+
+  return md;
 }
 
 export function copyToClipboard(text: string): Promise<void> {

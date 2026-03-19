@@ -6,6 +6,9 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useHandoffStore } from '@/stores/useHandoffStore';
+import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { ContextChainBlock } from './ContextChainBlock';
+import { ConvergenceChart } from './ConvergenceChart';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -19,9 +22,10 @@ interface RefinementLoopStepProps {
 export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence, deleteLoop } = useRefinementStore();
   const { projects, loadProjects } = useProjectStore();
-  const { feedbackHistory, loadData: loadPersonaData } = usePersonaStore();
+  const { personas, feedbackHistory, loadData: loadPersonaData } = usePersonaStore();
   const { items: decomposeItems, loadItems: loadDecompose, createItem: createDecomposeItem, updateItem: updateDecomposeItem } = useDecomposeStore();
   const { setHandoff } = useHandoffStore();
+  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
 
   const [expandedIteration, setExpandedIteration] = useState<number | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
@@ -31,7 +35,8 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
     loadProjects();
     loadPersonaData();
     loadDecompose();
-  }, [loadLoops, loadProjects, loadPersonaData, loadDecompose]);
+    loadOrchestrate();
+  }, [loadLoops, loadProjects, loadPersonaData, loadDecompose, loadOrchestrate]);
 
   const activeLoop = loops.find((l) => l.id === activeLoopId);
   const convergence = activeLoop ? checkConvergence(activeLoop.id) : null;
@@ -39,7 +44,14 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
   // Get all unresolved issues from the latest iteration
   const unresolvedIssues = latestIteration
-    ? latestIteration.issues_from_feedback.filter((i) => !i.resolved)
+    ? latestIteration.issues_from_feedback
+        .filter((i) => !i.resolved)
+        .sort((a, b) => {
+          const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+          const pA = personas.find(p => p.id === a.source_persona_id);
+          const pB = personas.find(p => p.id === b.source_persona_id);
+          return (order[pA?.influence || 'medium'] || 1) - (order[pB?.influence || 'medium'] || 1);
+        })
     : [];
 
   const toggleIssue = (id: string) => {
@@ -166,14 +178,70 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
             <p className="text-[13px] text-[var(--text-secondary)]">{activeLoop.goal}</p>
           </Card>
 
+          {/* Context chain: from previous steps */}
+          {(() => {
+            const projectOrch = orchestrateItems.find(o => o.project_id === activeLoop.project_id && o.analysis);
+            const latestFb = feedbackHistory.find(f => f.project_id === activeLoop.project_id);
+            if (!projectOrch?.analysis && !latestFb) return null;
+            const items = [];
+            if (projectOrch?.analysis?.key_assumptions && projectOrch.analysis.key_assumptions.length > 0) {
+              items.push({
+                label: '편곡의 핵심 가정',
+                count: projectOrch.analysis.key_assumptions.length,
+                details: projectOrch.analysis.key_assumptions.map(ka => ka.assumption),
+              });
+            }
+            const criticalRisks = latestFb?.results.flatMap(r =>
+              (r.classified_risks || []).filter(cr => cr.category === 'critical')
+            ) || [];
+            if (criticalRisks.length > 0) {
+              items.push({
+                label: '핵심 위협',
+                count: criticalRisks.length,
+                details: criticalRisks.map(r => r.text),
+                color: 'text-[var(--risk-critical)]',
+              });
+            }
+            const unspokenRisks = latestFb?.results.flatMap(r =>
+              (r.classified_risks || []).filter(cr => cr.category === 'unspoken')
+            ) || [];
+            if (unspokenRisks.length > 0) {
+              items.push({
+                label: '침묵의 리스크',
+                count: unspokenRisks.length,
+                details: unspokenRisks.map(r => r.text),
+                color: 'text-[var(--risk-unspoken)]',
+              });
+            }
+            return items.length > 0 ? (
+              <ContextChainBlock
+                summary="리허설에서 발견된 이슈들을 이 합주에서 해결합니다."
+                items={items}
+              />
+            ) : null;
+          })()}
+
           {/* Convergence bar */}
           {convergence && (
             <Card className={`!p-4 ${convergence.shouldStop ? '!bg-[var(--collab)]' : ''}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[13px] font-bold text-[var(--text-primary)]">수렴 분석</span>
-                <span className="text-[12px] font-semibold text-[var(--accent)]">
-                  {Math.round(convergence.score * 100)}% / {Math.round(activeLoop.convergence_threshold * 100)}%
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-semibold text-[var(--accent)]">
+                    {Math.round(convergence.score * 100)}% / {Math.round(activeLoop.convergence_threshold * 100)}%
+                  </span>
+                  {activeLoop.iterations.length >= 2 && (() => {
+                    const prev = activeLoop.iterations[activeLoop.iterations.length - 2].convergence_score;
+                    const curr = activeLoop.iterations[activeLoop.iterations.length - 1].convergence_score;
+                    const delta = curr - prev;
+                    if (delta === 0) return null;
+                    return delta > 0 ? (
+                      <TrendingUp size={12} className="text-[var(--success)]" />
+                    ) : (
+                      <span className="text-red-500"><TrendingUp size={12} className="rotate-180" /></span>
+                    );
+                  })()}
+                </div>
               </div>
               <div className="h-2.5 bg-[var(--border)] rounded-full overflow-hidden mb-2">
                 <div
@@ -193,6 +261,12 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
               </div>
             </Card>
           )}
+
+          {/* Convergence trend chart */}
+          <ConvergenceChart
+            iterations={activeLoop.iterations}
+            threshold={activeLoop.convergence_threshold}
+          />
 
           {/* Iterations timeline */}
           <div className="space-y-3">
@@ -341,6 +415,11 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                         />
                         <div>
                           <span className="text-[12px] font-semibold text-[var(--accent)]">[{issue.source_persona_name}]</span>
+                          {(() => {
+                            const p = personas.find(persona => persona.id === issue.source_persona_id);
+                            if (p?.influence === 'high') return <span className="text-[10px] text-red-600 font-bold ml-0.5">높음</span>;
+                            return null;
+                          })()}
                           <span className="text-[12px] text-[var(--text-primary)] ml-1">{issue.text}</span>
                         </div>
                       </label>

@@ -26,6 +26,20 @@ export function generateChecklist(project: Project): string {
     }
   }
 
+  // Assumption validation checkpoint
+  if (orchestrations.length > 0) {
+    const latest = orchestrations[orchestrations.length - 1];
+    if (latest.analysis?.key_assumptions && latest.analysis.key_assumptions.length > 0) {
+      lines.push(`## 가정 검증 체크포인트`);
+      lines.push('');
+      for (const ka of latest.analysis.key_assumptions) {
+        lines.push(`- [ ] **핵심 가정**: ${ka.assumption} (확신도: ${ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'})`);
+        if (ka.if_wrong) lines.push(`  - 틀리면: ${ka.if_wrong}`);
+      }
+      lines.push('');
+    }
+  }
+
   // Steps as checklist
   if (orchestrations.length > 0) {
     const latest = orchestrations[orchestrations.length - 1];

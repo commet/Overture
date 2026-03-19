@@ -26,9 +26,29 @@ export function generateAgentSpec(project: Project): string {
       lines.push(`task_definition:`);
       lines.push(`  surface_task: "${latest.analysis.surface_task}"`);
       lines.push(`  reframed_question: "${latest.selected_question || latest.analysis.surface_task}"`);
+      lines.push(`  hypothesis: "${latest.analysis.hypothesis}"`);
+      if (latest.analysis.hidden_assumptions.length > 0) {
+        lines.push(`  assumptions_to_validate:`);
+        latest.analysis.hidden_assumptions.forEach((a) => lines.push(`    - "${a}"`));
+      }
       if (latest.analysis.ai_limitations.length > 0) {
         lines.push(`  ai_limitations:`);
         latest.analysis.ai_limitations.forEach((l) => lines.push(`    - "${l}"`));
+      }
+      lines.push('');
+
+      // Context chain
+      lines.push(`context_chain:`);
+      lines.push(`  hypothesis: "${latest.analysis.hypothesis}"`);
+      lines.push(`  assumptions_to_validate:`);
+      latest.analysis.hidden_assumptions.forEach((a) => lines.push(`    - "${a}"`));
+      if (feedbacks.length > 0) {
+        const latestF = feedbacks[feedbacks.length - 1];
+        const risks = latestF.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical'));
+        if (risks.length > 0) {
+          lines.push(`  risks_addressed:`);
+          risks.forEach(r => lines.push(`    - "${r.text}"`));
+        }
       }
       lines.push('');
     }

@@ -18,6 +18,11 @@ import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Plus, Trash2, ArrowLeft, Pencil, Loader2 } from 'lucide-react';
+import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { LoadingSteps } from '@/components/ui/LoadingSteps';
+import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
+import { ContextChainBlock } from './ContextChainBlock';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
   const recentLogs = persona.feedback_logs
@@ -53,6 +58,7 @@ ${recentLogs || '(없음)'}
 ## 피드백 지침
 - 관점: ${perspective}
 - 강도: ${intensity}
+${persona.influence === 'high' ? '- ⚠️ 이 사람의 영향력이 높습니다. 당신의 의견은 이 프로젝트의 성패에 결정적입니다. 구체적인 승인 조건을 제시하세요.' : persona.influence === 'low' ? '- 이 사람의 영향력은 제한적이지만 현장의 시각을 반영합니다.' : ''}
 
 ## 응답 형식 (JSON만 출력)
 {
@@ -92,6 +98,8 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   const [logContext, setLogContext] = useState('');
   const [logFeedback, setLogFeedback] = useState('');
   const { handoff, clearHandoff } = useHandoffStore();
+  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
+  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
   const [handoffContent, setHandoffContent] = useState<string>('');
   const [handoffTitle, setHandoffTitle] = useState<string>('');
 
@@ -99,7 +107,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     loadData();
     loadSettings();
     loadRatings();
-  }, [loadData, loadSettings, loadRatings]);
+    loadDecompose();
+    loadOrchestrate();
+  }, [loadData, loadSettings, loadRatings, loadDecompose, loadOrchestrate]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -145,11 +155,12 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       if (results.length > 1) {
         const feedbackSummary = results.map((r) => {
           const p = getPersona(r.persona_id);
-          return `### ${p?.name}\n질문: ${r.first_questions.join('; ')}\n칭찬: ${r.praise.join('; ')}\n우려: ${r.concerns.join('; ')}`;
+          const influence = p?.influence || 'medium';
+          return `### ${p?.name} (영향력: ${influence})\n질문: ${r.first_questions.join('; ')}\n칭찬: ${r.praise.join('; ')}\n우려: ${r.concerns.join('; ')}${r.classified_risks ? `\n리스크: ${r.classified_risks.map(cr => `[${cr.category}] ${cr.text}`).join('; ')}` : ''}`;
         }).join('\n\n');
         synthesis = await callLLM(
           [{ role: 'user', content: feedbackSummary }],
-          { system: '여러 이해관계자의 피드백을 종합하세요. 1) 공통 지적 사항 2) 페르소나별로 다른 반응 3) 우선 수정 권고 (가장 영향력 큰 이해관계자의 우려부터). 한국어로 답변하세요.', maxTokens: 1500 }
+          { system: '여러 이해관계자의 피드백을 종합하세요. 1) 공통 지적 사항 2) 페르소나별로 다른 반응 3) 우선 수정 권고 — 영향력(influence)이 높은 이해관계자의 우려를 우선하세요. 충돌이 있을 때는 "영향력이 높은 [이름]의 우려가 우선합니다"라고 명시하세요. 4) 핵심 위협(critical)과 침묵의 리스크(unspoken)를 강조하세요. 한국어로 답변하세요.', maxTokens: 1500 }
         );
       }
 
@@ -166,8 +177,14 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const record = usePersonaStore.getState().feedbackHistory.find((r) => r.id === recordId);
       if (record) setLatestFeedback(record);
       setActiveTab('result');
+      // Audio feedback on completion
+      const { settings } = useSettingsStore.getState();
+      if (settings.audio_enabled) {
+        resumeAudioContext();
+        playSuccessTone(settings.audio_volume);
+      }
     } catch (err) {
-      alert('피드백 생성에 실패했습니다: ' + (err instanceof Error ? err.message : ''));
+      alert('리허설을 진행할 수 없었습니다. 다시 시도하거나, 자료를 더 구체적으로 작성해보세요. ' + (err instanceof Error ? err.message : ''));
     } finally {
       setFeedbackLoading(false);
     }
@@ -297,17 +314,58 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       )}
 
       {activeTab === 'feedback' && (
-        <FeedbackRequest
-          personas={personas}
-          onSubmit={handleFeedbackSubmit}
-          loading={feedbackLoading}
-          initialContent={handoffContent}
-          initialTitle={handoffTitle}
-        />
+        <>
+          {feedbackLoading && (
+            <Card>
+              <LoadingSteps steps={[
+                '이해관계자를 무대 앞으로 초대하고 있습니다...',
+                '각자의 관점에서 자료를 검토하고 있습니다...',
+                '침묵의 리스크를 찾고 있습니다...',
+              ]} />
+            </Card>
+          )}
+          {!feedbackLoading && (
+            <FeedbackRequest
+              personas={personas}
+              onSubmit={handleFeedbackSubmit}
+              loading={feedbackLoading}
+              initialContent={handoffContent}
+              initialTitle={handoffTitle}
+            />
+          )}
+        </>
       )}
 
       {activeTab === 'result' && latestFeedback && (
         <>
+          {/* Context chain: from decompose + orchestrate */}
+          {(() => {
+            const projectId = latestFeedback.project_id;
+            if (!projectId) return null;
+            const decompose = decomposeItems.find(d => d.project_id === projectId && d.analysis);
+            const orchestrate = orchestrateItems.find(o => o.project_id === projectId && o.analysis);
+            if (!decompose?.analysis && !orchestrate?.analysis) return null;
+            const items = [];
+            if (decompose?.analysis?.hidden_assumptions && decompose.analysis.hidden_assumptions.length > 0) {
+              items.push({
+                label: '검증되지 않은 전제',
+                count: decompose.analysis.hidden_assumptions.length,
+                details: decompose.analysis.hidden_assumptions,
+                color: 'text-amber-700',
+              });
+            }
+            if (orchestrate?.analysis?.key_assumptions && orchestrate.analysis.key_assumptions.length > 0) {
+              items.push({
+                label: '편곡의 핵심 가정',
+                count: orchestrate.analysis.key_assumptions.length,
+                details: orchestrate.analysis.key_assumptions.map(ka => ka.assumption),
+              });
+            }
+            const summary = decompose?.analysis
+              ? `악보 해석에서 발견한 핵심 질문: ${decompose.selected_question || decompose.analysis.surface_task}`
+              : `편곡의 핵심 가정 ${orchestrate?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
+            return <ContextChainBlock summary={summary} items={items} />;
+          })()}
           <FeedbackResult record={latestFeedback} personas={personas} onNavigate={onNavigate} />
           {latestFeedback?.project_id && (
             <NextStepGuide

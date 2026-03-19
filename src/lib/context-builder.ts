@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating } from '@/stores/types';
+import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project } from '@/stores/types';
 
 /**
  * Builds an enhanced system prompt by injecting user patterns and project context.
@@ -28,10 +28,16 @@ export function buildEnhancedSystemPrompt(
     }
   }
 
+  // 3. Coda reflections from past projects (learning loop)
+  const codaInsights = buildCodaInsights(projectId);
+  if (codaInsights) {
+    sections.push(codaInsights);
+  }
+
   if (sections.length === 0) return basePrompt;
 
-  // Append as a bounded context section (max ~500 chars to avoid bloating)
-  const contextSection = sections.join('\n\n').slice(0, 800);
+  // Append as a bounded context section
+  const contextSection = sections.join('\n\n').slice(0, 1200);
 
   return `${basePrompt}\n\n---\n\n${contextSection}`;
 }
@@ -86,6 +92,33 @@ function buildProjectContext(projectId: string, judgments: JudgmentRecord[]): st
     return `- [${typeLabels[j.type] || j.type}] ${j.context}: "${j.decision}"`;
   });
 
+  return lines.join('\n');
+}
+
+/**
+ * Build insights from past project coda reflections.
+ * This closes the learning loop: coda → next project's AI prompt.
+ */
+function buildCodaInsights(excludeProjectId?: string): string | null {
+  const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
+  const withReflection = projects
+    .filter((p) => p.meta_reflection && p.id !== excludeProjectId)
+    .filter((p) => p.meta_reflection!.surprising_discovery || p.meta_reflection!.next_time_differently)
+    .sort((a, b) => (b.meta_reflection!.created_at || '').localeCompare(a.meta_reflection!.created_at || ''))
+    .slice(0, 3);
+
+  if (withReflection.length === 0) return null;
+
+  const lines: string[] = ['## 이전 프로젝트에서의 깨달음'];
+  for (const p of withReflection) {
+    const r = p.meta_reflection!;
+    if (r.surprising_discovery) {
+      lines.push(`- ${p.name}: 놀라운 발견 — "${r.surprising_discovery}"`);
+    }
+    if (r.next_time_differently) {
+      lines.push(`- ${p.name}: 다음에 다르게 — "${r.next_time_differently}"`);
+    }
+  }
   return lines.join('\n');
 }
 

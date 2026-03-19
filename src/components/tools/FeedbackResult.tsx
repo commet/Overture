@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/Card';
 import { Tab } from '@/components/ui/Tab';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { Badge } from '@/components/ui/Badge';
-import type { Persona, FeedbackRecord, RefinementIssue } from '@/stores/types';
+import type { Persona, FeedbackRecord, RefinementIssue, ClassifiedRisk } from '@/stores/types';
 import { User, MessageCircleQuestion, ThumbsUp, AlertTriangle, Search, Star, Check, RefreshCw } from 'lucide-react';
+import { RiskCards } from './RiskCards';
 import { Button } from '@/components/ui/Button';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
@@ -93,18 +94,32 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
       const p = personas.find((persona) => persona.id === result.persona_id);
       text += `### ${p?.name || '페르소나'} (${p?.role || ''})\n\n`;
       text += `**전반적 반응**: ${result.overall_reaction}\n\n`;
-      if ((result as any).failure_scenario) {
-        text += `**프리모템 (이 계획이 실패한다면?)**\n${(result as any).failure_scenario}\n\n`;
+      if (result.failure_scenario) {
+        text += `**프리모템 (이 계획이 실패한다면?)**\n${result.failure_scenario}\n\n`;
       }
-      if ((result as any).untested_assumptions && (result as any).untested_assumptions.length > 0) {
-        text += `**검증 안 된 전제**\n${(result as any).untested_assumptions.map((a: string) => `- ${a}`).join('\n')}\n\n`;
+      if (result.untested_assumptions && result.untested_assumptions.length > 0) {
+        text += `**검증 안 된 전제**\n${result.untested_assumptions.map((a) => `- ${a}`).join('\n')}\n\n`;
+      }
+      if (result.classified_risks && result.classified_risks.length > 0) {
+        const criticalRisks = result.classified_risks.filter(r => r.category === 'critical');
+        const manageableRisks = result.classified_risks.filter(r => r.category === 'manageable');
+        const unspokenRisks = result.classified_risks.filter(r => r.category === 'unspoken');
+        if (criticalRisks.length > 0) {
+          text += `**🔴 핵심 위협**\n${criticalRisks.map(r => `- ${r.text}`).join('\n')}\n\n`;
+        }
+        if (manageableRisks.length > 0) {
+          text += `**🟡 관리 가능한 우려**\n${manageableRisks.map(r => `- ${r.text}`).join('\n')}\n\n`;
+        }
+        if (unspokenRisks.length > 0) {
+          text += `**🟣 침묵의 리스크**\n${unspokenRisks.map(r => `- ${r.text}`).join('\n')}\n\n`;
+        }
       }
       text += `**먼저 물어볼 질문**\n${result.first_questions.map((q) => `- ${q}`).join('\n')}\n\n`;
       text += `**칭찬할 부분**\n${result.praise.map((p) => `- ${p}`).join('\n')}\n\n`;
       text += `**우려/지적**\n${result.concerns.map((c) => `- ${c}`).join('\n')}\n\n`;
       text += `**추가로 보고 싶은 것**\n${result.wants_more.map((w) => `- ${w}`).join('\n')}\n\n`;
-      if ((result as any).approval_conditions && (result as any).approval_conditions.length > 0) {
-        text += `**승인 조건**\n${(result as any).approval_conditions.map((c: string) => `- ${c}`).join('\n')}\n\n`;
+      if (result.approval_conditions && result.approval_conditions.length > 0) {
+        text += `**승인 조건**\n${result.approval_conditions.map((c) => `- ${c}`).join('\n')}\n\n`;
       }
     }
     if (record.synthesis) {
@@ -151,6 +166,19 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
           text: w,
           resolved: false,
         });
+      }
+      // Extract critical classified_risks as issues
+      if (result.classified_risks) {
+        for (const risk of result.classified_risks.filter(r => r.category === 'critical')) {
+          issues.push({
+            id: generateId(),
+            source_persona_id: result.persona_id,
+            source_persona_name: pName,
+            category: 'concern',
+            text: `[핵심 위협] ${risk.text}`,
+            resolved: false,
+          });
+        }
       }
     }
 
@@ -204,6 +232,15 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
               <div>
                 <span className="text-[15px] font-bold">{activePersona.name}</span>
                 <span className="text-[13px] text-[var(--text-secondary)] ml-2">{activePersona.role}</span>
+                {activePersona?.influence && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    activePersona.influence === 'high' ? 'bg-red-100 text-red-700'
+                    : activePersona.influence === 'medium' ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    영향력 {activePersona.influence === 'high' ? '높음' : activePersona.influence === 'medium' ? '중간' : '낮음'}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -237,6 +274,9 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
               </ul>
             </Card>
           )}
+
+          {/* Classified Risks */}
+          <RiskCards risks={activeResult.classified_risks} />
 
           {/* First questions */}
           <Card>

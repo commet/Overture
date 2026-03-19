@@ -31,6 +31,8 @@ export async function callLLM(
     llm_mode: 'proxy',
     local_endpoint: '',
     language: 'ko',
+    audio_enabled: false,
+    audio_volume: 0.15,
   });
 
   if (settings.anthropic_api_key) {

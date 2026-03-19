@@ -7,6 +7,8 @@ const DEFAULT_SETTINGS: Settings = {
   llm_mode: 'proxy',
   local_endpoint: '',
   language: 'ko',
+  audio_enabled: false,
+  audio_volume: 0.15,
 };
 
 interface SettingsState {

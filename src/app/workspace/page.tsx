@@ -10,16 +10,20 @@ import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
 import { PersonaFeedbackStep } from '@/components/workspace/PersonaFeedbackStep';
 import { RefinementLoopStep } from '@/components/workspace/RefinementLoopStep';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { Menu } from 'lucide-react';
 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
   const { activeStep, setActiveStep, sidebarOpen, toggleSidebar } = useWorkspaceStore();
   const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
+  const { settings, loadSettings } = useSettingsStore();
 
   useEffect(() => {
     loadProjects();
-  }, [loadProjects]);
+    loadSettings();
+  }, [loadProjects, loadSettings]);
 
   // Sync URL params with store
   useEffect(() => {
@@ -32,8 +36,12 @@ function WorkspaceContent() {
   const handleNavigate = (step: string) => {
     const stepId = step.replace('/tools/', '') as StepId;
     setActiveStep(stepId);
-    // Update URL without full navigation
     window.history.pushState(null, '', `/workspace?step=${stepId}`);
+    // Audio feedback on step transition
+    if (settings.audio_enabled) {
+      resumeAudioContext();
+      playTransitionTone(settings.audio_volume);
+    }
   };
 
   const stepLabels: Record<StepId, string> = {

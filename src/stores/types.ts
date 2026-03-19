@@ -21,6 +21,7 @@ export interface DecomposeAnalysis {
   hidden_questions: DecomposeHiddenQuestion[];
   decomposition: DecomposeSubtask[];
   ai_limitations: string[];
+  reasoning_narrative?: string;
 }
 
 export interface DecomposeItem {
@@ -111,6 +112,7 @@ export interface OrchestrateAnalysis {
   total_estimated_time: string;
   ai_ratio: number;
   human_ratio: number;
+  design_rationale?: string;
 }
 
 export interface OrchestrateItem {
@@ -199,8 +201,18 @@ export interface Project {
   name: string;
   description: string;
   refs: ProjectRef[];
+  meta_reflection?: MetaReflection;
   created_at: string;
   updated_at: string;
+}
+
+// ─── Coda: 공연 후 성찰 ───
+
+export interface MetaReflection {
+  understanding_change?: string;
+  surprising_discovery?: string;
+  next_time_differently?: string;
+  created_at: string;
 }
 
 // ─── Handoff (transient, not persisted) ───
@@ -290,4 +302,6 @@ export interface Settings {
   llm_mode: LLMMode;
   local_endpoint: string;
   language: 'ko' | 'en';
+  audio_enabled: boolean;
+  audio_volume: number;
 }

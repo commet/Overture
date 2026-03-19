@@ -31,7 +31,7 @@ export function NextStepGuide({
       href: '/tools/orchestrate',
       icon: <Map size={16} />,
       label: '편곡으로',
-      reason: '주제가 잡혔습니다. 이제 각 파트에 역할을 배정하고 실행을 설계하세요.',
+      reason: '숨겨진 질문을 찾았습니다. 이제 이 질문에 답하는 실행 계획을 설계하세요. 발견한 전제와 가설이 편곡의 기초가 됩니다.',
       primary: true,
     });
   }
@@ -42,7 +42,7 @@ export function NextStepGuide({
       href: '/tools/persona-feedback',
       icon: <Users size={16} />,
       label: '리허설로',
-      reason: '악보가 완성되었습니다. 이해관계자 앞에서 한 번 연주해보세요.',
+      reason: '실행 설계가 완성되었습니다. 이제 이해관계자 앞에서 연주해보세요. 핵심 가정이 맞는지, 놓친 리스크가 없는지 검증합니다.',
       primary: true,
     });
   }
@@ -53,7 +53,7 @@ export function NextStepGuide({
       href: '/tools/refinement-loop',
       icon: <RefreshCw size={16} />,
       label: '합주 연습으로',
-      reason: '첫 합주가 끝났습니다. 지적 사항을 반영하고, 하모니가 맞을 때까지 반복하세요.',
+      reason: '이해관계자의 반응을 확인했습니다. 지적 사항을 제약조건으로 변환하여, 하모니가 맞을 때까지 반복 개선하세요.',
       primary: true,
     });
   }
@@ -64,14 +64,14 @@ export function NextStepGuide({
       href: '/project',
       icon: <FileText size={16} />,
       label: '공연 — 무대에 올리기',
-      reason: '하모니가 맞았습니다. 무대에 올릴 산출물을 생성하세요.',
+      reason: '하모니가 맞았습니다. 사고의 궤적이 담긴 산출물을 생성하세요.',
       primary: true,
     });
     options.push({
       href: '/tools/persona-feedback',
       icon: <Users size={16} />,
       label: '리허설 다시',
-      reason: '수정한 내용을 이해관계자에게 다시 검증받으세요.',
+      reason: '수정한 내용이 이해관계자의 우려를 해소했는지 다시 검증합니다.',
     });
   }
 
