@@ -19,7 +19,7 @@ import { findSimilarItems } from '@/lib/similarity';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
+import { FileText, Trash2, Check, Pencil, Bot, Brain, Handshake, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 
 const LOADING_MESSAGES = [
   '악보를 펼치고 있습니다...',
@@ -103,6 +103,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [customQuestion, setCustomQuestion] = useState('');
   const [error, setError] = useState('');
   const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
+  const [thinkingExpanded, setThinkingExpanded] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -356,137 +357,156 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {/* ─── STEP 3: Review ─── */}
       {current?.status === 'review' && current.analysis && (
         <div className="space-y-6 animate-fade-in">
-          {/* Surface task */}
-          <Card className="!bg-[var(--ai)]">
-            <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
-              <Bot size={14} /> AI 분석 결과
-            </div>
-            <h3 className="text-[16px] font-bold text-[var(--text-primary)]">표면 과제</h3>
-            <p className="text-[14px] text-[var(--text-primary)] mt-1">{current.analysis.surface_task}</p>
-          </Card>
 
-          {/* Hypothesis */}
-          {current.analysis.hypothesis && (
-            <Card className="!bg-[var(--ai)]">
-              <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
-                <Lightbulb size={14} /> 가설
-              </div>
-              <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{current.analysis.hypothesis}</p>
-            </Card>
-          )}
-
-          {/* Reasoning Narrative */}
-          {current.analysis.reasoning_narrative && (
-            <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
-              {current.analysis.reasoning_narrative}
+          {/* ═══ 영역 1: 핵심 판단 (최상단) ═══ */}
+          <div>
+            {/* 표면 과제 한줄 컨텍스트 */}
+            <p className="text-[13px] text-[var(--text-secondary)] mb-4">
+              <span className="font-semibold">주어진 과제:</span> {current.analysis.surface_task}
             </p>
-          )}
 
-          {/* Hidden Assumptions */}
-          {current.analysis.hidden_assumptions && current.analysis.hidden_assumptions.length > 0 && (
-            <Card className="!bg-[var(--checkpoint)]">
-              <div className="flex items-center gap-2 text-[12px] text-amber-700 font-semibold mb-2">
-                <AlertTriangle size={14} /> 숨겨진 전제
+            {/* 숨겨진 질문 선택 — 최상단 */}
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="checkpoint">⚡ 판단 필요</Badge>
+                <h3 className="text-[16px] font-bold text-[var(--text-primary)]">이 과제의 진짜 질문은?</h3>
               </div>
-              <p className="text-[11px] text-amber-600 mb-2">이 과제가 의미 있으려면 참이어야 하는 가정들</p>
-              <ul className="space-y-1">
-                {current.analysis.hidden_assumptions.map((a: string, i: number) => (
-                  <li key={i} className="text-[13px] text-amber-800">• {a}</li>
+              <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+                하나를 선택하면 이것이 실제로 풀 과제가 됩니다.
+              </p>
+              <div className="space-y-2">
+                {current.analysis.hidden_questions.map((hq, i) => (
+                  <Card
+                    key={i}
+                    hoverable
+                    className={`cursor-pointer transition-all ${
+                      current.selected_question === hq.question
+                        ? '!border-[var(--accent)] !border-2 !bg-[var(--ai)]'
+                        : ''
+                    }`}
+                    onClick={() => handleSelectQuestion(hq.question)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                        current.selected_question === hq.question
+                          ? 'border-[var(--accent)] bg-[var(--accent)]'
+                          : 'border-[var(--border)]'
+                      }`}>
+                        {current.selected_question === hq.question && <Check size={12} className="text-white" />}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-[var(--text-primary)]">{hq.question}</p>
+                        <p className="text-[12px] text-[var(--text-secondary)] mt-1">{hq.reasoning}</p>
+                      </div>
+                    </div>
+                  </Card>
                 ))}
-              </ul>
-            </Card>
-          )}
-
-          {/* Alternative Framings */}
-          {current.analysis.alternative_framings && current.analysis.alternative_framings.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[13px] font-semibold text-[var(--text-secondary)]">같은 상황을 다르게 볼 수 있는 관점</p>
-              {current.analysis.alternative_framings.map((f: string, i: number) => (
-                <Card key={i} className="!p-3 !bg-[var(--bg)]">
-                  <p className="text-[13px] text-[var(--text-primary)]">{f}</p>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Hidden questions - JUDGMENT POINT */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge variant="checkpoint">⚡ 판단 필요</Badge>
-              <h3 className="text-[16px] font-bold text-[var(--text-primary)]">숨겨진 진짜 질문</h3>
-            </div>
-            <p className="text-[13px] text-[var(--text-secondary)]">
-              이 과제 이면에 있을 수 있는 질문들입니다. 하나를 선택하면 이것이 실제로 풀 과제가 됩니다.
-            </p>
-            <div className="space-y-2">
-              {current.analysis.hidden_questions.map((hq, i) => (
+                {/* Custom question */}
                 <Card
-                  key={i}
                   hoverable
-                  className={`cursor-pointer transition-all ${
-                    current.selected_question === hq.question
-                      ? '!border-[var(--accent)] !border-2 !bg-[var(--ai)]'
-                      : ''
-                  }`}
-                  onClick={() => handleSelectQuestion(hq.question)}
+                  className={`cursor-pointer ${editingQuestion ? '!border-[var(--accent)] !border-2' : ''}`}
+                  onClick={() => setEditingQuestion(true)}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                      current.selected_question === hq.question
-                        ? 'border-[var(--accent)] bg-[var(--accent)]'
-                        : 'border-[var(--border)]'
+                      editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'
                     }`}>
-                      {current.selected_question === hq.question && <Check size={12} className="text-white" />}
+                      {editingQuestion && customQuestion && <Check size={12} className="text-white" />}
+                      {!(editingQuestion && customQuestion) && <Pencil size={10} className="text-[var(--text-secondary)]" />}
                     </div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-[var(--text-primary)]">{hq.question}</p>
-                      <p className="text-[12px] text-[var(--text-secondary)] mt-1">{hq.reasoning}</p>
+                    <div className="flex-1">
+                      {editingQuestion ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          value={customQuestion}
+                          onChange={(e) => {
+                            setCustomQuestion(e.target.value);
+                            handleSelectQuestion(e.target.value);
+                          }}
+                          placeholder="직접 질문을 작성하세요..."
+                          className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none"
+                        />
+                      ) : (
+                        <p className="text-[14px] text-[var(--text-secondary)]">직접 질문 작성하기...</p>
+                      )}
                     </div>
                   </div>
                 </Card>
-              ))}
-              {/* Custom question */}
-              <Card
-                hoverable
-                className={`cursor-pointer ${editingQuestion ? '!border-[var(--accent)] !border-2' : ''}`}
-                onClick={() => setEditingQuestion(true)}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                    editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'
-                  }`}>
-                    {editingQuestion && customQuestion && <Check size={12} className="text-white" />}
-                    {!(editingQuestion && customQuestion) && <Pencil size={10} className="text-[var(--text-secondary)]" />}
-                  </div>
-                  <div className="flex-1">
-                    {editingQuestion ? (
-                      <input
-                        type="text"
-                        autoFocus
-                        value={customQuestion}
-                        onChange={(e) => {
-                          setCustomQuestion(e.target.value);
-                          handleSelectQuestion(e.target.value);
-                        }}
-                        placeholder="직접 질문을 작성하세요..."
-                        className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none"
-                      />
-                    ) : (
-                      <p className="text-[14px] text-[var(--text-secondary)]">직접 질문 작성하기...</p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
           </div>
 
-          {/* Decomposition */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Bot size={14} className="text-[#2d4a7c]" />
-              <h3 className="text-[16px] font-bold text-[var(--text-primary)]">악보 해석 결과</h3>
-            </div>
-            <div className="space-y-2">
+          {/* ═══ 영역 2: AI 사고 과정 (아코디언) ═══ */}
+          <Card className="!bg-[var(--bg)]">
+            <button
+              onClick={() => setThinkingExpanded(!thinkingExpanded)}
+              className="w-full flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Bot size={14} className="text-[#2d4a7c]" />
+                <span className="text-[14px] font-bold text-[var(--text-primary)]">AI의 사고 과정</span>
+              </div>
+              {thinkingExpanded ? <ChevronUp size={16} className="text-[var(--text-secondary)]" /> : <ChevronDown size={16} className="text-[var(--text-secondary)]" />}
+            </button>
+
+            {/* 가설 — 항상 보임 */}
+            {current.analysis.hypothesis && (
+              <div className="mt-3">
+                <p className="text-[13px] font-semibold text-[#2d4a7c]">가설</p>
+                <p className="text-[13px] text-[var(--text-primary)] mt-1 leading-relaxed">{current.analysis.hypothesis}</p>
+                {current.analysis.reasoning_narrative && (
+                  <p className="text-[12px] text-[var(--text-secondary)] italic mt-1 leading-relaxed">{current.analysis.reasoning_narrative}</p>
+                )}
+              </div>
+            )}
+
+            {/* 펼쳤을 때만 */}
+            {thinkingExpanded && (
+              <>
+                {/* 숨겨진 전제 */}
+                {current.analysis.hidden_assumptions && current.analysis.hidden_assumptions.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                    <p className="text-[13px] font-semibold text-amber-700 mb-1.5">숨겨진 전제</p>
+                    <p className="text-[11px] text-amber-600 mb-2">이 과제가 의미 있으려면 참이어야 하는 가정들</p>
+                    <ul className="space-y-1">
+                      {current.analysis.hidden_assumptions.map((a: string, i: number) => (
+                        <li key={i} className="text-[13px] text-amber-800">• {a}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* 대안적 관점 */}
+                {current.analysis.alternative_framings && current.analysis.alternative_framings.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
+                    <p className="text-[13px] font-semibold text-[var(--text-secondary)] mb-1.5">대안적 관점</p>
+                    <ul className="space-y-1.5">
+                      {current.analysis.alternative_framings.map((f: string, i: number) => (
+                        <li key={i} className="text-[13px] text-[var(--text-primary)]">• {f}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 접힌 상태일 때 요약 힌트 */}
+            {!thinkingExpanded && (
+              <div className="mt-2 flex gap-3 text-[12px] text-[var(--text-secondary)]">
+                {current.analysis.hidden_assumptions && current.analysis.hidden_assumptions.length > 0 && (
+                  <span>▸ 숨겨진 전제 {current.analysis.hidden_assumptions.length}건</span>
+                )}
+                {current.analysis.alternative_framings && current.analysis.alternative_framings.length > 0 && (
+                  <span>▸ 대안적 관점 {current.analysis.alternative_framings.length}건</span>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* ═══ 영역 3: 실행 분해 ═══ */}
+          <div>
+            <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">역할 분배</h3>
+            <div className="space-y-1.5">
               {current.analysis.decomposition.map((sub, i) => (
                 <Card key={i} className="!p-3">
                   <div className="flex items-start gap-3">
@@ -517,21 +537,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 </Card>
               ))}
             </div>
-          </div>
-
-          {/* AI Limitations */}
-          {current.analysis.ai_limitations.length > 0 && (
-            <Card className="!bg-[var(--human)]">
-              <div className="flex items-center gap-2 text-[13px] font-bold text-[#8b6914] mb-2">
-                <AlertTriangle size={14} /> AI가 잘 못하는 부분
+            {/* AI 한계 — inline */}
+            {current.analysis.ai_limitations.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] text-[12px] text-[var(--text-secondary)]">
+                <span className="font-semibold">⚠ AI 한계:</span> {current.analysis.ai_limitations.join(' · ')}
               </div>
-              <ul className="space-y-1">
-                {current.analysis.ai_limitations.map((lim, i) => (
-                  <li key={i} className="text-[13px] text-[#8b6914]">• {lim}</li>
-                ))}
-              </ul>
-            </Card>
-          )}
+            )}
+          </div>
 
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
