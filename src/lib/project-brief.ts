@@ -34,7 +34,8 @@ export function generateProjectBrief(project: Project): string {
       if (latestO?.analysis) {
         sections.push(`핵심 방향: ${latestO.analysis.governing_idea}`);
       }
-      sections.push(`이 방향은 "${latestD.analysis.hypothesis}"에서 출발, ${latestD.analysis.hidden_assumptions.length}건의 전제 점검 후 도출.`);
+      const hyp = latestD.analysis.reframed_question || latestD.analysis.hypothesis || '';
+      sections.push(`이 방향은 "${hyp}"에서 출발, ${latestD.analysis.hidden_assumptions.length}건의 전제 점검 후 도출.`);
       if (feedbacks.length > 0) {
         const latestF = feedbacks[feedbacks.length - 1];
         const criticalCount = latestF.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical')).length;
@@ -64,13 +65,21 @@ export function generateProjectBrief(project: Project): string {
         sections.push(`**${latest.selected_question}**`);
         sections.push('');
       }
-      sections.push('### 역할 분배');
-      const actorLabels: Record<string, string> = { ai: '🤖 AI', human: '🧠 사람', both: '🤝 협업' };
-      const tasks = latest.final_decomposition.length > 0 ? latest.final_decomposition : latest.analysis.decomposition;
-      tasks.forEach((t, i) => {
-        sections.push(`${i + 1}. [${actorLabels[t.actor]}] ${t.task}`);
-      });
-      sections.push('');
+      if (latest.analysis.why_reframing_matters) {
+        sections.push(latest.analysis.why_reframing_matters);
+        sections.push('');
+      }
+      if (latest.analysis.hidden_assumptions?.length > 0) {
+        sections.push('### 검증 필요한 전제');
+        latest.analysis.hidden_assumptions.forEach((a: any) => {
+          if (typeof a === 'string') {
+            sections.push(`- ${a}`);
+          } else {
+            sections.push(`- ${a.assumption}${a.risk_if_false ? ` → 거짓이면: ${a.risk_if_false}` : ''}`);
+          }
+        });
+        sections.push('');
+      }
       if (latest.analysis.ai_limitations.length > 0) {
         sections.push('### AI 한계');
         latest.analysis.ai_limitations.forEach((l) => sections.push(`- ${l}`));

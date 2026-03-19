@@ -350,7 +350,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               items.push({
                 label: '검증되지 않은 전제',
                 count: decompose.analysis.hidden_assumptions.length,
-                details: decompose.analysis.hidden_assumptions,
+                details: decompose.analysis.hidden_assumptions.map((a: any) =>
+                  typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
+                ),
                 color: 'text-amber-700',
               });
             }

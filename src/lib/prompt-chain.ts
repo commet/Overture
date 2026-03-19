@@ -136,28 +136,41 @@ export function generatePromptChain(project: Project): string {
       sections.push('');
     });
   } else if (decompositions.length > 0) {
-    // No orchestration — generate a simple prompt from decompose
+    // No orchestration — generate a single exploration prompt from decompose
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis) {
-      const tasks = latest.final_decomposition.length > 0 ? latest.final_decomposition : latest.analysis.decomposition;
-      tasks.forEach((task, i) => {
-        sections.push(`---`);
-        sections.push('');
-        sections.push(`## 💬 Prompt ${i + 1}/${tasks.length} — ${task.task} [${actorLabels[task.actor]}]`);
-        sections.push('');
-        if (task.actor !== 'human') {
-          sections.push('```');
-          sections.push(`${task.task}\n\n핵심 맥락: "${coreQuestion}"\n\n${task.actor_reasoning}`);
-          if (constraints.length > 0) {
-            sections.push(`\n제약조건:\n${constraints.map(c => `- ${c}`).join('\n')}`);
+      const reframedQ = latest.selected_question
+        || latest.analysis.reframed_question
+        || (latest.analysis as any).hypothesis
+        || '';
+      sections.push(`---`);
+      sections.push('');
+      sections.push(`## 💬 Prompt 1/1 — 재정의된 질문 탐색`);
+      sections.push('');
+      sections.push('```');
+      const promptParts = [
+        `다음 질문에 대해 분석해주세요:`,
+        `"${reframedQ}"`,
+        '',
+        `핵심 맥락: "${coreQuestion}"`,
+      ];
+      if (latest.analysis.hidden_assumptions?.length > 0) {
+        promptParts.push('');
+        promptParts.push('검증이 필요한 전제:');
+        latest.analysis.hidden_assumptions.forEach((a: any) => {
+          if (typeof a === 'string') {
+            promptParts.push(`- ${a}`);
+          } else {
+            promptParts.push(`- ${a.assumption}`);
           }
-          sections.push('```');
-        } else {
-          sections.push('**직접 수행하세요.**');
-          sections.push(`> ${task.actor_reasoning}`);
-        }
-        sections.push('');
-      });
+        });
+      }
+      if (constraints.length > 0) {
+        promptParts.push(`\n제약조건:\n${constraints.map(c => `- ${c}`).join('\n')}`);
+      }
+      sections.push(promptParts.join('\n'));
+      sections.push('```');
+      sections.push('');
     }
   }
 

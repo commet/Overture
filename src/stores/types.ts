@@ -7,6 +7,12 @@ export interface DecomposeHiddenQuestion {
   edited?: string;
 }
 
+export interface HiddenAssumption {
+  assumption: string;
+  risk_if_false: string;
+}
+
+/** @deprecated Kept for backward compatibility with old localStorage data */
 export interface DecomposeSubtask {
   task: string;
   actor: 'ai' | 'human' | 'both';
@@ -15,13 +21,16 @@ export interface DecomposeSubtask {
 
 export interface DecomposeAnalysis {
   surface_task: string;
-  hypothesis: string;
-  alternative_framings: string[];
-  hidden_assumptions: string[];
+  reframed_question: string;
+  why_reframing_matters: string;
+  reasoning_narrative: string;
+  hidden_assumptions: HiddenAssumption[];
   hidden_questions: DecomposeHiddenQuestion[];
-  decomposition: DecomposeSubtask[];
   ai_limitations: string[];
-  reasoning_narrative?: string;
+  // Legacy fields — kept for backward compat with old data
+  hypothesis?: string;
+  alternative_framings?: string[];
+  decomposition?: DecomposeSubtask[];
 }
 
 export interface DecomposeItem {
@@ -32,7 +41,7 @@ export interface DecomposeItem {
   input_text: string;
   analysis: DecomposeAnalysis | null;
   selected_question: string;
-  final_decomposition: DecomposeSubtask[];
+  final_decomposition?: DecomposeSubtask[];
   status: 'input' | 'analyzing' | 'review' | 'done';
   created_at: string;
   updated_at: string;

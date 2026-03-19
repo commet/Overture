@@ -1,4 +1,4 @@
-import type { DecomposeItem, SynthesizeItem, OrchestrateItem } from '@/stores/types';
+import type { DecomposeItem, SynthesizeItem, OrchestrateItem, HiddenAssumption } from '@/stores/types';
 
 const actorLabels: Record<string, string> = {
   ai: '🤖 AI',
@@ -10,27 +10,37 @@ export function decomposeToMarkdown(item: DecomposeItem): string {
   const analysis = item.analysis;
   if (!analysis) return '';
 
-  const subtasks = (item.final_decomposition.length > 0 ? item.final_decomposition : analysis.decomposition)
-    .map((s, i) => `| ${i + 1} | ${actorLabels[s.actor]} | ${s.task} | ${s.actor_reasoning} |`)
-    .join('\n');
+  const selectedQ = item.selected_question
+    || analysis.reframed_question
+    || (analysis as any).hypothesis
+    || analysis.hidden_questions[0]?.question
+    || '';
 
-  const selectedQ = item.selected_question || analysis.hidden_questions[0]?.question || '';
+  // Handle both old (string[]) and new (HiddenAssumption[]) format
+  const assumptions = Array.isArray(analysis.hidden_assumptions)
+    ? analysis.hidden_assumptions.map((a: HiddenAssumption | string) => {
+        if (typeof a === 'string') return `- ${a}`;
+        return `- ${a.assumption}${a.risk_if_false ? ` → 거짓이면: ${a.risk_if_false}` : ''}`;
+      }).join('\n')
+    : '';
 
-  return `## 악보 해석 | 문제 재정의
+  let md = `## 악보 해석 | 문제 재정의\n\n`;
+  md += `### 표면 과제\n${analysis.surface_task}\n\n`;
+  md += `### 재정의된 진짜 질문\n${selectedQ}\n\n`;
 
-### 표면 과제
-${analysis.surface_task}
+  if (analysis.why_reframing_matters) {
+    md += `${analysis.why_reframing_matters}\n\n`;
+  }
 
-### 재정의된 진짜 질문
-${selectedQ}
+  if (assumptions) {
+    md += `### 검증 필요한 전제\n${assumptions}\n\n`;
+  }
 
-### 역할 분배
-| # | 담당 | 할 일 | 이유 |
-|---|------|-------|------|
-${subtasks}
+  if (analysis.ai_limitations.length > 0) {
+    md += `### AI 한계\n${analysis.ai_limitations.map((l) => `- ${l}`).join('\n')}`;
+  }
 
-### AI 한계
-${analysis.ai_limitations.map((l) => `- ${l}`).join('\n')}`;
+  return md;
 }
 
 export function synthesizeToMarkdown(item: SynthesizeItem): string {

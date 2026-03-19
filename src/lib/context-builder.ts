@@ -54,8 +54,8 @@ function analyzePatterns(judgments: JudgmentRecord[]): string | null {
     lines.push(`- 이 사용자는 AI 제안의 ${overrideRate}%를 수정합니다. 더 보수적이거나 맥락을 고려한 제안을 하세요.`);
   }
 
-  // Actor preference
-  const actorOverrides = judgments.filter((j) => j.type === 'actor_override');
+  // Actor preference (from orchestrate phase)
+  const actorOverrides = judgments.filter((j) => j.type === 'actor_override' && j.tool === 'orchestrate');
   if (actorOverrides.length >= 3) {
     const humanPrefs = actorOverrides.filter((j) => j.decision === 'human').length;
     const aiPrefs = actorOverrides.filter((j) => j.decision === 'ai').length;

@@ -122,6 +122,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const [inputText, setInputText] = useState('');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
+  const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
 
   useEffect(() => {
     loadItems();
@@ -132,15 +133,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (handoff && handoff.from === 'decompose') {
-      const id = createItem();
-      updateItem(id, {
-        input_text: handoff.content,
-        project_id: handoff.projectId,
-      });
-      if (handoff.projectId) {
-        addRef(handoff.projectId, { tool: 'orchestrate', itemId: id, label: '워크플로우 설계' });
-      }
       setInputText(handoff.content);
+      setPendingProjectId(handoff.projectId);
       clearHandoff();
     }
   }, []);  // Run once on mount
@@ -165,7 +159,15 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     if (!finalPrompt.trim()) return;
     setError('');
     const id = createItem();
-    updateItem(id, { input_text: finalPrompt, status: 'analyzing' });
+    updateItem(id, {
+      input_text: finalPrompt,
+      status: 'analyzing',
+      ...(pendingProjectId ? { project_id: pendingProjectId } : {}),
+    });
+    if (pendingProjectId) {
+      addRef(pendingProjectId, { tool: 'orchestrate', itemId: id, label: '워크플로우 설계' });
+      setPendingProjectId(undefined);
+    }
 
     try {
       const analysis = await callLLMJson<OrchestrateAnalysis>(
@@ -273,6 +275,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             textPlaceholder="투자 유치용 사업계획서를 2주 안에 완성해야 함"
             textHint="맥락을 선택하면 더 현실적인 워크플로우를 설계합니다."
             submitLabel="워크플로우 설계"
+            initialText={inputText}
             onSubmit={(selections, text) => {
               const context = Object.entries(selections)
                 .map(([k, v]) => {
@@ -311,7 +314,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               items={relatedDecompose.analysis.hidden_assumptions.length > 0 ? [{
                 label: '검증되지 않은 전제',
                 count: relatedDecompose.analysis.hidden_assumptions.length,
-                details: relatedDecompose.analysis.hidden_assumptions,
+                details: relatedDecompose.analysis.hidden_assumptions.map((a: any) =>
+                  typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
+                ),
                 color: 'text-amber-700',
               }] : []}
             />
@@ -325,7 +330,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               </div>
               <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{current.analysis.governing_idea}</p>
               {/* 1-B: Hypothesis connection */}
-              {relatedDecompose?.analysis?.hypothesis && (
+              {(relatedDecompose?.analysis?.reframed_question || relatedDecompose?.analysis?.hypothesis) && (
                 <p className="text-[12px] text-[var(--text-secondary)] mt-1 border-t border-[#2d4a7c]/10 pt-2">
                   이 방향은 악보 해석에서 발견한 질문 — &apos;{relatedDecompose.selected_question || relatedDecompose.analysis.hidden_questions[0]?.question}&apos; — 에서 도출되었습니다.
                 </p>

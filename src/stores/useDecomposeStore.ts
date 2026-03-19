@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DecomposeItem, DecomposeSubtask } from '@/stores/types';
+import type { DecomposeItem } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';

@@ -6,17 +6,16 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
- * Get the current user ID. Returns null if not authenticated.
- * For now, we use anonymous sessions. Later can add proper auth.
+ * Get the current user ID from the active session.
+ * Returns null if the user is not authenticated.
  */
 export async function getCurrentUserId(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user?.id) return session.user.id;
-
-  // Auto-create anonymous session if none exists
-  const { data, error } = await supabase.auth.signInAnonymously();
-  if (error || !data.user) return null;
-  return data.user.id;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**

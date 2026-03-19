@@ -26,10 +26,14 @@ export function generateAgentSpec(project: Project): string {
       lines.push(`task_definition:`);
       lines.push(`  surface_task: "${latest.analysis.surface_task}"`);
       lines.push(`  reframed_question: "${latest.selected_question || latest.analysis.surface_task}"`);
-      lines.push(`  hypothesis: "${latest.analysis.hypothesis}"`);
+      const hyp = latest.analysis.reframed_question || latest.analysis.hypothesis || '';
+      lines.push(`  hypothesis: "${hyp}"`);
       if (latest.analysis.hidden_assumptions.length > 0) {
         lines.push(`  assumptions_to_validate:`);
-        latest.analysis.hidden_assumptions.forEach((a) => lines.push(`    - "${a}"`));
+        latest.analysis.hidden_assumptions.forEach((a: any) => {
+          const text = typeof a === 'string' ? a : a.assumption;
+          lines.push(`    - "${text}"`);
+        });
       }
       if (latest.analysis.ai_limitations.length > 0) {
         lines.push(`  ai_limitations:`);
@@ -39,9 +43,12 @@ export function generateAgentSpec(project: Project): string {
 
       // Context chain
       lines.push(`context_chain:`);
-      lines.push(`  hypothesis: "${latest.analysis.hypothesis}"`);
+      lines.push(`  hypothesis: "${latest.analysis.reframed_question || latest.analysis.hypothesis || ''}"`);
       lines.push(`  assumptions_to_validate:`);
-      latest.analysis.hidden_assumptions.forEach((a) => lines.push(`    - "${a}"`));
+      latest.analysis.hidden_assumptions.forEach((a: any) => {
+        const text = typeof a === 'string' ? a : a.assumption;
+        lines.push(`    - "${text}"`);
+      });
       if (feedbacks.length > 0) {
         const latestF = feedbacks[feedbacks.length - 1];
         const risks = latestF.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical'));

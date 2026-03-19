@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { LayoutShell } from '@/components/layout/LayoutShell';
+import { Providers } from '@/components/layout/Providers';
 
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
@@ -25,14 +26,16 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <div className="flex flex-1">
-            <LayoutShell>
-              {children}
-            </LayoutShell>
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <div className="flex flex-1">
+              <LayoutShell>
+                {children}
+              </LayoutShell>
+            </div>
           </div>
-        </div>
+        </Providers>
       </body>
     </html>
   );

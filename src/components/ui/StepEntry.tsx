@@ -25,6 +25,7 @@ interface StepEntryProps {
   submitLabel?: string;
   onSubmit: (selections: Record<string, string>, text: string) => void;
   disabled?: boolean;
+  initialText?: string;
 }
 
 export function StepEntry({
@@ -35,10 +36,11 @@ export function StepEntry({
   submitLabel = 'AI 분석 시작',
   onSubmit,
   disabled,
+  initialText,
 }: StepEntryProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(initialText ? steps.length : 0);
   const [selections, setSelections] = useState<Record<string, string>>({});
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText || '');
 
   const isLastStep = currentStep >= steps.length;
   const currentEntryStep = steps[currentStep];
