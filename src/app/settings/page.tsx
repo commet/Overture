@@ -57,14 +57,21 @@ export default function SettingsPage() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowedKeys: Set<string> = new Set(Object.values(STORAGE_KEYS).filter(k => k !== 'sot_settings'));
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const data = JSON.parse(evt.target?.result as string);
+        let imported = 0;
         for (const [key, value] of Object.entries(data)) {
-          if (typeof value !== 'undefined') {
+          if (allowedKeys.has(key) && typeof value !== 'undefined') {
             localStorage.setItem(key, JSON.stringify(value));
+            imported++;
           }
+        }
+        if (imported === 0) {
+          alert('가져올 수 있는 데이터가 없습니다. 올바른 백업 파일인지 확인해주세요.');
+          return;
         }
         alert('데이터를 성공적으로 가져왔습니다. 페이지를 새로고침합니다.');
         window.location.reload();

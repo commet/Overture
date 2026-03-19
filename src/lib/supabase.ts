@@ -6,13 +6,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
- * Get the current user ID from the active session.
- * Returns null if the user is not authenticated.
+ * Get the current user ID by verifying the JWT with Supabase.
+ * Uses getUser() which validates the token server-side,
+ * unlike getSession() which only reads from local storage.
  */
 export async function getCurrentUserId(): Promise<string | null> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.user?.id ?? null;
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    return user.id;
   } catch {
     return null;
   }

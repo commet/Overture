@@ -13,7 +13,11 @@ export default function AuthCallbackPage() {
       const code = params.get('code');
 
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          router.replace('/login?error=auth_failed');
+          return;
+        }
       }
 
       router.replace('/workspace');

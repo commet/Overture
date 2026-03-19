@@ -61,9 +61,18 @@ async function callProxy(
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
+  // Get current session token for authenticated API calls
+  const { supabase } = await import('./supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
   const res = await fetch('/api/llm', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ messages, system: options.system, maxTokens: options.maxTokens }),
   });
 

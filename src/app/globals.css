@@ -33,10 +33,17 @@
   --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.08), 0 2px 6px rgba(26, 26, 26, 0.03);
   --shadow-xl: 0 16px 48px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(26, 26, 26, 0.04);
 
+  /* Concert hall accents */
+  --gold: #b8963e;
+  --gold-light: #d4b968;
+  --gold-muted: rgba(184, 150, 62, 0.06);
+  --staff-line: rgba(181, 166, 140, 0.10);
+
   /* Easing */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
   --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-musical: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Radius scale */
   --radius-sm: 8px;
@@ -145,6 +152,62 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* ── Musical phrase entrance — staggered arpeggio ── */
+@keyframes phrase-enter {
+  0% { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+  50% { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.phrase-entrance > * {
+  opacity: 0;
+  animation: phrase-enter 0.7s var(--ease-musical) forwards;
+}
+.phrase-entrance > *:nth-child(1) { animation-delay: 0ms; }
+.phrase-entrance > *:nth-child(2) { animation-delay: 100ms; }
+.phrase-entrance > *:nth-child(3) { animation-delay: 180ms; }
+.phrase-entrance > *:nth-child(4) { animation-delay: 250ms; }
+.phrase-entrance > *:nth-child(5) { animation-delay: 310ms; }
+
+/* ── Crescendo reveal — builds from quiet to full ── */
+@keyframes crescendo-reveal {
+  0% { opacity: 0; transform: scale(0.97) translateY(6px); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-crescendo {
+  animation: crescendo-reveal 0.8s var(--ease-musical) forwards;
+}
+
+/* ── SVG line draw ── */
+@keyframes draw-line {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
+}
+.animate-draw {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: draw-line 1s var(--ease-spring) forwards;
+}
+
+/* ── Manuscript paper micro-texture ── */
+.manuscript-bg {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.012),
+      rgba(0, 0, 0, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.008),
+      rgba(0, 0, 0, 0.008) 1px,
+      transparent 1px,
+      transparent 3px
+    );
 }
 
 /* ── Global transitions ── */

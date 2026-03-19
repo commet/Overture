@@ -20,9 +20,10 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { StaffLines, BarLine, Fermata, CrescendoHairpin } from '@/components/ui/MusicalElements';
 
 /* ───────────────────────────────────────────
-   System Prompt — 문제 재정의에 집중
+   System Prompt
    ─────────────────────────────────────────── */
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과제를 그대로 풀지 마세요.
@@ -89,7 +90,7 @@ const DECOMPOSE_ENTRY_STEPS = [
 ];
 
 /* ───────────────────────────────────────────
-   Normalize legacy data (old format → new)
+   Normalize legacy data
    ─────────────────────────────────────────── */
 
 function normalizeAnalysis(raw: DecomposeAnalysis): DecomposeAnalysis {
@@ -135,16 +136,12 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   }, [loadItems, loadJudgments, loadProjects]);
 
   const current = getCurrentItem();
-
-  // Learning indicator: past judgments being applied
   const hasLearning = judgments.length >= 3;
 
-  // Coda insights from past projects
   const codaInsights = projects.filter(
     (p) => p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently
   );
 
-  // Find similar past analyses
   useEffect(() => {
     if (!inputText || inputText.length < 8) {
       setSimilarItems([]);
@@ -224,38 +221,41 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     }
   };
 
-  /* ─── Render helper: normalize analysis for display ─── */
-
   const getAnalysis = () => current?.analysis ? normalizeAnalysis(current.analysis) : null;
 
   /* ─── Render ─── */
 
   return (
     <div className="space-y-6">
+      {/* ─── Header ─── */}
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">악보 해석 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 문제 재정의</span></h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">악보 해석</h1>
+          <span className="text-[13px] text-[var(--text-tertiary)]">|</span>
+          <span className="text-[14px] text-[var(--text-secondary)]">문제 재정의</span>
+        </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           주어진 과제 뒤에 숨은 진짜 질문을 찾아냅니다.
         </p>
         {hasLearning && (
-          <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] mt-2">
+          <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] mt-2">
             <Brain size={12} />
             <span>이전 {judgments.length}건의 판단이 반영되고 있습니다</span>
           </div>
         )}
       </div>
 
-      {/* History items */}
+      {/* ─── History tabs ─── */}
       {items.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
           {items.map((item) => (
             <button
               key={item.id}
               onClick={() => { setCurrentId(item.id); setInputText(''); }}
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] border transition-colors cursor-pointer ${
+              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] border transition-all duration-300 cursor-pointer ${
                 currentId === item.id
                   ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--text-primary)]'
-                  : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
               }`}
             >
               <FileText size={14} />
@@ -271,11 +271,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         </div>
       )}
 
-      {/* ─── Coda insights from past projects ─── */}
+      {/* ─── Coda insights ─── */}
       {(!current || current.status === 'input') && !currentId && codaInsights.length > 0 && (
-        <Card className="!bg-[var(--ai)] !p-3">
-          <p className="text-[11px] font-bold text-[#2d4a7c] mb-1.5">이전 무대에서의 깨달음</p>
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--gold-muted)] p-4">
+          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--gold)]">이전 무대에서의 깨달음</p>
+          <div className="space-y-1 mt-2">
             {codaInsights.slice(0, 2).map((p) => (
               <p key={p.id} className="text-[12px] text-[var(--text-primary)] leading-relaxed">
                 <span className="font-semibold">{p.name}</span>:{' '}
@@ -283,7 +283,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               </p>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
       {/* ═══════════════════════════════════════
@@ -309,7 +309,6 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               handleAnalyze(fullPrompt);
             }}
           />
-          {/* Similar past analyses */}
           {similarItems.length > 0 && (
             <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
               <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">유사한 이전 분석</p>
@@ -318,24 +317,24 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <div
                     key={item.id}
                     onClick={() => { setCurrentId(item.id); setInputText(''); }}
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-[var(--border-subtle)] hover:border-[var(--border)] cursor-pointer transition-all duration-300"
                   >
                     <div>
                       <p className="text-[13px] font-medium text-[var(--text-primary)]">
                         {item.analysis?.surface_task || item.input_text.slice(0, 40)}
                       </p>
-                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
                         유사도 {Math.round(item.similarity * 100)}%
                       </p>
                     </div>
-                    <ArrowRight size={12} className="text-[var(--text-secondary)] shrink-0" />
+                    <ArrowRight size={12} className="text-[var(--text-tertiary)] shrink-0" />
                   </div>
                 ))}
               </div>
             </div>
           )}
           {error && (
-            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
+            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-xl px-3 py-2 mt-3">
               <AlertTriangle size={14} /> {error}
             </div>
           )}
@@ -356,125 +355,165 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       )}
 
       {/* ═══════════════════════════════════════
-          STEP 3: Review — 진단 + 방향 선택
+          STEP 3: Review — The Score Reading
          ═══════════════════════════════════════ */}
       {current?.status === 'review' && current.analysis && (() => {
         const analysis = normalizeAnalysis(current.analysis!);
         return (
-          <div className="space-y-5 animate-fade-in">
+          <div className="phrase-entrance space-y-5">
 
-            {/* ─── Card 1: 진단 (The Story Card) ─── */}
-            <Card className="!p-0 overflow-hidden">
+            {/* ─────────────────────────────────
+                Card 1: 진단 — The Score Card
+                A manuscript-like card that tells
+                the story: surface → risk → truth
+               ───────────────────────────────── */}
+            <div className="relative rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden manuscript-bg">
+              <StaffLines opacity={0.05} spacing={11} />
 
-              {/* 받은 악보 */}
-              <div className="px-5 pt-5 pb-4">
-                <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--text-secondary)] mb-1.5">
-                  받은 악보
-                </p>
-                <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-                  {analysis.surface_task}
-                </p>
-              </div>
-
-              {/* 숨겨진 불협화음 */}
-              <div className="px-5 py-4 bg-amber-50/60 border-y border-amber-200/50">
-                <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-amber-700 mb-1">
-                  숨겨진 불협화음
-                </p>
-                <p className="text-[12px] text-amber-600/80 mb-3">
-                  이 과제는 검증되지 않은 전제 위에 서 있습니다
-                </p>
-                <div className="space-y-2.5">
-                  {analysis.hidden_assumptions.map((a, i) => (
-                    <div key={i} className="pl-3 border-l-2 border-amber-400">
-                      <p className="text-[13px] text-[var(--text-primary)] font-medium leading-relaxed">
-                        &ldquo;{a.assumption}&rdquo;
-                      </p>
-                      {a.risk_if_false && (
-                        <p className="text-[12px] text-amber-700 mt-0.5 leading-relaxed">
-                          거짓이면 &rarr; {a.risk_if_false}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 이 곡의 진짜 주제 */}
-              <div className="px-5 pt-4 pb-5">
-                <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--accent)] mb-2">
-                  이 곡의 진짜 주제
-                </p>
-                <p className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">
-                  {analysis.reframed_question}
-                </p>
-                {analysis.why_reframing_matters && (
-                  <p className="text-[13px] text-[var(--text-secondary)] mt-2.5 leading-relaxed">
-                    {analysis.why_reframing_matters}
+              <div className="relative z-10">
+                {/* ── 받은 악보 (Situation) ── */}
+                <div className="px-6 pt-6 pb-5">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-2">
+                    받은 악보
                   </p>
-                )}
+                  <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
+                    {analysis.surface_task}
+                  </p>
+                </div>
 
-                {/* 사고 과정 — subtle, always visible */}
-                {analysis.reasoning_narrative && (
-                  <div className="mt-4 pt-3 border-t border-dashed border-[var(--border-subtle)]">
-                    <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
-                      {analysis.reasoning_narrative}
+                {/* ── Bar line transition ── */}
+                <BarLine type="single" height={24} className="py-0" />
+
+                {/* ── 숨겨진 불협화음 (Complication) ── */}
+                <div className="px-6 py-5 bg-gradient-to-b from-amber-50/40 to-amber-50/0">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-amber-700/70 mb-1">
+                    숨겨진 불협화음
+                  </p>
+                  <p className="text-[12px] text-amber-700/50 mb-4">
+                    이 과제는 검증되지 않은 전제 위에 서 있습니다
+                  </p>
+                  <div className="space-y-3">
+                    {analysis.hidden_assumptions.map((a, i) => (
+                      <div
+                        key={i}
+                        className="pl-4 border-l-2 border-amber-400/60"
+                      >
+                        <p className="text-[13px] text-[var(--text-primary)] font-medium leading-relaxed">
+                          &ldquo;{a.assumption}&rdquo;
+                        </p>
+                        {a.risk_if_false && (
+                          <p className="text-[12px] text-amber-700/70 mt-1 leading-relaxed">
+                            <span className="inline-block w-4 text-center mr-0.5">&rarr;</span>
+                            {a.risk_if_false}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Double bar line — key change ── */}
+                <BarLine type="double" height={24} className="py-0" />
+
+                {/* ── 이 곡의 진짜 주제 (Resolution) ── */}
+                <div className="px-6 pt-5 pb-6">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <CrescendoHairpin width={40} height={12} color="var(--accent)" />
+                    <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--accent)]">
+                      이 곡의 진짜 주제
                     </p>
                   </div>
-                )}
-              </div>
-            </Card>
+                  <p className="text-[18px] font-bold text-[var(--text-primary)] leading-snug tracking-tight animate-crescendo">
+                    {analysis.reframed_question}
+                  </p>
+                  {analysis.why_reframing_matters && (
+                    <p className="text-[13px] text-[var(--text-secondary)] mt-3 leading-relaxed">
+                      {analysis.why_reframing_matters}
+                    </p>
+                  )}
 
-            {/* ─── Card 2: 방향 선택 (The Decision Card) ─── */}
-            <Card>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="checkpoint">⚡ 판단 필요</Badge>
+                  {/* Reasoning — like an expression marking on a score */}
+                  {analysis.reasoning_narrative && (
+                    <div className="mt-5 pt-4 border-t border-dashed border-[var(--border-subtle)]">
+                      <p className="text-[12px] text-[var(--text-tertiary)] italic leading-relaxed">
+                        {analysis.reasoning_narrative}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ─────────────────────────────────
+                Card 2: 방향 선택 — The Fermata
+                Where the user pauses to decide.
+               ───────────────────────────────── */}
+            <div className="rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm p-6">
+              <div className="flex items-center gap-2.5 mb-1">
+                <Fermata size={18} color="var(--gold)" />
                 <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 해석을 선택하시겠습니까?</h3>
               </div>
-              <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+              <p className="text-[12px] text-[var(--text-tertiary)] mb-5 ml-[30px]">
                 선택한 방향이 편곡 단계의 출발점이 됩니다.
               </p>
-              <div className="space-y-2">
+
+              <div className="space-y-2.5">
                 {analysis.hidden_questions.map((hq, i) => (
-                  <Card
+                  <div
                     key={i}
-                    hoverable
-                    className={`cursor-pointer transition-all ${
-                      current.selected_question === hq.question
-                        ? '!border-[var(--accent)] !border-2 !bg-[var(--ai)]'
-                        : ''
-                    }`}
                     onClick={() => handleSelectQuestion(hq.question)}
+                    className={`
+                      relative rounded-2xl border p-4 cursor-pointer
+                      transition-all duration-300
+                      ${current.selected_question === hq.question
+                        ? 'border-[var(--accent)] bg-[var(--ai)] shadow-sm'
+                        : 'border-[var(--border-subtle)] hover:border-[var(--border)]'
+                      }
+                    `}
+                    style={{
+                      transform: current.selected_question === hq.question ? 'translateY(-1px)' : 'none',
+                    }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                        current.selected_question === hq.question
+                      <div className={`
+                        w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5
+                        transition-all duration-300
+                        ${current.selected_question === hq.question
                           ? 'border-[var(--accent)] bg-[var(--accent)]'
                           : 'border-[var(--border)]'
-                      }`}>
-                        {current.selected_question === hq.question && <Check size={12} className="text-white" />}
+                        }
+                      `}>
+                        {current.selected_question === hq.question && <Check size={10} className="text-white" />}
                       </div>
                       <div>
-                        <p className="text-[14px] font-semibold text-[var(--text-primary)]">{hq.question}</p>
-                        <p className="text-[12px] text-[var(--text-secondary)] mt-1">
-                          택하면 &rarr; {hq.reasoning}
+                        <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
+                        <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                          <span className="text-[var(--text-tertiary)]">택하면</span> &rarr; {hq.reasoning}
                         </p>
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 ))}
+
                 {/* Custom question */}
-                <Card
-                  hoverable
-                  className={`cursor-pointer ${editingQuestion ? '!border-[var(--accent)] !border-2' : ''}`}
+                <div
                   onClick={() => setEditingQuestion(true)}
+                  className={`
+                    rounded-2xl border p-4 cursor-pointer
+                    transition-all duration-300
+                    ${editingQuestion ? 'border-[var(--accent)] shadow-sm' : 'border-dashed border-[var(--border)] hover:border-[var(--border)]'}
+                  `}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                      editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'
-                    }`}>
-                      {editingQuestion && customQuestion && <Check size={12} className="text-white" />}
-                      {!(editingQuestion && customQuestion) && <Pencil size={10} className="text-[var(--text-secondary)]" />}
+                    <div className={`
+                      w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5
+                      transition-all duration-300
+                      ${editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'}
+                    `}>
+                      {editingQuestion && customQuestion
+                        ? <Check size={10} className="text-white" />
+                        : <Pencil size={8} className="text-[var(--text-tertiary)]" />
+                      }
                     </div>
                     <div className="flex-1">
                       {editingQuestion ? (
@@ -487,31 +526,35 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                             handleSelectQuestion(e.target.value);
                           }}
                           placeholder="직접 질문을 작성하세요..."
-                          className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none"
+                          className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
                         />
                       ) : (
-                        <p className="text-[14px] text-[var(--text-secondary)]">직접 질문 작성하기...</p>
+                        <p className="text-[14px] text-[var(--text-tertiary)]">직접 질문 작성하기...</p>
                       )}
                     </div>
                   </div>
-                </Card>
+                </div>
               </div>
 
-              {/* AI 한계 — inline footer */}
+              {/* AI limitations */}
               {analysis.ai_limitations.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] text-[12px] text-[var(--text-secondary)]">
-                  <span className="font-semibold">⚠ AI 한계:</span> {analysis.ai_limitations.join(' · ')}
+                <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] text-[12px] text-[var(--text-tertiary)]">
+                  <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5" />
+                  <span className="font-medium">AI 한계</span>
+                  <span className="mx-1.5">|</span>
+                  {analysis.ai_limitations.join(' · ')}
                 </div>
               )}
-            </Card>
+            </div>
 
+            {/* ─── Error ─── */}
             {error && (
-              <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-xl px-3 py-2">
                 <AlertTriangle size={14} /> {error}
               </div>
             )}
 
-            {/* Actions */}
+            {/* ─── Actions ─── */}
             <div className="flex items-center justify-between pt-1">
               <Button variant="secondary" onClick={handleReanalyze} size="sm">
                 <RotateCcw size={14} /> 재분석
@@ -528,28 +571,36 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       })()}
 
       {/* ═══════════════════════════════════════
-          STEP 4: Done
+          STEP 4: Done — Score Reading Complete
          ═══════════════════════════════════════ */}
       {current?.status === 'done' && current.analysis && (() => {
         const analysis = normalizeAnalysis(current.analysis!);
         return (
           <div className="space-y-4 animate-fade-in">
-            <Card className="!border-[var(--success)] !border-2">
-              <div className="flex items-center gap-2 text-[var(--success)] text-[13px] font-bold mb-4">
-                <Check size={14} /> 악보 해석 완료 — 주제가 잡혔습니다
-              </div>
-              <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--text-secondary)] mb-1">
-                재정의된 질문
-              </p>
-              <p className="text-[16px] font-bold text-[var(--text-primary)] leading-snug">
-                {current.selected_question || analysis.reframed_question}
-              </p>
-              {analysis.why_reframing_matters && (
-                <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-                  {analysis.why_reframing_matters}
+            <div className="relative rounded-[20px] bg-[var(--surface)] border-2 border-[var(--success)] shadow-sm overflow-hidden">
+              <StaffLines opacity={0.04} spacing={11} />
+              <div className="relative z-10 p-6">
+                <div className="flex items-center gap-2 text-[var(--success)] text-[13px] font-bold mb-5">
+                  <Check size={14} />
+                  <span>악보 해석 완료</span>
+                  <BarLine type="final" height={16} className="ml-2" />
+                  <span className="text-[var(--text-tertiary)] font-normal ml-1">주제가 잡혔습니다</span>
+                </div>
+
+                <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">
+                  재정의된 질문
                 </p>
-              )}
-            </Card>
+                <p className="text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
+                  {current.selected_question || analysis.reframed_question}
+                </p>
+                {analysis.why_reframing_matters && (
+                  <p className="text-[13px] text-[var(--text-secondary)] mt-3 leading-relaxed">
+                    {analysis.why_reframing_matters}
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
                 <ArrowRight size={14} /> 새 악보 해석
@@ -563,14 +614,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     const projectId = current.project_id || getOrCreateProject(analysis.surface_task.slice(0, 30));
                     updateItem(currentId!, { project_id: projectId });
                     addRef(projectId, { tool: 'decompose', itemId: current.id, label: analysis.surface_task });
-
                     const content = decomposeToMarkdown(current);
-                    setHandoff({
-                      from: 'decompose',
-                      fromItemId: current.id,
-                      content,
-                      projectId,
-                    });
+                    setHandoff({ from: 'decompose', fromItemId: current.id, content, projectId });
                     onNavigate('orchestrate');
                   }}
                 >
@@ -579,6 +624,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 <CopyButton getText={() => decomposeToMarkdown(current)} label="마크다운 복사" />
               </div>
             </div>
+
             <NextStepGuide
               currentTool="decompose"
               projectId={current.project_id}
