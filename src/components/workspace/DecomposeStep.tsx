@@ -20,8 +20,8 @@ import { findSimilarItems } from '@/lib/similarity';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
-import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
+import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { StaffLines, BarLine } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
 import { recordDecomposeEval, getBestStrategy, getSessionInsights } from '@/lib/eval-engine';
@@ -344,7 +344,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         : current.input_text;
       const analysis = await callLLMJson<DecomposeAnalysis>(
         [{ role: 'user', content: prompt }],
-        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT, current?.project_id), maxTokens: 2000 }
+        { system: buildEnhancedSystemPrompt(ASSUMPTION_PROMPT, current?.project_id), maxTokens: 1200 }
       );
       updateItem(currentId, { analysis, status: 'review' });
     } catch (err) {
@@ -537,216 +537,202 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         return (
           <div className="phrase-entrance space-y-5">
 
-            {/* ── 1. 받은 악보 ── */}
-            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)]">받은 악보</p>
-                {currentStrategy && (
-                  <span className="text-[11px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
-                    {STRATEGY_LABELS[currentStrategy].label}
-                  </span>
-                )}
-              </div>
-              <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
-                {analysis.surface_task}
-              </p>
-            </div>
-
-            {/* ── 2. 점검이 필요한 전제 ── */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-[14px] font-bold text-[var(--text-primary)]">점검이 필요한 전제</p>
-                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">이미 확인한 전제는 체크하세요</p>
+            {/* ═══ Stage 1: 전제 점검 (사용자 판단) ═══ */}
+            {reviewStage === 'evaluate' && (
+              <>
+                {/* 과제 요약 */}
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide">STEP 1 — 전제 점검</p>
+                    {currentStrategy && (
+                      <span className="text-[10px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
+                        {STRATEGY_LABELS[currentStrategy].label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
+                    {analysis.surface_task}
+                  </p>
+                  {analysis.reasoning_narrative && (
+                    <p className="text-[12px] text-[var(--text-secondary)] mt-2 italic leading-relaxed">
+                      {analysis.reasoning_narrative}
+                    </p>
+                  )}
                 </div>
-                {analysis.hidden_assumptions.some(a => a.verified) && (
-                  <span className="text-[12px] text-[var(--success)] font-semibold">
-                    {analysis.hidden_assumptions.filter(a => a.verified).length}건 확인됨
-                  </span>
-                )}
-              </div>
-              <div className="space-y-2.5">
-                {analysis.hidden_assumptions.map((a, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg overflow-hidden transition-all duration-300"
-                    style={{ borderLeft: `3px solid ${a.verified ? '#34d399' : '#d97706'}` }}
-                  >
-                    <div className={`px-4 py-3 ${a.verified ? 'bg-emerald-50/30' : 'bg-amber-50/40'}`}>
-                      <div className="flex items-start gap-3">
-                        <span className="text-[16px] font-bold leading-none shrink-0 pt-0.5 tabular-nums select-none" style={{ color: a.verified ? '#34d39940' : '#d9770630' }}>
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-[14px] font-semibold leading-snug transition-colors duration-300 ${
-                            a.verified ? 'text-[var(--text-secondary)] line-through decoration-1' : 'text-[var(--text-primary)]'
-                          }`}>
+
+                {/* 전제 평가 */}
+                <div>
+                  <div className="mb-3">
+                    <p className="text-[14px] font-bold text-[var(--text-primary)]">이 과제가 성립하려면</p>
+                    <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
+                      각 전제가 맞는지 판단해주세요. 당신의 평가가 질문 재정의의 방향을 결정합니다.
+                    </p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {analysis.hidden_assumptions.map((a, i) => {
+                      const ev = a.evaluation || 'uncertain';
+                      return (
+                        <div key={i} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4">
+                          <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug mb-1.5">
                             {a.assumption}
                           </p>
-                          {a.risk_if_false && !a.verified && (
-                            <p className="text-[13px] text-amber-700/70 mt-1.5 leading-relaxed">
-                              <span className="font-semibold">거짓이면</span> &rarr; {a.risk_if_false}
+                          {a.risk_if_false && (
+                            <p className="text-[12px] text-[var(--text-secondary)] mb-3">
+                              만약 아니라면 &rarr; {a.risk_if_false}
                             </p>
                           )}
+                          {/* 3-way evaluation toggle */}
+                          <div className="flex gap-1.5">
+                            {([
+                              { value: 'likely_true', label: '맞을 가능성 높음', color: 'emerald' },
+                              { value: 'uncertain', label: '확실하지 않음', color: 'amber' },
+                              { value: 'doubtful', label: '의심됨', color: 'red' },
+                            ] as const).map(({ value, label, color }) => (
+                              <button
+                                key={value}
+                                onClick={() => handleEvaluateAssumption(i, value)}
+                                className={`
+                                  flex-1 py-2 rounded-lg text-[12px] font-medium text-center
+                                  transition-all duration-200 cursor-pointer border
+                                  ${ev === value
+                                    ? color === 'emerald' ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                                      : color === 'amber' ? 'bg-amber-50 border-amber-300 text-amber-700'
+                                      : 'bg-red-50 border-red-300 text-red-700'
+                                    : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:border-[var(--border)]'
+                                  }
+                                `}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleToggleAssumption(i)}
-                          className={`
-                            shrink-0 mt-0.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium
-                            transition-all duration-300 cursor-pointer
-                            ${a.verified
-                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                              : 'bg-white/70 text-[var(--text-tertiary)] hover:bg-white hover:text-amber-700 border border-[var(--border-subtle)]'
-                            }
-                          `}
-                        >
-                          {a.verified ? (
-                            <><Check size={11} /> 확인됨</>
-                          ) : (
-                            <>확인됨?</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 3. 재정의된 질문 ── */}
-            <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
-              <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">재정의된 질문</p>
-              <p className="text-[18px] md:text-[20px] font-bold leading-snug">
-                {analysis.reframed_question}
-              </p>
-              {analysis.why_reframing_matters && (
-                <div className="mt-4 pt-3 border-t border-white/15">
-                  <p className="text-[14px] text-white/70 leading-relaxed">
-                    {analysis.why_reframing_matters}
-                  </p>
                 </div>
-              )}
-            </div>
 
-            {/* 사고 과정 — 의미있는 인사이트로 표현 */}
-            {analysis.reasoning_narrative && (
-              <div className="flex items-start gap-3 bg-[var(--ai)] rounded-lg px-4 py-3">
-                <Lightbulb size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[11px] font-bold text-[#2d4a7c] uppercase tracking-wider mb-1">왜 이렇게 재정의했는가</p>
-                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-                    {analysis.reasoning_narrative}
-                  </p>
+                {/* Stage 1 → Stage 2 버튼 */}
+                <div className="flex items-center justify-between pt-2">
+                  <Button variant="secondary" onClick={handleReanalyze} size="sm">
+                    <RotateCcw size={14} /> 전제 재분석
+                  </Button>
+                  <Button onClick={handleReframe} disabled={reframing}>
+                    {reframing ? '질문을 재정의하고 있습니다...' : '질문 재정의하기 →'}
+                  </Button>
                 </div>
-              </div>
+              </>
             )}
 
-            {/* ── Section divider ── */}
-            <div className="flex items-center gap-3 pt-2">
-              <div className="h-px flex-1 bg-[var(--border)]" />
-              <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">방향 선택</span>
-              <div className="h-px flex-1 bg-[var(--border)]" />
-            </div>
+            {/* ═══ Stage 2: 질문 재정의 (사용자 평가 기반) ═══ */}
+            {reviewStage === 'reframe' && (
+              <>
+                {/* 평가 요약 */}
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+                  <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide mb-3">STEP 2 — 질문 재정의</p>
+                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">당신의 전제 평가를 바탕으로 도출된 질문입니다.</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysis.hidden_assumptions.map((a, i) => {
+                      const ev = a.evaluation || 'uncertain';
+                      const color = ev === 'doubtful' ? 'bg-red-50 text-red-700' : ev === 'likely_true' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
+                      const label = ev === 'doubtful' ? '의심' : ev === 'likely_true' ? '맞음' : '불확실';
+                      return (
+                        <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${color}`}>
+                          {label}: {a.assumption.slice(0, 20)}...
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* ─── Card 2: 방향 선택 ─── */}
-            <div className="rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm p-6">
-              <div className="flex items-center gap-2.5 mb-1">
-                <Fermata size={18} color="var(--gold)" />
-                <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 해석을 선택하시겠습니까?</h3>
-              </div>
-              <p className="text-[13px] text-[var(--text-secondary)] mb-5 ml-[30px]">
-                선택한 방향이 편곡 단계의 출발점이 됩니다.
-              </p>
+                {/* 재정의된 질문 */}
+                {analysis.reframed_question && (
+                  <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
+                    <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">재정의된 질문</p>
+                    <p className="text-[18px] md:text-[20px] font-bold leading-snug">
+                      {analysis.reframed_question}
+                    </p>
+                    {analysis.why_reframing_matters && (
+                      <p className="text-[14px] text-white/70 mt-3 leading-relaxed">
+                        {analysis.why_reframing_matters}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-              <div className="space-y-2.5">
-                {analysis.hidden_questions.map((hq, i) => (
-                  <div
-                    key={i}
-                    onClick={() => handleSelectQuestion(hq.question)}
-                    className={`
-                      relative rounded-2xl border p-4 cursor-pointer
-                      transition-all duration-300
-                      ${current.selected_question === hq.question
-                        ? 'border-[var(--accent)] bg-[var(--ai)] shadow-sm'
-                        : 'border-[var(--border-subtle)] hover:border-[var(--border)]'
-                      }
-                    `}
-                    style={{
-                      transform: current.selected_question === hq.question ? 'translateY(-1px)' : 'none',
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`
-                        w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5
-                        transition-all duration-300
-                        ${current.selected_question === hq.question
-                          ? 'border-[var(--accent)] bg-[var(--accent)]'
-                          : 'border-[var(--border)]'
-                        }
-                      `}>
-                        {current.selected_question === hq.question && <Check size={10} className="text-white" />}
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
-                        <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                          <span className="text-[var(--text-tertiary)]">택하면</span> &rarr; {hq.reasoning}
-                        </p>
+                {/* 방향 선택 */}
+                {analysis.hidden_questions.length > 0 && (
+                  <div>
+                    <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">어떤 방향을 추구하시겠습니까?</p>
+                    <p className="text-[12px] text-[var(--text-secondary)] mb-4">선택한 방향이 편곡 단계의 출발점이 됩니다.</p>
+                    <div className="space-y-2.5">
+                      {analysis.hidden_questions.map((hq: any, i: number) => (
+                        <div
+                          key={i}
+                          onClick={() => handleSelectQuestion(hq.question)}
+                          className={`rounded-xl border p-4 cursor-pointer transition-all duration-300 ${
+                            current.selected_question === hq.question
+                              ? 'border-[var(--accent)] bg-[var(--ai)] shadow-sm -translate-y-0.5'
+                              : 'border-[var(--border-subtle)] hover:border-[var(--border)]'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                              current.selected_question === hq.question ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]'
+                            }`}>
+                              {current.selected_question === hq.question && <Check size={10} className="text-white" />}
+                            </div>
+                            <div>
+                              <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
+                              <p className="text-[12px] text-[var(--text-secondary)] mt-1.5">{hq.reasoning}</p>
+                              {hq.source_assumption && (
+                                <p className="text-[11px] text-[var(--accent)] mt-1">
+                                  &larr; {hq.source_assumption}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {/* Custom question */}
+                      <div
+                        onClick={() => setEditingQuestion(true)}
+                        className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                          editingQuestion ? 'border-[var(--accent)]' : 'border-dashed border-[var(--border)]'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                            editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'
+                          }`}>
+                            {editingQuestion && customQuestion ? <Check size={10} className="text-white" /> : <Pencil size={8} className="text-[var(--text-tertiary)]" />}
+                          </div>
+                          <div className="flex-1">
+                            {editingQuestion ? (
+                              <input type="text" autoFocus value={customQuestion}
+                                onChange={(e) => { setCustomQuestion(e.target.value); handleSelectQuestion(e.target.value); }}
+                                placeholder="직접 질문을 작성하세요..."
+                                className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
+                              />
+                            ) : (
+                              <p className="text-[14px] text-[var(--text-tertiary)]">직접 질문 작성하기...</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                ))}
+                )}
 
-                {/* Custom question */}
-                <div
-                  onClick={() => setEditingQuestion(true)}
-                  className={`
-                    rounded-2xl border p-4 cursor-pointer
-                    transition-all duration-300
-                    ${editingQuestion ? 'border-[var(--accent)] shadow-sm' : 'border-dashed border-[var(--border)] hover:border-[var(--border)]'}
-                  `}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`
-                      w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5
-                      transition-all duration-300
-                      ${editingQuestion && customQuestion ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-dashed border-[var(--border)]'}
-                    `}>
-                      {editingQuestion && customQuestion
-                        ? <Check size={10} className="text-white" />
-                        : <Pencil size={8} className="text-[var(--text-tertiary)]" />
-                      }
-                    </div>
-                    <div className="flex-1">
-                      {editingQuestion ? (
-                        <input
-                          type="text"
-                          autoFocus
-                          value={customQuestion}
-                          onChange={(e) => {
-                            setCustomQuestion(e.target.value);
-                            handleSelectQuestion(e.target.value);
-                          }}
-                          placeholder="직접 질문을 작성하세요..."
-                          className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
-                        />
-                      ) : (
-                        <p className="text-[14px] text-[var(--text-tertiary)]">직접 질문 작성하기...</p>
-                      )}
-                    </div>
+                {/* AI limitations */}
+                {analysis.ai_limitations?.length > 0 && (
+                  <div className="text-[12px] text-[var(--text-tertiary)]">
+                    <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5" />
+                    AI 한계: {analysis.ai_limitations.join(' · ')}
                   </div>
-                </div>
-              </div>
-
-              {/* AI limitations */}
-              {analysis.ai_limitations.length > 0 && (
-                <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] text-[12px] text-[var(--text-tertiary)]">
-                  <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5" />
-                  <span className="font-medium">AI 한계</span>
-                  <span className="mx-1.5">|</span>
-                  {analysis.ai_limitations.join(' · ')}
-                </div>
-              )}
-            </div>
+                )}
+              </>
+            )}
 
             {/* ─── Error ─── */}
             {error && (
@@ -755,18 +741,20 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               </div>
             )}
 
-            {/* ─── Actions ─── */}
-            <div className="flex items-center justify-between pt-1">
-              <Button variant="secondary" onClick={handleReanalyze} size="sm">
-                <RotateCcw size={14} /> 재분석
-              </Button>
-              <div className="flex gap-2">
-                <CopyButton getText={() => decomposeToMarkdown(current)} />
-                <Button onClick={handleConfirm} disabled={!current.selected_question}>
-                  <Check size={14} /> 확정
+            {/* ─── Actions (Stage 2 only) ─── */}
+            {reviewStage === 'reframe' && (
+              <div className="flex items-center justify-between pt-1">
+                <Button variant="secondary" onClick={() => setReviewStage('evaluate')} size="sm">
+                  <RotateCcw size={14} /> 전제 다시 평가
                 </Button>
+                <div className="flex gap-2">
+                  <CopyButton getText={() => decomposeToMarkdown(current)} />
+                  <Button onClick={handleConfirm} disabled={!current.selected_question}>
+                    <Check size={14} /> 확정
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         );
       })()}

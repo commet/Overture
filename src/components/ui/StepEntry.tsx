@@ -15,6 +15,8 @@ interface EntryStep {
   key: string;
   question: string;
   options: EntryOption[];
+  locked?: boolean;
+  unlockMessage?: string;
 }
 
 interface StepEntryProps {
@@ -107,6 +109,21 @@ export function StepEntry({
             )}
           </div>
 
+          {/* Locked step */}
+          {currentEntryStep.locked ? (
+            <div className="text-center py-8 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)]">
+              <span className="text-[24px]">🔒</span>
+              <p className="text-[13px] text-[var(--text-secondary)] mt-2">
+                {currentEntryStep.unlockMessage || '아직 열리지 않은 질문입니다'}
+              </p>
+              <button
+                onClick={() => setCurrentStep(prev => prev + 1)}
+                className="mt-3 text-[12px] text-[var(--accent)] hover:underline cursor-pointer"
+              >
+                건너뛰기 →
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-2">
             {currentEntryStep.options.map((option) => {
               const isSelected = selections[currentEntryStep.key] === option.value;
@@ -131,6 +148,7 @@ export function StepEntry({
               );
             })}
           </div>
+          )}
 
           {/* Selected chips summary */}
           {Object.keys(selections).length > 0 && (
