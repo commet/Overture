@@ -229,6 +229,7 @@ export interface Project {
   description: string;
   refs: ProjectRef[];
   meta_reflection?: MetaReflection;
+  team_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -359,6 +360,54 @@ export interface PersonaAccuracyRating {
   which_aspects_accurate: string[];
   which_aspects_inaccurate: string[];
   created_at: string;
+}
+
+// ─── Team Collaboration ───
+
+export interface Team {
+  id: string;
+  name: string;
+  slug: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member';
+  created_at: string;
+  // Joined from auth (client-side only)
+  email?: string;
+  display_name?: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  team_id: string;
+  email: string;
+  role: 'admin' | 'member';
+  invited_by: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+}
+
+export interface TeamReviewInput {
+  id: string;
+  project_id: string;
+  user_id: string;
+  phase: 'decompose' | 'orchestrate' | 'rehearsal';
+  target_type: 'assumption' | 'step' | 'risk' | 'direction' | 'general';
+  target_id: string | null;
+  input_type: 'rating' | 'concern' | 'endorsement' | 'alternative';
+  rating: number | null;
+  comment: string | null;
+  visible: boolean;
+  created_at: string;
+  // Client-side only
+  user_name?: string;
 }
 
 // ─── Settings ───

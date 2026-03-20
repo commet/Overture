@@ -1,0 +1,221 @@
+import { create } from 'zustand';
+import type { Team, TeamMember, TeamInvite, TeamReviewInput } from '@/stores/types';
+import { supabase, getCurrentUserId } from '@/lib/supabase';
+
+interface TeamState {
+  teams: Team[];
+  currentTeamId: string | null;
+  members: TeamMember[];
+  invites: TeamInvite[];
+  reviewInputs: TeamReviewInput[];
+
+  // Team management
+  loadTeams: () => Promise<void>;
+  createTeam: (name: string) => Promise<Team | null>;
+  setCurrentTeam: (teamId: string | null) => void;
+
+  // Members
+  loadMembers: (teamId: string) => Promise<void>;
+  inviteMember: (teamId: string, email: string, role?: 'admin' | 'member') => Promise<boolean>;
+  removeMember: (memberId: string) => Promise<void>;
+
+  // Invites
+  loadInvites: (teamId: string) => Promise<void>;
+  acceptInvite: (inviteId: string) => Promise<boolean>;
+  loadMyInvites: () => Promise<TeamInvite[]>;
+
+  // Review inputs (structured team feedback)
+  loadReviewInputs: (projectId: string) => Promise<void>;
+  submitReviewInput: (input: Omit<TeamReviewInput, 'id' | 'created_at' | 'visible'>) => Promise<void>;
+  revealInputs: (projectId: string, phase: string) => Promise<void>;
+
+  // Helpers
+  getCurrentTeam: () => Team | undefined;
+  isTeamOwner: () => boolean;
+}
+
+export const useTeamStore = create<TeamState>((set, get) => ({
+  teams: [],
+  currentTeamId: null,
+  members: [],
+  invites: [],
+  reviewInputs: [],
+
+  loadTeams: async () => {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+
+    const { data } = await supabase
+      .from('teams')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (data) set({ teams: data });
+  },
+
+  createTeam: async (name: string) => {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').replace(/-+/g, '-').slice(0, 30);
+
+    const { data: team, error } = await supabase
+      .from('teams')
+      .insert({ name, slug, owner_id: userId })
+      .select()
+      .single();
+
+    if (error || !team) return null;
+
+    // Add creator as owner member
+    await supabase
+      .from('team_members')
+      .insert({ team_id: team.id, user_id: userId, role: 'owner' });
+
+    set({ teams: [team, ...get().teams], currentTeamId: team.id });
+    return team;
+  },
+
+  setCurrentTeam: (teamId) => set({ currentTeamId: teamId }),
+
+  loadMembers: async (teamId: string) => {
+
+    const { data } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at');
+
+    if (data) set({ members: data });
+  },
+
+  inviteMember: async (teamId: string, email: string, role = 'member') => {
+    const userId = await getCurrentUserId();
+    if (!userId) return false;
+
+
+    const { error } = await supabase
+      .from('team_invites')
+      .insert({ team_id: teamId, email: email.toLowerCase().trim(), role, invited_by: userId });
+
+    if (error) return false;
+
+    // Reload invites
+    await get().loadInvites(teamId);
+    return true;
+  },
+
+  removeMember: async (memberId: string) => {
+
+    await supabase.from('team_members').delete().eq('id', memberId);
+    set({ members: get().members.filter(m => m.id !== memberId) });
+  },
+
+  loadInvites: async (teamId: string) => {
+
+    const { data } = await supabase
+      .from('team_invites')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false });
+
+    if (data) set({ invites: data });
+  },
+
+  acceptInvite: async (inviteId: string) => {
+    const userId = await getCurrentUserId();
+    if (!userId) return false;
+
+
+    // Get the invite
+    const { data: invite } = await supabase
+      .from('team_invites')
+      .select('*')
+      .eq('id', inviteId)
+      .single();
+
+    if (!invite) return false;
+
+    // Add as team member
+    const { error: memberError } = await supabase
+      .from('team_members')
+      .insert({ team_id: invite.team_id, user_id: userId, role: invite.role });
+
+    if (memberError) return false;
+
+    // Update invite status
+    await supabase
+      .from('team_invites')
+      .update({ status: 'accepted' })
+      .eq('id', inviteId);
+
+    // Reload teams
+    await get().loadTeams();
+    return true;
+  },
+
+  loadMyInvites: async () => {
+
+    const { data } = await supabase
+      .from('team_invites')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    return data || [];
+  },
+
+  // ── Review Inputs (Structured Team Feedback) ──
+
+  loadReviewInputs: async (projectId: string) => {
+
+    const { data } = await supabase
+      .from('team_review_inputs')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at');
+
+    if (data) set({ reviewInputs: data });
+  },
+
+  submitReviewInput: async (input) => {
+
+    const { data, error } = await supabase
+      .from('team_review_inputs')
+      .insert({ ...input, visible: false })
+      .select()
+      .single();
+
+    if (data && !error) {
+      set({ reviewInputs: [...get().reviewInputs, data] });
+    }
+  },
+
+  revealInputs: async (projectId: string, phase: string) => {
+
+    await supabase
+      .from('team_review_inputs')
+      .update({ visible: true })
+      .eq('project_id', projectId)
+      .eq('phase', phase);
+
+    // Reload to get all visible inputs
+    await get().loadReviewInputs(projectId);
+  },
+
+  // ── Helpers ──
+
+  getCurrentTeam: () => {
+    const { teams, currentTeamId } = get();
+    return teams.find(t => t.id === currentTeamId);
+  },
+
+  isTeamOwner: () => {
+    const { members, currentTeamId } = get();
+    if (!currentTeamId) return false;
+    // This is checked client-side for UI, but server enforces via RLS
+    return members.some(m => m.team_id === currentTeamId && m.role === 'owner');
+  },
+}));
