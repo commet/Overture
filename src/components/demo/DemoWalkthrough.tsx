@@ -27,17 +27,17 @@ const DEMO = {
   decompose: {
     surface_task: '넥스트라 계약 유지를 위한 대응 방안을 2주 안에 수립',
     hidden_assumptions: [
-      { assumption: '넥스트라을 반드시 유지해야 한다', risk_if_false: '한솔이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
-      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 한솔 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
+      { assumption: '넥스트라을 반드시 유지해야 한다', risk_if_false: '넥스트라이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
+      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 넥스트라 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
       { assumption: '가격 양보나 추가 서비스로 잡을 수 있다', risk_if_false: '이미 적자인 계약에서 추가 양보는 손실 확대. 선례가 되면 다른 고객도 같은 요구' },
     ],
     reframed_question: '넥스트라 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
     why_reframing_matters: "'어떻게 잡을까'가 아니라 '잡아야 하는가, 어떤 조건에서 잡아야 하는가'로 바꾸면 대표에게 Go/No-Go 의사결정 근거를 제공할 수 있습니다.",
-    reasoning_narrative: '처음에는 "한솔을 지켜야 한다"가 과제였지만, 매출 의존도 40% 자체가 문제의 원인이었다. 한솔 커스텀에 끌려다니느라 다른 고객 50곳의 요구가 1년째 밀리고 있었다.',
+    reasoning_narrative: '처음에는 "넥스트라을 지켜야 한다"가 과제였지만, 매출 의존도 40% 자체가 문제의 원인이었다. 넥스트라 커스텀에 끌려다니느라 다른 고객 50곳의 요구가 1년째 밀리고 있었다.',
     hidden_questions: [
-      { question: '한솔 계약의 실제 수익성(순이익 기여도)은 얼마이며, 이탈 시 재무 영향의 실체는?', reasoning: '매출 40%가 이익 40%는 아닐 수 있다. 숫자를 보면 판단이 달라진다' },
-      { question: '한솔 의존도를 줄이면서 동시에 관계를 유지하는 조건부 전략이 가능한가?', reasoning: '올인 아니면 포기가 아닌 제3의 선택지를 설계할 수 있다' },
-      { question: '한솔이 빠진 자리를 메울 수 있는 파이프라인은 현실적으로 존재하는가?', reasoning: '대안이 있어야 놓을 수 있는 카드가 된다' },
+      { question: '넥스트라 계약의 실제 수익성(순이익 기여도)은 얼마이며, 이탈 시 재무 영향의 실체는?', reasoning: '매출 40%가 이익 40%는 아닐 수 있다. 숫자를 보면 판단이 달라진다' },
+      { question: '넥스트라 의존도를 줄이면서 동시에 관계를 유지하는 조건부 전략이 가능한가?', reasoning: '올인 아니면 포기가 아닌 제3의 선택지를 설계할 수 있다' },
+      { question: '넥스트라이 빠진 자리를 메울 수 있는 파이프라인은 현실적으로 존재하는가?', reasoning: '대안이 있어야 놓을 수 있는 카드가 된다' },
     ],
   },
 
@@ -45,20 +45,20 @@ const DEMO = {
     governing_idea: '감정적 "무조건 유지"가 아니라, 수익성 팩트에 기반한 3가지 시나리오를 만들어 대표가 선택할 수 있게 한다',
     storyline: {
       situation: '넥스트라은 3년간 최대 고객이었고, 매출의 40%를 차지한다. 갑작스러운 계약 재검토 통보에 사내가 패닉 상태다.',
-      complication: '그러나 한솔 계약은 커스텀 요구가 과중하여 실제 마진이 낮고, 제품 로드맵이 1년째 밀리고 있다. "무조건 잡아라"가 최선인지 불확실하다.',
-      resolution: '먼저 한솔 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
+      complication: '그러나 넥스트라 계약은 커스텀 요구가 과중하여 실제 마진이 낮고, 제품 로드맵이 1년째 밀리고 있다. "무조건 잡아라"가 최선인지 불확실하다.',
+      resolution: '먼저 넥스트라 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
     },
     steps: [
-      { task: '한솔 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일' },
-      { task: '한솔 이탈 사유 파악 (내부 소스 + 경쟁사 동향)', actor: 'human' as const, expected_output: '이탈 사유 인텔리전스 보고서', checkpoint: false, estimated_time: '3일' },
+      { task: '넥스트라 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일' },
+      { task: '넥스트라 이탈 사유 파악 (내부 소스 + 경쟁사 동향)', actor: 'human' as const, expected_output: '이탈 사유 인텔리전스 보고서', checkpoint: false, estimated_time: '3일' },
       { task: '3가지 시나리오 재무 모델링', actor: 'ai' as const, expected_output: '시나리오별 12개월 P&L 시뮬레이션', checkpoint: false, estimated_time: '4시간' },
       { task: '대체 매출 파이프라인 현실성 평가', actor: 'both' as const, expected_output: '전환 가능 고객 리스트 + 시점 매트릭스', checkpoint: true, checkpoint_reason: "'놓을 수 있는 카드'인지 여기서 결정", estimated_time: '2일' },
       { task: '대표 보고용 의사결정 문서 작성', actor: 'human' as const, expected_output: '시나리오 비교표 + 추천안 (10p)', checkpoint: true, checkpoint_reason: '최종 보고 전 프레이밍 검수', estimated_time: '1일' },
     ],
     key_assumptions: [
-      { assumption: '재무팀이 한솔 계약의 정밀 원가 데이터를 제공할 수 있다', importance: 'high' as const, if_wrong: '수익성 분석 신뢰도가 떨어져 시나리오 비교 불가' },
-      { assumption: '한솔의 해지 검토가 협상 전술이지 확정은 아니다', importance: 'high' as const, if_wrong: '이미 경쟁사와 계약 서명 단계라면 유지 시나리오 자체가 무의미' },
-      { assumption: '다른 고객사에게 한솔 이탈 소식이 퍼지지 않았다', importance: 'medium' as const, if_wrong: '연쇄 이탈 리스크 발생. 위기 커뮤니케이션이 별도 필요' },
+      { assumption: '재무팀이 넥스트라 계약의 정밀 원가 데이터를 제공할 수 있다', importance: 'high' as const, if_wrong: '수익성 분석 신뢰도가 떨어져 시나리오 비교 불가' },
+      { assumption: '넥스트라의 해지 검토가 협상 전술이지 확정은 아니다', importance: 'high' as const, if_wrong: '이미 경쟁사와 계약 서명 단계라면 유지 시나리오 자체가 무의미' },
+      { assumption: '다른 고객사에게 넥스트라 이탈 소식이 퍼지지 않았다', importance: 'medium' as const, if_wrong: '연쇄 이탈 리스크 발생. 위기 커뮤니케이션이 별도 필요' },
     ],
   },
 
@@ -67,22 +67,22 @@ const DEMO = {
     role: 'CEO / 대표이사',
     traits: ['매출 중심 사고', '관계 중시', '리스크 회피'],
     feedback: {
-      overall_reaction: '시나리오 3개를 보여주는 건 좋아. 근데 "전략적 이별" 시나리오까지 넣을 거면, 내가 한솔 김 사장한테 전화해서 뭐라고 말해야 하는지까지 나와야 해.',
-      failure_scenario: '수익성 분석에서 한솔이 적자라는 게 나오는데, 이 정보가 한솔 측에 새어나감. "너네가 우리를 버리려 했다"는 인식이 생기면서 관계 완전 파탄.',
+      overall_reaction: '시나리오 3개를 보여주는 건 좋아. 근데 "전략적 이별" 시나리오까지 넣을 거면, 내가 넥스트라 이 대표한테 전화해서 뭐라고 말해야 하는지까지 나와야 해.',
+      failure_scenario: '수익성 분석에서 넥스트라이 적자라는 게 나오는데, 이 정보가 넥스트라 측에 새어나감. "너네가 우리를 버리려 했다"는 인식이 생기면서 관계 완전 파탄.',
       classified_risks: [
-        { text: '한솔이 이미 경쟁사와 MOU를 맺은 상태라면, 우리의 유지 시나리오는 시간 낭비다. 72시간 내에 한솔 내부 상황을 파악하지 못하면 모든 대응이 늦다.', category: 'critical' as const },
-        { text: '한솔 이탈 소식이 다른 고객에게 퍼질 수 있다는 우려. 하지만 상위 10개 고객 중 한솔과 직접 경쟁하는 곳은 없어서 사전 커뮤니케이션으로 통제 가능.', category: 'manageable' as const },
-        { text: '솔직히 한솔 계약은 내가 3년 전에 김 사장 골프장에서 따온 건데... 팀에서 "적자 계약"이라는 걸 1년 전부터 알고 있었으면서 아무도 나한테 보고를 안 했어. 그게 더 문제야.', category: 'unspoken' as const },
+        { text: '넥스트라이 이미 경쟁사와 MOU를 맺은 상태라면, 우리의 유지 시나리오는 시간 낭비다. 72시간 내에 넥스트라 내부 상황을 파악하지 못하면 모든 대응이 늦다.', category: 'critical' as const },
+        { text: '넥스트라 이탈 소식이 다른 고객에게 퍼질 수 있다는 우려. 하지만 상위 10개 고객 중 넥스트라과 직접 경쟁하는 곳은 없어서 사전 커뮤니케이션으로 통제 가능.', category: 'manageable' as const },
+        { text: '솔직히 넥스트라 계약은 내가 3년 전에 이 대표 골프장에서 따온 건데... 팀에서 "적자 계약"이라는 걸 1년 전부터 알고 있었으면서 아무도 나한테 보고를 안 했어. 그게 더 문제야.', category: 'unspoken' as const },
       ],
-      approval_conditions: ['한솔 실수익률 데이터가 재무팀 검증을 거칠 것', '"조건부 축소" 시나리오에 한솔이 수용 가능한 구체적 조건 3개를 포함할 것'],
+      approval_conditions: ['넥스트라 실수익률 데이터가 재무팀 검증을 거칠 것', '"조건부 축소" 시나리오에 넥스트라이 수용 가능한 구체적 조건 3개를 포함할 것'],
     },
   },
 
   convergence: {
     iterations: [
-      { number: 1, score: 0.45, resolved: 2, unresolved: 3, total: 5, summary: '초기 분석 완료. 한솔 수익성 데이터 미확보, 한솔 측 내부 상황 미파악.' },
-      { number: 2, score: 0.78, resolved: 4, unresolved: 1, total: 5, summary: '재무팀 원가 데이터 확보 (한솔 마진 -8% 확인). 경쟁사 MOU 미체결 확인. 용어 변경: "전략적 이별" → "포트폴리오 재구성".' },
-      { number: 3, score: 0.92, resolved: 5, unresolved: 0, total: 5, summary: '대표가 한솔 김 사장과 사전 통화 — "조건부 축소"에 긍정 반응. 대체 파이프라인 3건 구체화. 모든 이해관계자 정렬.' },
+      { number: 1, score: 0.45, resolved: 2, unresolved: 3, total: 5, summary: '초기 분석 완료. 넥스트라 수익성 데이터 미확보, 넥스트라 측 내부 상황 미파악.' },
+      { number: 2, score: 0.78, resolved: 4, unresolved: 1, total: 5, summary: '재무팀 원가 데이터 확보 (넥스트라 마진 -8% 확인). 경쟁사 MOU 미체결 확인. 용어 변경: "전략적 이별" → "포트폴리오 재구성".' },
+      { number: 3, score: 0.92, resolved: 5, unresolved: 0, total: 5, summary: '대표가 넥스트라 이 대표과 사전 통화 — "조건부 축소"에 긍정 반응. 대체 파이프라인 3건 구체화. 모든 이해관계자 정렬.' },
     ],
   },
 };
@@ -302,7 +302,7 @@ function IntroSection() {
         <Card className="!bg-[var(--bg)]">
           <p className="text-[12px] font-bold text-[var(--text-secondary)] mb-2">보통이라면?</p>
           <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-            바로 한솔 담당자에게 전화하고,<br />할인 제안서를 준비한다.
+            바로 넥스트라 담당자에게 전화하고,<br />할인 제안서를 준비한다.
           </p>
         </Card>
         <Card className="!bg-[var(--ai)]">
@@ -333,7 +333,7 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
           진짜 질문을 찾아내다
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          &ldquo;한솔을 잡아야 한다&rdquo;는 과제 뒤에 검증되지 않은 전제 3개가 숨어 있었습니다.
+          &ldquo;넥스트라을 잡아야 한다&rdquo;는 과제 뒤에 검증되지 않은 전제 3개가 숨어 있었습니다.
         </p>
       </div>
 
@@ -404,7 +404,7 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
       <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">핵심:</span> 대부분 &ldquo;한솔을 어떻게 잡을까&rdquo;부터 시작하지만, 전제가 거짓이면 보고서 전체가 무의미합니다. Overture는 실행 전에 이런 불협화음을 찾아냅니다.
+          <span className="font-bold">핵심:</span> 대부분 &ldquo;넥스트라을 어떻게 잡을까&rdquo;부터 시작하지만, 전제가 거짓이면 보고서 전체가 무의미합니다. Overture는 실행 전에 이런 불협화음을 찾아냅니다.
         </p>
       </div>
     </div>
@@ -417,18 +417,30 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
 
 function OrchestrateSection() {
   const o = DEMO.orchestrate;
-  const steps = o.steps;
-  const aiCount = steps.filter(s => s.actor === 'ai').length;
-  const humanCount = steps.filter(s => s.actor === 'human').length;
-  const bothCount = steps.filter(s => s.actor === 'both').length;
-  const checkpoints = steps.filter(s => s.checkpoint).length;
+  const [demoSteps, setDemoSteps] = useState(o.steps.map(s => ({ ...s, actor: s.actor as 'ai' | 'human' | 'both' })));
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
+  const [changedStep, setChangedStep] = useState<number | null>(null);
+
+  const cycleActor = (index: number) => {
+    const order: Array<'ai' | 'human' | 'both'> = ['ai', 'human', 'both'];
+    setDemoSteps(prev => prev.map((s, i) => {
+      if (i !== index) return s;
+      const currentIdx = order.indexOf(s.actor);
+      return { ...s, actor: order[(currentIdx + 1) % 3] };
+    }));
+    setChangedStep(index);
+    setTimeout(() => setChangedStep(null), 600);
+  };
 
   const actorConfig: Record<string, { label: string; color: string; text: string; bg: string }> = {
-    ai: { label: 'AI 실행', color: '#3b6dcc', text: '#2d4a7c', bg: 'rgba(59,109,204,0.06)' },
-    human: { label: '사람 판단', color: '#b8860b', text: '#8b6914', bg: 'rgba(184,134,11,0.06)' },
-    both: { label: '협업', color: '#2d6b2d', text: '#2d6b2d', bg: 'rgba(45,107,45,0.06)' },
+    ai: { label: 'AI', color: '#3b6dcc', text: '#2d4a7c', bg: 'rgba(59,109,204,0.08)' },
+    human: { label: '사람', color: '#b8860b', text: '#8b6914', bg: 'rgba(184,134,11,0.08)' },
+    both: { label: '협업', color: '#2d6b2d', text: '#2d6b2d', bg: 'rgba(45,107,45,0.08)' },
   };
+  const aiCount = demoSteps.filter(s => s.actor === 'ai').length;
+  const humanCount = demoSteps.filter(s => s.actor === 'human').length;
+  const bothCount = demoSteps.filter(s => s.actor === 'both').length;
+  const checkpoints = demoSteps.filter(s => s.checkpoint).length;
 
   return (
     <div className="space-y-5">
@@ -440,7 +452,7 @@ function OrchestrateSection() {
           실행을 설계하다
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          AI와 사람의 역할을 나누고, 체크포인트를 배치합니다.
+          AI와 사람의 역할을 나누고, 체크포인트를 배치합니다. <strong className="text-[var(--text-primary)]">담당을 클릭하면 변경할 수 있습니다.</strong>
         </p>
       </div>
 
@@ -452,115 +464,101 @@ function OrchestrateSection() {
         </div>
       </div>
 
-      {/* Governing idea + storyline */}
-      <Card className="!bg-[var(--ai)]">
+      {/* Governing idea */}
+      <div className="rounded-2xl bg-gradient-to-br from-[var(--ai)] to-[#dde5f5] p-5 border border-[#2d4a7c]/10">
         <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
           <Bot size={14} /> 핵심 방향
         </div>
         <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{o.governing_idea}</p>
-        <div className="space-y-2 text-[13px] border-t border-[#2d4a7c]/10 pt-3">
-          <div><span className="font-semibold text-[#2d4a7c]">상황:</span> <span className="text-[var(--text-primary)]">{o.storyline.situation}</span></div>
-          <div><span className="font-semibold text-[#2d4a7c]">문제:</span> <span className="text-[var(--text-primary)]">{o.storyline.complication}</span></div>
-          <div><span className="font-semibold text-[#2d4a7c]">접근:</span> <span className="text-[var(--text-primary)]">{o.storyline.resolution}</span></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[12px]">
+          <div className="bg-white/60 rounded-lg px-3 py-2">
+            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">상황</span>
+            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.situation}</p>
+          </div>
+          <div className="bg-white/60 rounded-lg px-3 py-2">
+            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">문제</span>
+            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.complication}</p>
+          </div>
+          <div className="bg-white/60 rounded-lg px-3 py-2">
+            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">접근</span>
+            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.resolution}</p>
+          </div>
         </div>
-      </Card>
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 pb-3 border-b border-[var(--border-subtle)]">
-        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-semibold">범례</span>
-        {Object.entries(actorConfig).map(([key, v]) => (
-          <span key={key} className="flex items-center gap-1.5 text-[11px]" style={{ color: v.text }}>
-            <span className="inline-block w-2.5 h-2.5 rounded-[2px]" style={{ backgroundColor: v.color }} />
-            <span className="font-medium">{v.label}</span>
-          </span>
-        ))}
-        <span className="flex items-center gap-1 text-[11px] text-amber-700">
-          <Flag size={10} />
-          <span className="font-medium">체크포인트</span>
-        </span>
       </div>
 
-      {/* Workflow steps — swim lane cards */}
+      {/* Workflow steps — interactive */}
       <div className="space-y-2">
-        {steps.map((s, i) => {
+        {demoSteps.map((s, i) => {
           const config = actorConfig[s.actor];
-          const isExpanded = expandedStep === i;
+          const justChanged = changedStep === i;
           return (
             <div
               key={i}
-              className="rounded-lg overflow-hidden cursor-pointer transition-all"
-              style={{ borderLeft: `3px solid ${config.color}` }}
-              onClick={() => setExpandedStep(prev => prev === i ? null : i)}
+              className={`rounded-xl overflow-hidden transition-all border ${justChanged ? 'ring-2 ring-[var(--accent)] ring-offset-2' : 'border-[var(--border-subtle)]'}`}
             >
               {s.checkpoint && (
-                <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: '#fffbf0', borderBottom: '1px solid #f0e6c8' }}>
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200/60">
                   <Flag size={12} className="text-amber-600 shrink-0" />
-                  <span className="text-[11px] font-semibold text-amber-700">체크포인트</span>
+                  <span className="text-[11px] font-bold text-amber-700">체크포인트</span>
                   {s.checkpoint_reason && (
-                    <span className="text-[11px] text-amber-600/80">&mdash; {s.checkpoint_reason}</span>
+                    <span className="text-[11px] text-amber-600/70">&mdash; {s.checkpoint_reason}</span>
                   )}
                 </div>
               )}
-              <div className="px-4 py-3.5" style={{ backgroundColor: config.bg }}>
+              <div className="px-4 py-3.5 bg-[var(--surface)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="text-[18px] font-bold tabular-nums leading-none pt-0.5 shrink-0 select-none" style={{ color: `${config.color}40` }}>
+                    <span className="text-[20px] font-extrabold tabular-nums leading-none pt-0.5 shrink-0 select-none" style={{ color: `${config.color}25` }}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.text }}>
-                        {config.label}
-                      </span>
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug mt-0.5">{s.task}</p>
+                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{s.task}</p>
                       <p className="text-[11px] text-[var(--text-secondary)] mt-1">{s.expected_output}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">{s.estimated_time}</span>
-                </div>
-
-                {/* Expanded: collab split for 'both' steps */}
-                {isExpanded && s.actor === 'both' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 ml-0 sm:ml-[30px] animate-fade-in">
-                    <div className="rounded-md p-2.5 border" style={{ backgroundColor: 'rgba(234,239,248,0.8)', borderColor: 'rgba(59,109,204,0.08)' }}>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#2d4a7c] flex items-center gap-1 mb-1">
-                        <Bot size={9} /> AI가 만드는 것
-                      </span>
-                      <p className="text-[11px] text-[var(--text-primary)] leading-relaxed">{s.expected_output}</p>
-                    </div>
-                    <div className="rounded-md p-2.5 border" style={{ backgroundColor: 'rgba(254,244,228,0.8)', borderColor: 'rgba(184,134,11,0.08)' }}>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#8b6914] flex items-center gap-1 mb-1">
-                        <Brain size={9} /> 사람이 결정하는 것
-                      </span>
-                      <p className="text-[11px] text-[var(--text-primary)] leading-relaxed">수익성 데이터 기반으로 시나리오 우선순위 결정</p>
-                    </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    {/* Interactive actor toggle */}
+                    <button
+                      onClick={() => cycleActor(i)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:shadow-sm active:scale-95"
+                      style={{ color: config.text, backgroundColor: `${config.color}12`, border: `1.5px solid ${config.color}30` }}
+                      title="클릭하여 담당 변경"
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: config.color }} />
+                      {config.label}
+                    </button>
+                    <span className="text-[10px] text-[var(--text-tertiary)]">{s.estimated_time}</span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Compact summary strip */}
-      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
-        <span>AI <span className="font-bold text-[#2d4a7c]">{aiCount}</span></span>
-        <span>사람 <span className="font-bold text-[#8b6914]">{humanCount}</span></span>
-        <span>협업 <span className="font-bold text-[#2d6b2d]">{bothCount}</span></span>
-        <span>체크포인트 <span className="font-bold text-amber-700">{checkpoints}</span></span>
+      {/* Dynamic stats — updates when actor changes */}
+      <div className="rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 text-[12px]">
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#3b6dcc]" /><span className="text-[var(--text-secondary)]">AI</span><span className="font-bold text-[#2d4a7c]">{aiCount}</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#b8860b]" /><span className="text-[var(--text-secondary)]">사람</span><span className="font-bold text-[#8b6914]">{humanCount}</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#2d6b2d]" /><span className="text-[var(--text-secondary)]">협업</span><span className="font-bold text-[#2d6b2d]">{bothCount}</span></div>
+          <div className="flex items-center gap-1.5"><Flag size={10} className="text-amber-600" /><span className="text-[var(--text-secondary)]">체크포인트</span><span className="font-bold text-amber-700">{checkpoints}</span></div>
+        </div>
+        {/* Visual bar */}
+        <div className="flex h-2 rounded-full overflow-hidden mt-2">
+          {aiCount > 0 && <div className="bg-[#3b6dcc] transition-all duration-300" style={{ width: `${(aiCount / demoSteps.length) * 100}%` }} />}
+          {humanCount > 0 && <div className="bg-[#b8860b] transition-all duration-300" style={{ width: `${(humanCount / demoSteps.length) * 100}%` }} />}
+          {bothCount > 0 && <div className="bg-[#2d6b2d] transition-all duration-300" style={{ width: `${(bothCount / demoSteps.length) * 100}%` }} />}
+        </div>
       </div>
 
       {/* Prerequisites */}
       <div>
-        <div className="flex items-baseline gap-2 mb-3">
-          <h4 className="text-[14px] font-bold text-[var(--text-primary)]">전제 조건</h4>
-          <span className="text-[11px] text-[var(--text-secondary)]">이 워크플로우가 유효하려면</span>
-        </div>
+        <h4 className="text-[13px] font-bold text-[var(--text-primary)] mb-3">전제 조건 <span className="font-normal text-[var(--text-secondary)]">&mdash; 이 워크플로우가 유효하려면</span></h4>
         <div className="space-y-2">
           {o.key_assumptions.map((ka, i) => (
             <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]">
-              <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${
-                ka.importance === 'high' ? 'bg-red-500' : 'bg-amber-500'
-              }`} />
+              <span className={`shrink-0 mt-1 w-2 h-2 rounded-full ${ka.importance === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
                 <p className="text-[11px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
@@ -573,7 +571,7 @@ function OrchestrateSection() {
       <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">핵심:</span> AI가 재무 모델링을 하고, 사람은 한솔 내부 정보를 수집합니다. 체크포인트에서는 반드시 사람이 판단합니다. 이 경계를 설계하지 않으면 AI에게 맡길수록 방향이 틀어집니다.
+          <span className="font-bold">직접 해보세요:</span> 위 단계에서 담당을 클릭하면 AI/사람/협업으로 바꿀 수 있습니다. 비율이 실시간으로 바뀌는 걸 확인하세요.
         </p>
       </div>
     </div>
@@ -587,10 +585,11 @@ function OrchestrateSection() {
 function PersonaSection() {
   const p = DEMO.persona;
   const f = p.feedback;
-  const riskStyles: Record<string, { bg: string; border: string; label: string; labelColor: string }> = {
-    critical: { bg: 'bg-red-50', border: 'border-l-[var(--risk-critical)]', label: '핵심 위협', labelColor: 'text-red-700 bg-red-100' },
-    manageable: { bg: 'bg-amber-50', border: 'border-l-[var(--risk-manageable)]', label: '관리 가능', labelColor: 'text-amber-700 bg-amber-100' },
-    unspoken: { bg: 'bg-purple-50', border: 'border-l-[var(--risk-unspoken)]', label: '침묵의 리스크', labelColor: 'text-purple-700 bg-purple-100' },
+
+  const riskConfig: Record<string, { emoji: string; color: string; bg: string; label: string; labelBg: string }> = {
+    critical: { emoji: '🔴', color: '#E24B4A', bg: 'bg-red-50/80', label: '핵심 위협', labelBg: 'bg-red-600 text-white' },
+    manageable: { emoji: '🟡', color: '#EF9F27', bg: 'bg-amber-50/80', label: '관리 가능', labelBg: 'bg-amber-500 text-white' },
+    unspoken: { emoji: '🟣', color: '#7F77DD', bg: 'bg-purple-50/80', label: '침묵의 리스크', labelBg: 'bg-purple-600 text-white' },
   };
 
   return (
@@ -615,57 +614,66 @@ function PersonaSection() {
         </div>
       </div>
 
-      {/* Persona card */}
-      <Card className="!p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-[18px]">
-            &#x1F454;
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{p.name}</h3>
-              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">영향력 높음</span>
+      {/* Persona card — gradient, prominent */}
+      <div className="rounded-2xl overflow-hidden border border-purple-200/60 shadow-sm">
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center text-[24px] shrink-0">
+              &#x1F454;
             </div>
-            <p className="text-[12px] text-[var(--text-secondary)]">{p.role}</p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{p.name}</h3>
+                <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  High Influence
+                </span>
+              </div>
+              <p className="text-[13px] text-purple-700 mt-0.5">{p.role}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {p.traits.map((t, i) => (
+              <span key={i} className="px-2.5 py-1 bg-white/80 text-purple-700 rounded-lg text-[11px] font-semibold shadow-xs">{t}</span>
+            ))}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {p.traits.map((t, i) => (
-            <span key={i} className="px-2 py-0.5 bg-[var(--ai)] text-[#2d4a7c] rounded-full text-[11px] font-semibold">{t}</span>
-          ))}
+      </div>
+
+      {/* Overall reaction — quote style */}
+      <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 shadow-sm">
+        <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-purple-500 mb-3">박 대표의 반응</p>
+        <div className="pl-4 border-l-3 border-purple-400">
+          <p className="text-[15px] text-[var(--text-primary)] leading-relaxed font-medium italic">
+            &ldquo;{f.overall_reaction}&rdquo;
+          </p>
         </div>
-      </Card>
+      </div>
 
-      {/* Overall reaction */}
-      <Card>
-        <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--text-secondary)] mb-2">전반적 반응</p>
-        <p className="text-[15px] text-[var(--text-primary)] leading-relaxed font-medium italic">
-          &ldquo;{f.overall_reaction}&rdquo;
-        </p>
-      </Card>
+      {/* Failure scenario — dark card */}
+      <div className="rounded-2xl bg-[var(--primary)] text-white p-5">
+        <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
+        <p className="text-[14px] leading-relaxed text-white/90">{f.failure_scenario}</p>
+      </div>
 
-      {/* Failure scenario */}
-      <Card className="!bg-red-50/50 !border-red-200/50">
-        <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-red-700 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
-        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{f.failure_scenario}</p>
-      </Card>
-
-      {/* Risk cards */}
+      {/* Risk cards — 3 columns, bold colors */}
       <div>
-        <p className="text-[13px] font-bold text-[var(--text-primary)] mb-3">3분류 리스크</p>
-        <div className="space-y-2">
+        <p className="text-[14px] font-bold text-[var(--text-primary)] mb-3">3분류 리스크</p>
+        <div className="grid grid-cols-1 gap-3">
           {f.classified_risks.map((risk, i) => {
-            const style = riskStyles[risk.category];
+            const rc = riskConfig[risk.category];
             return (
-              <div key={i} className={`${style.bg} border-l-4 ${style.border} rounded-r-xl px-4 py-3 relative`}>
+              <div key={i} className={`${rc.bg} rounded-2xl p-4 relative`} style={{ borderLeft: `4px solid ${rc.color}` }}>
                 {risk.category === 'unspoken' && (
-                  <span className="absolute -top-2 right-3 text-[9px] font-bold text-white bg-[var(--risk-unspoken)] px-2 py-0.5 rounded-full shadow-sm">
+                  <span className="absolute -top-2 right-4 text-[9px] font-bold text-white bg-purple-600 px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
                     주목
                   </span>
                 )}
-                <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1.5 ${style.labelColor}`}>
-                  {style.label}
-                </span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[16px]">{rc.emoji}</span>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${rc.labelBg}`}>
+                    {rc.label}
+                  </span>
+                </div>
                 <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{risk.text}</p>
               </div>
             );
@@ -674,17 +682,19 @@ function PersonaSection() {
       </div>
 
       {/* Approval conditions */}
-      <Card className="!bg-[var(--collab)]">
-        <p className="text-[12px] font-bold text-[#2d6b2d] mb-2">승인 조건</p>
-        <ul className="space-y-1">
+      <div className="rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50/50 border border-green-200/60 p-5">
+        <p className="text-[12px] font-bold text-emerald-700 mb-3 uppercase tracking-wider">승인 조건</p>
+        <ul className="space-y-2">
           {f.approval_conditions.map((c, i) => (
-            <li key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-primary)]">
-              <Check size={14} className="text-[var(--success)] shrink-0 mt-0.5" />
+            <li key={i} className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)]">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+                <Check size={12} className="text-white" />
+              </div>
               {c}
             </li>
           ))}
         </ul>
-      </Card>
+      </div>
 
       <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-purple-600 shrink-0 mt-0.5" />
