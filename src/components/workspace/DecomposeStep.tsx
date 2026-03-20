@@ -75,7 +75,7 @@ const DECOMPOSE_ENTRY_STEPS = [
     key: 'origin',
     question: '이 과제는 어디서 시작되었나요?',
     options: [
-      { value: 'top-down', emoji: '👔', label: '위에서 내려온 지시', description: '배경 설명 없이 과제가 할당되었다' },
+      { value: 'top-down', emoji: '👔', label: '위에서 내려온 지시', description: '상사나 경영진이 과제를 내렸다' },
       { value: 'external', emoji: '🤝', label: '고객/외부 요청', description: '외부에서 온 구체적 요구사항이다' },
       { value: 'self', emoji: '💡', label: '스스로 발견한 기회', description: '내가 필요성을 느끼고 시작하는 일이다' },
       { value: 'fire', emoji: '🔥', label: '갑자기 터진 문제', description: '예상치 못한 상황에 대응해야 한다' },

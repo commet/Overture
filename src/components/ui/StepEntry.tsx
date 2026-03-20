@@ -64,20 +64,21 @@ export function StepEntry({
     onSubmit(selections, text);
   };
 
-  // Build dynamic placeholder based on selections
+  // Build dynamic placeholder with concrete examples
   const dynamicPlaceholder = () => {
-    const parts: string[] = [];
-    for (const step of steps) {
-      const selected = selections[step.key];
-      if (selected) {
-        const option = step.options.find((o) => o.value === selected);
-        if (option) parts.push(option.label);
-      }
-    }
-    if (parts.length > 0) {
-      return `${parts.join(' · ')} 관련: ${textPlaceholder}`;
-    }
-    return textPlaceholder;
+    const examples = [
+      textPlaceholder,
+      '예: 2주 안에 경영진에게 보고해야 하는 시장 분석',
+      '예: 고객사가 요청한 AI 도입 제안서 준비',
+      '예: 팀 내 반복되는 프로세스 비효율을 해결하고 싶음',
+    ];
+    // Pick a relevant example based on selection
+    const origin = selections['origin'];
+    if (origin === 'top-down') return '예: 대표가 동남아 진출 전략을 2주 안에 보고하래';
+    if (origin === 'external') return '예: 고객사가 AI 챗봇 도입 제안서를 요청함';
+    if (origin === 'self') return '예: 우리 팀 온보딩 프로세스를 개선하고 싶음';
+    if (origin === 'fire') return '예: 주요 고객이 이탈 조짐을 보이고 있어 긴급 대응 필요';
+    return examples[0];
   };
 
   return (
@@ -181,30 +182,23 @@ export function StepEntry({
             </button>
           </div>
 
-          {/* Selected context — shown as pre-filled context that will be sent */}
+          {/* Selected context — compact inline pills + note */}
           {Object.keys(selections).length > 0 && (
-            <div className="rounded-xl bg-[var(--ai)] px-4 py-3">
-              <p className="text-[11px] font-semibold text-[#2d4a7c] mb-2">선택한 맥락 (자동 반영됨)</p>
-              <div className="space-y-1">
-                {steps.map((step) => {
-                  const val = selections[step.key];
-                  if (!val || step.locked) return null;
-                  const opt = step.options.find((o) => o.value === val);
-                  if (!opt) return null;
-                  return (
-                    <p key={step.key} className="text-[12px] text-[#2d4a7c]">
-                      <span className="font-medium">{opt.emoji} {opt.label}</span>
-                      {opt.description && <span className="text-[#2d4a7c]/60"> — {opt.description}</span>}
-                    </p>
-                  );
-                })}
-              </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-[var(--text-tertiary)] font-medium mr-0.5">자동 반영:</span>
+              {steps.map((step) => {
+                const val = selections[step.key];
+                if (!val || step.locked) return null;
+                const opt = step.options.find((o) => o.value === val);
+                if (!opt) return null;
+                return (
+                  <span key={step.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--ai)] text-[11px] text-[#2d4a7c] font-medium">
+                    {opt.emoji} {opt.label}
+                  </span>
+                );
+              })}
             </div>
           )}
-
-          <p className="text-[12px] text-[var(--text-secondary)]">
-            위 맥락은 AI에 자동 전달됩니다. 아래에 구체적인 상황만 추가하세요.
-          </p>
 
           <textarea
             value={text}
