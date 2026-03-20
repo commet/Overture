@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const MAX_TOKENS_CAP = 4096;
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 50; // Increased during development
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
 const VALID_ROLES = new Set(['user', 'assistant']);
