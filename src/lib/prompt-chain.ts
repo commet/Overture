@@ -1,5 +1,6 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
+import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
+import { buildDecomposeContext } from './context-chain';
 
 export function generatePromptChain(project: Project): string {
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
@@ -32,14 +33,19 @@ export function generatePromptChain(project: Project): string {
     }
   }
 
-  // Extract the real question from decompose
+  // Extract typed context from decompose (Phase 0 pipeline)
   let coreQuestion = '';
   let aiLimitations: string[] = [];
+  let unverifiedAssumptions: HiddenAssumption[] = [];
+  let whyReframingMatters = '';
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis) {
-      coreQuestion = latest.selected_question || latest.analysis.surface_task;
-      aiLimitations = latest.analysis.ai_limitations || [];
+      const ctx = buildDecomposeContext(latest);
+      coreQuestion = ctx.selected_direction || ctx.reframed_question || latest.analysis.surface_task;
+      aiLimitations = ctx.ai_limitations;
+      unverifiedAssumptions = ctx.unverified_assumptions;
+      whyReframingMatters = ctx.why_reframing_matters;
     }
   }
 
@@ -113,6 +119,23 @@ export function generatePromptChain(project: Project): string {
         if (coreQuestion) {
           promptParts.push(`## 핵심 맥락`);
           promptParts.push(`이 작업의 근본 질문: "${coreQuestion}"`);
+          if (whyReframingMatters) {
+            promptParts.push(`(${whyReframingMatters})`);
+          }
+          promptParts.push('');
+        }
+
+        // Unverified assumptions relevant to this step
+        if (unverifiedAssumptions.length > 0) {
+          const relevant = unverifiedAssumptions.filter(a =>
+            step.task.toLowerCase().includes(a.assumption.substring(0, 10).toLowerCase()) ||
+            step.expected_output?.toLowerCase().includes(a.assumption.substring(0, 10).toLowerCase())
+          );
+          const toShow = relevant.length > 0 ? relevant : unverifiedAssumptions.slice(0, 2);
+          promptParts.push(`## 미확인 전제 (이 단계에서 검증 가능한지 확인)`);
+          toShow.forEach((a) => {
+            promptParts.push(`- ${a.assumption}${a.risk_if_false ? ` (만약 아니라면: ${a.risk_if_false})` : ''}`);
+          });
           promptParts.push('');
         }
 

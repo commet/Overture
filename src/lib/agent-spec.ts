@@ -1,5 +1,6 @@
 import { getStorage, STORAGE_KEYS } from './storage';
 import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord } from '@/stores/types';
+import { buildDecomposeContext } from './context-chain';
 
 export function generateAgentSpec(project: Project): string {
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
@@ -75,17 +76,44 @@ export function generateAgentSpec(project: Project): string {
     }
     lines.push(`  steps:`);
 
+    // Build assumption map for validation linking
+    const decomposeCtx = decompositions.length > 0 && decompositions[decompositions.length - 1].analysis
+      ? buildDecomposeContext(decompositions[decompositions.length - 1])
+      : null;
+
     steps.forEach((step, i) => {
       lines.push(`    - step: ${i + 1}`);
       lines.push(`      task: "${step.task}"`);
       lines.push(`      actor: ${step.actor}`);
       lines.push(`      reasoning: "${step.actor_reasoning}"`);
+      if (step.expected_output) {
+        lines.push(`      expected_output: "${step.expected_output}"`);
+      }
       if (step.estimated_time) {
         lines.push(`      estimated_time: "${step.estimated_time}"`);
       }
       if (step.checkpoint) {
         lines.push(`      checkpoint: true`);
         lines.push(`      checkpoint_reason: "${step.checkpoint_reason}"`);
+      }
+      // Link assumptions this step could validate
+      if (decomposeCtx?.unverified_assumptions.length) {
+        const relevant = decomposeCtx.unverified_assumptions.filter(a =>
+          step.task.includes(a.assumption.substring(0, 8))
+        );
+        if (relevant.length > 0) {
+          lines.push(`      validates_assumption: "${relevant[0].assumption.slice(0, 50)}"`);
+        }
+      }
+      // Link review findings for this step
+      if (latest.analysis?.reviews) {
+        const stepWarnings = latest.analysis.reviews
+          .flatMap(r => r.findings)
+          .filter(f => f.affected_steps?.includes(i + 1) && f.severity === 'high');
+        if (stepWarnings.length > 0) {
+          lines.push(`      warnings:`);
+          stepWarnings.forEach(w => lines.push(`        - "${w.text}"`));
+        }
       }
     });
     lines.push('');
