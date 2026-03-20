@@ -23,6 +23,7 @@ import { ContextChainBlock } from './ContextChainBlock';
 import { buildDecomposeContext, injectDecomposeContext } from '@/lib/context-chain';
 import type { DecomposeContext, WorkflowReview } from '@/stores/types';
 import { runWorkflowReview, countBySeverity } from '@/lib/workflow-review';
+import { TeamReviewPanel } from './TeamReviewPanel';
 import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
@@ -502,6 +503,16 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* ── Team Review (team projects only) ── */}
+          {current.project_id && current.analysis && (
+            <TeamReviewPanel
+              projectId={current.project_id}
+              phase="orchestrate"
+              assumptions={current.analysis.key_assumptions}
+              steps={steps}
+            />
           )}
 
           {/* ── Multi-Lens Review (Phase 2) ── */}

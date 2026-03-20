@@ -16,6 +16,7 @@ const processSteps = [
 
 const utilityItems = [
   { href: '/project', label: '프로젝트', icon: FolderOpen },
+  { href: '/teams', label: '팀', icon: Users },
   { href: '/guide', label: '사용 가이드', icon: BookOpen },
   { href: '/settings', label: '설정', icon: Settings },
 ];
