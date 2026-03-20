@@ -131,43 +131,14 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
   const handleStartLoop = () => {
     if (!record.project_id) return;
 
-    // Extract issues from feedback results
+    // Extract and classify issues by severity
     const issues: RefinementIssue[] = [];
     for (const result of record.results) {
       const persona = personas.find(p => p.id === result.persona_id);
       const pName = persona?.name || 'Unknown';
+      const isHighInfluence = persona?.influence === 'high';
 
-      for (const concern of result.concerns) {
-        issues.push({
-          id: generateId(),
-          source_persona_id: result.persona_id,
-          source_persona_name: pName,
-          category: 'concern',
-          text: concern,
-          resolved: false,
-        });
-      }
-      for (const q of result.first_questions) {
-        issues.push({
-          id: generateId(),
-          source_persona_id: result.persona_id,
-          source_persona_name: pName,
-          category: 'question',
-          text: q,
-          resolved: false,
-        });
-      }
-      for (const w of result.wants_more) {
-        issues.push({
-          id: generateId(),
-          source_persona_id: result.persona_id,
-          source_persona_name: pName,
-          category: 'wants_more',
-          text: w,
-          resolved: false,
-        });
-      }
-      // Extract critical classified_risks as issues
+      // Critical risks → always blocker
       if (result.classified_risks) {
         for (const risk of result.classified_risks.filter(r => r.category === 'critical')) {
           issues.push({
@@ -175,10 +146,50 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
             source_persona_id: result.persona_id,
             source_persona_name: pName,
             category: 'concern',
-            text: `[핵심 위협] ${risk.text}`,
+            severity: 'blocker',
+            text: risk.text,
             resolved: false,
           });
         }
+      }
+
+      // Concerns → blocker if high-influence persona, otherwise improvement
+      for (const concern of result.concerns) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'concern',
+          severity: isHighInfluence ? 'blocker' : 'improvement',
+          text: concern,
+          resolved: false,
+        });
+      }
+
+      // Questions → improvement
+      for (const q of result.first_questions) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'question',
+          severity: 'improvement',
+          text: q,
+          resolved: false,
+        });
+      }
+
+      // Wants more → nice_to_have
+      for (const w of result.wants_more) {
+        issues.push({
+          id: generateId(),
+          source_persona_id: result.persona_id,
+          source_persona_name: pName,
+          category: 'wants_more',
+          severity: 'nice_to_have',
+          text: w,
+          resolved: false,
+        });
       }
     }
 

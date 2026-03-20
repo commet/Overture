@@ -21,7 +21,9 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
-import { buildDecomposeContext } from '@/lib/context-chain';
+import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
+import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
+import { recordDecomposeEval } from '@/lib/eval-engine';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -128,6 +130,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [customQuestion, setCustomQuestion] = useState('');
   const [error, setError] = useState('');
   const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
+  const [currentStrategy, setCurrentStrategy] = useState<ReframingStrategy | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -174,10 +177,21 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     const id = createItem(finalPrompt);
     updateItem(id, { status: 'analyzing' });
 
+    // Phase 1: Select reframing strategy based on interview signals
+    const signals = extractInterviewSignals(finalPrompt);
+    const strategy = signals ? selectReframingStrategy(signals as InterviewSignals) : null;
+    setCurrentStrategy(strategy);
+
     try {
+      // Build system prompt: base + user patterns + strategy-specific guidance
+      let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT);
+      if (strategy) {
+        systemPrompt = applyReframingStrategy(systemPrompt, strategy);
+      }
+
       const analysis = await callLLMJson<DecomposeAnalysis>(
         [{ role: 'user', content: finalPrompt }],
-        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2000 }
+        { system: systemPrompt, maxTokens: 2000 }
       );
       updateItem(id, { analysis, status: 'review' });
     } catch (err) {
@@ -206,6 +220,10 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const handleConfirm = () => {
     if (!current || !currentId || !current.analysis) return;
     updateItem(currentId, { status: 'done' });
+
+    // Phase 1: Record binary evals for strategy learning
+    recordDecomposeEval(current, currentStrategy);
+
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);
@@ -394,9 +412,16 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
               {/* ── 1. 받은 악보 (Situation) ── */}
               <div className="px-6 pt-6 pb-5">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
-                  <p className="text-[12px] font-medium text-[var(--text-tertiary)]">받은 악보</p>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
+                    <p className="text-[12px] font-medium text-[var(--text-tertiary)]">받은 악보</p>
+                  </div>
+                  {currentStrategy && (
+                    <span className="text-[11px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
+                      {STRATEGY_LABELS[currentStrategy].label}
+                    </span>
+                  )}
                 </div>
                 <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
                   {analysis.surface_task}

@@ -229,7 +229,7 @@ export function injectOrchestrateContext(
    Helpers
    ──────────────────────────────────── */
 
-function extractInterviewSignals(inputText: string): DecomposeContext['interview_signals'] | undefined {
+export function extractInterviewSignals(inputText: string): DecomposeContext['interview_signals'] | undefined {
   if (!inputText.includes('[맥락]')) return undefined;
 
   const signals: DecomposeContext['interview_signals'] = {};
