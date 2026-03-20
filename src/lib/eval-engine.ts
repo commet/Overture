@@ -142,11 +142,22 @@ export function analyzeStrategyPerformance(
   signalKey?: string
 ): StrategyPerformance[] {
   const history = getStorage<EvalResult[]>(EVAL_STORAGE_KEY, []);
-  if (history.length < 5) return [];
+  if (history.length < 3) return [];
 
-  // Filter by signal key if provided
+  // Filter by signal key — supports partial matching (e.g., "_why_" matches any origin/success)
   const filtered = signalKey
-    ? history.filter(r => r.interview_signals && makeSignalKey(r.interview_signals) === signalKey)
+    ? history.filter(r => {
+        if (!r.interview_signals) return false;
+        const fullKey = makeSignalKey(r.interview_signals);
+        // Exact match first
+        if (fullKey === signalKey) return true;
+        // Partial match: if signalKey is uncertainty-only (e.g., "_why_"), match uncertainty field
+        if (signalKey.startsWith('_') && signalKey.endsWith('_')) {
+          const uncertainty = signalKey.slice(1, -1);
+          return r.interview_signals.uncertainty === uncertainty;
+        }
+        return false;
+      })
     : history;
 
   // Group by strategy
@@ -177,19 +188,97 @@ export function analyzeStrategyPerformance(
 
 /**
  * Get the best-performing strategy for given signals.
- * Returns null if insufficient data (<5 samples for this signal combo).
+ * Micro Loop: uncertainty 단독으로 먼저 시도 (4 조합, 3 샘플이면 충분)
+ * → 부족하면 전체 신호 조합으로 시도 (fallback)
+ * → 부족하면 null (rule-based fallback은 호출자가 처리)
  */
 export function getBestStrategy(signals: InterviewSignals): ReframingStrategy | null {
-  const key = makeSignalKey(signals);
-  const performance = analyzeStrategyPerformance(key);
+  // 1차: uncertainty 단독으로 매칭 (가장 빠르게 데이터 축적)
+  if (signals.uncertainty) {
+    const microKey = `_${signals.uncertainty}_`;
+    const microPerf = analyzeStrategyPerformance(microKey);
+    const viable = microPerf.filter(p => p.sample_count >= 3);
+    if (viable.length > 0) {
+      return viable.sort((a, b) => b.avg_pass_rate - a.avg_pass_rate)[0].strategy;
+    }
+  }
 
-  // Need at least 5 samples to make a data-driven choice
-  const withSufficientData = performance.filter(p => p.sample_count >= 5);
-  if (withSufficientData.length === 0) return null;
+  // 2차: 전체 신호 조합 (더 정밀하지만 데이터 더 필요)
+  const fullKey = makeSignalKey(signals);
+  const fullPerf = analyzeStrategyPerformance(fullKey);
+  const fullViable = fullPerf.filter(p => p.sample_count >= 3);
+  if (fullViable.length > 0) {
+    return fullViable.sort((a, b) => b.avg_pass_rate - a.avg_pass_rate)[0].strategy;
+  }
 
-  // Return strategy with highest pass rate
-  return withSufficientData.sort((a, b) => b.avg_pass_rate - a.avg_pass_rate)[0].strategy;
+  return null;
 }
+
+/* ────────────────────────────────────
+   1-Session Feedback: 이전 세션 요약
+   ──────────────────────────────────── */
+
+export interface SessionInsight {
+  type: 'last_strategy' | 'pattern' | 'tip';
+  message: string;
+}
+
+/**
+ * Get personalized insights from past sessions.
+ * Returns messages to display BEFORE analysis starts.
+ * Works from 1 session — no minimum threshold.
+ */
+export function getSessionInsights(): SessionInsight[] {
+  const history = getStorage<EvalResult[]>(EVAL_STORAGE_KEY, []);
+  if (history.length === 0) return [];
+
+  const insights: SessionInsight[] = [];
+  const last = history[history.length - 1];
+
+  // 1세션: 지난번 전략 + 결과
+  if (last.strategy) {
+    const label = STRATEGY_DISPLAY[last.strategy];
+    const success = last.pass_rate >= 0.75;
+    insights.push({
+      type: 'last_strategy',
+      message: success
+        ? `지난 분석에서 "${label}" 접근이 효과적이었습니다.`
+        : `지난 분석에서 "${label}" 접근을 사용했습니다.`,
+    });
+  }
+
+  // 3세션+: 패턴 감지
+  if (history.length >= 3) {
+    const strategies = history.slice(-5).map(h => h.strategy).filter(Boolean);
+    const counts: Record<string, number> = {};
+    strategies.forEach(s => { if (s) counts[s] = (counts[s] || 0) + 1; });
+    const dominant = Object.entries(counts).sort(([, a], [, b]) => b - a)[0];
+    if (dominant && dominant[1] >= 2) {
+      insights.push({
+        type: 'pattern',
+        message: `최근 "${STRATEGY_DISPLAY[dominant[0] as ReframingStrategy]}" 접근을 자주 사용하고 계십니다.`,
+      });
+    }
+
+    // 성공률 트렌드
+    const recentPassRate = history.slice(-5).reduce((s, h) => s + h.pass_rate, 0) / Math.min(history.length, 5);
+    if (recentPassRate >= 0.8) {
+      insights.push({
+        type: 'tip',
+        message: `최근 분석 결과의 활용도가 높습니다. 현재 접근 방식을 유지하세요.`,
+      });
+    }
+  }
+
+  return insights;
+}
+
+const STRATEGY_DISPLAY: Record<ReframingStrategy, string> = {
+  challenge_existence: '존재 의심',
+  narrow_scope: '범위 집중',
+  diagnose_root: '원인 진단',
+  redirect_angle: '관점 전환',
+};
 
 /* ────────────────────────────────────
    Helpers

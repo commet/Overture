@@ -23,7 +23,7 @@ import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, Rota
 import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
-import { recordDecomposeEval, getBestStrategy } from '@/lib/eval-engine';
+import { recordDecomposeEval, getBestStrategy, getSessionInsights } from '@/lib/eval-engine';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -321,6 +321,22 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           ))}
         </div>
       )}
+
+      {/* ─── Session insights (micro loop feedback) ─── */}
+      {(!current || current.status === 'input') && !currentId && (() => {
+        const insights = getSessionInsights();
+        if (insights.length === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-2">
+            {insights.map((insight, i) => (
+              <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--ai)] text-[12px] text-[#2d4a7c]">
+                <Brain size={11} />
+                <span>{insight.message}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ─── Coda insights ─── */}
       {(!current || current.status === 'input') && !currentId && codaInsights.length > 0 && (
