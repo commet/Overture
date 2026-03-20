@@ -48,22 +48,15 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // If no token at all, redirect to login
+  // Actual data security is enforced by Supabase RLS — middleware is a UX guard only
   if (!accessToken) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verify the token is valid
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-
-  if (error || !user) {
-    const loginUrl = new URL('/login', req.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
+  // Token exists — allow through. RLS protects the data.
   return NextResponse.next();
 }
 
