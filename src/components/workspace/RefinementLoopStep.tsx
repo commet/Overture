@@ -83,6 +83,15 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const convergence = activeLoop ? checkConvergence(activeLoop.id) : null;
   const latestIteration = activeLoop?.iterations[activeLoop.iterations.length - 1];
 
+  // Find the original document that was reviewed (from iteration 1's feedback record)
+  const originalDocument = (() => {
+    if (!activeLoop) return null;
+    const firstIter = activeLoop.iterations[0];
+    if (!firstIter?.feedback_record_id) return null;
+    const record = feedbackHistory.find(f => f.id === firstIter.feedback_record_id);
+    return record ? { title: record.document_title, text: record.document_text } : null;
+  })();
+
   const unresolvedIssues = latestIteration
     ? latestIteration.issues_from_feedback
         .filter((i) => !i.resolved)
@@ -121,7 +130,11 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
       ? `\n\n[사용자 지시]\n${userDirective.trim()}`
       : '';
 
-    const prompt = `[목표]\n${activeLoop.goal}\n\n${prevAdjustments ? `[이전 변경사항]\n${prevAdjustments}\n\n` : ''}[이번에 반영할 피드백 (${issues.length}건)]\n${constraintText}${directivePart}\n\n위 피드백을 반영한 개선안을 만들어주세요.`;
+    const documentPart = originalDocument
+      ? `\n\n[현재 기획안]\n${originalDocument.text}`
+      : '';
+
+    const prompt = `[목표]\n${activeLoop.goal}${documentPart}\n\n${prevAdjustments ? `[이전 변경사항]\n${prevAdjustments}\n\n` : ''}[이번에 반영할 피드백 (${issues.length}건)]\n${constraintText}${directivePart}\n\n위 피드백을 반영하여 기획안의 구체적인 개선안을 만들어주세요.`;
 
     try {
       const isDeep = depth === 'deep';

@@ -381,69 +381,33 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {(current?.status === 'review' || current?.status === 'done') && (
         <div className="space-y-6 animate-fade-in">
           {/* ── Strategic Context: question → direction (integrated flow) ── */}
+          {/* Strategic context — clean, compact */}
           {current.analysis && (
-            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
-
-              {/* 1. 재정의된 질문 (from 악보 해석) */}
+            <div className="space-y-3">
+              {/* 재정의된 질문 (from 악보 해석) — compact reference */}
               {relatedDecompose?.analysis && (
-                <div className="px-5 pt-5 pb-4">
-                  <p className="text-[11px] font-medium text-[var(--text-tertiary)] mb-2">악보 해석에서 재정의된 질문</p>
-                  <p className="text-[15px] font-bold text-[var(--text-primary)] leading-snug">
+                <div className="rounded-xl bg-[var(--bg)] px-4 py-3">
+                  <p className="text-[11px] font-medium text-[var(--text-secondary)] mb-1">악보 해석에서 재정의된 질문</p>
+                  <p className="text-[14px] font-bold text-[var(--text-primary)] leading-snug">
                     {relatedDecompose.selected_question || relatedDecompose.analysis.reframed_question || relatedDecompose.analysis.surface_task}
                   </p>
-                  {/* 미확인 전제 — compact inline */}
-                  {relatedDecompose.analysis.hidden_assumptions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {relatedDecompose.analysis.hidden_assumptions
-                        .filter((a: any) => typeof a === 'string' ? true : !a.verified)
-                        .slice(0, 3)
-                        .map((a: any, i: number) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-[10px] text-amber-700 font-medium">
-                            <span className="w-1 h-1 rounded-full bg-amber-500" />
-                            {typeof a === 'string' ? a : a.assumption}
-                          </span>
-                        ))
-                      }
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* 연결 화살표 */}
-              {relatedDecompose?.analysis && (
-                <div className="flex items-center gap-2 px-5 py-1">
-                  <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                  <span className="text-[10px] text-[var(--text-tertiary)] font-medium">이 질문을 토대로</span>
-                  <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                </div>
-              )}
-
-              {/* 2. 핵심 방향 (governing idea) */}
-              <div className="px-5 pt-3 pb-4 bg-[var(--ai)]">
-                <p className="text-[11px] font-medium text-[#2d4a7c] mb-2">핵심 방향</p>
-                <p className="text-[16px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
+              {/* 핵심 방향 */}
+              <div className="rounded-xl bg-[var(--primary)] text-white px-5 py-4">
+                <p className="text-[11px] font-medium text-white/50 mb-1">핵심 방향</p>
+                <p className="text-[16px] font-bold leading-snug">
                   {current.analysis.governing_idea}
                 </p>
               </div>
 
-              {/* 3. SCR 스토리라인 — 왜 이 방향인가 */}
+              {/* 스토리라인 — one line each */}
               {current.analysis.storyline && (
-                <div className="px-5 py-4 border-t border-[var(--border-subtle)]">
-                  <p className="text-[11px] font-medium text-[var(--text-tertiary)] mb-3">왜 이 방향인가</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
-                      <p className="text-[10px] font-semibold text-[var(--text-tertiary)] mb-1">상황</p>
-                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.situation}</p>
-                    </div>
-                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
-                      <p className="text-[10px] font-semibold text-amber-700 mb-1">문제</p>
-                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.complication}</p>
-                    </div>
-                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
-                      <p className="text-[10px] font-semibold text-[var(--accent)] mb-1">접근</p>
-                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.resolution}</p>
-                    </div>
-                  </div>
+                <div className="text-[13px] text-[var(--text-primary)] space-y-1 px-1">
+                  <p><span className="font-semibold text-[var(--text-secondary)]">상황:</span> {current.analysis.storyline.situation}</p>
+                  <p><span className="font-semibold text-amber-700">문제:</span> {current.analysis.storyline.complication}</p>
+                  <p><span className="font-semibold text-[var(--accent)]">접근:</span> {current.analysis.storyline.resolution}</p>
                 </div>
               )}
             </div>
@@ -473,47 +437,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             </p>
           )}
 
-          {/* ── Prerequisites ── */}
-          {current.analysis && current.analysis.key_assumptions && current.analysis.key_assumptions.length > 0 && (
-            <div>
-              <div className="flex items-baseline gap-2 mb-3">
-                <h4 className="text-[14px] font-bold text-[var(--text-primary)]">전제 조건</h4>
-                <span className="text-[11px] text-[var(--text-secondary)]">이 워크플로우가 유효하려면</span>
-              </div>
-              <div className="space-y-2">
-                {current.analysis.key_assumptions.map((ka: any, i: number) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]">
-                    <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${
-                      ka.importance === 'high' ? 'bg-red-500' : ka.importance === 'medium' ? 'bg-amber-500' : 'bg-gray-400'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[11px] text-[var(--text-secondary)]">
-                        <span>중요도: <span className={`font-semibold ${
-                          ka.importance === 'high' ? 'text-red-600' : ka.importance === 'medium' ? 'text-amber-600' : 'text-gray-500'
-                        }`}>{ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}</span></span>
-                        <span className="text-[var(--border)]">&middot;</span>
-                        <span>확신도: <span className="font-semibold">{ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'}</span></span>
-                      </div>
-                      {ka.if_wrong && (
-                        <p className="text-[11px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Team Review (team projects only) ── */}
-          {current.project_id && current.analysis && (
-            <TeamReviewPanel
-              projectId={current.project_id}
-              phase="orchestrate"
-              assumptions={current.analysis.key_assumptions}
-              steps={steps}
-            />
-          )}
+          {/* Prerequisites and Team Review removed — prerequisites are covered in 악보 해석, team review deferred to later stage */}
 
           {/* ── Multi-Lens Review (Phase 2) ── */}
           {current.status === 'review' && current.analysis && (

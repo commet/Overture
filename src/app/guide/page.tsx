@@ -1,35 +1,78 @@
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Layers, Map, Users, Zap, SlidersHorizontal } from 'lucide-react';
+import { Layers, Map, Users, RefreshCw, ArrowRight, Link2 } from 'lucide-react';
+import Link from 'next/link';
 
-const guides = [
+const tools = [
   {
     icon: Layers,
-    title: '악보 해석 | 문제 재정의',
-    subtitle: '풀어야 할 진짜 문제 찾기',
-    why: 'AI에게 "경쟁사 분석 보고서 작성해줘"라고 바로 시키면, 결과물은 그럴듯하지만 의사결정에 쓸 수 없는 경우가 많습니다. 전략기획자는 과제를 받으면 바로 실행하지 않고, 먼저 "이 과제의 진짜 목적이 뭔지" 질문합니다.',
-    autoFlow: '과제를 자연어로 입력 → AI가 숨겨진 질문 2~3개 제안 → 진짜 질문 선택 → AI/사람 역할 자동 분배 → 마크다운 복사',
-    guidedFlow: '과제 입력 → 단계별로 목적/재정의/역할을 직접 작성 → AI가 각 단계를 검토하고 제안',
-    color: 'bg-[var(--ai)] text-[#2d4a7c]',
+    number: '01',
+    title: '악보 해석',
+    subtitle: '문제 재정의',
+    color: '#2d4a7c',
+    bg: 'var(--ai)',
+    href: '/workspace?step=decompose',
+    why: '과제를 받으면 바로 실행하고 싶지만, 전제가 틀리면 보고서 전체가 무의미합니다. 이 단계에서 과제 뒤에 숨은 전제를 점검하고, 진짜 물어야 할 질문을 재정의합니다.',
+    flow: [
+      '과제의 맥락을 입력합니다 (출처, 성공 기준, 이해관계자)',
+      'AI가 과제의 숨겨진 전제를 도출합니다',
+      '각 전제를 직접 평가합니다 — 맞을 가능성 높음 / 확실하지 않음 / 의심됨',
+      '당신의 평가를 바탕으로 AI가 질문을 재정의합니다',
+      '여러 방향 중 하나를 선택하거나 직접 작성합니다',
+    ],
+    tip: '전제 평가가 핵심입니다. "의심됨"으로 표시한 전제가 많을수록 재정의 방향이 근본적으로 바뀝니다.',
   },
   {
     icon: Map,
-    title: '편곡 | 실행 설계',
-    subtitle: 'AI와 사람의 역할 경계 설계',
-    why: '"이 단계는 AI가 초안을 쓰고, 여기서 사람이 검증하고" — 이 설계 없이 AI와 협업하면 효율이 크게 떨어집니다. 전략기획자가 프로젝트 R&R과 타임라인을 설계하는 것과 같은 원리입니다.',
-    autoFlow: '최종 목표 + 상황 입력 → AI가 전체 워크플로우 자동 설계 (3~8단계) → 드래그로 순서/담당 조정 → 체크포인트 확인',
-    guidedFlow: '목표 입력 → 단계를 직접 추가하며 구성 → AI가 체크포인트와 역할 배분 제안',
-    color: 'bg-[var(--human)] text-[#8b6914]',
+    number: '02',
+    title: '편곡',
+    subtitle: '실행 설계',
+    color: '#8b6914',
+    bg: 'var(--human)',
+    href: '/workspace?step=orchestrate',
+    why: 'AI에게 전부 맡기면 방향이 틀어집니다. 이 단계에서 AI와 사람이 각각 무엇을 맡을지 정하고, 사람이 판단해야 할 곳에서 실제로 결정을 내립니다.',
+    flow: [
+      '결과물 유형, 팀 규모, 기간을 선택하고 목표를 입력합니다',
+      'AI가 워크플로우를 설계합니다 (핵심 방향, 스토리라인, 단계별 역할)',
+      '각 단계를 클릭하여 AI에게 가이드를 주거나, 사람의 판단이 필요한 곳에 결정을 입력합니다',
+      '역할 배분(AI/사람/협업)과 체크포인트를 조정합니다',
+      '전제 조건과 크리티컬 패스를 확인한 뒤 확정합니다',
+    ],
+    tip: '사람/협업 단계에서 선택지 칩을 클릭하면 빠르게 결정할 수 있습니다. AI 단계에는 집중할 방향이나 제약조건을 입력하세요.',
   },
   {
     icon: Users,
-    title: '리허설 | 사전 검증',
-    subtitle: '보내기 전 이해관계자 반응 시뮬레이션',
-    why: '"김 상무라면 이 보고서 보고 뭐라고 할까?" — 같은 자료도 CEO에게 보여줄 때와 실무진에게 보여줄 때 프레이밍이 달라야 합니다. 미리 시뮬레이션하면 보고 전에 약점을 보완할 수 있습니다.',
-    autoFlow: '프리셋(CEO, CFO 등)에서 선택하거나 자유 텍스트로 페르소나 등록 → 자료 붙여넣기 → AI가 질문/칭찬/우려/추가요청 구조화 피드백 생성',
-    guidedFlow: '파일 업로드로 페르소나 자동 추출 → 피드백 로그 축적 → 실제 반응 기록으로 정확도 향상',
-    color: 'bg-purple-50 text-purple-600',
-    highlight: '피드백 로그가 쌓일수록 AI의 시뮬레이션 정확도가 높아집니다. 실제 이해관계자의 반응을 기록해두세요.',
+    number: '03',
+    title: '리허설',
+    subtitle: '사전 검증',
+    color: '#6b4c9a',
+    bg: '#f5f0fa',
+    href: '/workspace?step=persona-feedback',
+    why: '같은 보고서도 CEO에게 보여줄 때와 실무진에게 보여줄 때 프레이밍이 달라야 합니다. 보내기 전에 주요 이해관계자의 반응을 시뮬레이션하면 약점을 미리 보완할 수 있습니다.',
+    flow: [
+      '이해관계자 페르소나를 설정합니다 (프리셋 선택 또는 직접 입력)',
+      '검토할 자료를 입력합니다 (이전 단계에서 자동 연결 가능)',
+      'AI가 해당 페르소나의 관점에서 피드백을 생성합니다',
+      '프리모템(실패 시나리오)과 3분류 리스크를 확인합니다 — 핵심 위협, 관리 가능, 침묵의 리스크',
+      '승인 조건을 확인하고 보완 방향을 결정합니다',
+    ],
+    tip: '"침묵의 리스크"에 주목하세요. 모두 알지만 아무도 꺼내지 않는 문제가 종종 가장 위험합니다.',
+  },
+  {
+    icon: RefreshCw,
+    number: '04',
+    title: '합주 연습',
+    subtitle: '피드백 반영',
+    color: '#2d6b2d',
+    bg: 'var(--collab)',
+    href: '/workspace?step=refinement-loop',
+    why: '한 번의 분석으로 완벽한 결과가 나오지 않습니다. 이해관계자의 지적을 반영하여 반복하면, 매 반복마다 맥락이 누적되면서 결과가 정교해집니다.',
+    flow: [
+      '리허설에서 받은 피드백을 입력합니다',
+      'AI가 피드백을 반영하여 분석을 개선합니다',
+      '수렴률을 확인합니다 — 충분히 수렴하면 실행 준비 완료',
+      '필요하면 추가 반복합니다 (맥락이 누적됩니다)',
+    ],
+    tip: '핵심은 "반복" 자체가 아니라 맥락 누적입니다. 각 반복에서 발견한 사실이 다음 반복의 제약조건이 됩니다.',
   },
 ];
 
@@ -38,63 +81,74 @@ export default function GuidePage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">사용 가이드</h1>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          각 도구는 두 가지 모드로 사용할 수 있습니다.
+        <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed max-w-2xl">
+          Overture는 네 단계로 작동합니다. 각 단계는 독립적으로 사용할 수 있지만,
+          순서대로 진행하면 이전 단계의 맥락이 자동으로 연결됩니다.
         </p>
-        <div className="flex items-center gap-4 mt-3 text-[13px]">
-          <span className="flex items-center gap-1.5 text-[var(--text-primary)] font-medium">
-            <Zap size={14} className="text-[var(--accent)]" /> <strong>Auto</strong> — AI가 80%, 당신은 판단만
-          </span>
-          <span className="flex items-center gap-1.5 text-[var(--text-primary)] font-medium">
-            <SlidersHorizontal size={14} className="text-[var(--accent)]" /> <strong>Guided</strong> — 단계별 직접 제어
-          </span>
+        <div className="mt-4 flex items-start gap-2.5 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c]">
+          <Link2 size={14} className="shrink-0 mt-0.5" />
+          <p>
+            <strong>맥락 체인:</strong> 악보 해석의 결과가 편곡으로, 편곡의 결과가 리허설로 자동 전달됩니다.
+            각 단계에서 쌓인 판단이 다음 단계의 품질을 높입니다.
+          </p>
         </div>
-        <div className="mt-4 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c]">
-          <strong>처음이라면?</strong> Auto 모드로 시작하세요. 과제를 입력하면 AI가 분석하고, 당신은 결과를 보고 판단만 하면 됩니다.
-          Overture가 처음이라면 <a href="/demo" className="underline font-semibold">5분 데모</a>를 먼저 체험해보세요.
+        <div className="mt-3 text-[13px] text-[var(--text-secondary)]">
+          처음이라면 <Link href="/demo" className="underline font-semibold text-[var(--accent)]">5분 데모</Link>를 먼저 체험해보세요.
         </div>
       </div>
 
-      {guides.map((guide, i) => {
-        const Icon = guide.icon;
+      {tools.map((tool) => {
+        const Icon = tool.icon;
         return (
-          <Card key={i}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${guide.color}`}>
-                <Icon size={20} />
+          <Card key={tool.number}>
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-[24px] font-extrabold leading-none select-none" style={{ color: `${tool.color}25` }}>
+                {tool.number}
+              </span>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: tool.bg }}>
+                <Icon size={18} style={{ color: tool.color }} />
               </div>
               <div>
-                <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{guide.title}</h2>
-                <p className="text-[12px] text-[var(--text-secondary)]">{guide.subtitle}</p>
+                <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{tool.title} <span className="text-[14px] font-normal text-[var(--text-secondary)]">| {tool.subtitle}</span></h2>
               </div>
             </div>
 
             <div className="space-y-4">
+              {/* Why */}
+              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">{tool.why}</p>
+
+              {/* Flow */}
               <div>
-                <h3 className="text-[13px] font-bold text-[var(--accent)] mb-1">왜 필요한가?</h3>
-                <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">{guide.why}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-[var(--ai)] rounded-xl p-4">
-                  <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#2d4a7c] mb-2">
-                    <Zap size={12} /> Auto 모드
-                  </div>
-                  <p className="text-[13px] text-[#2d4a7c] leading-relaxed">{guide.autoFlow}</p>
-                </div>
-                <div className="bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)]">
-                  <div className="flex items-center gap-1.5 text-[12px] font-bold text-[var(--text-primary)] mb-2">
-                    <SlidersHorizontal size={12} /> Guided 모드
-                  </div>
-                  <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{guide.guidedFlow}</p>
+                <p className="text-[13px] font-bold text-[var(--text-primary)] mb-2">사용 흐름</p>
+                <div className="space-y-1.5">
+                  {tool.flow.map((step, j) => (
+                    <div key={j} className="flex items-start gap-2.5">
+                      <span
+                        className="text-[12px] font-bold tabular-nums leading-none pt-1 shrink-0 select-none"
+                        style={{ color: `${tool.color}50` }}
+                      >
+                        {j + 1}
+                      </span>
+                      <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{step}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {guide.highlight && (
-                <div className="bg-[var(--checkpoint)] rounded-lg px-4 py-3">
-                  <p className="text-[12px] text-amber-800 font-medium">{guide.highlight}</p>
-                </div>
-              )}
+              {/* Tip */}
+              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: `${tool.bg}` }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: tool.color }}>
+                  <strong>Tip:</strong> {tool.tip}
+                </p>
+              </div>
+
+              {/* CTA */}
+              <Link
+                href={tool.href}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] hover:underline"
+              >
+                시작하기 <ArrowRight size={14} />
+              </Link>
             </div>
           </Card>
         );

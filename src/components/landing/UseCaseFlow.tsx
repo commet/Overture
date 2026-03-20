@@ -12,7 +12,7 @@ export function UseCaseFlow() {
           {/* ── Feature 1: 질문 재정의 ── */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
             {/* Visual: before → after mini */}
-            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4 min-h-[120px] flex flex-col justify-center">
               <div className="flex items-center gap-2 mb-2.5">
                 <span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center text-[8px] text-red-500 font-bold">✕</span>
                 <span className="text-[13px] text-[var(--text-secondary)] line-through decoration-red-300">&ldquo;경쟁사 대응 전략 세워줘&rdquo;</span>
@@ -37,7 +37,7 @@ export function UseCaseFlow() {
           {/* ── Feature 2: 이해관계자 시뮬레이션 ── */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
             {/* Visual: persona avatars with reactions */}
-            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4 min-h-[120px] flex flex-col justify-center">
               <div className="flex items-center justify-center gap-3">
                 {[
                   { initial: 'C', role: 'CEO', q: '시장 규모는?', color: '#E24B4A' },
@@ -61,14 +61,14 @@ export function UseCaseFlow() {
               이해관계자를 시뮬레이션합니다
             </h3>
             <p className="text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
-              보고서를 보내기 전에 CEO, CFO, CTO의 반응과 리스크를 미리 시뮬레이션합니다.
+              보고서를 보내기 전에, 주요 이해관계자의 페르소나를 설정하고 각자의 관점에서 반응과 리스크를 미리 시뮬레이션합니다.
             </p>
           </div>
 
           {/* ── Feature 3: 가중 수렴 루프 ── */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
             {/* Visual: mini convergence chart */}
-            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4 min-h-[120px] flex flex-col justify-center">
               <svg viewBox="0 0 140 65" className="w-full" style={{ height: '80px' }}>
                 {/* Grid */}
                 <line x1="20" y1="55" x2="130" y2="55" stroke="var(--border)" strokeWidth="0.5" />
@@ -93,10 +93,10 @@ export function UseCaseFlow() {
             </div>
 
             <h3 className="text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
-              핵심 위협부터 해결합니다
+              피드백을 반영하며 수렴합니다
             </h3>
             <p className="text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
-              핵심 위협(3배 가중) → 개선 사항 → 참고 순으로 우선순위를 매기고, 가중 수렴률이 임계점을 넘을 때까지 반복합니다.
+              이해관계자의 지적을 반영하고 반복합니다. 매 반복마다 맥락이 누적되고, 충분히 수렴하면 실행에 옮깁니다.
             </p>
           </div>
         </div>
