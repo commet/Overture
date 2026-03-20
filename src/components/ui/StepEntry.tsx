@@ -111,14 +111,14 @@ export function StepEntry({
 
           {/* Locked step */}
           {currentEntryStep.locked ? (
-            <div className="text-center py-8 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)]">
-              <span className="text-[24px]">🔒</span>
-              <p className="text-[13px] text-[var(--text-secondary)] mt-2">
+            <div className="text-center py-10 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)]">
+              <span className="text-[32px]">🔒</span>
+              <p className="text-[15px] text-[var(--text-secondary)] mt-3 font-medium">
                 {currentEntryStep.unlockMessage || '아직 열리지 않은 질문입니다'}
               </p>
               <button
                 onClick={() => setCurrentStep(prev => prev + 1)}
-                className="mt-3 text-[12px] text-[var(--accent)] hover:underline cursor-pointer"
+                className="mt-4 text-[14px] font-semibold text-[var(--accent)] hover:underline cursor-pointer"
               >
                 건너뛰기 →
               </button>
@@ -181,23 +181,30 @@ export function StepEntry({
             </button>
           </div>
 
-          {/* Selected context summary */}
+          {/* Selected context — shown as pre-filled context that will be sent */}
           {Object.keys(selections).length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {steps.map((step) => {
-                const val = selections[step.key];
-                if (!val) return null;
-                const opt = step.options.find((o) => o.value === val);
-                return (
-                  <span key={step.key} className="px-2 py-0.5 rounded-full bg-[var(--ai)] text-[#2d4a7c] text-[10px] font-semibold">
-                    {opt?.emoji} {opt?.label}
-                  </span>
-                );
-              })}
+            <div className="rounded-xl bg-[var(--ai)] px-4 py-3">
+              <p className="text-[11px] font-semibold text-[#2d4a7c] mb-2">선택한 맥락 (자동 반영됨)</p>
+              <div className="space-y-1">
+                {steps.map((step) => {
+                  const val = selections[step.key];
+                  if (!val || step.locked) return null;
+                  const opt = step.options.find((o) => o.value === val);
+                  if (!opt) return null;
+                  return (
+                    <p key={step.key} className="text-[12px] text-[#2d4a7c]">
+                      <span className="font-medium">{opt.emoji} {opt.label}</span>
+                      {opt.description && <span className="text-[#2d4a7c]/60"> — {opt.description}</span>}
+                    </p>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {textHint && <p className="text-[11px] text-[var(--text-secondary)]">{textHint}</p>}
+          <p className="text-[12px] text-[var(--text-secondary)]">
+            위 맥락은 AI에 자동 전달됩니다. 아래에 구체적인 상황만 추가하세요.
+          </p>
 
           <textarea
             value={text}
