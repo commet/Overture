@@ -103,8 +103,8 @@ export function WorkflowGraph({
   return (
     <div>
       {/* ── Legend ── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 pb-3 mb-4 border-b border-[var(--border-subtle)]">
-        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-semibold">
+      <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-1.5 pb-3 mb-4 border-b border-[var(--border-subtle)]">
+        <span className="text-[11px] sm:text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-semibold">
           범례
         </span>
         {Object.entries(ACTORS).map(([key, v]) => (
@@ -261,7 +261,7 @@ export function WorkflowGraph({
 
                 {/* Collab split — always visible for 'both' steps */}
                 {step.actor === 'both' && (
-                  <div className="grid grid-cols-2 gap-2 mt-3 ml-[30px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 ml-0 sm:ml-[30px]">
                     <div
                       className="rounded-md p-2.5 border"
                       style={{
@@ -317,7 +317,7 @@ export function WorkflowGraph({
               {/* ── Expanded panel ── */}
               {isExpanded && hasExpandContent && (
                 <div className="px-4 pb-4 pt-0 animate-fade-in" style={{ backgroundColor: a.bgSubtle }}>
-                  <div className="ml-[30px] pt-3 border-t border-[var(--border-subtle)] space-y-3">
+                  <div className="ml-0 sm:ml-[30px] pt-3 border-t border-[var(--border-subtle)] space-y-3">
 
                     {/* === AI Guide (for ai and both steps) === */}
                     {(step.actor === 'ai' || step.actor === 'both') && (
@@ -438,13 +438,13 @@ export function WorkflowGraph({
               {/* ── Edit controls ── */}
               {editable && (
                 <div
-                  className="flex items-center gap-1.5 px-4 py-2"
+                  className="flex flex-wrap items-center gap-1.5 px-3 sm:px-4 py-2"
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.5)',
                     borderTop: '1px solid var(--border-subtle)',
                   }}
                 >
-                  <span className="text-[9px] text-[var(--text-tertiary)] mr-1 font-semibold">
+                  <span className="text-[10px] text-[var(--text-tertiary)] mr-1 font-semibold">
                     담당
                   </span>
                   {(['ai', 'human', 'both'] as const).map((actor) => {
@@ -457,7 +457,7 @@ export function WorkflowGraph({
                           e.stopPropagation();
                           onUpdateActor?.(i, actor);
                         }}
-                        className="px-2 py-0.5 rounded text-[9px] font-semibold border cursor-pointer transition-colors"
+                        className="px-2.5 py-1 rounded text-[10px] font-semibold border cursor-pointer transition-colors"
                         style={
                           active
                             ? { borderColor: c.color, backgroundColor: c.bg, color: c.text }
@@ -474,7 +474,7 @@ export function WorkflowGraph({
                       e.stopPropagation();
                       onToggleCheckpoint?.(i);
                     }}
-                    className={`px-2 py-0.5 rounded text-[9px] font-semibold border cursor-pointer transition-colors ${
+                    className={`px-2.5 py-1 rounded text-[10px] font-semibold border cursor-pointer transition-colors hidden sm:inline-flex ${
                       step.checkpoint
                         ? 'border-amber-400 bg-amber-50 text-amber-700'
                         : 'border-[var(--border)] text-[var(--text-tertiary)]'
@@ -487,7 +487,7 @@ export function WorkflowGraph({
                       e.stopPropagation();
                       onRemoveStep?.(i);
                     }}
-                    className="px-2 py-0.5 rounded text-[9px] font-semibold border border-[var(--border)] text-red-400 cursor-pointer hover:bg-red-50"
+                    className="px-2.5 py-1 rounded text-[10px] font-semibold border border-[var(--border)] text-red-400 cursor-pointer hover:bg-red-50"
                   >
                     삭제
                   </button>

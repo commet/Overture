@@ -436,8 +436,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                   </p>
                 </div>
               )}
-              <div className="px-4 py-2.5 bg-[var(--bg)]">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+              <div className="px-3 sm:px-4 py-2.5 bg-[var(--bg)]">
+                <div className="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
                   <span>AI <span className="font-bold text-[#2d4a7c]">{stats.ai}</span></span>
                   <span>사람 <span className="font-bold text-[#8b6914]">{stats.human}</span></span>
                   <span>협업 <span className="font-bold text-[#2d6b2d]">{stats.both}</span></span>
@@ -480,7 +480,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                     }`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--text-secondary)]">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[11px] text-[var(--text-secondary)]">
                         <span>중요도: <span className={`font-semibold ${
                           ka.importance === 'high' ? 'text-red-600' : ka.importance === 'medium' ? 'text-amber-600' : 'text-gray-500'
                         }`}>{ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}</span></span>
