@@ -640,35 +640,53 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             {/* ═══ Stage 2: 질문 재정의 (사용자 평가 기반) ═══ */}
             {reviewStage === 'reframe' && (
               <>
-                {/* 평가 요약 */}
-                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-                  <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide mb-3">STEP 2 — 질문 재정의</p>
-                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">당신의 전제 평가를 바탕으로 도출된 질문입니다.</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {analysis.hidden_assumptions.map((a, i) => {
-                      const ev = a.evaluation || 'uncertain';
-                      const color = ev === 'doubtful' ? 'bg-red-50 text-red-700' : ev === 'likely_true' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
-                      const label = ev === 'doubtful' ? '의심' : ev === 'likely_true' ? '맞음' : '불확실';
-                      return (
-                        <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${color}`}>
-                          {label}: {a.assumption.slice(0, 20)}...
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 재정의된 질문 */}
+                {/* 재정의된 질문 — 통합 카드 */}
                 {analysis.reframed_question && (
-                  <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
-                    <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">재정의된 질문</p>
-                    <p className="text-[18px] md:text-[20px] font-bold leading-snug">
-                      {analysis.reframed_question}
-                    </p>
-                    {analysis.why_reframing_matters && (
-                      <p className="text-[14px] text-white/70 mt-3 leading-relaxed">
-                        {analysis.why_reframing_matters}
+                  <div className="rounded-[20px] overflow-hidden border border-[var(--border-subtle)]">
+                    {/* 전제 평가 요약 — 상단 */}
+                    <div className="px-5 py-3 bg-[var(--bg)] border-b border-[var(--border-subtle)]">
+                      <p className="text-[12px] font-medium text-[var(--text-secondary)] mb-2">당신의 전제 평가 결과</p>
+                      <div className="space-y-1">
+                        {analysis.hidden_assumptions.map((a, i) => {
+                          const ev = a.evaluation || 'uncertain';
+                          const dotColor = ev === 'doubtful' ? 'bg-red-500' : ev === 'likely_true' ? 'bg-emerald-500' : 'bg-amber-500';
+                          const textColor = ev === 'doubtful' ? 'text-red-700' : ev === 'likely_true' ? 'text-emerald-700' : 'text-amber-700';
+                          const label = ev === 'doubtful' ? '의심' : ev === 'likely_true' ? '맞음' : '불확실';
+                          return (
+                            <div key={i} className="flex items-start gap-2">
+                              <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                              <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">
+                                <span className={`font-semibold ${textColor}`}>{label}</span> — {a.assumption}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 연결선 */}
+                    <div className="flex items-center gap-2 px-5 py-1.5 bg-[var(--surface)]">
+                      <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                      <span className="text-[10px] text-[var(--text-tertiary)] font-medium">이 평가를 바탕으로</span>
+                      <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                    </div>
+
+                    {/* 재정의된 질문 — 메인 */}
+                    <div className="bg-[var(--primary)] text-white px-5 py-5 md:px-6 md:py-6">
+                      <p className="text-[11px] font-semibold text-white/50 mb-2">재정의된 질문</p>
+                      <p className="text-[18px] md:text-[20px] font-bold leading-snug">
+                        {analysis.reframed_question}
                       </p>
+                    </div>
+
+                    {/* 리프레이밍 근거 — 하단 */}
+                    {analysis.why_reframing_matters && (
+                      <div className="px-5 py-4 bg-[var(--surface)] border-t border-[var(--border-subtle)]">
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5">왜 이렇게 재정의했는가</p>
+                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
+                          {analysis.why_reframing_matters}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -676,8 +694,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {/* 방향 선택 */}
                 {analysis.hidden_questions.length > 0 && (
                   <div>
-                    <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">어떤 방향을 추구하시겠습니까?</p>
-                    <p className="text-[12px] text-[var(--text-secondary)] mb-4">선택한 방향이 편곡 단계의 출발점이 됩니다.</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-px flex-1 bg-[var(--border-subtle)]" />
+                      <p className="text-[13px] font-bold text-[var(--text-primary)]">어떤 방향으로 접근하시겠습니까?</p>
+                      <div className="h-px flex-1 bg-[var(--border-subtle)]" />
+                    </div>
                     <div className="space-y-2.5">
                       {analysis.hidden_questions.map((hq: any, i: number) => (
                         <div
