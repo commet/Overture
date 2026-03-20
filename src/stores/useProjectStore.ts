@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Project, ProjectRef } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
+import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface ProjectState {
   projects: Project[];
@@ -22,10 +22,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   currentProjectId: null,
 
   loadProjects: () => {
-    const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
-    set({ projects });
-    // Background sync to Supabase
-    syncToSupabase('projects', projects);
+    const local = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
+    set({ projects: local });
+    loadAndMerge<Project>('projects', STORAGE_KEYS.PROJECTS)
+      .then((merged) => set({ projects: merged }));
   },
 
   createProject: (name, description = '') => {

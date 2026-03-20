@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from './supabase';
+import { supabase, clearUserCache } from './supabase';
+import { clearAllStorage } from './storage';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -11,6 +12,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -77,12 +79,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error ? translateError(error.message) : null };
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    });
+    return { error: error ? translateError(error.message) : null };
+  };
+
   const signOut = async () => {
+    clearUserCache();
+    clearAllStorage();
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut }}>
       {children}
     </AuthContext.Provider>
   );

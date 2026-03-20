@@ -10,8 +10,15 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
 
+      // OAuth provider returned an error (e.g., user denied access)
+      const errorParam = params.get('error');
+      if (errorParam) {
+        router.replace('/login?error=oauth_denied');
+        return;
+      }
+
+      const code = params.get('code');
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {

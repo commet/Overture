@@ -17,7 +17,7 @@ import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/ty
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Plus, Trash2, ArrowLeft, Pencil, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Pencil, Loader2, Users } from 'lucide-react';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -111,11 +111,14 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     loadOrchestrate();
   }, [loadData, loadSettings, loadRatings, loadDecompose, loadOrchestrate]);
 
+  const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content);
       setHandoffTitle(`${handoff.from === 'decompose' ? '악보 해석' : handoff.from === 'orchestrate' ? '편곡' : '리허설'} 결과물`);
+      setPendingProjectId(handoff.projectId);
       setActiveTab('feedback');
       clearHandoff();
     }
@@ -172,6 +175,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         feedback_intensity: data.intensity,
         results,
         synthesis,
+        project_id: pendingProjectId,
       });
 
       const record = usePersonaStore.getState().feedbackHistory.find((r) => r.id === recordId);
@@ -234,8 +238,17 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           )}
           {personas.length === 0 && !showForm ? (
             <Card className="text-center py-12">
-              <p className="text-[var(--text-secondary)]">무대에 연주자가 없습니다. 이해관계자를 올려보세요.</p>
-              <p className="text-[13px] text-[var(--text-secondary)] mt-1">이해관계자를 추가하면 그 사람의 시점에서 피드백을 받을 수 있습니다.</p>
+              <Users size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
+              <p className="text-[var(--text-secondary)] font-medium">아직 등록된 이해관계자가 없습니다</p>
+              <p className="text-[13px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto">
+                보고서를 보낼 사람(CEO, CFO 등)을 등록하면, 그 사람의 시점에서 미리 피드백을 받을 수 있습니다.
+              </p>
+              <button
+                onClick={() => { setEditingPersona(null); setShowForm(true); }}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <Plus size={14} /> 첫 이해관계자 추가
+              </button>
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

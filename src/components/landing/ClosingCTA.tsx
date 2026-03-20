@@ -19,7 +19,7 @@ export function ClosingCTA() {
             있었지만 도구화되지 않았던 것을 처음으로 도구화합니다.
           </p>
 
-          <div className="mt-12">
+          <div className="mt-12 flex flex-col items-center gap-3">
             <Link
               href="/workspace"
               className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[var(--primary)] text-white rounded-full text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md"
@@ -28,6 +28,12 @@ export function ClosingCTA() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+            </Link>
+            <Link
+              href="/demo"
+              className="text-[14px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors underline underline-offset-4 decoration-[var(--border)]"
+            >
+              먼저 체험해보기
             </Link>
           </div>
 

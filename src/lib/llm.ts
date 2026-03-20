@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { Settings } from '@/stores/types';
 
@@ -35,33 +34,51 @@ export async function callLLM(
     audio_volume: 0.15,
   });
 
-  if (settings.anthropic_api_key) {
-    return callDirect(settings.anthropic_api_key, messages, options);
+  // Direct mode: user's own API key, routed through server-side proxy
+  if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
+    return callServerWithUserKey(settings.anthropic_api_key, messages, options);
   }
+
+  // Proxy mode: server's API key with rate limiting
   return callProxy(messages, options);
 }
 
-async function callDirect(
+/**
+ * Direct mode — sends user's API key to a server-side endpoint.
+ * The key never leaves the same origin (no cross-origin browser request).
+ */
+async function callServerWithUserKey(
   apiKey: string,
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: options.maxTokens || 2000,
-    system: options.system,
-    messages,
+  const res = await fetch('/api/llm/direct', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      messages,
+      system: options.system,
+      maxTokens: options.maxTokens,
+    }),
   });
-  const block = response.content.find((b) => b.type === 'text');
-  return block ? block.text : '';
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.text;
 }
 
+/**
+ * Proxy mode — uses server's API key with auth + rate limiting.
+ */
 async function callProxy(
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
-  // Get current session token for authenticated API calls
   const { supabase } = await import('./supabase');
   const { data: { session } } = await supabase.auth.getSession();
 

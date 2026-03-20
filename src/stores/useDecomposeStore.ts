@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { DecomposeItem } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
+import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface DecomposeState {
   items: DecomposeItem[];
@@ -20,10 +20,12 @@ export const useDecomposeStore = create<DecomposeState>((set, get) => ({
   currentId: null,
 
   loadItems: () => {
-    const items = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
-    set({ items });
-    // Background sync to Supabase
-    syncToSupabase('decompose_items', items);
+    // Instant: load from localStorage
+    const local = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
+    set({ items: local });
+    // Background: merge with Supabase (fetches remote + merges + saves)
+    loadAndMerge<DecomposeItem>('decompose_items', STORAGE_KEYS.DECOMPOSE_LIST)
+      .then((merged) => set({ items: merged }));
   },
 
   createItem: (inputText: string) => {

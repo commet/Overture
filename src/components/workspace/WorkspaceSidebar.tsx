@@ -108,12 +108,12 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
           <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
             Output
           </p>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             {outputFormats.map((fmt) => (
               <button
                 key={fmt.key}
                 onClick={() => handleOutputCopy(fmt.key, fmt.gen)}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors cursor-pointer border ${
+                className={`flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border min-h-[36px] ${
                   copiedKey === fmt.key
                     ? 'border-[var(--success)] bg-[var(--collab)] text-[var(--success)]'
                     : 'border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]'

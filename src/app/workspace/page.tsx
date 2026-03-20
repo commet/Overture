@@ -140,28 +140,32 @@ function WorkspaceContent() {
       </div>
 
       {/* Mobile bottom tab bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-2 py-1.5 z-40">
-        {(['decompose', 'orchestrate', 'persona-feedback'] as StepId[]).map((step) => {
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-1 py-2 z-40">
+        {(['decompose', 'orchestrate', 'persona-feedback', 'refinement-loop'] as StepId[]).map((step) => {
           const icons: Record<string, React.ReactNode> = {
-            'decompose': <span className="text-[16px]">🎼</span>,
-            'orchestrate': <span className="text-[16px]">🎹</span>,
-            'persona-feedback': <span className="text-[16px]">🎭</span>,
+            'decompose': <span className="text-[18px]">🎼</span>,
+            'orchestrate': <span className="text-[18px]">🎹</span>,
+            'persona-feedback': <span className="text-[18px]">🎭</span>,
+            'refinement-loop': <span className="text-[18px]">🔄</span>,
           };
           const labels: Record<string, string> = {
-            'decompose': '악보',
+            'decompose': '해석',
             'orchestrate': '편곡',
             'persona-feedback': '리허설',
+            'refinement-loop': '합주',
           };
           return (
             <button
               key={step}
               onClick={() => handleNavigate(step)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg cursor-pointer transition-colors ${
-                activeStep === step ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'
+              className={`flex flex-col items-center justify-center gap-0.5 min-w-[52px] min-h-[44px] px-2 py-1.5 rounded-xl cursor-pointer transition-colors ${
+                activeStep === step
+                  ? 'text-[var(--accent)] bg-[var(--ai)]'
+                  : 'text-[var(--text-secondary)]'
               }`}
             >
               {icons[step]}
-              <span className="text-[9px] font-semibold">{labels[step]}</span>
+              <span className="text-[10px] font-semibold">{labels[step]}</span>
             </button>
           );
         })}

@@ -27,6 +27,7 @@ const steps: StepInfo[] = [
   { id: 'decompose', number: 1, label: '악보 해석', icon: <Layers size={16} />, color: 'text-[#2d4a7c]', bgColor: 'bg-[var(--ai)]' },
   { id: 'orchestrate', number: 2, label: '편곡', icon: <Map size={16} />, color: 'text-[#8b6914]', bgColor: 'bg-[var(--human)]' },
   { id: 'persona-feedback', number: 3, label: '리허설', icon: <Users size={16} />, color: 'text-purple-700', bgColor: 'bg-purple-50' },
+  { id: 'refinement-loop', number: 4, label: '합주 연습', icon: <RefreshCw size={16} />, color: 'text-[#2d6b2d]', bgColor: 'bg-[var(--collab)]' },
 ];
 
 export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
@@ -59,6 +60,12 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
       case 'persona-feedback': {
         const items = pid ? feedbackHistory.filter(f => f.project_id === pid) : feedbackHistory;
         return items.length > 0 ? 'done' : 'not-started';
+      }
+      case 'refinement-loop': {
+        const projectLoops = pid ? loops.filter(l => l.project_id === pid) : loops;
+        const convergedLoop = projectLoops.find(l => l.status === 'converged');
+        const activeLoop = projectLoops.find(l => l.status === 'active');
+        return convergedLoop ? 'done' : activeLoop ? 'in-progress' : 'not-started';
       }
       default:
         return 'not-started';
@@ -113,33 +120,11 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
         );
       })}
 
-      {/* Refinement loop */}
-      {activeLoops.length > 0 && (
-        <>
-          <div className="border-t border-[var(--border)] my-2" />
-          <button
-            onClick={() => onStepClick('refinement-loop')}
-            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer ${
-              activeStep === 'refinement-loop'
-                ? 'bg-[var(--surface)] shadow-sm border border-[var(--accent)]/30'
-                : 'hover:bg-[var(--surface)]/60'
-            }`}
-          >
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-              activeStep === 'refinement-loop' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg)] text-[var(--text-secondary)]'
-            }`}>
-              <RefreshCw size={14} />
-            </div>
-            <div className="min-w-0">
-              <p className={`text-[12px] font-semibold ${activeStep === 'refinement-loop' ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
-                합주 연습
-              </p>
-              <p className="text-[10px] text-[var(--text-secondary)]">
-                {activeLoops[0].iterations.length}회 · 수렴 {Math.round((activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence_score || 0) * 100)}%
-              </p>
-            </div>
-          </button>
-        </>
+      {/* Active loop info */}
+      {activeLoops.length > 0 && activeStep === 'refinement-loop' && (
+        <div className="px-3 pt-1 text-[10px] text-[var(--text-secondary)]">
+          {activeLoops[0].iterations.length}회 반복 · 수렴 {Math.round((activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence_score || 0) * 100)}%
+        </div>
       )}
     </div>
   );

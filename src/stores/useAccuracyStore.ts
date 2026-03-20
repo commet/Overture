@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { PersonaAccuracyRating } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { insertToSupabase, syncToSupabase } from '@/lib/db';
+import { insertToSupabase, loadAndMerge } from '@/lib/db';
 
 interface AccuracyState {
   ratings: PersonaAccuracyRating[];
@@ -21,10 +21,10 @@ export const useAccuracyStore = create<AccuracyState>((set, get) => ({
   ratings: [],
 
   loadRatings: () => {
-    const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
-    set({ ratings });
-    // Background sync to Supabase
-    syncToSupabase('accuracy_ratings', ratings);
+    const local = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
+    set({ ratings: local });
+    loadAndMerge<PersonaAccuracyRating>('accuracy_ratings', STORAGE_KEYS.ACCURACY_RATINGS)
+      .then((merged) => set({ ratings: merged }));
   },
 
   addRating: (data) => {

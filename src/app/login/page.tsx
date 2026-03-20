@@ -1,12 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
-export default function LoginPage() {
+const AUTH_ERRORS: Record<string, string> = {
+  auth_failed: '로그인에 실패했습니다. 다시 시도해주세요.',
+  oauth_denied: 'Google 로그인이 취소되었습니다.',
+};
+
+function LoginContent() {
   const router = useRouter();
-  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const searchParams = useSearchParams();
+  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+  const [isReset, setIsReset] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,11 +21,20 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Handle error/redirect params from middleware or callback
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam && AUTH_ERRORS[errorParam]) {
+      setError(AUTH_ERRORS[errorParam]);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/workspace');
+      const redirect = searchParams.get('redirect') || '/workspace';
+      router.replace(redirect);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, searchParams]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +42,14 @@ export default function LoginPage() {
     setMessage('');
     setSubmitting(true);
 
-    if (isSignUp) {
+    if (isReset) {
+      const { error } = await resetPassword(email);
+      if (error) {
+        setError(error);
+      } else {
+        setMessage('비밀번호 재설정 링크를 보냈습니다. 이메일을 확인해주세요.');
+      }
+    } else if (isSignUp) {
       const { error } = await signUpWithEmail(email, password);
       if (error) {
         setError(error);
@@ -103,17 +126,19 @@ export default function LoginPage() {
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)] transition-all"
               />
             </div>
-            <div>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호 (6자 이상)"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)] transition-all"
-              />
-            </div>
+            {!isReset && (
+              <div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="비밀번호 (6자 이상)"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)] transition-all"
+                />
+              </div>
+            )}
 
             {error && (
               <p className="text-[12px] text-[var(--danger)] bg-red-50 rounded-lg px-3 py-2">{error}</p>
@@ -127,22 +152,40 @@ export default function LoginPage() {
               disabled={submitting}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[14px] font-semibold hover:bg-[var(--primary-light)] disabled:opacity-50 transition-colors cursor-pointer"
             >
-              {submitting ? '처리 중...' : isSignUp ? '회원가입' : '로그인'}
+              {submitting ? '처리 중...' : isReset ? '재설정 링크 보내기' : isSignUp ? '회원가입' : '로그인'}
             </button>
           </form>
 
-          {/* Toggle Sign Up / Sign In */}
-          <p className="text-center text-[13px] text-[var(--text-secondary)]">
-            {isSignUp ? '이미 계정이 있으신가요?' : '처음이신가요?'}
+          {/* Forgot password link (login mode only) */}
+          {!isSignUp && !isReset && (
             <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }}
+              onClick={() => { setIsReset(true); setError(''); setMessage(''); }}
+              className="w-full text-center text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          )}
+
+          {/* Toggle Sign Up / Sign In / Reset */}
+          <p className="text-center text-[13px] text-[var(--text-secondary)]">
+            {isReset ? '비밀번호가 기억나셨나요?' : isSignUp ? '이미 계정이 있으신가요?' : '처음이신가요?'}
+            <button
+              onClick={() => { setIsSignUp(isReset ? false : !isSignUp); setIsReset(false); setError(''); setMessage(''); }}
               className="ml-1.5 text-[var(--accent)] font-semibold hover:underline cursor-pointer"
             >
-              {isSignUp ? '로그인' : '회원가입'}
+              {isReset ? '로그인' : isSignUp ? '로그인' : '회원가입'}
             </button>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }

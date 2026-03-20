@@ -3,7 +3,7 @@ import type { RefinementLoop, RefinementIteration } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { detectConvergence } from '@/lib/convergence';
-import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
+import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface RefinementState {
   loops: RefinementLoop[];
@@ -24,10 +24,10 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
   activeLoopId: null,
 
   loadLoops: () => {
-    const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
-    set({ loops });
-    // Background sync to Supabase
-    syncToSupabase('refinement_loops', loops);
+    const local = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+    set({ loops: local });
+    loadAndMerge<RefinementLoop>('refinement_loops', STORAGE_KEYS.REFINEMENT_LOOPS)
+      .then((merged) => set({ loops: merged }));
   },
 
   createLoop: (projectId, goal, name) => {

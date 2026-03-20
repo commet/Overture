@@ -49,6 +49,10 @@ export default function GuidePage() {
             <SlidersHorizontal size={14} className="text-[var(--accent)]" /> <strong>Guided</strong> — 단계별 직접 제어
           </span>
         </div>
+        <div className="mt-4 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c]">
+          <strong>처음이라면?</strong> Auto 모드로 시작하세요. 과제를 입력하면 AI가 분석하고, 당신은 결과를 보고 판단만 하면 됩니다.
+          Overture가 처음이라면 <a href="/demo" className="underline font-semibold">5분 데모</a>를 먼저 체험해보세요.
+        </div>
       </div>
 
       {guides.map((guide, i) => {

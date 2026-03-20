@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { OrchestrateItem, OrchestrateStep } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, syncToSupabase } from '@/lib/db';
+import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface OrchestrateState {
   items: OrchestrateItem[];
@@ -24,10 +24,10 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
   currentId: null,
 
   loadItems: () => {
-    const items = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
-    set({ items });
-    // Background sync to Supabase
-    syncToSupabase('orchestrate_items', items);
+    const local = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
+    set({ items: local });
+    loadAndMerge<OrchestrateItem>('orchestrate_items', STORAGE_KEYS.ORCHESTRATE_LIST)
+      .then((merged) => set({ items: merged }));
   },
 
   createItem: () => {

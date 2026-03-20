@@ -180,6 +180,12 @@ body {
   animation: crescendo-reveal 0.8s var(--ease-musical) forwards;
 }
 
+/* ── Orchestration assembly loader ── */
+@keyframes assemble-bar {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.65; }
+}
+
 /* ── SVG line draw ── */
 @keyframes draw-line {
   from { stroke-dashoffset: 200; }

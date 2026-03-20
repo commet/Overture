@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
+import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode } from '@/stores/types';
 import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2 } from 'lucide-react';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
@@ -82,8 +83,9 @@ export default function SettingsPage() {
     reader.readAsText(file);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     clearAllStorage();
+    await deleteAllUserData();
     setResetModal(false);
     alert('모든 데이터가 초기화되었습니다. 페이지를 새로고침합니다.');
     window.location.reload();
@@ -145,7 +147,7 @@ export default function SettingsPage() {
             <h3 className="text-[15px] font-bold">Anthropic API Key</h3>
           </div>
           <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-            키는 브라우저 localStorage에만 저장되며 서버로 전송되지 않습니다.
+            키는 브라우저에 저장되며, LLM 호출 시 같은 서버를 통해 안전하게 전송됩니다. 외부로 직접 노출되지 않습니다.
           </p>
           <div className="relative">
             <input

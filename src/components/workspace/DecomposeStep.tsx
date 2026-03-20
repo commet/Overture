@@ -20,7 +20,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
-import { StaffLines, BarLine, Fermata, CrescendoHairpin } from '@/components/ui/MusicalElements';
+import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -57,34 +57,33 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과�
 
 const DECOMPOSE_ENTRY_STEPS = [
   {
-    key: 'situation',
-    question: '어떤 상황인가요?',
+    key: 'origin',
+    question: '이 과제는 어디서 시작되었나요?',
     options: [
-      { value: 'executive', emoji: '👔', label: '경영진 지시', description: '상사나 경영진이 과제를 줬다' },
-      { value: 'client', emoji: '🤝', label: '고객 요청', description: '고객이나 클라이언트의 요청' },
-      { value: 'self', emoji: '💡', label: '자체 기획', description: '내가 시작하려는 프로젝트' },
-      { value: 'team', emoji: '👥', label: '팀 이슈', description: '팀에서 해결해야 할 문제' },
+      { value: 'top-down', emoji: '👔', label: '위에서 내려온 지시', description: '배경 설명 없이 과제가 할당되었다' },
+      { value: 'external', emoji: '🤝', label: '고객/외부 요청', description: '외부에서 온 구체적 요구사항이다' },
+      { value: 'self', emoji: '💡', label: '스스로 발견한 기회', description: '내가 필요성을 느끼고 시작하는 일이다' },
+      { value: 'fire', emoji: '🔥', label: '갑자기 터진 문제', description: '예상치 못한 상황에 대응해야 한다' },
     ],
   },
   {
-    key: 'type',
-    question: '어떤 종류의 과제인가요?',
+    key: 'uncertainty',
+    question: '지금 가장 불확실한 것은?',
     options: [
-      { value: 'strategy', emoji: '🎯', label: '전략 수립' },
-      { value: 'analysis', emoji: '🔍', label: '분석/리서치' },
-      { value: 'planning', emoji: '📋', label: '기획서 작성' },
-      { value: 'response', emoji: '⚡', label: '대응/해결' },
-      { value: 'proposal', emoji: '📝', label: '제안서' },
-      { value: 'other', emoji: '📦', label: '기타' },
+      { value: 'why', emoji: '🎯', label: '이걸 왜 해야 하는지', description: '과제의 목적이나 가치가 불분명하다' },
+      { value: 'what', emoji: '🧭', label: '무엇을 해야 하는지', description: '방향은 잡히는데 범위가 불분명하다' },
+      { value: 'how', emoji: '⚙️', label: '어떻게 해야 하는지', description: '뭘 해야 하는지는 알지만 방법을 모르겠다' },
+      { value: 'none', emoji: '✅', label: '불확실한 것 없음', description: '정리만 하면 되는 상태다' },
     ],
   },
   {
-    key: 'urgency',
-    question: '기한은?',
+    key: 'success',
+    question: '이게 성공하면 뭐가 달라지나요?',
     options: [
-      { value: 'urgent', emoji: '🔥', label: '급함 (1주 이내)' },
-      { value: 'normal', emoji: '📅', label: '보통 (2-4주)' },
-      { value: 'relaxed', emoji: '🌿', label: '여유 (1개월+)' },
+      { value: 'measurable', emoji: '📈', label: '숫자로 보이는 성과', description: '매출, 비용, 전환율 등 측정 가능한 개선' },
+      { value: 'risk', emoji: '🛡️', label: '리스크 감소', description: '안 하면 더 큰 문제가 될 것을 방지' },
+      { value: 'opportunity', emoji: '🚀', label: '새로운 가능성', description: '이전에 없던 기회나 역량이 생긴다' },
+      { value: 'unclear', emoji: '❓', label: '아직 모르겠음', description: '성공의 기준이 아직 불명확하다' },
     ],
   },
 ];
@@ -134,6 +133,16 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     loadJudgments();
     loadProjects();
   }, [loadItems, loadJudgments, loadProjects]);
+
+  // Recover items stuck in 'analyzing' (e.g., page reload during LLM call)
+  useEffect(() => {
+    items.forEach((item) => {
+      if (item.status === 'analyzing') {
+        updateItem(item.id, { status: 'input' });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const current = getCurrentItem();
   const hasLearning = judgments.length >= 3;
@@ -221,6 +230,18 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     }
   };
 
+  const handleToggleAssumption = (index: number) => {
+    if (!current || !currentId || !current.analysis) return;
+    const assumptions = [...current.analysis.hidden_assumptions] as any[];
+    const a = assumptions[index];
+    if (typeof a === 'string') {
+      assumptions[index] = { assumption: a, risk_if_false: '', verified: true };
+    } else {
+      assumptions[index] = { ...a, verified: !a.verified };
+    }
+    updateItem(currentId, { analysis: { ...current.analysis, hidden_assumptions: assumptions } });
+  };
+
   const getAnalysis = () => current?.analysis ? normalizeAnalysis(current.analysis) : null;
 
   /* ─── Render ─── */
@@ -301,7 +322,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 .map(([k, v]) => {
                   const step = DECOMPOSE_ENTRY_STEPS.find(s => s.key === k);
                   const opt = step?.options.find(o => o.value === v);
-                  return opt ? `${step?.question.replace('?', '')}: ${opt.label}` : '';
+                  if (!opt) return '';
+                  return `${step?.question.replace('?', '')}: ${opt.label}${opt.description ? ` (${opt.description})` : ''}`;
                 })
                 .filter(Boolean)
                 .join('\n');
@@ -364,66 +386,94 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
             {/* ─────────────────────────────────
                 Card 1: 진단 — The Score Card
-                A manuscript-like card that tells
-                the story: surface → risk → truth
+                Three clearly separated sections:
+                surface → premises → real question
                ───────────────────────────────── */}
-            <div className="relative rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden manuscript-bg">
-              <StaffLines opacity={0.05} spacing={11} />
+            <div className="rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
 
-              <div className="relative z-10">
-                {/* ── 받은 악보 (Situation) ── */}
-                <div className="px-6 pt-6 pb-5">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-2">
-                    받은 악보
-                  </p>
-                  <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
-                    {analysis.surface_task}
-                  </p>
+              {/* ── 1. 받은 악보 (Situation) ── */}
+              <div className="px-6 pt-6 pb-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
+                  <p className="text-[12px] font-medium text-[var(--text-tertiary)]">받은 악보</p>
                 </div>
+                <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
+                  {analysis.surface_task}
+                </p>
+              </div>
 
-                {/* ── Bar line transition ── */}
-                <BarLine type="single" height={24} className="py-0" />
-
-                {/* ── 숨겨진 불협화음 (Complication) ── */}
-                <div className="px-6 py-5 bg-gradient-to-b from-amber-50/40 to-amber-50/0">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-amber-700/70 mb-1">
-                    숨겨진 불협화음
-                  </p>
-                  <p className="text-[12px] text-amber-700/50 mb-4">
-                    이 과제는 검증되지 않은 전제 위에 서 있습니다
-                  </p>
-                  <div className="space-y-3">
-                    {analysis.hidden_assumptions.map((a, i) => (
-                      <div
-                        key={i}
-                        className="pl-4 border-l-2 border-amber-400/60"
-                      >
-                        <p className="text-[13px] text-[var(--text-primary)] font-medium leading-relaxed">
-                          &ldquo;{a.assumption}&rdquo;
+              {/* ── 2. 점검이 필요한 전제 (Complication) ── */}
+              <div className="px-6 py-5 bg-amber-50/80 border-y border-amber-200/40">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <p className="text-[12px] font-medium text-amber-700">점검이 필요한 전제</p>
+                    </div>
+                    <p className="text-[12px] text-amber-600/70 ml-[14px]">
+                      이미 확인한 전제는 체크하세요
+                    </p>
+                  </div>
+                  {analysis.hidden_assumptions.some(a => a.verified) && (
+                    <span className="text-[11px] text-[var(--success)] font-medium">
+                      {analysis.hidden_assumptions.filter(a => a.verified).length}건 확인됨
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {analysis.hidden_assumptions.map((a, i) => (
+                    <div
+                      key={i}
+                      className={`
+                        flex items-start gap-3 pl-4 border-l-2 rounded-r-lg py-2.5 pr-3
+                        transition-all duration-300
+                        ${a.verified
+                          ? 'border-l-emerald-400/50 bg-emerald-50/30'
+                          : 'border-l-amber-400/50'
+                        }
+                      `}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[13px] font-medium leading-relaxed transition-colors duration-300 ${
+                          a.verified ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'
+                        }`}>
+                          {a.assumption}
                         </p>
-                        {a.risk_if_false && (
-                          <p className="text-[12px] text-amber-700/70 mt-1 leading-relaxed">
-                            <span className="inline-block w-4 text-center mr-0.5">&rarr;</span>
-                            {a.risk_if_false}
+                        {a.risk_if_false && !a.verified && (
+                          <p className="text-[12px] text-amber-700/60 mt-1 leading-relaxed">
+                            만약 아니라면 &rarr; {a.risk_if_false}
                           </p>
                         )}
                       </div>
-                    ))}
-                  </div>
+                      <button
+                        onClick={() => handleToggleAssumption(i)}
+                        className={`
+                          shrink-0 mt-0.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium
+                          transition-all duration-300 cursor-pointer
+                          ${a.verified
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-white/60 text-[var(--text-tertiary)] hover:bg-white hover:text-amber-700'
+                          }
+                        `}
+                      >
+                        {a.verified ? (
+                          <><Check size={10} /> 확인됨</>
+                        ) : (
+                          <>확인됨?</>
+                        )}
+                      </button>
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* ── Double bar line — key change ── */}
-                <BarLine type="double" height={24} className="py-0" />
-
-                {/* ── 이 곡의 진짜 주제 (Resolution) ── */}
-                <div className="px-6 pt-5 pb-6">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <CrescendoHairpin width={40} height={12} color="var(--accent)" />
-                    <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--accent)]">
-                      이 곡의 진짜 주제
-                    </p>
-                  </div>
-                  <p className="text-[18px] font-bold text-[var(--text-primary)] leading-snug tracking-tight animate-crescendo">
+              {/* ── 3. 이 곡의 진짜 주제 (Resolution) ── */}
+              <div className="px-6 pt-5 pb-6">
+                <div className="pl-4 border-l-[3px] border-[var(--accent)]">
+                  <p className="text-[12px] font-medium text-[var(--accent)] mb-3">
+                    이 곡의 진짜 주제
+                  </p>
+                  <p className="text-[18px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
                     {analysis.reframed_question}
                   </p>
                   {analysis.why_reframing_matters && (
@@ -431,16 +481,16 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                       {analysis.why_reframing_matters}
                     </p>
                   )}
-
-                  {/* Reasoning — like an expression marking on a score */}
-                  {analysis.reasoning_narrative && (
-                    <div className="mt-5 pt-4 border-t border-dashed border-[var(--border-subtle)]">
-                      <p className="text-[12px] text-[var(--text-tertiary)] italic leading-relaxed">
-                        {analysis.reasoning_narrative}
-                      </p>
-                    </div>
-                  )}
                 </div>
+
+                {/* 사고 과정 */}
+                {analysis.reasoning_narrative && (
+                  <div className="mt-5 pt-4 border-t border-dashed border-[var(--border-subtle)]">
+                    <p className="text-[12px] text-[var(--text-tertiary)] italic leading-relaxed">
+                      {analysis.reasoning_narrative}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

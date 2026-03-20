@@ -4,14 +4,18 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw } from 'lucide-react';
+import { usePersonaStore } from '@/stores/usePersonaStore';
+import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User } from 'lucide-react';
 
-const sidebarItems = [
+const processSteps = [
+  { step: 'decompose', label: '악보 해석', subtitle: '문제 재정의', icon: Layers },
+  { step: 'orchestrate', label: '편곡', subtitle: '실행 설계', icon: Map },
+  { step: 'persona-feedback', label: '리허설', subtitle: '사전 검증', icon: Users },
+  { step: 'refinement-loop', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw },
+];
+
+const utilityItems = [
   { href: '/project', label: '프로젝트', icon: FolderOpen },
-  { href: '/tools/decompose', label: '악보 해석', icon: Layers },
-  { href: '/tools/orchestrate', label: '편곡', icon: Map },
-  { href: '/tools/persona-feedback', label: '리허설', icon: Users },
-  { href: '/tools/refinement-loop', label: '합주 연습', icon: RefreshCw },
   { href: '/guide', label: '사용 가이드', icon: BookOpen },
   { href: '/settings', label: '설정', icon: Settings },
 ];
@@ -19,29 +23,103 @@ const sidebarItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { projects, currentProjectId, loadProjects } = useProjectStore();
+  const { personas, loadData: loadPersonas } = usePersonaStore();
 
   useEffect(() => {
     loadProjects();
-  }, [loadProjects]);
+    loadPersonas();
+  }, [loadProjects, loadPersonas]);
 
   const currentProject = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
 
-  if (pathname === '/') return null;
+  // Hide on landing, demo, login
+  if (pathname === '/' || pathname === '/demo' || pathname === '/login' || pathname.startsWith('/auth')) return null;
+
+  // Determine which step is active (from workspace URL or tool page path)
+  const activeStep = pathname.startsWith('/tools/')
+    ? pathname.replace('/tools/', '')
+    : null;
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[var(--border-subtle)] p-3 shrink-0">
-      <nav className="flex flex-col gap-0.5 mt-2">
-        {sidebarItems.map((item) => {
+    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[var(--border-subtle)] shrink-0 overflow-y-auto">
+      {/* Current project */}
+      {currentProject && (
+        <div className="px-3 pt-4 pb-2">
+          <div className="flex items-center gap-2 text-[var(--accent)]">
+            <FolderOpen size={12} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">프로젝트</span>
+          </div>
+          <p className="text-[13px] font-semibold text-[var(--text-primary)] mt-1 truncate">
+            {currentProject.name}
+          </p>
+        </div>
+      )}
+
+      {/* Process steps — primary navigation */}
+      <nav className="px-2 py-3 space-y-0.5">
+        <p className="px-2 text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+          프로세스
+        </p>
+        {processSteps.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeStep === item.step;
+          return (
+            <Link
+              key={item.step}
+              href={`/workspace?step=${item.step}`}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all duration-200 ${
+                isActive
+                  ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)]'
+              }`}
+            >
+              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-medium">{item.label}</span>
+                <span className={`text-[10px] ${isActive ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-tertiary)]'}`}>
+                  {item.subtitle}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Personas */}
+      {personas.length > 0 && (
+        <div className="px-3 py-2 border-t border-[var(--border-subtle)]">
+          <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+            페르소나
+          </p>
+          <div className="space-y-0.5">
+            {personas.slice(0, 4).map((p) => (
+              <Link
+                key={p.id}
+                href="/workspace?step=persona-feedback"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)] transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                  <User size={10} />
+                </div>
+                <span className="truncate">{p.name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Utility links */}
+      <div className="mt-auto px-2 py-3 border-t border-[var(--border-subtle)]">
+        {utilityItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200  ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                 isActive
-                  ? 'bg-[var(--primary)] text-white shadow-sm'
+                  ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)]'
               }`}
             >
@@ -50,45 +128,7 @@ export function Sidebar() {
             </Link>
           );
         })}
-      </nav>
-
-      {currentProject && (
-        <div className="mt-auto pt-4 border-t border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 px-3 mb-2">
-            <FolderOpen size={13} className="text-[var(--accent)]" />
-            <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">프로젝트</span>
-          </div>
-          <p className="px-3 text-[13px] font-semibold text-[var(--text-primary)] mb-2 truncate">
-            {currentProject.name}
-          </p>
-          <div className="space-y-0.5 px-1">
-            {currentProject.refs.map((ref) => {
-              const toolLabels: Record<string, string> = {
-                'decompose': '악보 해석',
-                'orchestrate': '편곡',
-                'persona-feedback': '리허설',
-                'refinement-loop': '합주 연습',
-              };
-              const toolHrefs: Record<string, string> = {
-                'decompose': '/tools/decompose',
-                'synthesize': '/tools/synthesize',
-                'orchestrate': '/tools/orchestrate',
-                'persona-feedback': '/tools/persona-feedback',
-              };
-              return (
-                <Link
-                  key={ref.itemId}
-                  href={toolHrefs[ref.tool]}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)] transition-colors"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                  <span className="truncate">{toolLabels[ref.tool]}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      </div>
     </aside>
   );
 }

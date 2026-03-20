@@ -4,13 +4,11 @@ import { useEffect, useState } from 'react';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep as OrchestrateStepType } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
-import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
@@ -22,13 +20,6 @@ import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
-import { JudgmentPoints } from './JudgmentPoints';
-
-const LOADING_MESSAGES = [
-  '각 파트에 역할을 배정하고 있습니다...',
-  '스토리라인을 구성하고 있습니다...',
-  '크리티컬 패스를 짚고 있습니다...',
-];
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -107,6 +98,61 @@ const ORCHESTRATE_ENTRY_STEPS = [
   },
 ];
 
+/* ── Orchestration Loader ── */
+function OrchestrationLoader() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setPhase((p) => (p + 1) % 3), 2800);
+    return () => clearInterval(timer);
+  }, []);
+
+  const messages = [
+    '역할을 배분하고 있습니다',
+    '실행 순서를 조율합니다',
+    '검증 포인트를 설계합니다',
+  ];
+
+  const bars = [
+    { w: '72%', c: '#3b6dcc' },
+    { w: '45%', c: '#2d6b2d' },
+    { w: '58%', c: '#b8860b' },
+    { w: '84%', c: '#3b6dcc' },
+    { w: '36%', c: '#2d6b2d' },
+  ];
+
+  return (
+    <div className="py-10">
+      <div className="max-w-xs mx-auto mb-8 space-y-1.5">
+        {bars.map((bar, i) => (
+          <div
+            key={i}
+            className="h-3 rounded-sm"
+            style={{
+              width: bar.w,
+              backgroundColor: bar.c,
+              animation: `assemble-bar 2.4s ease-in-out ${i * 0.4}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+      <p className="text-center text-[14px] text-[var(--text-primary)] font-medium">
+        {messages[phase]}
+      </p>
+      <div className="flex justify-center gap-1.5 mt-3">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className={`h-1 rounded-full transition-all duration-500 ${
+              i === phase ? 'w-5 bg-[var(--accent)]' : 'w-1.5 bg-[var(--border)]'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface OrchestrateStepProps {
   onNavigate: (step: string) => void;
 }
@@ -120,7 +166,6 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
   const { settings } = useSettingsStore();
   const [inputText, setInputText] = useState('');
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState('');
   const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
 
@@ -139,20 +184,22 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     }
   }, []);  // Run once on mount
 
+  // Recover items stuck in 'analyzing'
+  useEffect(() => {
+    items.forEach((item) => {
+      if (item.status === 'analyzing') {
+        updateItem(item.id, { status: 'input' });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const current = getCurrentItem();
 
   // Find related decompose item for context chain
   const relatedDecompose = current?.project_id
     ? decomposeItems.find(d => d.project_id === current.project_id && d.status === 'done' && d.analysis)
     : null;
-
-  useEffect(() => {
-    if (current?.status !== 'analyzing') return;
-    const interval = setInterval(() => {
-      setLoadingMsgIdx((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [current?.status]);
 
   const handleAnalyze = async (prompt?: string) => {
     const finalPrompt = prompt || inputText;
@@ -300,7 +347,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── Loading ─── */}
       {current?.status === 'analyzing' && (
         <Card>
-          <LoadingSteps steps={['워크플로우를 설계하고 있습니다', '단계별 담당을 배정하고 있습니다', '체크포인트를 배치하고 있습니다']} />
+          <OrchestrationLoader />
         </Card>
       )}
 
@@ -354,6 +401,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             onUpdateActor={(idx, actor) => handleStepActorChange(idx, actor)}
             onToggleCheckpoint={(idx) => { if (currentId) updateStep(currentId, idx, { checkpoint: !steps[idx].checkpoint }); }}
             onRemoveStep={(idx) => { if (currentId) removeStep(currentId, idx); }}
+            onUpdateField={(idx, updates) => { if (currentId) updateStep(currentId, idx, updates); }}
           />
 
           {current.status === 'review' && (
@@ -362,72 +410,74 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             </Button>
           )}
 
-          {/* Stats */}
+          {/* ── Summary ── */}
           {stats && (
-            <Card className="!bg-[var(--bg)]">
-              <h4 className="text-[13px] font-bold text-[var(--text-primary)] mb-3">요약 대시보드</h4>
-              <div className="flex flex-wrap gap-3 text-[13px] mb-3">
-                <Badge variant="ai">AI {stats.ai}단계</Badge>
-                <Badge variant="human">사람 {stats.human}단계</Badge>
-                <Badge variant="both">협업 {stats.both}단계</Badge>
-                <Badge variant="checkpoint">체크포인트 {stats.checkpoints}개</Badge>
-              </div>
-              <div className="flex h-3 rounded-full overflow-hidden mb-2">
-                {stats.ai > 0 && <div className="bg-[#b8cce8]" style={{ width: `${(stats.ai / steps.length) * 100}%` }} />}
-                {stats.human > 0 && <div className="bg-[#f5d89a]" style={{ width: `${(stats.human / steps.length) * 100}%` }} />}
-                {stats.both > 0 && <div className="bg-[#a8d5a8]" style={{ width: `${(stats.both / steps.length) * 100}%` }} />}
-              </div>
-              <div className="flex justify-between text-[12px] text-[var(--text-secondary)]">
-                <span>사람 개입 비율: <span className="font-bold text-[var(--text-primary)]">{stats.humanPercent}%</span></span>
-                {current.analysis?.total_estimated_time && (
-                  <span>예상 총 소요시간: <span className="font-bold text-[var(--text-primary)]">{current.analysis.total_estimated_time}</span></span>
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
+              {current.analysis?.design_rationale && (
+                <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
+                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
+                    {current.analysis.design_rationale}
+                  </p>
+                </div>
+              )}
+              <div className="px-4 py-2.5 bg-[var(--bg)]">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+                  <span>AI <span className="font-bold text-[#2d4a7c]">{stats.ai}</span></span>
+                  <span>사람 <span className="font-bold text-[#8b6914]">{stats.human}</span></span>
+                  <span>협업 <span className="font-bold text-[#2d6b2d]">{stats.both}</span></span>
+                  <span>체크포인트 <span className="font-bold text-amber-700">{stats.checkpoints}</span></span>
+                  <span className="text-[var(--border)]">|</span>
+                  <span>사람 개입 <span className="font-bold text-[var(--text-primary)]">{stats.humanPercent}%</span></span>
+                  {current.analysis?.total_estimated_time && (
+                    <>
+                      <span className="text-[var(--border)]">|</span>
+                      <span>총 <span className="font-bold text-[var(--text-primary)]">{current.analysis.total_estimated_time}</span></span>
+                    </>
+                  )}
+                </div>
+                {current.analysis?.critical_path && current.analysis.critical_path.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-1.5">
+                    <span className="font-semibold">크리티컬 패스:</span>
+                    {current.analysis.critical_path.map((idx: number) => (
+                      <span key={idx} className="px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[10px] font-bold">
+                        Step {idx}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-            </Card>
+            </div>
           )}
 
-          {/* Key Assumptions */}
+          {/* ── Prerequisites ── */}
           {current.analysis && current.analysis.key_assumptions && current.analysis.key_assumptions.length > 0 && (
-            <Card className="!bg-[var(--checkpoint)]">
-              <h4 className="text-[13px] font-bold text-amber-800 mb-3">핵심 가정</h4>
+            <div>
+              <div className="flex items-baseline gap-2 mb-3">
+                <h4 className="text-[14px] font-bold text-[var(--text-primary)]">전제 조건</h4>
+                <span className="text-[11px] text-[var(--text-secondary)]">이 워크플로우가 유효하려면</span>
+              </div>
               <div className="space-y-2">
                 {current.analysis.key_assumptions.map((ka: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2 text-[12px]">
-                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      ka.importance === 'high' ? 'bg-red-100 text-red-700' : ka.importance === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}
-                    </span>
-                    <div>
-                      <p className="text-[var(--text-primary)]">{ka.assumption}</p>
-                      <p className="text-[var(--text-secondary)] mt-0.5">
-                        확신도: {ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'}
-                        {ka.if_wrong && ` · 틀리면: ${ka.if_wrong}`}
-                      </p>
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]">
+                    <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${
+                      ka.importance === 'high' ? 'bg-red-500' : ka.importance === 'medium' ? 'bg-amber-500' : 'bg-gray-400'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
+                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--text-secondary)]">
+                        <span>중요도: <span className={`font-semibold ${
+                          ka.importance === 'high' ? 'text-red-600' : ka.importance === 'medium' ? 'text-amber-600' : 'text-gray-500'
+                        }`}>{ka.importance === 'high' ? '높음' : ka.importance === 'medium' ? '중간' : '낮음'}</span></span>
+                        <span className="text-[var(--border)]">&middot;</span>
+                        <span>확신도: <span className="font-semibold">{ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'}</span></span>
+                      </div>
+                      {ka.if_wrong && (
+                        <p className="text-[11px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
-          )}
-
-          {/* 2-C: 지휘자의 판단 포인트 */}
-          {current.analysis && <JudgmentPoints steps={steps} />}
-
-          {/* Design rationale */}
-          {current.analysis?.design_rationale && (
-            <p className="text-[12px] text-[var(--text-secondary)] italic">{current.analysis.design_rationale}</p>
-          )}
-
-          {/* Critical Path */}
-          {current.analysis && current.analysis.critical_path && current.analysis.critical_path.length > 0 && (
-            <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)]">
-              <span className="font-semibold">크리티컬 패스:</span>
-              {current.analysis.critical_path.map((idx: number) => (
-                <span key={idx} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-bold">
-                  Step {idx}
-                </span>
-              ))}
             </div>
           )}
 
@@ -440,7 +490,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           <div className="flex items-center justify-between pt-2">
             {current.status === 'review' ? (
               <>
-                <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
+                <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); setPendingProjectId(undefined); }}>
                   <RotateCcw size={14} /> 새로 시작
                 </Button>
                 <div className="flex gap-2">
@@ -452,7 +502,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               </>
             ) : (
               <>
-                <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
+                <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); setPendingProjectId(undefined); }}>
                   <ArrowRight size={14} /> 새 맵
                 </Button>
                 <div className="flex gap-2">

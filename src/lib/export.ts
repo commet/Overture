@@ -20,7 +20,8 @@ export function decomposeToMarkdown(item: DecomposeItem): string {
   const assumptions = Array.isArray(analysis.hidden_assumptions)
     ? analysis.hidden_assumptions.map((a: HiddenAssumption | string) => {
         if (typeof a === 'string') return `- ${a}`;
-        return `- ${a.assumption}${a.risk_if_false ? ` → 거짓이면: ${a.risk_if_false}` : ''}`;
+        const status = a.verified ? ' ✅' : '';
+        return `- ${a.assumption}${status}${a.risk_if_false && !a.verified ? ` → 만약 아니라면: ${a.risk_if_false}` : ''}`;
       }).join('\n')
     : '';
 

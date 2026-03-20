@@ -62,12 +62,14 @@ export default function ProjectPage() {
     const latestOrchestrate = projectOrchestrations[projectOrchestrations.length - 1];
     const latestFeedback = projectFeedbacks[projectFeedbacks.length - 1];
 
+    const latestLoop = projectLoops[projectLoops.length - 1];
+
     return [
       {
         tool: 'decompose',
         label: '악보 해석',
         icon: <Layers size={18} />,
-        href: '/tools/decompose',
+        href: '/workspace?step=decompose',
         status: latestDecompose?.status === 'done' ? 'done' : latestDecompose ? 'in-progress' : 'not-started',
         summary: latestDecompose?.selected_question || latestDecompose?.analysis?.surface_task,
         color: 'text-[#2d4a7c]',
@@ -77,7 +79,7 @@ export default function ProjectPage() {
         tool: 'orchestrate',
         label: '편곡',
         icon: <Map size={18} />,
-        href: '/tools/orchestrate',
+        href: '/workspace?step=orchestrate',
         status: latestOrchestrate?.status === 'done' ? 'done' : latestOrchestrate ? 'in-progress' : 'not-started',
         summary: latestOrchestrate?.analysis ? `${latestOrchestrate.steps.length}단계 워크플로우` : undefined,
         color: 'text-[#8b6914]',
@@ -87,11 +89,21 @@ export default function ProjectPage() {
         tool: 'persona-feedback',
         label: '리허설',
         icon: <Users size={18} />,
-        href: '/tools/persona-feedback',
+        href: '/workspace?step=persona-feedback',
         status: latestFeedback ? 'done' : 'not-started',
         summary: latestFeedback ? `${latestFeedback.results.length}명 피드백 완료` : undefined,
         color: 'text-purple-700',
         bgColor: 'bg-purple-50',
+      },
+      {
+        tool: 'refinement-loop',
+        label: '합주 연습',
+        icon: <RefreshCw size={18} />,
+        href: '/workspace?step=refinement-loop',
+        status: latestLoop?.status === 'converged' ? 'done' : latestLoop?.status === 'active' ? 'in-progress' : 'not-started',
+        summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 수렴 ${Math.round((latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence_score || 0) * 100)}%` : undefined,
+        color: 'text-[#2d6b2d]',
+        bgColor: 'bg-[var(--collab)]',
       },
     ];
   };
@@ -115,8 +127,15 @@ export default function ProjectPage() {
           {projects.length === 0 ? (
             <Card className="text-center py-12">
               <FileText size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[14px] text-[var(--text-secondary)]">아직 서곡이 시작되지 않았습니다.</p>
-              <p className="text-[12px] text-[var(--text-secondary)] mt-1">악보 해석에서 첫 곡을 시작해보세요.</p>
+              <p className="text-[14px] text-[var(--text-secondary)] font-medium">아직 프로젝트가 없습니다</p>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto">
+                워크스페이스에서 프로젝트를 만들면, 4단계 프로세스의 진행 상황을 여기서 한눈에 확인할 수 있습니다.
+              </p>
+              <Link href="/workspace">
+                <button className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+                  워크스페이스에서 시작하기 <ArrowRight size={14} />
+                </button>
+              </Link>
             </Card>
           ) : (
             <>
@@ -178,10 +197,10 @@ export default function ProjectPage() {
               <div className="flex-1 h-2 bg-[var(--border)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent)] rounded-full transition-all"
-                  style={{ width: `${(completedSteps / 3) * 100}%` }}
+                  style={{ width: `${(completedSteps / 4) * 100}%` }}
                 />
               </div>
-              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/3</span>
+              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/4</span>
             </div>
           </Card>
 
@@ -236,32 +255,6 @@ export default function ProjectPage() {
               </div>
             ))}
           </div>
-
-          {/* Refinement loops */}
-          {projectLoops.length > 0 && (
-            <div>
-              <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                <RefreshCw size={14} className="text-[var(--accent)]" /> 합주 연습
-              </h3>
-              {projectLoops.map((loop) => (
-                <Link key={loop.id} href="/tools/refinement-loop">
-                  <Card hoverable className="!p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[13px] font-semibold">{loop.name}</span>
-                        <span className="text-[11px] text-[var(--text-secondary)] ml-2">
-                          {loop.iterations.length}회 반복 · 수렴률 {Math.round((loop.iterations[loop.iterations.length - 1]?.convergence_score || 0) * 100)}%
-                        </span>
-                      </div>
-                      <Badge variant={loop.status === 'converged' ? 'both' : loop.status === 'active' ? 'ai' : 'default'}>
-                        {loop.status === 'converged' ? '수렴' : loop.status === 'active' ? '진행' : '중단'}
-                      </Badge>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
 
           {/* Metacognition: 나의 판단 패턴 (Tier 1-E) */}
           {judgments.length > 0 && (() => {
@@ -319,6 +312,7 @@ export default function ProjectPage() {
                     {nextStep.tool === 'decompose' && '과제의 진짜 질문을 찾아보세요.'}
                     {nextStep.tool === 'orchestrate' && '발견한 질문을 해결할 워크플로우를 설계하세요.'}
                     {nextStep.tool === 'persona-feedback' && '이해관계자 시점에서 결과물을 검증하세요.'}
+                    {nextStep.tool === 'refinement-loop' && '피드백을 반영하여 수렴할 때까지 반복하세요.'}
                   </p>
                   <Link href={nextStep.href}>
                     <Button size="sm" className="mt-2">
@@ -331,7 +325,7 @@ export default function ProjectPage() {
           )}
 
           {/* All done */}
-          {completedSteps === 3 && (
+          {completedSteps === 4 && (
             <Card className="!bg-[var(--collab)] !border-green-200 text-center py-6">
               <Check size={24} className="mx-auto text-[var(--success)] mb-2" />
               <p className="text-[15px] font-bold text-[var(--success)]">모든 단계를 완료했습니다</p>

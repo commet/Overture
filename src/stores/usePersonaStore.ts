@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Persona, FeedbackLog, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, syncToSupabase, insertToSupabase } from '@/lib/db';
+import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
 
 interface PersonaState {
   personas: Persona[];
@@ -22,12 +22,13 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
   feedbackHistory: [],
 
   loadData: () => {
-    const personas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
-    const feedbackHistory = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
-    set({ personas, feedbackHistory });
-    // Background sync to Supabase
-    syncToSupabase('personas', personas);
-    syncToSupabase('feedback_records', feedbackHistory);
+    const localPersonas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
+    const localFeedback = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
+    set({ personas: localPersonas, feedbackHistory: localFeedback });
+    loadAndMerge<Persona>('personas', STORAGE_KEYS.PERSONAS)
+      .then((merged) => set({ personas: merged }));
+    loadAndMerge<FeedbackRecord>('feedback_records', STORAGE_KEYS.FEEDBACK_HISTORY)
+      .then((merged) => set({ feedbackHistory: merged }));
   },
 
   createPersona: (data) => {

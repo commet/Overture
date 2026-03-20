@@ -10,6 +10,7 @@ export interface DecomposeHiddenQuestion {
 export interface HiddenAssumption {
   assumption: string;
   risk_if_false: string;
+  verified?: boolean;
 }
 
 /** @deprecated Kept for backward compatibility with old localStorage data */
@@ -98,6 +99,8 @@ export interface OrchestrateStep {
   checkpoint_reason: string;
   estimated_time?: string;
   parallel_with?: number;
+  user_ai_guide?: string;
+  user_decision?: string;
 }
 
 export interface KeyAssumption {
