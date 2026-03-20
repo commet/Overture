@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { track } from '@/lib/analytics';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -255,6 +256,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const handleConfirm = () => {
     if (!currentId) return;
     updateItem(currentId, { status: 'done' });
+    track('orchestrate_complete', { steps: steps.length, checkpoints: steps.filter(s => s.checkpoint).length });
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);
@@ -378,43 +380,73 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── STEP 2: Review & Edit ─── */}
       {(current?.status === 'review' || current?.status === 'done') && (
         <div className="space-y-6 animate-fade-in">
-          {/* Context chain: from decompose */}
-          {relatedDecompose?.analysis && (
-            <ContextChainBlock
-              summary={`악보 해석에서 발견한 핵심 질문: ${relatedDecompose.selected_question || relatedDecompose.analysis.surface_task}`}
-              items={relatedDecompose.analysis.hidden_assumptions.length > 0 ? [{
-                label: '검증되지 않은 전제',
-                count: relatedDecompose.analysis.hidden_assumptions.length,
-                details: relatedDecompose.analysis.hidden_assumptions.map((a: any) =>
-                  typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
-                ),
-                color: 'text-amber-700',
-              }] : []}
-            />
-          )}
-
-          {/* Goal */}
+          {/* ── Strategic Context: question → direction (integrated flow) ── */}
           {current.analysis && (
-            <Card className="!bg-[var(--ai)]">
-              <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
-                <Bot size={14} /> 핵심 방향
-              </div>
-              <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{current.analysis.governing_idea}</p>
-              {/* 1-B: Hypothesis connection */}
-              {(relatedDecompose?.analysis?.reframed_question || relatedDecompose?.analysis?.hypothesis) && (
-                <p className="text-[12px] text-[var(--text-secondary)] mt-1 border-t border-[#2d4a7c]/10 pt-2">
-                  이 방향은 악보 해석에서 발견한 질문 — &apos;{relatedDecompose.selected_question || relatedDecompose.analysis.hidden_questions[0]?.question}&apos; — 에서 도출되었습니다.
-                </p>
-              )}
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
 
-              {current.analysis.storyline && (
-                <div className="space-y-2 text-[13px] border-t border-[#2d4a7c]/10 pt-3">
-                  <div><span className="font-semibold text-[#2d4a7c]">상황:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.situation}</span></div>
-                  <div><span className="font-semibold text-[#2d4a7c]">문제:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.complication}</span></div>
-                  <div><span className="font-semibold text-[#2d4a7c]">접근:</span> <span className="text-[var(--text-primary)]">{current.analysis.storyline.resolution}</span></div>
+              {/* 1. 재정의된 질문 (from 악보 해석) */}
+              {relatedDecompose?.analysis && (
+                <div className="px-5 pt-5 pb-4">
+                  <p className="text-[11px] font-medium text-[var(--text-tertiary)] mb-2">악보 해석에서 재정의된 질문</p>
+                  <p className="text-[15px] font-bold text-[var(--text-primary)] leading-snug">
+                    {relatedDecompose.selected_question || relatedDecompose.analysis.reframed_question || relatedDecompose.analysis.surface_task}
+                  </p>
+                  {/* 미확인 전제 — compact inline */}
+                  {relatedDecompose.analysis.hidden_assumptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {relatedDecompose.analysis.hidden_assumptions
+                        .filter((a: any) => typeof a === 'string' ? true : !a.verified)
+                        .slice(0, 3)
+                        .map((a: any, i: number) => (
+                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-[10px] text-amber-700 font-medium">
+                            <span className="w-1 h-1 rounded-full bg-amber-500" />
+                            {typeof a === 'string' ? a : a.assumption}
+                          </span>
+                        ))
+                      }
+                    </div>
+                  )}
                 </div>
               )}
-            </Card>
+
+              {/* 연결 화살표 */}
+              {relatedDecompose?.analysis && (
+                <div className="flex items-center gap-2 px-5 py-1">
+                  <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-medium">이 질문을 토대로</span>
+                  <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                </div>
+              )}
+
+              {/* 2. 핵심 방향 (governing idea) */}
+              <div className="px-5 pt-3 pb-4 bg-[var(--ai)]">
+                <p className="text-[11px] font-medium text-[#2d4a7c] mb-2">핵심 방향</p>
+                <p className="text-[16px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
+                  {current.analysis.governing_idea}
+                </p>
+              </div>
+
+              {/* 3. SCR 스토리라인 — 왜 이 방향인가 */}
+              {current.analysis.storyline && (
+                <div className="px-5 py-4 border-t border-[var(--border-subtle)]">
+                  <p className="text-[11px] font-medium text-[var(--text-tertiary)] mb-3">왜 이 방향인가</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
+                      <p className="text-[10px] font-semibold text-[var(--text-tertiary)] mb-1">상황</p>
+                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.situation}</p>
+                    </div>
+                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
+                      <p className="text-[10px] font-semibold text-amber-700 mb-1">문제</p>
+                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.complication}</p>
+                    </div>
+                    <div className="rounded-lg bg-[var(--bg)] px-3 py-2.5">
+                      <p className="text-[10px] font-semibold text-[var(--accent)] mb-1">접근</p>
+                      <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{current.analysis.storyline.resolution}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Timeline — parallel track visualization */}
