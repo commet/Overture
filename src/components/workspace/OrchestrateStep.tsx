@@ -466,43 +466,11 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             </Button>
           )}
 
-          {/* ── Summary ── */}
-          {stats && (
-            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
-              {current.analysis?.design_rationale && (
-                <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-                    {current.analysis.design_rationale}
-                  </p>
-                </div>
-              )}
-              <div className="px-3 sm:px-4 py-2.5 bg-[var(--bg)]">
-                <div className="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
-                  <span>AI <span className="font-bold text-[#2d4a7c]">{stats.ai}</span></span>
-                  <span>사람 <span className="font-bold text-[#8b6914]">{stats.human}</span></span>
-                  <span>협업 <span className="font-bold text-[#2d6b2d]">{stats.both}</span></span>
-                  <span>체크포인트 <span className="font-bold text-amber-700">{stats.checkpoints}</span></span>
-                  <span className="text-[var(--border)]">|</span>
-                  <span>사람 개입 <span className="font-bold text-[var(--text-primary)]">{stats.humanPercent}%</span></span>
-                  {current.analysis?.total_estimated_time && (
-                    <>
-                      <span className="text-[var(--border)]">|</span>
-                      <span>총 <span className="font-bold text-[var(--text-primary)]">{current.analysis.total_estimated_time}</span></span>
-                    </>
-                  )}
-                </div>
-                {current.analysis?.critical_path && current.analysis.critical_path.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-1.5">
-                    <span className="font-semibold">크리티컬 패스:</span>
-                    {current.analysis.critical_path.map((idx: number) => (
-                      <span key={idx} className="px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[10px] font-bold">
-                        Step {idx}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Design rationale — if exists */}
+          {current.analysis?.design_rationale && (
+            <p className="text-[13px] text-[var(--text-secondary)] italic leading-relaxed">
+              {current.analysis.design_rationale}
+            </p>
           )}
 
           {/* ── Prerequisites ── */}

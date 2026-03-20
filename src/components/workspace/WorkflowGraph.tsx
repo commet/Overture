@@ -36,35 +36,71 @@ function extractOptions(judgment?: string): string[] {
    Role Distribution Dashboard
    ──────────────────────────────────── */
 
-function RoleDashboard({ steps }: { steps: StepType[] }) {
+function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; checkpoints?: number; totalTime?: string }) {
   const total = steps.length || 1;
   const counts = { ai: 0, human: 0, both: 0 };
   steps.forEach(s => { counts[s.actor] = (counts[s.actor] || 0) + 1; });
+  const humanPct = Math.round(((counts.human + counts.both) / total) * 100);
 
   return (
-    <div className="grid grid-cols-3 gap-2 mb-5">
-      {(['ai', 'human', 'both'] as const).map((actor) => {
-        const a = ACTORS[actor];
-        const pct = Math.round((counts[actor] / total) * 100);
-        const AIcon = a.Icon;
-        return (
-          <div key={actor} className="rounded-xl p-3 text-center" style={{ backgroundColor: a.bg }}>
-            <div className="flex items-center justify-center gap-1.5 mb-1.5">
-              <AIcon size={13} style={{ color: a.text }} />
-              <span className="text-[12px] font-bold" style={{ color: a.text }}>{a.label}</span>
-            </div>
-            <div className="text-[20px] font-bold tracking-tight" style={{ color: a.text }}>
-              {counts[actor]}<span className="text-[12px] font-normal opacity-60">/{total}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${a.color}20` }}>
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: a.color }}
-              />
-            </div>
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 mb-5">
+      {/* Unified ratio bar */}
+      <div className="flex h-3 rounded-full overflow-hidden mb-3">
+        {counts.ai > 0 && (
+          <div
+            className="transition-all duration-500 flex items-center justify-center"
+            style={{ width: `${(counts.ai / total) * 100}%`, backgroundColor: ACTORS.ai.color }}
+          >
+            {counts.ai > 1 && <span className="text-[8px] text-white font-bold">{counts.ai}</span>}
           </div>
-        );
-      })}
+        )}
+        {counts.both > 0 && (
+          <div
+            className="transition-all duration-500 flex items-center justify-center"
+            style={{ width: `${(counts.both / total) * 100}%`, backgroundColor: ACTORS.both.color }}
+          >
+            {counts.both > 1 && <span className="text-[8px] text-white font-bold">{counts.both}</span>}
+          </div>
+        )}
+        {counts.human > 0 && (
+          <div
+            className="transition-all duration-500 flex items-center justify-center"
+            style={{ width: `${(counts.human / total) * 100}%`, backgroundColor: ACTORS.human.color }}
+          >
+            {counts.human > 1 && <span className="text-[8px] text-white font-bold">{counts.human}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Legend + stats in one line */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ACTORS.ai.color }} />
+          <span className="font-semibold" style={{ color: ACTORS.ai.text }}>AI {counts.ai}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ACTORS.both.color }} />
+          <span className="font-semibold" style={{ color: ACTORS.both.text }}>협업 {counts.both}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ACTORS.human.color }} />
+          <span className="font-semibold" style={{ color: ACTORS.human.text }}>사람 {counts.human}</span>
+        </span>
+        <span className="text-[var(--text-tertiary)]">|</span>
+        <span className="text-[var(--text-secondary)]">사람 개입 <span className="font-bold text-[var(--text-primary)]">{humanPct}%</span></span>
+        {checkpoints !== undefined && checkpoints > 0 && (
+          <>
+            <span className="text-[var(--text-tertiary)]">|</span>
+            <span className="text-amber-700 font-semibold"><Flag size={10} className="inline mr-0.5" />체크포인트 {checkpoints}</span>
+          </>
+        )}
+        {totalTime && (
+          <>
+            <span className="text-[var(--text-tertiary)]">|</span>
+            <span className="text-[var(--text-secondary)]"><Clock size={10} className="inline mr-0.5" />총 {totalTime}</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -126,19 +162,23 @@ export function WorkflowGraph({
 
   return (
     <div>
-      {/* ── Dashboard ── */}
-      <RoleDashboard steps={steps} />
+      {/* ── Dashboard — unified bar ── */}
+      <RoleDashboard
+        steps={steps}
+        checkpoints={steps.filter(s => s.checkpoint).length}
+        totalTime={analysis?.total_estimated_time}
+      />
 
       {/* ── Lane headers ── */}
       <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-0 mb-3">
-        <div className="flex items-center gap-1.5 pl-1">
-          <Bot size={12} style={{ color: ACTORS.ai.text }} />
-          <span className="text-[11px] font-semibold" style={{ color: ACTORS.ai.text }}>AI 실행</span>
+        <div className="flex items-center gap-2 pl-1">
+          <Bot size={14} style={{ color: ACTORS.ai.text }} />
+          <span className="text-[13px] font-bold" style={{ color: ACTORS.ai.text }}>AI 실행</span>
         </div>
         <div className="w-px" />
-        <div className="flex items-center justify-end gap-1.5 pr-1">
-          <span className="text-[11px] font-semibold" style={{ color: ACTORS.human.text }}>사람 판단</span>
-          <Brain size={12} style={{ color: ACTORS.human.text }} />
+        <div className="flex items-center justify-end gap-2 pr-1">
+          <span className="text-[13px] font-bold" style={{ color: ACTORS.human.text }}>사람 판단</span>
+          <Brain size={14} style={{ color: ACTORS.human.text }} />
         </div>
       </div>
 
