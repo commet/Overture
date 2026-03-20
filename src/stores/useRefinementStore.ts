@@ -96,7 +96,7 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
 
   checkConvergence: (loopId) => {
     const loop = get().loops.find((l) => l.id === loopId);
-    if (!loop) return { score: 0, shouldStop: false, reason: '', recommendation: 'continue' as const };
+    if (!loop) return { score: 0, shouldStop: false, reason: '', recommendation: 'continue' as const, breakdown: { blocker: { resolved: 0, total: 0 }, improvement: { resolved: 0, total: 0 }, nice_to_have: { resolved: 0, total: 0 } }, guidance: '' };
     return detectConvergence(loop);
   },
 }));

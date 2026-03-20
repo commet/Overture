@@ -227,6 +227,45 @@ export interface MetaReflection {
   created_at: string;
 }
 
+// ─── Context Chain (Phase 0: 타입드 맥락 파이프라인) ───
+
+export interface DecomposeContext {
+  surface_task: string;
+  reframed_question: string;
+  why_reframing_matters: string;
+  selected_direction: string;
+  unverified_assumptions: HiddenAssumption[];
+  verified_assumptions: HiddenAssumption[];
+  ai_limitations: string[];
+  interview_signals?: {
+    origin?: string;
+    uncertainty?: string;
+    success?: string;
+  };
+}
+
+export interface OrchestrateContext {
+  governing_idea: string;
+  storyline?: {
+    situation: string;
+    complication: string;
+    resolution: string;
+  };
+  steps: OrchestrateStep[];
+  key_assumptions: KeyAssumption[];
+  critical_path: number[];
+  design_rationale?: string;
+}
+
+export interface RehearsalContext {
+  classified_risks: ClassifiedRisk[];
+  untested_assumptions: string[];
+  approval_conditions: Record<string, string[]>;
+  failure_scenarios: string[];
+}
+
+export type PhaseContext = DecomposeContext | OrchestrateContext | RehearsalContext;
+
 // ─── Handoff (transient, not persisted) ───
 
 export interface Handoff {
@@ -234,6 +273,7 @@ export interface Handoff {
   fromItemId: string;
   content: string;
   projectId?: string;
+  contextData?: PhaseContext;
 }
 
 // ─── Judgment Record ───
@@ -258,6 +298,7 @@ export interface RefinementIssue {
   source_persona_id: string;
   source_persona_name: string;
   category: 'concern' | 'question' | 'wants_more';
+  severity: 'blocker' | 'improvement' | 'nice_to_have';
   text: string;
   resolved: boolean;
   resolved_at_iteration?: number;

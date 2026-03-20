@@ -21,6 +21,7 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
+import { buildDecomposeContext } from '@/lib/context-chain';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -665,7 +666,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     updateItem(currentId!, { project_id: projectId });
                     addRef(projectId, { tool: 'decompose', itemId: current.id, label: analysis.surface_task });
                     const content = decomposeToMarkdown(current);
-                    setHandoff({ from: 'decompose', fromItemId: current.id, content, projectId });
+                    const contextData = buildDecomposeContext(current);
+                    setHandoff({ from: 'decompose', fromItemId: current.id, content, projectId, contextData });
                     onNavigate('orchestrate');
                   }}
                 >
@@ -683,7 +685,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 const projectId = current.project_id || getOrCreateProject(analysis.surface_task.slice(0, 30));
                 if (!current.project_id) updateItem(currentId!, { project_id: projectId });
                 addRef(projectId, { tool: 'decompose', itemId: current.id, label: analysis.surface_task });
-                setHandoff({ from: 'decompose', fromItemId: current.id, content: decomposeToMarkdown(current), projectId });
+                setHandoff({ from: 'decompose', fromItemId: current.id, content: decomposeToMarkdown(current), projectId, contextData: buildDecomposeContext(current) });
                 onNavigate(href.replace('/tools/', ''));
               }}
             />

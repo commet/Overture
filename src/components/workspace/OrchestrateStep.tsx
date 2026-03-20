@@ -20,6 +20,8 @@ import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
+import { buildDecomposeContext, injectDecomposeContext } from '@/lib/context-chain';
+import type { DecomposeContext } from '@/stores/types';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -168,6 +170,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState('');
   const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
+  const [decomposeCtx, setDecomposeCtx] = useState<DecomposeContext | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -180,6 +183,10 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     if (handoff && handoff.from === 'decompose') {
       setInputText(handoff.content);
       setPendingProjectId(handoff.projectId);
+      // Capture typed context from decompose (Phase 0)
+      if (handoff.contextData && 'reframed_question' in handoff.contextData) {
+        setDecomposeCtx(handoff.contextData as DecomposeContext);
+      }
       clearHandoff();
     }
   }, []);  // Run once on mount
@@ -217,9 +224,18 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     }
 
     try {
+      // Build system prompt: base + user patterns + typed decompose context
+      let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT);
+
+      // Inject typed context from decompose (Phase 0 pipeline)
+      const ctx = decomposeCtx || (relatedDecompose ? buildDecomposeContext(relatedDecompose) : null);
+      if (ctx) {
+        systemPrompt = injectDecomposeContext(systemPrompt, ctx);
+      }
+
       const analysis = await callLLMJson<OrchestrateAnalysis>(
         [{ role: 'user', content: finalPrompt }],
-        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 3500 }
+        { system: systemPrompt, maxTokens: 3500 }
       );
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
     } catch (err) {
