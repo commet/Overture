@@ -21,7 +21,9 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { buildDecomposeContext, injectDecomposeContext } from '@/lib/context-chain';
-import type { DecomposeContext } from '@/stores/types';
+import type { DecomposeContext, WorkflowReview } from '@/stores/types';
+import { runWorkflowReview, countBySeverity } from '@/lib/workflow-review';
+import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -171,6 +173,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const [error, setError] = useState('');
   const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
   const [decomposeCtx, setDecomposeCtx] = useState<DecomposeContext | null>(null);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewExpanded, setReviewExpanded] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -494,6 +498,103 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── Multi-Lens Review (Phase 2) ── */}
+          {current.status === 'review' && current.analysis && (
+            <div>
+              {!current.analysis.reviews ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    if (!current.analysis || !currentId) return;
+                    setIsReviewing(true);
+                    try {
+                      const reviews = await runWorkflowReview(
+                        steps,
+                        current.analysis.governing_idea,
+                        current.analysis.goal_summary,
+                        current.analysis.key_assumptions || [],
+                        current.input_text,
+                      );
+                      updateItem(currentId, { analysis: { ...current.analysis, reviews } });
+                      setReviewExpanded(true);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : '검증에 실패했습니다.');
+                    } finally {
+                      setIsReviewing(false);
+                    }
+                  }}
+                  disabled={isReviewing}
+                >
+                  {isReviewing ? (
+                    <><Loader2 size={14} className="animate-spin" /> 3가지 관점에서 검증 중...</>
+                  ) : (
+                    <><Shield size={14} /> 워크플로우 검증</>
+                  )}
+                </Button>
+              ) : (
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
+                  <button
+                    onClick={() => setReviewExpanded(!reviewExpanded)}
+                    className="w-full flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[var(--bg)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Shield size={14} className="text-[var(--accent)]" />
+                      <span className="text-[13px] font-semibold text-[var(--text-primary)]">다관점 검증 완료</span>
+                      {(() => {
+                        const counts = countBySeverity(current.analysis.reviews!);
+                        return (
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {counts.high > 0 && <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-bold">{counts.high}</span>}
+                            {counts.medium > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold">{counts.medium}</span>}
+                            {counts.low > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold">{counts.low}</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {reviewExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+
+                  {reviewExpanded && (
+                    <div className="border-t border-[var(--border-subtle)] divide-y divide-[var(--border-subtle)]">
+                      {current.analysis.reviews!.map((review, ri) => {
+                        const lensIcon = review.lens.startsWith('domain') ? <Globe size={13} />
+                          : review.lens === 'skeptic' ? <Shield size={13} />
+                          : <Zap size={13} />;
+                        return (
+                          <div key={ri} className="px-4 py-3">
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <span className="text-[var(--accent)]">{lensIcon}</span>
+                              <span className="text-[12px] font-semibold text-[var(--text-primary)]">{review.lens_label}</span>
+                              <span className="text-[11px] text-[var(--text-tertiary)]">{review.findings.length}건</span>
+                            </div>
+                            <div className="space-y-2">
+                              {review.findings.map((f, fi) => (
+                                <div key={fi} className="flex items-start gap-2.5 text-[12px]">
+                                  <span className={`shrink-0 mt-1 w-1.5 h-1.5 rounded-full ${
+                                    f.severity === 'high' ? 'bg-red-500' : f.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-400'
+                                  }`} />
+                                  <div className="flex-1">
+                                    <p className="text-[var(--text-primary)] leading-relaxed">{f.text}</p>
+                                    {f.affected_steps && f.affected_steps.length > 0 && (
+                                      <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                                        Step {f.affected_steps.join(', ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

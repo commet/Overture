@@ -110,6 +110,20 @@ export interface KeyAssumption {
   if_wrong: string;
 }
 
+export interface ReviewFinding {
+  type: 'gap' | 'suggestion' | 'risk' | 'opportunity';
+  severity: 'high' | 'medium' | 'low';
+  text: string;
+  affected_steps?: number[];
+}
+
+export interface WorkflowReview {
+  lens: string;
+  lens_label: string;
+  findings: ReviewFinding[];
+  reviewed_at: string;
+}
+
 export interface OrchestrateAnalysis {
   governing_idea: string;
   storyline: {
@@ -125,6 +139,7 @@ export interface OrchestrateAnalysis {
   ai_ratio: number;
   human_ratio: number;
   design_rationale?: string;
+  reviews?: WorkflowReview[];
 }
 
 export interface OrchestrateItem {
