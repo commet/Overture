@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +23,7 @@ import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, Rota
 import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
-import { recordDecomposeEval } from '@/lib/eval-engine';
+import { recordDecomposeEval, getBestStrategy } from '@/lib/eval-engine';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -177,9 +177,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     const id = createItem(finalPrompt);
     updateItem(id, { status: 'analyzing' });
 
-    // Phase 1: Select reframing strategy based on interview signals
-    const signals = extractInterviewSignals(finalPrompt);
-    const strategy = signals ? selectReframingStrategy(signals as InterviewSignals) : null;
+    // Phase 1: Select reframing strategy — data-driven first, rule-based fallback
+    const signals = extractInterviewSignals(finalPrompt) as InterviewSignals | undefined;
+    let strategy: ReframingStrategy | null = null;
+    if (signals) {
+      // Try data-driven selection (needs 5+ samples)
+      strategy = getBestStrategy(signals) || selectReframingStrategy(signals);
+    }
     setCurrentStrategy(strategy);
 
     try {
@@ -200,21 +204,28 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     }
   };
 
+  // Debounced judgment recording ref
+  const judgmentTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSelectQuestion = (question: string) => {
     if (!current || !currentId || !current.analysis) return;
     updateItem(currentId, { selected_question: question });
 
-    const analysis = normalizeAnalysis(current.analysis);
-    const isCustom = !analysis.hidden_questions.some(hq => hq.question === question);
-    addJudgment({
-      type: 'hidden_question_selection',
-      context: analysis.surface_task,
-      decision: question,
-      original_ai_suggestion: analysis.hidden_questions[0]?.question || '',
-      user_changed: isCustom,
-      project_id: current.project_id,
-      tool: 'decompose',
-    });
+    // Debounce judgment recording (prevents spam from custom question typing)
+    if (judgmentTimerRef.current) clearTimeout(judgmentTimerRef.current);
+    judgmentTimerRef.current = setTimeout(() => {
+      const analysis = normalizeAnalysis(current.analysis!);
+      const isCustom = !analysis.hidden_questions.some(hq => hq.question === question);
+      addJudgment({
+        type: 'hidden_question_selection',
+        context: analysis.surface_task,
+        decision: question,
+        original_ai_suggestion: analysis.hidden_questions[0]?.question || '',
+        user_changed: isCustom,
+        project_id: current.project_id,
+        tool: 'decompose',
+      });
+    }, 1000);
   };
 
   const handleConfirm = () => {

@@ -60,9 +60,9 @@ const movements: Movement[] = [
 export function ProcessFlow() {
   return (
     <section className="border-t border-[var(--border-subtle)]">
-      <div className="max-w-5xl mx-auto px-6 py-28 md:py-36">
+      <div className="max-w-5xl mx-auto px-6 py-16 md:py-24">
         {/* Section header — left aligned */}
-        <div className="max-w-xl mb-16">
+        <div className="max-w-xl mb-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[var(--border)]" />
             <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
@@ -70,10 +70,10 @@ export function ProcessFlow() {
             </span>
           </div>
           <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
-            공연까지의 여정
+            이렇게 작동합니다
           </h2>
           <p className="mt-4 text-[16px] text-[var(--text-secondary)] leading-relaxed">
-            무대에 오르기까지, 네 단계의 준비.
+            과제를 받은 순간부터 보고까지, 네 단계.
           </p>
         </div>
 

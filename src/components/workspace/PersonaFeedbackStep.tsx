@@ -148,25 +148,29 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
-        // Phase 3: Inject structured context for assumption attack
+        // Phase 3: Build system prompt with structured context injection
         let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
 
-        // Find related decompose + orchestrate for this project
+        // Inject persona accuracy model (behavioral calibration)
+        const accuracyCtx = buildPersonaAccuracyContext(personaId);
+        if (accuracyCtx) {
+          systemPrompt = `${systemPrompt}\n\n${accuracyCtx}`;
+        }
+
+        // Inject orchestrate + decompose context for assumption attack
         const projectId = pendingProjectId;
         if (projectId) {
-          const relDecompose = decomposeItems.find(d => d.project_id === projectId && d.status === 'done' && d.analysis);
-          const relOrchestrate = orchestrateItems.find(o => o.project_id === projectId && o.analysis);
+          const relDecompose = decomposeItems
+            .filter(d => d.project_id === projectId && d.status === 'done' && d.analysis)
+            .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+          const relOrchestrate = orchestrateItems
+            .filter(o => o.project_id === projectId && o.analysis)
+            .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
           if (relOrchestrate) {
             const orchCtx = buildOrchestrateContext(relOrchestrate);
             const decCtx = relDecompose ? buildDecomposeContext(relDecompose) : undefined;
             systemPrompt = injectOrchestrateContext(systemPrompt, orchCtx, decCtx);
           }
-        }
-
-        // Inject persona accuracy model
-        const accuracyCtx = buildPersonaAccuracyContext(personaId);
-        if (accuracyCtx) {
-          systemPrompt = `${systemPrompt}\n\n${accuracyCtx}`;
         }
 
         const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(

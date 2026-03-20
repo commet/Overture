@@ -3,7 +3,7 @@ import Link from 'next/link';
 export function ClosingCTA() {
   return (
     <section className="border-t border-[var(--border-subtle)]">
-      <div className="max-w-5xl mx-auto px-6 py-28 md:py-36">
+      <div className="max-w-5xl mx-auto px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center">
           <blockquote className="text-[20px] md:text-[24px] font-medium text-[var(--text-primary)] leading-relaxed tracking-tight">
             에이전트는 점점 더 많은 것을 만들어 줄 것입니다.
@@ -37,7 +37,7 @@ export function ClosingCTA() {
             </Link>
           </div>
 
-          <p className="mt-16 text-[12px] text-[var(--text-tertiary)] tracking-wide">
+          <p className="mt-10 text-[12px] text-[var(--text-tertiary)] tracking-wide">
             Overture — 오픈소스 프로젝트
           </p>
         </div>

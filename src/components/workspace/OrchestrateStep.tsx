@@ -207,9 +207,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
 
   const current = getCurrentItem();
 
-  // Find related decompose item for context chain
+  // Find latest related decompose item for context chain (not first/oldest)
   const relatedDecompose = current?.project_id
-    ? decomposeItems.find(d => d.project_id === current.project_id && d.status === 'done' && d.analysis)
+    ? decomposeItems
+        .filter(d => d.project_id === current.project_id && d.status === 'done' && d.analysis)
+        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+        [0] || null
     : null;
 
   const handleAnalyze = async (prompt?: string) => {

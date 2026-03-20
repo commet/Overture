@@ -19,19 +19,19 @@ import {
 
 const DEMO = {
   project: {
-    name: '한솔그룹 계약 위기 대응',
-    scenario: '매출 40%를 차지하는 최대 고객사 한솔그룹이 갑자기 "다음 분기 계약을 재검토하겠다"고 통보했다.',
+    name: '넥스트라 계약 위기 대응',
+    scenario: '매출 40%를 차지하는 최대 고객사 넥스트라이 갑자기 "다음 분기 계약을 재검토하겠다"고 통보했다.',
     directive: '대표 지시: "2주 안에 대응 방안 만들어라."',
   },
 
   decompose: {
-    surface_task: '한솔그룹 계약 유지를 위한 대응 방안을 2주 안에 수립',
+    surface_task: '넥스트라 계약 유지를 위한 대응 방안을 2주 안에 수립',
     hidden_assumptions: [
-      { assumption: '한솔그룹을 반드시 유지해야 한다', risk_if_false: '한솔이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
+      { assumption: '넥스트라을 반드시 유지해야 한다', risk_if_false: '한솔이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
       { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 한솔 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
       { assumption: '가격 양보나 추가 서비스로 잡을 수 있다', risk_if_false: '이미 적자인 계약에서 추가 양보는 손실 확대. 선례가 되면 다른 고객도 같은 요구' },
     ],
-    reframed_question: '한솔그룹 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
+    reframed_question: '넥스트라 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
     why_reframing_matters: "'어떻게 잡을까'가 아니라 '잡아야 하는가, 어떤 조건에서 잡아야 하는가'로 바꾸면 대표에게 Go/No-Go 의사결정 근거를 제공할 수 있습니다.",
     reasoning_narrative: '처음에는 "한솔을 지켜야 한다"가 과제였지만, 매출 의존도 40% 자체가 문제의 원인이었다. 한솔 커스텀에 끌려다니느라 다른 고객 50곳의 요구가 1년째 밀리고 있었다.',
     hidden_questions: [
@@ -44,7 +44,7 @@ const DEMO = {
   orchestrate: {
     governing_idea: '감정적 "무조건 유지"가 아니라, 수익성 팩트에 기반한 3가지 시나리오를 만들어 대표가 선택할 수 있게 한다',
     storyline: {
-      situation: '한솔그룹은 3년간 최대 고객이었고, 매출의 40%를 차지한다. 갑작스러운 계약 재검토 통보에 사내가 패닉 상태다.',
+      situation: '넥스트라은 3년간 최대 고객이었고, 매출의 40%를 차지한다. 갑작스러운 계약 재검토 통보에 사내가 패닉 상태다.',
       complication: '그러나 한솔 계약은 커스텀 요구가 과중하여 실제 마진이 낮고, 제품 로드맵이 1년째 밀리고 있다. "무조건 잡아라"가 최선인지 불확실하다.',
       resolution: '먼저 한솔 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
     },
@@ -520,7 +520,7 @@ function OrchestrateSection() {
 
                 {/* Expanded: collab split for 'both' steps */}
                 {isExpanded && s.actor === 'both' && (
-                  <div className="grid grid-cols-2 gap-2 mt-3 ml-[30px] animate-fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 ml-0 sm:ml-[30px] animate-fade-in">
                     <div className="rounded-md p-2.5 border" style={{ backgroundColor: 'rgba(234,239,248,0.8)', borderColor: 'rgba(59,109,204,0.08)' }}>
                       <span className="text-[9px] font-bold uppercase tracking-wider text-[#2d4a7c] flex items-center gap-1 mb-1">
                         <Bot size={9} /> AI가 만드는 것

@@ -127,10 +127,14 @@ export function injectDecomposeContext(
 ): string {
   const sections: string[] = [];
 
+  // Validate: skip injection if no meaningful content
+  const question = (ctx.selected_direction || ctx.reframed_question || '').trim();
+  if (!question && !ctx.surface_task?.trim()) return basePrompt;
+
   // Core direction from decompose
   sections.push(`## 악보 해석에서 도출된 맥락`);
-  sections.push(`- 원래 과제: ${ctx.surface_task}`);
-  sections.push(`- 재정의된 질문: ${ctx.selected_direction || ctx.reframed_question}`);
+  if (ctx.surface_task?.trim()) sections.push(`- 원래 과제: ${ctx.surface_task}`);
+  if (question) sections.push(`- 재정의된 질문: ${question}`);
 
   if (ctx.why_reframing_matters) {
     sections.push(`- 리프레이밍 이유: ${ctx.why_reframing_matters}`);
@@ -158,7 +162,7 @@ export function injectDecomposeContext(
   }
 
   // Interview signals → guide the AI's approach
-  if (ctx.interview_signals) {
+  if (ctx.interview_signals && Object.keys(ctx.interview_signals).length > 0) {
     const signals: string[] = [];
     if (ctx.interview_signals.uncertainty) {
       const uncertaintyMap: Record<string, string> = {
