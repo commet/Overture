@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo'];
+// Auth is handled client-side (Supabase stores session in localStorage, not cookies).
+// Middleware acts as a lightweight UX guard only. Real security = Supabase RLS.
+const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo', '/workspace', '/teams', '/project', '/settings'];
 const PUBLIC_PREFIXES = ['/api/', '/_next/', '/favicon.ico'];
 
 function isPublic(pathname: string): boolean {
