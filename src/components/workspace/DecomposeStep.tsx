@@ -613,14 +613,27 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 </div>
 
                 {/* Stage 1 → Stage 2 버튼 */}
-                <div className="flex items-center justify-between pt-2">
-                  <Button variant="secondary" onClick={handleReanalyze} size="sm">
-                    <RotateCcw size={14} /> 전제 재분석
-                  </Button>
-                  <Button onClick={handleReframe} disabled={reframing}>
-                    {reframing ? '질문을 재정의하고 있습니다...' : '질문 재정의하기 →'}
-                  </Button>
-                </div>
+                {/* Reframing loading state */}
+                {reframing && (
+                  <Card>
+                    <LoadingSteps steps={[
+                      '당신의 전제 평가를 분석하고 있습니다',
+                      '의심된 전제를 기반으로 질문을 재구성합니다',
+                      '새로운 방향을 도출하고 있습니다',
+                    ]} />
+                  </Card>
+                )}
+
+                {!reframing && (
+                  <div className="flex items-center justify-between pt-2">
+                    <Button variant="secondary" onClick={handleReanalyze} size="sm">
+                      <RotateCcw size={14} /> 전제 재분석
+                    </Button>
+                    <Button onClick={handleReframe}>
+                      질문 재정의하기 &rarr;
+                    </Button>
+                  </div>
+                )}
               </>
             )}
 
