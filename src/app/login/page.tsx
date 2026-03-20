@@ -73,7 +73,16 @@ function LoginContent() {
     );
   }
 
-  if (user) return null;
+  if (user) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-[13px] text-[var(--text-secondary)]">워크스페이스로 이동 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-12">

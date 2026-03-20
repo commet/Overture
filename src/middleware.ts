@@ -21,27 +21,31 @@ export async function middleware(req: NextRequest) {
   if (!supabaseUrl || !supabaseKey) return NextResponse.next();
 
   // Supabase JS stores session in cookies with pattern: sb-<ref>-auth-token
+  // JWT can be chunked: sb-xxx-auth-token.0, sb-xxx-auth-token.1, etc.
   const allCookies = req.cookies.getAll();
-  const authCookie = allCookies.find(c => c.name.includes('auth-token'));
 
-  // Also check for access token in cookie storage (Supabase stores as JSON)
+  // If no cookie, check for PKCE flow in progress — allow through
+  const codeVerifier = allCookies.find(c => c.name.includes('code-verifier'));
+  if (codeVerifier) return NextResponse.next();
+
+  // Reconstruct token from potentially chunked cookies
   let accessToken: string | null = null;
 
-  if (authCookie?.value) {
+  // Find all auth-token cookies and sort by name (handles .0, .1, .2...)
+  const authCookies = allCookies
+    .filter(c => c.name.includes('auth-token'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (authCookies.length > 0) {
+    // Combine chunked cookie values
+    const combined = authCookies.map(c => c.value).join('');
     try {
-      // Supabase cookie can be a JSON object with access_token
-      const parsed = JSON.parse(authCookie.value);
+      const parsed = JSON.parse(combined);
       accessToken = parsed?.access_token || parsed?.[0]?.access_token || null;
     } catch {
-      accessToken = authCookie.value;
+      // Might be a raw token string
+      accessToken = combined.length > 20 ? combined : null;
     }
-  }
-
-  // If no cookie, check for base64-encoded code-verifier (PKCE flow in progress)
-  // During OAuth redirect, cookies may not have the token yet — allow through
-  if (!accessToken) {
-    const codeVerifier = allCookies.find(c => c.name.includes('code-verifier'));
-    if (codeVerifier) return NextResponse.next();
   }
 
   if (!accessToken) {
