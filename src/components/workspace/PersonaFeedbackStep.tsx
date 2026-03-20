@@ -256,46 +256,49 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
 
       {activeTab === 'personas' && !viewingPersona && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => { setEditingPersona(null); setShowForm(true); }}>
-              <Plus size={14} /> 페르소나 추가
-            </Button>
-          </div>
           {showForm && (
             <Card><PersonaForm persona={editingPersona || undefined} onSave={handleSavePersona} onCancel={() => { setShowForm(false); setEditingPersona(null); }} /></Card>
           )}
           {personas.length === 0 && !showForm ? (
-            <Card className="text-center py-12">
-              <Users size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[var(--text-secondary)] font-medium">아직 등록된 이해관계자가 없습니다</p>
-              <p className="text-[13px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto">
-                보고서를 보낼 사람(CEO, CFO 등)을 등록하면, 그 사람의 시점에서 미리 피드백을 받을 수 있습니다.
+            <div className="text-center py-16">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--bg)] flex items-center justify-center">
+                <Users size={28} className="text-[var(--text-tertiary)]" />
+              </div>
+              <p className="text-[16px] font-bold text-[var(--text-primary)] mb-1">이해관계자를 등록하세요</p>
+              <p className="text-[13px] text-[var(--text-secondary)] max-w-sm mx-auto mb-6">
+                보고서를 보낼 사람(CEO, CFO, 투자자 등)을 등록하면,
+                그 사람의 관점에서 미리 피드백을 시뮬레이션합니다.
               </p>
-              <button
-                onClick={() => { setEditingPersona(null); setShowForm(true); }}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                <Plus size={14} /> 첫 이해관계자 추가
-              </button>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {personas.map((p) => (
-                <div key={p.id} className="relative group">
-                  <PersonaCard persona={p} onClick={() => setViewingPersona(p)} />
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingPersona(p); setShowForm(true); }}
-                      className="p-1.5 bg-white rounded-lg shadow-sm border text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer">
-                      <Pencil size={12} />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
-                      className="p-1.5 bg-white rounded-lg shadow-sm border text-[var(--text-secondary)] hover:text-red-500 cursor-pointer">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+              <Button onClick={() => { setEditingPersona(null); setShowForm(true); }}>
+                <Plus size={14} /> 이해관계자 추가
+              </Button>
             </div>
+          ) : !showForm && (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] text-[var(--text-secondary)] font-medium">{personas.length}명의 이해관계자</p>
+                <Button size="sm" onClick={() => { setEditingPersona(null); setShowForm(true); }}>
+                  <Plus size={14} /> 추가
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {personas.map((p) => (
+                  <div key={p.id} className="relative group">
+                    <PersonaCard persona={p} onClick={() => setViewingPersona(p)} />
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <button onClick={(e) => { e.stopPropagation(); setEditingPersona(p); setShowForm(true); }}
+                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                        <Pencil size={11} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
+                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
