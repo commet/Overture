@@ -74,10 +74,10 @@ export function StepEntry({
     ];
     // Pick a relevant example based on selection
     const origin = selections['origin'];
-    if (origin === 'top-down') return '예: 대표가 동남아 진출 전략을 2주 안에 보고하래';
-    if (origin === 'external') return '예: 고객사가 AI 챗봇 도입 제안서를 요청함';
-    if (origin === 'self') return '예: 우리 팀 온보딩 프로세스를 개선하고 싶음';
-    if (origin === 'fire') return '예: 주요 고객이 이탈 조짐을 보이고 있어 긴급 대응 필요';
+    if (origin === 'top-down') return '예: 동남아 시장 진출 전략을 2주 안에 수립하여 보고 / AI 기반 고객 서비스 자동화 방안 검토 지시 / 내년도 사업계획서 초안 작성';
+    if (origin === 'external') return '예: 고객사 AI 챗봇 도입 제안서 요청 / 파트너사 공동 마케팅 캠페인 기획 / 외부 투자자 대상 사업 설명 자료 준비';
+    if (origin === 'self') return '예: 팀 내 온보딩 프로세스 개선 / 반복 업무 자동화 도입 검토 / 신규 서비스 MVP 방향성 정리';
+    if (origin === 'fire') return '예: 주요 고객 이탈 조짐에 대한 긴급 대응 / 경쟁사 신제품 출시에 따른 전략 재검토 / 서비스 장애 후 재발 방지 대책 수립';
     return examples[0];
   };
 
