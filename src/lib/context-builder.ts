@@ -160,7 +160,8 @@ export function buildProjectItemsContext(projectId: string): string {
 }
 
 /**
- * Build persona accuracy context to improve future simulations.
+ * Build persona behavior model from accumulated accuracy data.
+ * Phase 3: Structured aspect-level accuracy + calibration guidance.
  */
 export function buildPersonaAccuracyContext(personaId: string): string {
   const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, [])
@@ -171,8 +172,9 @@ export function buildPersonaAccuracyContext(personaId: string): string {
   const avg = ratings.reduce((sum, r) => sum + r.accuracy_score, 0) / ratings.length;
   const lines: string[] = [];
 
-  lines.push(`## 이 페르소나 시뮬레이션의 과거 정확도 (${ratings.length}회 평가, 평균 ${avg.toFixed(1)}/5)`);
+  lines.push(`## 페르소나 행동 모델 (${ratings.length}회 평가, 정확도 ${avg.toFixed(1)}/5)`);
 
+  // Aspect-level accuracy analysis
   const aspectCounts: Record<string, { accurate: number; inaccurate: number }> = {};
   for (const r of ratings) {
     for (const a of r.which_aspects_accurate) {
@@ -185,14 +187,57 @@ export function buildPersonaAccuracyContext(personaId: string): string {
     }
   }
 
-  const good = Object.entries(aspectCounts).filter(([, v]) => v.accurate > v.inaccurate);
-  const bad = Object.entries(aspectCounts).filter(([, v]) => v.inaccurate >= v.accurate);
+  const good = Object.entries(aspectCounts)
+    .filter(([, v]) => v.accurate > v.inaccurate)
+    .sort(([, a], [, b]) => (b.accurate - b.inaccurate) - (a.accurate - a.inaccurate));
+  const bad = Object.entries(aspectCounts)
+    .filter(([, v]) => v.inaccurate >= v.accurate)
+    .sort(([, a], [, b]) => (b.inaccurate - b.accurate) - (a.inaccurate - a.accurate));
 
   if (good.length > 0) {
-    lines.push(`- 정확했던 부분: ${good.map(([k]) => k).join(', ')} — 이 수준을 유지하세요.`);
+    lines.push('');
+    lines.push('### 강점 (유지)');
+    good.forEach(([aspect, counts]) => {
+      const accuracy = Math.round((counts.accurate / (counts.accurate + counts.inaccurate)) * 100);
+      lines.push(`- ${aspect} (${accuracy}% 정확) — 이 수준을 유지하세요.`);
+    });
   }
+
   if (bad.length > 0) {
-    lines.push(`- 부정확했던 부분: ${bad.map(([k]) => k).join(', ')} — 이 부분을 더 현실적으로 개선하세요.`);
+    lines.push('');
+    lines.push('### 보정 필요 (개선)');
+    bad.forEach(([aspect, counts]) => {
+      const accuracy = Math.round((counts.accurate / (counts.accurate + counts.inaccurate)) * 100);
+      lines.push(`- ${aspect} (${accuracy}% 정확) — 이 부분에서 더 현실적으로 조정하세요.`);
+    });
+  }
+
+  // Calibration guidance based on overall accuracy pattern
+  if (avg < 2.5) {
+    lines.push('');
+    lines.push('### 보정 지시');
+    lines.push('- 전반적으로 시뮬레이션이 실제와 많이 달랐습니다. 더 보수적이고 현실적으로 접근하세요.');
+    lines.push('- 극단적 반응보다는 실무적 관점을 우선하세요.');
+  } else if (avg > 4.0) {
+    lines.push('');
+    lines.push('### 보정 지시');
+    lines.push('- 시뮬레이션이 매우 정확합니다. 현재 접근 방식을 유지하세요.');
+  } else if (bad.length > good.length) {
+    lines.push('');
+    lines.push('### 보정 지시');
+    lines.push(`- 부정확한 측면(${bad.map(([k]) => k).join(', ')})에 집중하여 개선하세요.`);
+    lines.push(`- 정확했던 측면(${good.map(([k]) => k).join(', ')})의 톤과 깊이를 유지하세요.`);
+  }
+
+  // Cross-project persona knowledge: extract common concern patterns
+  const allNotes = ratings
+    .filter(r => r.accuracy_notes)
+    .map(r => r.accuracy_notes!)
+    .slice(-5);
+  if (allNotes.length >= 2) {
+    lines.push('');
+    lines.push('### 사용자 피드백 메모 (최근)');
+    allNotes.forEach(n => lines.push(`- "${n}"`));
   }
 
   return lines.join('\n');

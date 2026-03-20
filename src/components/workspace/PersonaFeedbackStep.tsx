@@ -23,6 +23,7 @@ import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
+import { buildDecomposeContext, buildOrchestrateContext, injectOrchestrateContext } from '@/lib/context-chain';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
   const recentLogs = persona.feedback_logs
@@ -147,9 +148,30 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
+        // Phase 3: Inject structured context for assumption attack
+        let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
+
+        // Find related decompose + orchestrate for this project
+        const projectId = pendingProjectId;
+        if (projectId) {
+          const relDecompose = decomposeItems.find(d => d.project_id === projectId && d.status === 'done' && d.analysis);
+          const relOrchestrate = orchestrateItems.find(o => o.project_id === projectId && o.analysis);
+          if (relOrchestrate) {
+            const orchCtx = buildOrchestrateContext(relOrchestrate);
+            const decCtx = relDecompose ? buildDecomposeContext(relDecompose) : undefined;
+            systemPrompt = injectOrchestrateContext(systemPrompt, orchCtx, decCtx);
+          }
+        }
+
+        // Inject persona accuracy model
+        const accuracyCtx = buildPersonaAccuracyContext(personaId);
+        if (accuracyCtx) {
+          systemPrompt = `${systemPrompt}\n\n${accuracyCtx}`;
+        }
+
         const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(
           [{ role: 'user', content: data.documentText }],
-          { system: FEEDBACK_SYSTEM(persona, data.perspective, data.intensity), maxTokens: 2000 }
+          { system: systemPrompt, maxTokens: 2000 }
         );
         results.push({ ...result, persona_id: personaId });
       }
