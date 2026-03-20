@@ -8,7 +8,7 @@ export function Hero() {
       <div className="text-center max-w-2xl mx-auto">
         <div className="flex items-center justify-center gap-3 mb-6">
           <div className="h-px w-6 bg-[var(--border)]" />
-          <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
+          <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
             Think before you orchestrate
           </span>
           <div className="h-px w-6 bg-[var(--border)]" />
@@ -64,7 +64,7 @@ export function Hero() {
 
         {/* After — structured flow */}
         <div className="rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface)] p-5 md:p-6 relative">
-          <div className="absolute -top-3 left-5 bg-[var(--accent)] text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wide uppercase">
+          <div className="absolute -top-3 left-5 bg-[var(--accent)] text-white text-[11px] font-bold px-3 py-1 rounded-full tracking-wide uppercase">
             Overture를 거치면
           </div>
 

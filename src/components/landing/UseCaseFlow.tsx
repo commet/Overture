@@ -48,8 +48,8 @@ export function UseCaseFlow() {
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[12px] font-bold" style={{ backgroundColor: p.color }}>
                       {p.initial}
                     </div>
-                    <span className="text-[10px] font-semibold text-[var(--text-secondary)]">{p.role}</span>
-                    <span className="text-[9px] text-[var(--text-primary)] bg-[var(--surface)] rounded px-1.5 py-0.5 border border-[var(--border-subtle)] font-medium">
+                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{p.role}</span>
+                    <span className="text-[11px] text-[var(--text-primary)] bg-[var(--surface)] rounded px-1.5 py-0.5 border border-[var(--border-subtle)] font-medium">
                       {p.q}
                     </span>
                   </div>

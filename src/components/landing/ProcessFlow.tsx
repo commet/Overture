@@ -81,12 +81,12 @@ export function ProcessFlow() {
                   <h3 className="text-[17px] font-bold text-[var(--text-primary)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
                     {step.title}
                   </h3>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider mt-0.5 mb-2" style={{ color: step.color }}>
+                  <p className="text-[12px] font-semibold uppercase tracking-wider mt-0.5 mb-2" style={{ color: step.color }}>
                     {step.metaphor}
                   </p>
 
                   {/* Description */}
-                  <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                  <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">
                     {step.desc}
                   </p>
                 </div>

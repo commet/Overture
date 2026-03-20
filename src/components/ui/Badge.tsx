@@ -18,7 +18,7 @@ export function Badge({ variant = 'default', children }: BadgeProps) {
     <span
       className={`
         inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full
-        text-[11px] font-semibold tracking-[0.04em]
+        text-[12px] font-semibold tracking-[0.04em]
         ${variantStyles[variant]}
       `}
     >

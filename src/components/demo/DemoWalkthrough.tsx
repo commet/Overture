@@ -206,7 +206,7 @@ export function DemoWalkthrough() {
                 }`}>
                   {done ? <Check size={14} /> : <Icon size={14} />}
                 </div>
-                <span className={`text-[10px] font-semibold hidden md:block transition-colors ${active ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                <span className={`text-[11px] font-semibold hidden md:block transition-colors ${active ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
                   {s.label}
                 </span>
               </button>
@@ -339,7 +339,7 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
 
       {/* 1. 받은 악보 — clean standalone */}
       <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-2">받은 악보</p>
+        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-2">받은 악보</p>
         <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{d.surface_task}</p>
       </div>
 
@@ -374,7 +374,7 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
 
       {/* 3. 재정의된 질문 — dramatic reveal */}
       <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
-        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-white/50 mb-3">재정의된 질문</p>
+        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/50 mb-3">재정의된 질문</p>
         <p className="text-[17px] md:text-[19px] font-bold leading-snug">{d.reframed_question}</p>
         <div className="mt-4 pt-3 border-t border-white/15">
           <p className="text-[13px] text-white/70 leading-relaxed">{d.why_reframing_matters}</p>
@@ -544,7 +544,7 @@ function OrchestrateSection() {
                 <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: '#fffbf0', borderBottom: '1px solid #f0e6c8' }}>
                   <Flag size={12} className="text-amber-600 shrink-0" />
                   <span className="text-[11px] font-semibold text-amber-700">체크포인트</span>
-                  <span className="text-[11px] text-amber-600/80">&mdash; {s.checkpoint_reason}</span>
+                  <span className="text-[12px] text-amber-600/80">&mdash; {s.checkpoint_reason}</span>
                 </div>
               )}
 
@@ -561,25 +561,25 @@ function OrchestrateSection() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.text }}>
+                        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: config.text }}>
                           {config.labelFull}
                         </span>
                       </div>
                       <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{s.task}</p>
-                      <p className="text-[11px] text-[var(--text-secondary)] mt-1">{s.expected_output}</p>
+                      <p className="text-[12px] text-[var(--text-secondary)] mt-1">{s.expected_output}</p>
 
                       {/* Status indicators when collapsed */}
                       {!isExpanded && decided && (
-                        <p className="text-[10px] text-[#8b6914] mt-1.5 font-medium truncate">결정: {decided}</p>
+                        <p className="text-[11px] text-[#8b6914] mt-1.5 font-medium truncate">결정: {decided}</p>
                       )}
                       {!isExpanded && hasDecision && !decided && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5">
                           결정 필요
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">{s.estimated_time}</span>
+                  <span className="text-[11px] text-[var(--text-tertiary)] shrink-0">{s.estimated_time}</span>
                 </div>
               </div>
 
@@ -591,7 +591,7 @@ function OrchestrateSection() {
                     {/* AI guide (for ai and both steps) */}
                     {(s.actor === 'ai' || s.actor === 'both') && (s as any).ai_guide_hint && (
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: actorConfig.ai.text }}>
+                        <span className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: actorConfig.ai.text }}>
                           <Bot size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
                           AI 실행 가이드
                         </span>
@@ -604,7 +604,7 @@ function OrchestrateSection() {
                     {/* Human decision (for human and both steps) */}
                     {hasDecision && s.judgment && (
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: actorConfig.human.text }}>
+                        <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: actorConfig.human.text }}>
                           <Brain size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
                           당신의 판단
                         </span>
@@ -617,7 +617,7 @@ function OrchestrateSection() {
                         {/* Option chips */}
                         {options.length > 0 && (
                           <div>
-                            <span className="text-[10px] text-[var(--text-secondary)] block mb-1.5">선택하세요</span>
+                            <span className="text-[12px] text-[var(--text-secondary)] block mb-1.5">선택하세요</span>
                             <div className="flex flex-wrap gap-1.5">
                               {options.map((opt, j) => (
                                 <button
@@ -640,7 +640,7 @@ function OrchestrateSection() {
                         )}
 
                         {decided && (
-                          <p className="text-[10px] text-[var(--text-tertiary)] mt-2">선택됨 &mdash; 다음 단계를 클릭하세요</p>
+                          <p className="text-[11px] text-[var(--text-tertiary)] mt-2">선택됨 &mdash; 다음 단계를 클릭하세요</p>
                         )}
                       </div>
                     )}
@@ -661,7 +661,7 @@ function OrchestrateSection() {
               <span className={`shrink-0 mt-1 w-2 h-2 rounded-full ${ka.importance === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
-                <p className="text-[11px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
+                <p className="text-[12px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
               </div>
             </div>
           ))}
@@ -724,7 +724,7 @@ function PersonaSection() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{p.name}</h3>
-                <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
                   High Influence
                 </span>
               </div>
@@ -741,7 +741,7 @@ function PersonaSection() {
 
       {/* Overall reaction — quote style */}
       <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 shadow-sm">
-        <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-purple-500 mb-3">박 대표의 반응</p>
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-purple-500 mb-3">박 대표의 반응</p>
         <div className="pl-4 border-l-3 border-purple-400">
           <p className="text-[15px] text-[var(--text-primary)] leading-relaxed font-medium italic">
             &ldquo;{f.overall_reaction}&rdquo;
@@ -751,7 +751,7 @@ function PersonaSection() {
 
       {/* Failure scenario — dark card */}
       <div className="rounded-2xl bg-[var(--primary)] text-white p-5">
-        <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
         <p className="text-[14px] leading-relaxed text-white/90">{f.failure_scenario}</p>
       </div>
 
@@ -908,7 +908,7 @@ function RefinementSection() {
                   <div className="w-12 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
                     <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${it.score * 100}%` }} />
                   </div>
-                  <span className="text-[10px] font-bold text-[var(--text-secondary)]">{Math.round(it.score * 100)}%</span>
+                  <span className="text-[11px] font-bold text-[var(--text-secondary)]">{Math.round(it.score * 100)}%</span>
                 </div>
               </div>
               <p className="text-[12px] text-[var(--text-secondary)] mt-2 bg-[var(--bg)] rounded-lg px-3 py-2">{it.summary}</p>

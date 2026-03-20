@@ -37,7 +37,7 @@ export function ClosingCTA() {
             </Link>
           </div>
 
-          <p className="mt-8 text-[11px] text-[var(--text-tertiary)] tracking-wide">
+          <p className="mt-8 text-[12px] text-[var(--text-tertiary)] tracking-wide">
             Overture — 오픈소스 프로젝트
           </p>
         </div>
