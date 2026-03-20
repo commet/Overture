@@ -402,14 +402,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 </p>
               </div>
 
-              {/* 스토리라인 — one line each */}
-              {current.analysis.storyline && (
-                <div className="text-[13px] text-[var(--text-primary)] space-y-1 px-1">
-                  <p><span className="font-semibold text-[var(--text-secondary)]">상황:</span> {current.analysis.storyline.situation}</p>
-                  <p><span className="font-semibold text-amber-700">문제:</span> {current.analysis.storyline.complication}</p>
-                  <p><span className="font-semibold text-[var(--accent)]">접근:</span> {current.analysis.storyline.resolution}</p>
-                </div>
-              )}
+              {/* Storyline removed — governing_idea already captures the direction */}
             </div>
           )}
 

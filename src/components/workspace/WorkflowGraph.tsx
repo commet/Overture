@@ -199,36 +199,27 @@ export function WorkflowGraph({
             return (
               <div key={i} className={`relative ${laneClass}`}>
                 <div
-                  className={`rounded-xl border overflow-hidden transition-all cursor-pointer ${
+                  className={`rounded-xl overflow-hidden transition-all cursor-pointer bg-[var(--surface)] ${
                     isCritical ? 'ring-1 ring-red-200' : ''
-                  } ${isExpanded ? 'shadow-sm' : ''}`}
-                  style={{ borderColor: isExpanded ? `${a.color}60` : `${a.color}20` }}
+                  } ${isExpanded ? 'shadow-md border border-[var(--border)]' : 'border border-[var(--border-subtle)] hover:border-[var(--border)]'}`}
+                  style={{ borderLeft: `3px solid ${a.color}` }}
                   onClick={() => toggleStep(i)}
                 >
-                  {/* Checkpoint banner — clear explanation */}
-                  {step.checkpoint && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-200/60">
-                      <Flag size={11} className="text-amber-700" />
-                      <span className="text-[11px] font-bold text-amber-800">체크포인트</span>
-                      <span className="text-[10px] text-amber-700">— 사람이 반드시 확인 후 진행</span>
-                      {step.checkpoint_reason && (
-                        <span className="text-[10px] text-[var(--text-secondary)] ml-auto hidden sm:inline">
-                          {step.checkpoint_reason}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Card body */}
-                  <div className="px-4 py-3" style={{ backgroundColor: `${a.color}05` }}>
+                  {/* Card body — clean white, no pastel tint */}
+                  <div className="px-4 py-3 bg-[var(--surface)]">
                     {/* Header: number + actor + task + time */}
                     <div className="flex items-start gap-2.5">
-                      <span
-                        className="text-[18px] font-bold tabular-nums leading-none pt-0.5 shrink-0 select-none"
-                        style={{ color: `${a.color}30` }}
-                      >
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
+                      <div className="shrink-0 flex flex-col items-center gap-0.5">
+                        <span
+                          className="text-[18px] font-bold tabular-nums leading-none select-none"
+                          style={{ color: `${a.color}30` }}
+                        >
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        {step.checkpoint && (
+                          <span title="체크포인트: 사람이 반드시 확인"><Flag size={10} className="text-amber-600" /></span>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {editable ? (
@@ -278,7 +269,7 @@ export function WorkflowGraph({
 
                         {/* Expand hint */}
                         {!isExpanded && editable && (
-                          <p className="text-[10px] text-[var(--accent)] mt-2 font-medium">클릭하여 상세 입력 &darr;</p>
+                          <p className="text-[11px] text-[var(--text-secondary)] mt-2">상세 입력 &darr;</p>
                         )}
                       </div>
                     </div>
@@ -354,9 +345,17 @@ export function WorkflowGraph({
 
                         {/* Actor reasoning — readable */}
                         {step.actor_reasoning?.trim() && (
-                          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-                            <span className="font-semibold text-[var(--text-primary)]">이 역할 배정의 이유:</span> {step.actor_reasoning}
+                          <p className="text-[12px] text-[var(--text-primary)]/70 leading-relaxed italic">
+                            {step.actor_reasoning}
                           </p>
+                        )}
+
+                        {/* Checkpoint reason — only in expanded */}
+                        {step.checkpoint && step.checkpoint_reason && (
+                          <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-lg px-3 py-2">
+                            <Flag size={11} className="text-amber-700 shrink-0 mt-0.5" />
+                            <p className="text-amber-800"><span className="font-semibold">체크포인트:</span> {step.checkpoint_reason}</p>
+                          </div>
                         )}
                       </div>
                     )}
