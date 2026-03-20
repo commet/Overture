@@ -9,9 +9,10 @@ import { generateProjectBrief } from '@/lib/project-brief';
 import { generatePromptChain } from '@/lib/prompt-chain';
 import { generateAgentSpec } from '@/lib/agent-spec';
 import { generateChecklist } from '@/lib/checklist';
+import { generateDecisionRationale } from '@/lib/decision-rationale';
 import type { Project } from '@/stores/types';
 import type { StepId } from '@/stores/useWorkspaceStore';
-import { User, FolderOpen, FileText, MessageSquare, Code, CheckSquare } from 'lucide-react';
+import { User, FolderOpen, FileText, MessageSquare, Code, CheckSquare, Scale } from 'lucide-react';
 
 interface WorkspaceSidebarProps {
   activeStep: StepId;
@@ -23,6 +24,7 @@ const outputFormats = [
   { key: 'chain', icon: <MessageSquare size={12} />, label: '체인', gen: generatePromptChain },
   { key: 'spec', icon: <Code size={12} />, label: 'Spec', gen: generateAgentSpec },
   { key: 'checklist', icon: <CheckSquare size={12} />, label: '리스트', gen: generateChecklist },
+  { key: 'rationale', icon: <Scale size={12} />, label: '근거서', gen: generateDecisionRationale },
 ];
 
 export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarProps) {

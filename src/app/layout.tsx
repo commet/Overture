@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { LayoutShell } from '@/components/layout/LayoutShell';
 import { Providers } from '@/components/layout/Providers';
+import { Analytics } from '@/components/layout/Analytics';
 
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
@@ -27,6 +28,7 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>
+          <Analytics />
           <div className="min-h-screen flex flex-col">
             <Header />
             <div className="flex flex-1">

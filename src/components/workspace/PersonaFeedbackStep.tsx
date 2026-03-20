@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { track } from '@/lib/analytics';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Card } from '@/components/ui/Card';
@@ -207,6 +208,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const record = usePersonaStore.getState().feedbackHistory.find((r) => r.id === recordId);
       if (record) setLatestFeedback(record);
       setActiveTab('result');
+      track('feedback_complete', { personas_count: results.length, has_synthesis: !!synthesis });
       // Audio feedback on completion
       const { settings } = useSettingsStore.getState();
       if (settings.audio_enabled) {

@@ -12,6 +12,7 @@ import {
   FileText, ListChecks, Code, ClipboardList,
   TrendingUp,
 } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 /* ═══════════════════════════════════════
    DEMO DATA
@@ -19,46 +20,46 @@ import {
 
 const DEMO = {
   project: {
-    name: '넥스트라 계약 위기 대응',
-    scenario: '매출 40%를 차지하는 최대 고객사 넥스트라이 갑자기 "다음 분기 계약을 재검토하겠다"고 통보했다.',
+    name: 'Meridian 계약 위기 대응',
+    scenario: '매출 40%를 차지하는 최대 고객사 Meridian이 갑자기 "다음 분기 계약을 재검토하겠다"고 통보했다.',
     directive: '대표 지시: "2주 안에 대응 방안 만들어라."',
   },
 
   decompose: {
-    surface_task: '넥스트라 계약 유지를 위한 대응 방안을 2주 안에 수립',
+    surface_task: 'Meridian 계약 유지를 위한 대응 방안을 2주 안에 수립',
     hidden_assumptions: [
-      { assumption: '넥스트라을 반드시 유지해야 한다', risk_if_false: '넥스트라이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
-      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 넥스트라 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
+      { assumption: 'Meridian을 반드시 유지해야 한다', risk_if_false: 'Meridian이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
+      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 Meridian 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
       { assumption: '가격 양보나 추가 서비스로 잡을 수 있다', risk_if_false: '이미 적자인 계약에서 추가 양보는 손실 확대. 선례가 되면 다른 고객도 같은 요구' },
     ],
-    reframed_question: '넥스트라 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
+    reframed_question: 'Meridian 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
     why_reframing_matters: "'어떻게 잡을까'가 아니라 '잡아야 하는가, 어떤 조건에서 잡아야 하는가'로 바꾸면 대표에게 Go/No-Go 의사결정 근거를 제공할 수 있습니다.",
-    reasoning_narrative: '처음에는 "넥스트라을 지켜야 한다"가 과제였지만, 매출 의존도 40% 자체가 문제의 원인이었다. 넥스트라 커스텀에 끌려다니느라 다른 고객 50곳의 요구가 1년째 밀리고 있었다.',
+    reasoning_narrative: '처음에는 "Meridian을 지켜야 한다"가 과제였지만, 매출 의존도 40% 자체가 문제의 원인이었다. Meridian 커스텀에 끌려다니느라 다른 고객 50곳의 요구가 1년째 밀리고 있었다.',
     hidden_questions: [
-      { question: '넥스트라 계약의 실제 수익성(순이익 기여도)은 얼마이며, 이탈 시 재무 영향의 실체는?', reasoning: '매출 40%가 이익 40%는 아닐 수 있다. 숫자를 보면 판단이 달라진다' },
-      { question: '넥스트라 의존도를 줄이면서 동시에 관계를 유지하는 조건부 전략이 가능한가?', reasoning: '올인 아니면 포기가 아닌 제3의 선택지를 설계할 수 있다' },
-      { question: '넥스트라이 빠진 자리를 메울 수 있는 파이프라인은 현실적으로 존재하는가?', reasoning: '대안이 있어야 놓을 수 있는 카드가 된다' },
+      { question: 'Meridian 계약의 실제 수익성(순이익 기여도)은 얼마이며, 이탈 시 재무 영향의 실체는?', reasoning: '매출 40%가 이익 40%는 아닐 수 있다. 숫자를 보면 판단이 달라진다' },
+      { question: 'Meridian 의존도를 줄이면서 동시에 관계를 유지하는 조건부 전략이 가능한가?', reasoning: '올인 아니면 포기가 아닌 제3의 선택지를 설계할 수 있다' },
+      { question: 'Meridian이 빠진 자리를 메울 수 있는 파이프라인은 현실적으로 존재하는가?', reasoning: '대안이 있어야 놓을 수 있는 카드가 된다' },
     ],
   },
 
   orchestrate: {
     governing_idea: '감정적 "무조건 유지"가 아니라, 수익성 팩트에 기반한 3가지 시나리오를 만들어 대표가 선택할 수 있게 한다',
     storyline: {
-      situation: '넥스트라은 3년간 최대 고객이었고, 매출의 40%를 차지한다. 갑작스러운 계약 재검토 통보에 사내가 패닉 상태다.',
-      complication: '그러나 넥스트라 계약은 커스텀 요구가 과중하여 실제 마진이 낮고, 제품 로드맵이 1년째 밀리고 있다. "무조건 잡아라"가 최선인지 불확실하다.',
-      resolution: '먼저 넥스트라 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
+      situation: 'Meridian은 3년간 최대 고객이었고, 매출의 40%를 차지한다. 갑작스러운 계약 재검토 통보에 사내가 패닉 상태다.',
+      complication: '그러나 Meridian 계약은 커스텀 요구가 과중하여 실제 마진이 낮고, 제품 로드맵이 1년째 밀리고 있다. "무조건 잡아라"가 최선인지 불확실하다.',
+      resolution: '먼저 Meridian 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
     },
     steps: [
-      { task: '넥스트라 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일' },
-      { task: '넥스트라 이탈 사유 파악 (내부 소스 + 경쟁사 동향)', actor: 'human' as const, expected_output: '이탈 사유 인텔리전스 보고서', checkpoint: false, estimated_time: '3일' },
-      { task: '3가지 시나리오 재무 모델링', actor: 'ai' as const, expected_output: '시나리오별 12개월 P&L 시뮬레이션', checkpoint: false, estimated_time: '4시간' },
-      { task: '대체 매출 파이프라인 현실성 평가', actor: 'both' as const, expected_output: '전환 가능 고객 리스트 + 시점 매트릭스', checkpoint: true, checkpoint_reason: "'놓을 수 있는 카드'인지 여기서 결정", estimated_time: '2일' },
-      { task: '대표 보고용 의사결정 문서 작성', actor: 'human' as const, expected_output: '시나리오 비교표 + 추천안 (10p)', checkpoint: true, checkpoint_reason: '최종 보고 전 프레이밍 검수', estimated_time: '1일' },
+      { task: 'Meridian 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일', judgment: '직접비만/간접비 포함/기회비용 포함 중 원가 분석 범위를 결정', ai_guide_hint: 'Meridian 전용 인프라 비용과 인건비를 분리하여 실질 마진을 산출' },
+      { task: 'Meridian 이탈 사유 파악', actor: 'human' as const, expected_output: '이탈 사유 인텔리전스 보고서', checkpoint: false, estimated_time: '3일', judgment: '내부 정보원 접촉/공식 미팅 요청/경쟁사 동향 우선 중 접근 순서를 결정' },
+      { task: '3가지 시나리오 재무 모델링', actor: 'ai' as const, expected_output: '시나리오별 12개월 P&L 시뮬레이션', checkpoint: false, estimated_time: '4시간', ai_guide_hint: '전면 유지, 조건부 축소, 포트폴리오 재구성 3가지 시나리오로 모델링' },
+      { task: '대체 매출 파이프라인 현실성 평가', actor: 'both' as const, expected_output: '전환 가능 고객 리스트 + 시점 매트릭스', checkpoint: true, checkpoint_reason: "'놓을 수 있는 카드'인지 여기서 결정", estimated_time: '2일', judgment: '기존 파이프라인/신규 발굴/기존 고객 확대 중 집중 영역을 결정' },
+      { task: '대표 보고용 의사결정 문서 작성', actor: 'human' as const, expected_output: '시나리오 비교표 + 추천안 (10p)', checkpoint: true, checkpoint_reason: '최종 보고 전 프레이밍 검수', estimated_time: '1일', judgment: '전면 유지/조건부 축소/포트폴리오 재구성 중 추천안을 선택' },
     ],
     key_assumptions: [
-      { assumption: '재무팀이 넥스트라 계약의 정밀 원가 데이터를 제공할 수 있다', importance: 'high' as const, if_wrong: '수익성 분석 신뢰도가 떨어져 시나리오 비교 불가' },
-      { assumption: '넥스트라의 해지 검토가 협상 전술이지 확정은 아니다', importance: 'high' as const, if_wrong: '이미 경쟁사와 계약 서명 단계라면 유지 시나리오 자체가 무의미' },
-      { assumption: '다른 고객사에게 넥스트라 이탈 소식이 퍼지지 않았다', importance: 'medium' as const, if_wrong: '연쇄 이탈 리스크 발생. 위기 커뮤니케이션이 별도 필요' },
+      { assumption: '재무팀이 Meridian 계약의 정밀 원가 데이터를 제공할 수 있다', importance: 'high' as const, if_wrong: '수익성 분석 신뢰도가 떨어져 시나리오 비교 불가' },
+      { assumption: 'Meridian의 해지 검토가 협상 전술이지 확정은 아니다', importance: 'high' as const, if_wrong: '이미 경쟁사와 계약 서명 단계라면 유지 시나리오 자체가 무의미' },
+      { assumption: '다른 고객사에게 Meridian 이탈 소식이 퍼지지 않았다', importance: 'medium' as const, if_wrong: '연쇄 이탈 리스크 발생. 위기 커뮤니케이션이 별도 필요' },
     ],
   },
 
@@ -67,22 +68,22 @@ const DEMO = {
     role: 'CEO / 대표이사',
     traits: ['매출 중심 사고', '관계 중시', '리스크 회피'],
     feedback: {
-      overall_reaction: '시나리오 3개를 보여주는 건 좋아. 근데 "전략적 이별" 시나리오까지 넣을 거면, 내가 넥스트라 이 대표한테 전화해서 뭐라고 말해야 하는지까지 나와야 해.',
-      failure_scenario: '수익성 분석에서 넥스트라이 적자라는 게 나오는데, 이 정보가 넥스트라 측에 새어나감. "너네가 우리를 버리려 했다"는 인식이 생기면서 관계 완전 파탄.',
+      overall_reaction: '시나리오 3개를 보여주는 건 좋아. 근데 "전략적 이별" 시나리오까지 넣을 거면, 내가 Meridian 이 대표한테 전화해서 뭐라고 말해야 하는지까지 나와야 해.',
+      failure_scenario: '수익성 분석에서 Meridian이 적자라는 게 나오는데, 이 정보가 Meridian 측에 새어나감. "너네가 우리를 버리려 했다"는 인식이 생기면서 관계 완전 파탄.',
       classified_risks: [
-        { text: '넥스트라이 이미 경쟁사와 MOU를 맺은 상태라면, 우리의 유지 시나리오는 시간 낭비다. 72시간 내에 넥스트라 내부 상황을 파악하지 못하면 모든 대응이 늦다.', category: 'critical' as const },
-        { text: '넥스트라 이탈 소식이 다른 고객에게 퍼질 수 있다는 우려. 하지만 상위 10개 고객 중 넥스트라과 직접 경쟁하는 곳은 없어서 사전 커뮤니케이션으로 통제 가능.', category: 'manageable' as const },
-        { text: '솔직히 넥스트라 계약은 내가 3년 전에 이 대표 골프장에서 따온 건데... 팀에서 "적자 계약"이라는 걸 1년 전부터 알고 있었으면서 아무도 나한테 보고를 안 했어. 그게 더 문제야.', category: 'unspoken' as const },
+        { text: 'Meridian이 이미 경쟁사와 MOU를 맺은 상태라면, 우리의 유지 시나리오는 시간 낭비다. 72시간 내에 Meridian 내부 상황을 파악하지 못하면 모든 대응이 늦다.', category: 'critical' as const },
+        { text: 'Meridian 이탈 소식이 다른 고객에게 퍼질 수 있다는 우려. 하지만 상위 10개 고객 중 Meridian과 직접 경쟁하는 곳은 없어서 사전 커뮤니케이션으로 통제 가능.', category: 'manageable' as const },
+        { text: '솔직히 Meridian 계약은 내가 3년 전에 이 대표 골프장에서 따온 건데... 팀에서 "적자 계약"이라는 걸 1년 전부터 알고 있었으면서 아무도 나한테 보고를 안 했어. 그게 더 문제야.', category: 'unspoken' as const },
       ],
-      approval_conditions: ['넥스트라 실수익률 데이터가 재무팀 검증을 거칠 것', '"조건부 축소" 시나리오에 넥스트라이 수용 가능한 구체적 조건 3개를 포함할 것'],
+      approval_conditions: ['Meridian 실수익률 데이터가 재무팀 검증을 거칠 것', '"조건부 축소" 시나리오에 Meridian이 수용 가능한 구체적 조건 3개를 포함할 것'],
     },
   },
 
   convergence: {
     iterations: [
-      { number: 1, score: 0.45, resolved: 2, unresolved: 3, total: 5, summary: '초기 분석 완료. 넥스트라 수익성 데이터 미확보, 넥스트라 측 내부 상황 미파악.' },
-      { number: 2, score: 0.78, resolved: 4, unresolved: 1, total: 5, summary: '재무팀 원가 데이터 확보 (넥스트라 마진 -8% 확인). 경쟁사 MOU 미체결 확인. 용어 변경: "전략적 이별" → "포트폴리오 재구성".' },
-      { number: 3, score: 0.92, resolved: 5, unresolved: 0, total: 5, summary: '대표가 넥스트라 이 대표과 사전 통화 — "조건부 축소"에 긍정 반응. 대체 파이프라인 3건 구체화. 모든 이해관계자 정렬.' },
+      { number: 1, score: 0.45, resolved: 2, unresolved: 3, total: 5, summary: '초기 분석 완료. Meridian 수익성 데이터 미확보, Meridian 측 내부 상황 미파악.' },
+      { number: 2, score: 0.78, resolved: 4, unresolved: 1, total: 5, summary: '재무팀 원가 데이터 확보 (Meridian 마진 -8% 확인). 경쟁사 MOU 미체결 확인. 용어 변경: "전략적 이별" → "포트폴리오 재구성".' },
+      { number: 3, score: 0.92, resolved: 5, unresolved: 0, total: 5, summary: '대표가 Meridian 이 대표와 사전 통화 — "조건부 축소"에 긍정 반응. 대체 파이프라인 3건 구체화. 모든 이해관계자 정렬.' },
     ],
   },
 };
@@ -144,6 +145,7 @@ export function DemoWalkthrough() {
   const go = (target: number) => {
     const next = Math.max(0, Math.min(target, maxStep));
     setStep(next);
+    track('demo_step', { step: next, label: STEPS[next]?.id });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -302,7 +304,7 @@ function IntroSection() {
         <Card className="!bg-[var(--bg)]">
           <p className="text-[12px] font-bold text-[var(--text-secondary)] mb-2">보통이라면?</p>
           <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-            바로 넥스트라 담당자에게 전화하고,<br />할인 제안서를 준비한다.
+            긴급 TF를 꾸리고, 계약 조건 개선안을 만들며,<br />어떻게든 양보해서 잡으려 한다.
           </p>
         </Card>
         <Card className="!bg-[var(--ai)]">
@@ -324,7 +326,8 @@ function IntroSection() {
 function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
   const d = DEMO.decompose;
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold tracking-wider uppercase mb-2">
           <Layers size={14} /> 1악장 &middot; 악보 해석
@@ -332,79 +335,106 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight">
           진짜 질문을 찾아내다
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          &ldquo;넥스트라을 잡아야 한다&rdquo;는 과제 뒤에 검증되지 않은 전제 3개가 숨어 있었습니다.
-        </p>
       </div>
 
-      {/* Story Card */}
-      <Card className="!p-0 overflow-hidden">
-        <div className="px-5 pt-5 pb-4">
-          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--text-secondary)] mb-1.5">받은 악보</p>
-          <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{d.surface_task}</p>
-        </div>
+      {/* 1. 받은 악보 — clean standalone */}
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-2">받은 악보</p>
+        <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{d.surface_task}</p>
+      </div>
 
-        <div className="px-5 py-4 bg-amber-50/60 border-y border-amber-200/50">
-          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-amber-700 mb-1">숨겨진 불협화음</p>
-          <p className="text-[12px] text-amber-600/80 mb-3">이 과제는 검증되지 않은 전제 위에 서 있습니다</p>
-          <div className="space-y-2.5">
-            {d.hidden_assumptions.map((a, i) => (
-              <div key={i} className="pl-3 border-l-2 border-amber-400">
-                <p className="text-[13px] text-[var(--text-primary)] font-medium leading-relaxed">&ldquo;{a.assumption}&rdquo;</p>
-                <p className="text-[12px] text-amber-700 mt-0.5 leading-relaxed">거짓이면 &rarr; {a.risk_if_false}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="px-5 pt-4 pb-5">
-          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--accent)] mb-2">이 곡의 진짜 주제</p>
-          <p className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">{d.reframed_question}</p>
-          <p className="text-[13px] text-[var(--text-secondary)] mt-2.5 leading-relaxed">{d.why_reframing_matters}</p>
-          <div className="mt-4 pt-3 border-t border-dashed border-[var(--border-subtle)]">
-            <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">{d.reasoning_narrative}</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Question Selection */}
-      <Card>
-        <div className="flex items-center gap-2 mb-1">
-          <Badge variant="checkpoint">판단 필요</Badge>
-          <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 해석을 선택하시겠습니까?</h3>
-        </div>
-        <p className="text-[12px] text-[var(--text-secondary)] mb-4">선택한 방향이 편곡 단계의 출발점이 됩니다. 클릭해 보세요.</p>
-        <div className="space-y-2">
-          {d.hidden_questions.map((hq, i) => (
+      {/* 2. 전제 점검 — each assumption as its own item */}
+      <div>
+        <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">점검이 필요한 전제</p>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-3">이 과제가 성립하려면 다음이 참이어야 합니다</p>
+        <div className="space-y-2.5">
+          {d.hidden_assumptions.map((a, i) => (
             <div
               key={i}
-              onClick={() => onSelect(i)}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                selected === i
-                  ? 'border-[var(--accent)] bg-[var(--ai)]'
-                  : 'border-[var(--border-subtle)] hover:border-[var(--border)]'
-              }`}
+              className="rounded-lg overflow-hidden"
+              style={{ borderLeft: '3px solid #d97706' }}
             >
-              <div className="flex items-start gap-3">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                  selected === i ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]'
-                }`}>
-                  {selected === i && <Check size={12} className="text-white" />}
-                </div>
-                <div>
-                  <p className="text-[14px] font-semibold text-[var(--text-primary)]">{hq.question}</p>
-                  <p className="text-[12px] text-[var(--text-secondary)] mt-1">택하면 &rarr; {hq.reasoning}</p>
+              <div className="px-4 py-3 bg-amber-50/40">
+                <div className="flex items-start gap-3">
+                  <span className="text-[16px] font-bold text-amber-400/60 leading-none shrink-0 pt-0.5 tabular-nums select-none">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{a.assumption}</p>
+                    <p className="text-[12px] text-amber-700 mt-1.5 leading-relaxed">
+                      <span className="font-semibold">거짓이면</span> &rarr; {a.risk_if_false}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
 
-      <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
+      {/* 3. 재정의된 질문 — dramatic reveal */}
+      <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
+        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-white/50 mb-3">재정의된 질문</p>
+        <p className="text-[17px] md:text-[19px] font-bold leading-snug">{d.reframed_question}</p>
+        <div className="mt-4 pt-3 border-t border-white/15">
+          <p className="text-[13px] text-white/70 leading-relaxed">{d.why_reframing_matters}</p>
+        </div>
+      </div>
+
+      {/* Reasoning — meaningful insight */}
+      <div className="flex items-start gap-3 bg-[var(--ai)] rounded-lg px-4 py-3">
+        <Lightbulb size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[11px] font-bold text-[#2d4a7c] uppercase tracking-wider mb-1">왜 이렇게 재정의했는가</p>
+          <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{d.reasoning_narrative}</p>
+        </div>
+      </div>
+
+      {/* Section divider */}
+      <div className="flex items-center gap-3 pt-1">
+        <div className="h-px flex-1 bg-[var(--border)]" />
+        <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">방향 선택</span>
+        <div className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      {/* 4. Question Selection — clear CTA */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant="checkpoint">판단 필요</Badge>
+          <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 해석을 선택하시겠습니까?</h3>
+        </div>
+        <p className="text-[13px] text-[var(--text-secondary)] mb-3">선택한 방향이 편곡 단계의 출발점이 됩니다.</p>
+        <div className="space-y-2">
+          {d.hidden_questions.map((hq, i) => (
+            <div
+              key={i}
+              onClick={() => onSelect(i)}
+              className={`p-4 rounded-lg cursor-pointer transition-all ${
+                selected === i
+                  ? 'bg-[var(--ai)] border-2 border-[var(--accent)] shadow-sm'
+                  : 'bg-[var(--surface)] border border-[var(--border-subtle)] hover:border-[var(--border)]'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                  selected === i ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]'
+                }`}>
+                  {selected === i && <Check size={12} className="text-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[14px] font-semibold leading-snug ${selected === i ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>{hq.question}</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-1.5">{hq.reasoning}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 bg-[var(--ai)] rounded-lg px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">핵심:</span> 대부분 &ldquo;넥스트라을 어떻게 잡을까&rdquo;부터 시작하지만, 전제가 거짓이면 보고서 전체가 무의미합니다. Overture는 실행 전에 이런 불협화음을 찾아냅니다.
+          <span className="font-bold">핵심:</span> 대부분 &ldquo;Meridian을 어떻게 잡을까&rdquo;부터 시작하지만, 전제가 거짓이면 보고서 전체가 무의미합니다. Overture는 실행 전에 이런 전제를 점검합니다.
         </p>
       </div>
     </div>
@@ -417,30 +447,38 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
 
 function OrchestrateSection() {
   const o = DEMO.orchestrate;
-  const [demoSteps, setDemoSteps] = useState(o.steps.map(s => ({ ...s, actor: s.actor as 'ai' | 'human' | 'both' })));
-  const [expandedStep, setExpandedStep] = useState<number | null>(null);
-  const [changedStep, setChangedStep] = useState<number | null>(null);
+  const steps = o.steps;
+  const [expandedStep, setExpandedStep] = useState<number | null>(0);
+  const [decisions, setDecisions] = useState<Record<number, string>>({});
 
-  const cycleActor = (index: number) => {
-    const order: Array<'ai' | 'human' | 'both'> = ['ai', 'human', 'both'];
-    setDemoSteps(prev => prev.map((s, i) => {
-      if (i !== index) return s;
-      const currentIdx = order.indexOf(s.actor);
-      return { ...s, actor: order[(currentIdx + 1) % 3] };
-    }));
-    setChangedStep(index);
-    setTimeout(() => setChangedStep(null), 600);
+  const decidedCount = Object.keys(decisions).length;
+  const totalDecisions = steps.filter(s => s.actor !== 'ai').length;
+
+  const actorConfig: Record<string, { label: string; labelFull: string; color: string; text: string; bg: string }> = {
+    ai: { label: 'AI', labelFull: 'AI 실행', color: '#3b6dcc', text: '#2d4a7c', bg: 'rgba(59,109,204,0.06)' },
+    human: { label: '사람', labelFull: '사람 판단', color: '#b8860b', text: '#8b6914', bg: 'rgba(184,134,11,0.06)' },
+    both: { label: '협업', labelFull: '협업', color: '#2d6b2d', text: '#2d6b2d', bg: 'rgba(45,107,45,0.06)' },
   };
 
-  const actorConfig: Record<string, { label: string; color: string; text: string; bg: string }> = {
-    ai: { label: 'AI', color: '#3b6dcc', text: '#2d4a7c', bg: 'rgba(59,109,204,0.08)' },
-    human: { label: '사람', color: '#b8860b', text: '#8b6914', bg: 'rgba(184,134,11,0.08)' },
-    both: { label: '협업', color: '#2d6b2d', text: '#2d6b2d', bg: 'rgba(45,107,45,0.08)' },
+  const extractOptions = (judgment?: string): string[] => {
+    if (!judgment || !judgment.includes('/')) return [];
+    const clauses = judgment.split(/[,.]\s*/);
+    for (const clause of clauses) {
+      if (!clause.includes('/')) continue;
+      const opts = clause.split('/').map(o => {
+        const words = o.trim().split(/\s+/);
+        let result = '';
+        for (const w of words) {
+          if (['중', '등', '에서', '또는', '어떤'].includes(w)) break;
+          if (result.length + w.length > 15) break;
+          result += (result ? ' ' : '') + w;
+        }
+        return result;
+      }).filter(o => o.length >= 1);
+      if (opts.length >= 2) return opts;
+    }
+    return [];
   };
-  const aiCount = demoSteps.filter(s => s.actor === 'ai').length;
-  const humanCount = demoSteps.filter(s => s.actor === 'human').length;
-  const bothCount = demoSteps.filter(s => s.actor === 'both').length;
-  const checkpoints = demoSteps.filter(s => s.checkpoint).length;
 
   return (
     <div className="space-y-5">
@@ -452,7 +490,7 @@ function OrchestrateSection() {
           실행을 설계하다
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          AI와 사람의 역할을 나누고, 체크포인트를 배치합니다. <strong className="text-[var(--text-primary)]">담당을 클릭하면 변경할 수 있습니다.</strong>
+          AI와 사람이 각각 무엇을 맡을지 정하고, <strong className="text-[var(--text-primary)]">사람이 판단해야 할 곳에 직접 결정을 내려보세요.</strong>
         </p>
       </div>
 
@@ -460,96 +498,158 @@ function OrchestrateSection() {
       <div className="flex items-start gap-2.5 bg-[var(--checkpoint)] rounded-xl px-4 py-3">
         <Link2 size={14} className="text-amber-700 shrink-0 mt-1" />
         <div className="text-[12px] text-amber-800">
-          <span className="font-bold">맥락 체인</span> &mdash; 악보 해석에서 발견한 <strong>검증되지 않은 전제 3건</strong>이 이 설계의 출발점입니다.
+          <span className="font-bold">맥락 체인</span> &mdash; 악보 해석에서 발견한 <strong>점검이 필요한 전제 3건</strong>이 이 설계의 출발점입니다.
         </div>
       </div>
 
       {/* Governing idea */}
-      <div className="rounded-2xl bg-gradient-to-br from-[var(--ai)] to-[#dde5f5] p-5 border border-[#2d4a7c]/10">
+      <Card className="!bg-[var(--ai)]">
         <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold mb-2">
           <Bot size={14} /> 핵심 방향
         </div>
         <p className="text-[15px] font-bold text-[var(--text-primary)] mb-3">{o.governing_idea}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[12px]">
-          <div className="bg-white/60 rounded-lg px-3 py-2">
-            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">상황</span>
-            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.situation}</p>
-          </div>
-          <div className="bg-white/60 rounded-lg px-3 py-2">
-            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">문제</span>
-            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.complication}</p>
-          </div>
-          <div className="bg-white/60 rounded-lg px-3 py-2">
-            <span className="font-semibold text-[#2d4a7c] text-[10px] uppercase tracking-wider">접근</span>
-            <p className="text-[var(--text-primary)] mt-0.5 leading-snug">{o.storyline.resolution}</p>
+        <div className="space-y-2 text-[13px] border-t border-[#2d4a7c]/10 pt-3">
+          <div><span className="font-semibold text-[#2d4a7c]">상황:</span> <span className="text-[var(--text-primary)]">{o.storyline.situation}</span></div>
+          <div><span className="font-semibold text-[#2d4a7c]">문제:</span> <span className="text-[var(--text-primary)]">{o.storyline.complication}</span></div>
+          <div><span className="font-semibold text-[#2d4a7c]">접근:</span> <span className="text-[var(--text-primary)]">{o.storyline.resolution}</span></div>
+        </div>
+      </Card>
+
+      {/* Decision progress */}
+      {decidedCount > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-[12px] font-semibold text-[var(--accent)]">{decidedCount}/{totalDecisions} 결정 완료</span>
+          <div className="flex-1 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+            <div className="h-full bg-[var(--accent)] rounded-full transition-all duration-300" style={{ width: `${(decidedCount / totalDecisions) * 100}%` }} />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Workflow steps — interactive */}
+      {/* Workflow steps — with decision interaction */}
       <div className="space-y-2">
-        {demoSteps.map((s, i) => {
+        {steps.map((s, i) => {
           const config = actorConfig[s.actor];
-          const justChanged = changedStep === i;
+          const isExpanded = expandedStep === i;
+          const options = extractOptions(s.judgment);
+          const hasDecision = s.actor !== 'ai';
+          const decided = decisions[i];
+
           return (
             <div
               key={i}
-              className={`rounded-xl overflow-hidden transition-all border ${justChanged ? 'ring-2 ring-[var(--accent)] ring-offset-2' : 'border-[var(--border-subtle)]'}`}
+              className="rounded-lg overflow-hidden transition-all"
+              style={{ borderLeft: `3px solid ${config.color}` }}
             >
               {s.checkpoint && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200/60">
+                <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: '#fffbf0', borderBottom: '1px solid #f0e6c8' }}>
                   <Flag size={12} className="text-amber-600 shrink-0" />
-                  <span className="text-[11px] font-bold text-amber-700">체크포인트</span>
-                  {s.checkpoint_reason && (
-                    <span className="text-[11px] text-amber-600/70">&mdash; {s.checkpoint_reason}</span>
-                  )}
+                  <span className="text-[11px] font-semibold text-amber-700">체크포인트</span>
+                  <span className="text-[11px] text-amber-600/80">&mdash; {s.checkpoint_reason}</span>
                 </div>
               )}
-              <div className="px-4 py-3.5 bg-[var(--surface)]">
+
+              {/* Main content — clickable */}
+              <div
+                className="px-4 py-3.5 cursor-pointer"
+                style={{ backgroundColor: config.bg }}
+                onClick={() => setExpandedStep(isExpanded ? null : i)}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="text-[20px] font-extrabold tabular-nums leading-none pt-0.5 shrink-0 select-none" style={{ color: `${config.color}25` }}>
+                    <span className="text-[18px] font-bold tabular-nums leading-none pt-0.5 shrink-0 select-none" style={{ color: `${config.color}40` }}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.text }}>
+                          {config.labelFull}
+                        </span>
+                      </div>
                       <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{s.task}</p>
                       <p className="text-[11px] text-[var(--text-secondary)] mt-1">{s.expected_output}</p>
+
+                      {/* Status indicators when collapsed */}
+                      {!isExpanded && decided && (
+                        <p className="text-[10px] text-[#8b6914] mt-1.5 font-medium truncate">결정: {decided}</p>
+                      )}
+                      {!isExpanded && hasDecision && !decided && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5">
+                          결정 필요
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    {/* Interactive actor toggle */}
-                    <button
-                      onClick={() => cycleActor(i)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all hover:shadow-sm active:scale-95"
-                      style={{ color: config.text, backgroundColor: `${config.color}12`, border: `1.5px solid ${config.color}30` }}
-                      title="클릭하여 담당 변경"
-                    >
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: config.color }} />
-                      {config.label}
-                    </button>
-                    <span className="text-[10px] text-[var(--text-tertiary)]">{s.estimated_time}</span>
-                  </div>
+                  <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">{s.estimated_time}</span>
                 </div>
               </div>
+
+              {/* Expanded panel */}
+              {isExpanded && (
+                <div className="px-4 pb-4 pt-0 animate-fade-in" style={{ backgroundColor: config.bg }}>
+                  <div className="ml-0 sm:ml-[30px] pt-3 border-t border-[var(--border-subtle)] space-y-3">
+
+                    {/* AI guide (for ai and both steps) */}
+                    {(s.actor === 'ai' || s.actor === 'both') && (s as any).ai_guide_hint && (
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: actorConfig.ai.text }}>
+                          <Bot size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
+                          AI 실행 가이드
+                        </span>
+                        <p className="text-[12px] text-[var(--text-primary)] leading-relaxed bg-white/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
+                          {(s as any).ai_guide_hint}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Human decision (for human and both steps) */}
+                    {hasDecision && s.judgment && (
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: actorConfig.human.text }}>
+                          <Brain size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
+                          당신의 판단
+                        </span>
+
+                        {/* Judgment question */}
+                        <p className="text-[12px] text-[var(--text-primary)] mb-2.5 leading-relaxed bg-white/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
+                          {s.judgment}
+                        </p>
+
+                        {/* Option chips */}
+                        {options.length > 0 && (
+                          <div>
+                            <span className="text-[10px] text-[var(--text-secondary)] block mb-1.5">선택하세요</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {options.map((opt, j) => (
+                                <button
+                                  key={j}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDecisions(prev => ({ ...prev, [i]: opt }));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border-2 cursor-pointer transition-all ${
+                                    decided === opt
+                                      ? 'border-[#8b6914] bg-[var(--human)] text-[#8b6914] shadow-sm'
+                                      : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[#8b6914] hover:text-[#8b6914] hover:bg-amber-50/50'
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {decided && (
+                          <p className="text-[10px] text-[var(--text-tertiary)] mt-2">선택됨 &mdash; 다음 단계를 클릭하세요</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
-      </div>
-
-      {/* Dynamic stats — updates when actor changes */}
-      <div className="rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3 text-[12px]">
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#3b6dcc]" /><span className="text-[var(--text-secondary)]">AI</span><span className="font-bold text-[#2d4a7c]">{aiCount}</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#b8860b]" /><span className="text-[var(--text-secondary)]">사람</span><span className="font-bold text-[#8b6914]">{humanCount}</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#2d6b2d]" /><span className="text-[var(--text-secondary)]">협업</span><span className="font-bold text-[#2d6b2d]">{bothCount}</span></div>
-          <div className="flex items-center gap-1.5"><Flag size={10} className="text-amber-600" /><span className="text-[var(--text-secondary)]">체크포인트</span><span className="font-bold text-amber-700">{checkpoints}</span></div>
-        </div>
-        {/* Visual bar */}
-        <div className="flex h-2 rounded-full overflow-hidden mt-2">
-          {aiCount > 0 && <div className="bg-[#3b6dcc] transition-all duration-300" style={{ width: `${(aiCount / demoSteps.length) * 100}%` }} />}
-          {humanCount > 0 && <div className="bg-[#b8860b] transition-all duration-300" style={{ width: `${(humanCount / demoSteps.length) * 100}%` }} />}
-          {bothCount > 0 && <div className="bg-[#2d6b2d] transition-all duration-300" style={{ width: `${(bothCount / demoSteps.length) * 100}%` }} />}
-        </div>
       </div>
 
       {/* Prerequisites */}
@@ -571,7 +671,7 @@ function OrchestrateSection() {
       <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">직접 해보세요:</span> 위 단계에서 담당을 클릭하면 AI/사람/협업으로 바꿀 수 있습니다. 비율이 실시간으로 바뀌는 걸 확인하세요.
+          <span className="font-bold">핵심:</span> AI가 재무 모델링을 하고, 사람은 접근 전략과 최종 프레이밍을 결정합니다. 이 경계를 설계하지 않으면 AI에게 맡길수록 방향이 틀어집니다.
         </p>
       </div>
     </div>

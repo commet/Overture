@@ -13,6 +13,7 @@ import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { Menu } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
@@ -98,6 +99,7 @@ function WorkspaceContent() {
                       if (input?.value.trim()) {
                         const pid = createProject(input.value.trim());
                         setCurrentProjectId(pid);
+                        track('project_created');
                       }
                     }}
                     className="w-full px-4 py-3 rounded-lg bg-[var(--accent)] text-white font-medium text-[14px] hover:opacity-90 transition-opacity cursor-pointer"

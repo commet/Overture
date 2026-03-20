@@ -11,6 +11,7 @@ export interface HiddenAssumption {
   assumption: string;
   risk_if_false: string;
   verified?: boolean;
+  evaluation?: 'likely_true' | 'uncertain' | 'doubtful';
 }
 
 /** @deprecated Kept for backward compatibility with old localStorage data */
@@ -325,11 +326,15 @@ export interface RefinementIteration {
   trigger_reason: string;
   issues_from_feedback: RefinementIssue[];
   constraints_added: string[];
+  user_directive?: string;
+  depth: 'quick' | 'deep';
   decompose_item_id?: string;
   orchestrate_item_id?: string;
   synthesize_item_id?: string;
   feedback_record_id?: string;
   delta_summary: string;
+  deep_analysis?: string;
+  data_gaps?: string[];
   unresolved_count: number;
   total_issue_count: number;
   convergence_score: number;

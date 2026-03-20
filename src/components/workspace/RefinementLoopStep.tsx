@@ -15,6 +15,7 @@ import { matchIssuesAcrossIterations, calculateWeightedScore } from '@/lib/conve
 import { generateId } from '@/lib/uuid';
 import type { RefinementIssue } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Play, Square, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 const SEVERITY_LABELS = { blocker: '차단', improvement: '개선', nice_to_have: '참고' } as const;
 const SEVERITY_COLORS = {
@@ -23,7 +24,7 @@ const SEVERITY_COLORS = {
   nice_to_have: { bg: 'bg-blue-50', text: 'text-blue-600', dot: 'bg-blue-400', border: 'border-blue-200' },
 } as const;
 
-const REFINEMENT_PROMPT = `당신은 전략기획 리뷰 전문가입니다. 이전 계획에 대한 이해관계자 피드백을 반영하여 개선안을 만드세요.
+const QUICK_PROMPT = `당신은 전략기획 리뷰 전문가입니다. 이전 계획에 대한 이해관계자 피드백을 반영하여 개선안을 만드세요.
 
 아래 JSON 구조로 응답하세요.
 1. delta_summary: 무엇을 어떻게 변경했는지 2-3문장 (구체적으로)
@@ -31,8 +32,26 @@ const REFINEMENT_PROMPT = `당신은 전략기획 리뷰 전문가입니다. 이
 
 반드시 JSON만 응답하세요.`;
 
+const DEEP_PROMPT = `당신은 전략기획 심층 분석 전문가입니다. 이해관계자 피드백을 반영하여 구체적이고 검증 가능한 개선안을 만드세요.
+
+[분석 원칙]
+- 각 이슈에 대해 근본 원인을 파악하고, 단순 대응이 아닌 구조적 해결을 제시하세요.
+- 변경의 근거를 데이터나 논리로 뒷받침하세요.
+- 대안적 접근도 검토한 후 최선안을 선택하세요.
+- 이 개선안이 유효하려면 어떤 데이터가 추가로 필요한지 밝히세요.
+
+아래 JSON 구조로 응답하세요.
+1. delta_summary: 핵심 변경사항 2-3문장
+2. deep_analysis: 각 이슈별 분석 과정과 해결 근거를 서술 (왜 이 접근인지, 어떤 대안을 검토했는지, 어떤 데이터로 뒷받침하는지). 3-5문단.
+3. data_gaps: 이 개선안을 더 강화하려면 확인해야 할 데이터나 검증 포인트 (문자열 배열, 2-4개)
+4. predicted_concerns: 변경 후에도 남아있거나 새로 발생할 우려사항 (문자열 배열). 해결된 것은 절대 포함하지 마세요.
+
+반드시 JSON만 응답하세요.`;
+
 interface RefinementResult {
   delta_summary: string;
+  deep_analysis?: string;
+  data_gaps?: string[];
   predicted_concerns: string[];
 }
 
@@ -50,6 +69,8 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState('');
+  const [userDirective, setUserDirective] = useState('');
+  const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
 
   useEffect(() => {
     loadLoops();
@@ -96,12 +117,17 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
       .map(iter => `반복 ${iter.iteration_number}: ${iter.delta_summary}`)
       .join('\n');
 
-    const prompt = `[목표]\n${activeLoop.goal}\n\n${prevAdjustments ? `[이전 변경사항]\n${prevAdjustments}\n\n` : ''}[이번에 반영할 피드백 (${issues.length}건)]\n${constraintText}\n\n위 피드백을 반영한 개선안을 만들어주세요.`;
+    const directivePart = userDirective.trim()
+      ? `\n\n[사용자 지시]\n${userDirective.trim()}`
+      : '';
+
+    const prompt = `[목표]\n${activeLoop.goal}\n\n${prevAdjustments ? `[이전 변경사항]\n${prevAdjustments}\n\n` : ''}[이번에 반영할 피드백 (${issues.length}건)]\n${constraintText}${directivePart}\n\n위 피드백을 반영한 개선안을 만들어주세요.`;
 
     try {
+      const isDeep = depth === 'deep';
       const result = await callLLMJson<RefinementResult>(
         [{ role: 'user', content: prompt }],
-        { system: REFINEMENT_PROMPT, maxTokens: 1500 }
+        { system: isDeep ? DEEP_PROMPT : QUICK_PROMPT, maxTokens: isDeep ? 3500 : 1500 }
       );
 
       const previousIssues = latestIteration.issues_from_feedback;
@@ -135,14 +161,20 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         trigger_reason: `${issues.length}건 반영 (차단 ${issues.filter(i => i.severity === 'blocker').length}건)`,
         issues_from_feedback: newIterationIssues,
         constraints_added: issues.map(i => i.text),
+        user_directive: userDirective.trim() || undefined,
+        depth,
         delta_summary: result.delta_summary,
+        deep_analysis: result.deep_analysis,
+        data_gaps: result.data_gaps,
         unresolved_count: unresolvedCount,
         total_issue_count: newIterationIssues.length,
         convergence_score: score,
       });
 
       setSelectedIssues(new Set());
+      setUserDirective('');
       setExpandedIteration(activeLoop.iterations.length);
+      track('iteration_complete', { iteration: activeLoop.iterations.length + 1, convergence: Math.round(score * 100), issues_addressed: issues.length });
     } catch (err) {
       setError(err instanceof Error ? err.message : '개선안을 생성할 수 없었습니다.');
     } finally {
@@ -294,10 +326,37 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
                   {expandedIteration === i && (
                     <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-3 animate-fade-in">
+                      {/* User directive that was given */}
+                      {iter.user_directive && (
+                        <p className="text-[12px] text-[var(--text-secondary)] bg-[var(--surface)] rounded-lg px-3 py-2 border border-dashed border-[var(--border)]">
+                          <span className="font-semibold text-[var(--text-primary)]">사용자 지시:</span> {iter.user_directive}
+                        </p>
+                      )}
+
                       {iter.delta_summary && (
                         <p className="text-[12px] text-[var(--text-primary)] bg-[var(--bg)] rounded-lg px-3 py-2">
                           <span className="font-semibold">개선 내용:</span> {iter.delta_summary}
                         </p>
+                      )}
+
+                      {/* Deep analysis (only in deep mode) */}
+                      {iter.deep_analysis && (
+                        <div className="bg-[var(--ai)] rounded-lg px-3 py-2.5">
+                          <p className="text-[11px] font-bold text-[#2d4a7c] mb-1">심층 분석</p>
+                          <p className="text-[12px] text-[var(--text-primary)] leading-relaxed whitespace-pre-line">{iter.deep_analysis}</p>
+                        </div>
+                      )}
+
+                      {/* Data gaps */}
+                      {iter.data_gaps && iter.data_gaps.length > 0 && (
+                        <div className="bg-[var(--checkpoint)] rounded-lg px-3 py-2.5">
+                          <p className="text-[11px] font-bold text-amber-700 mb-1">추가 검증 필요</p>
+                          <ul className="space-y-0.5">
+                            {iter.data_gaps.map((gap, gi) => (
+                              <li key={gi} className="text-[12px] text-amber-800">• {gap}</li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                       {(['blocker', 'improvement', 'nice_to_have'] as const).map((sev) => {
                         const sevIssues = iter.issues_from_feedback.filter(issue => (issue.severity || 'improvement') === sev);
@@ -373,6 +432,48 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                       );
                     })}
                   </div>
+
+                  {/* User directive */}
+                  {selectedIssues.size > 0 && (
+                    <div className="space-y-3 mb-4 pt-3 border-t border-[var(--border-subtle)]">
+                      <div>
+                        <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-1.5">추가 지시 <span className="font-normal text-[var(--text-tertiary)]">(선택)</span></p>
+                        <textarea
+                          value={userDirective}
+                          onChange={(e) => setUserDirective(e.target.value)}
+                          placeholder="특정 이슈에 대한 접근 방향, 강조점, 추가 맥락 등을 자유롭게 입력하세요. 예: 'ROI 분석은 3개년 시나리오로, CEO가 시장 점유율 속도를 중시하니까 그 부분 강조해줘'"
+                          className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
+                          rows={3}
+                        />
+                      </div>
+
+                      {/* Depth selector */}
+                      <div className="flex items-center gap-2">
+                        <p className="text-[12px] font-semibold text-[var(--text-primary)]">분석 깊이:</p>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setDepth('quick')}
+                            className={`px-3 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-colors ${
+                              depth === 'quick' ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                            }`}
+                          >
+                            빠른 개선
+                          </button>
+                          <button
+                            onClick={() => setDepth('deep')}
+                            className={`px-3 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-colors ${
+                              depth === 'deep' ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                            }`}
+                          >
+                            심층 분석
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-[var(--text-tertiary)]">
+                          {depth === 'deep' ? '근거·대안·데이터 검증 포함 (토큰 2배)' : '핵심 변경만 빠르게'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-[13px] text-[var(--text-secondary)] mb-3">미해결 이슈가 없습니다. 합주를 마무리하세요.</p>
@@ -388,7 +489,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                     <Square size={12} /> 연습 중단
                   </Button>
                   {convergence.score > 0.5 && (
-                    <Button variant="secondary" size="sm" onClick={() => { if (activeLoop) updateLoop(activeLoop.id, { status: 'converged' }); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { if (activeLoop) { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length, score: Math.round((convergence?.score || 0) * 100) }); } }}>
                       <Check size={12} /> 하모니 완성
                     </Button>
                   )}

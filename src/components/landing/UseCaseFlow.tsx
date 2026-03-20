@@ -1,119 +1,102 @@
-'use client';
-
-import { useState } from 'react';
-import { X, ArrowRight } from 'lucide-react';
-
-interface Scene {
-  key: string;
-  tab: string;
-  situation: string;
-  naive: string;
-  strategic: string;
-  result: string;
-}
-
-const scenes: Scene[] = [
-  {
-    key: 'redefine',
-    tab: '질문을 만드는 사람',
-    situation: '경영진이 "경쟁사가 AI 챗봇 출시했으니 우리도 빨리 만들어"라고 지시합니다.',
-    naive: 'ChatGPT에게 "AI 챗봇 기획서 작성해줘" → 기능 스펙은 나오지만, 우리 고객이 챗봇을 원하는지조차 검증 안 됨.',
-    strategic: '"챗봇을 만들어야 하는가?"가 아니라 "고객 이탈의 진짜 원인이 뭔가?"가 선행 질문임을 발견. 챗봇이 아니라 셀프서비스 포탈이 먼저라는 결론.',
-    result: '잘못된 질문으로 3주를 낭비할 뻔한 것을 → 올바른 질문으로 시작',
-  },
-  {
-    key: 'align',
-    tab: '서로 다른 언어를 잇는 사람',
-    situation: '신규 기능 기획서를 완성했습니다. 내일 CEO, CTO, 디자인 리드 앞에서 동시 발표.',
-    naive: '발표 중 CEO가 "시장 규모는?", CTO가 "기존 API 호환은?" — 다 준비 안 됨. 발표 실패.',
-    strategic: '3명 페르소나로 사전 시뮬레이션. CEO가 물을 질문, CTO가 짚을 기술 이슈를 미리 파악. 공통 지적부터 해결하고 발표 진입.',
-    result: '발표장에서 당하는 대신 → 발표 전에 미리 검증',
-  },
-  {
-    key: 'design',
-    tab: '실행을 설계하는 사람',
-    situation: '2주 안에 투자 유치용 사업계획서를 만들어야 합니다. 혼자서.',
-    naive: 'AI에게 "사업계획서 만들어줘" → 분량은 나오지만 투자자가 실제로 보는 포인트(시장 검증, 유닛 이코노믹스)가 빠져 있음.',
-    strategic: '시장 검증(AI) → 유닛 이코노믹스(사람 판단) → 경쟁 분석(AI) → 스토리라인 편집(사람). AI와 사람의 역할을 먼저 설계하고 시작.',
-    result: 'AI에게 전부 맡기는 대신 → AI와 사람의 역할을 설계하고 시작',
-  },
-];
-
 export function UseCaseFlow() {
-  const [activeKey, setActiveKey] = useState('redefine');
-  const active = scenes.find((s) => s.key === activeKey)!;
-
   return (
     <section className="border-t border-[var(--border-subtle)]">
-      <div className="max-w-5xl mx-auto px-6 py-10 md:py-14">
-        {/* Header */}
-        <div className="max-w-xl mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-px w-8 bg-[var(--border)]" />
-            <span className="text-[12px] font-medium tracking-[0.2em] uppercase text-[var(--text-tertiary)]">
-              Three scenes
-            </span>
-          </div>
-          <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight">
-            전략기획자가 매일 하던 일에
-            <br />
-            <span className="text-[var(--text-secondary)]">새로운 이름이 붙었습니다.</span>
+      <div className="max-w-5xl mx-auto px-6 py-12 md:py-16">
+        <div className="text-center mb-10">
+          <h2 className="text-[28px] md:text-[36px] font-extrabold text-[var(--text-primary)] tracking-tight">
+            AI 시대, 실행 전의 판단을 설계합니다
           </h2>
         </div>
 
-        {/* Scene selector */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          {scenes.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setActiveKey(s.key)}
-              className={`shrink-0 px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 cursor-pointer border ${
-                activeKey === s.key
-                  ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-primary)] shadow-sm'
-                  : 'border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {s.tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Scene content */}
-        <div className="animate-fade-in" key={activeKey}>
-          {/* Situation — compact callout */}
-          <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-2xl mb-5 pl-3 border-l-2 border-[var(--border)]">
-            {active.situation}
-          </p>
-
-          {/* Before/After — strong visual contrast */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            {/* Naive */}
-            <div className="rounded-xl bg-red-50/50 border border-red-200/30 p-4 md:p-5">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2">
-                <X size={12} />
-                AI에게 바로 시키면
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* ── Feature 1: 질문 재정의 ── */}
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
+            {/* Visual: before → after mini */}
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center text-[8px] text-red-500 font-bold">✕</span>
+                <span className="text-[13px] text-[var(--text-secondary)] line-through decoration-red-300">&ldquo;경쟁사 대응 전략 세워줘&rdquo;</span>
               </div>
-              <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
-                {active.naive}
-              </p>
+              <div className="flex justify-center my-1.5">
+                <svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 0v12M2 8l4 4 4-4" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] text-[var(--accent)] font-bold">✓</span>
+                <span className="text-[13px] font-semibold text-[var(--text-primary)]">&ldquo;우리만의 판은 어디인가?&rdquo;</span>
+              </div>
             </div>
 
-            {/* Strategic */}
-            <div className="rounded-xl bg-[var(--ai)] border-2 border-[var(--accent)]/15 p-4 md:p-5">
-              <div className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider mb-2">
-                Overture를 거치면
-              </div>
-              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">
-                {active.strategic}
-              </p>
-            </div>
+            <h3 className="text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
+              질문을 재정의합니다
+            </h3>
+            <p className="text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
+              과제 뒤에 숨은 전제를 찾아내고, 진짜 물어야 할 질문을 발견합니다.
+            </p>
           </div>
 
-          {/* Result — prominent */}
-          <div className="flex items-center gap-2.5 bg-[var(--surface)] rounded-lg px-4 py-2.5 border border-[var(--border-subtle)]">
-            <ArrowRight size={14} className="text-[var(--accent)] shrink-0" />
-            <p className="text-[13px] font-semibold text-[var(--accent)]">
-              {active.result}
+          {/* ── Feature 2: 이해관계자 시뮬레이션 ── */}
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
+            {/* Visual: persona avatars with reactions */}
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+              <div className="flex items-center justify-center gap-3">
+                {[
+                  { initial: 'C', role: 'CEO', q: '시장 규모는?', color: '#E24B4A' },
+                  { initial: 'F', role: 'CFO', q: 'ROI 근거는?', color: '#EF9F27' },
+                  { initial: 'T', role: 'CTO', q: 'API 호환?', color: '#7F77DD' },
+                ].map((p) => (
+                  <div key={p.role} className="flex flex-col items-center gap-1.5">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[12px] font-bold" style={{ backgroundColor: p.color }}>
+                      {p.initial}
+                    </div>
+                    <span className="text-[10px] font-semibold text-[var(--text-secondary)]">{p.role}</span>
+                    <span className="text-[9px] text-[var(--text-primary)] bg-[var(--surface)] rounded px-1.5 py-0.5 border border-[var(--border-subtle)] font-medium">
+                      {p.q}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <h3 className="text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
+              이해관계자를 시뮬레이션합니다
+            </h3>
+            <p className="text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
+              보고서를 보내기 전에 CEO, CFO, CTO의 반응과 리스크를 미리 시뮬레이션합니다.
+            </p>
+          </div>
+
+          {/* ── Feature 3: 가중 수렴 루프 ── */}
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 flex flex-col">
+            {/* Visual: mini convergence chart */}
+            <div className="mb-5 rounded-xl bg-[var(--bg)] p-4">
+              <svg viewBox="0 0 140 65" className="w-full" style={{ height: '80px' }}>
+                {/* Grid */}
+                <line x1="20" y1="55" x2="130" y2="55" stroke="var(--border)" strokeWidth="0.5" />
+                {/* Threshold */}
+                <line x1="20" y1="15" x2="130" y2="15" stroke="var(--success)" strokeWidth="0.7" strokeDasharray="3,2" />
+                <text x="17" y="18" textAnchor="end" fontSize="7" fill="var(--success)" fontWeight="bold">80%</text>
+                {/* Line: 45% → 78% → 92% */}
+                <polyline points="40,32 75,17 110,10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Dots */}
+                <circle cx="40" cy="32" r="3.5" fill="var(--accent)" />
+                <circle cx="75" cy="17" r="3.5" fill="var(--accent)" />
+                <circle cx="110" cy="10" r="4" fill="var(--success)" />
+                {/* Labels */}
+                <text x="40" y="44" textAnchor="middle" fontSize="8" fill="var(--text-secondary)" fontWeight="bold">45%</text>
+                <text x="75" y="28" textAnchor="middle" fontSize="8" fill="var(--text-secondary)" fontWeight="bold">78%</text>
+                <text x="110" y="22" textAnchor="middle" fontSize="9" fill="var(--success)" fontWeight="bold">92%</text>
+                {/* X-axis */}
+                <text x="40" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">1차</text>
+                <text x="75" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">2차</text>
+                <text x="110" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">3차</text>
+              </svg>
+            </div>
+
+            <h3 className="text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
+              핵심 위협부터 해결합니다
+            </h3>
+            <p className="text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
+              핵심 위협(3배 가중) → 개선 사항 → 참고 순으로 우선순위를 매기고, 가중 수렴률이 임계점을 넘을 때까지 반복합니다.
             </p>
           </div>
         </div>

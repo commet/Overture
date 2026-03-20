@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { track } from '@/lib/analytics';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,7 +20,7 @@ import { findSimilarItems } from '@/lib/similarity';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send, Lightbulb } from 'lucide-react';
 import { StaffLines, BarLine, Fermata } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
@@ -29,30 +30,41 @@ import { recordDecomposeEval, getBestStrategy, getSessionInsights } from '@/lib/
    System Prompt
    ─────────────────────────────────────────── */
 
-const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과제를 그대로 풀지 마세요.
-이 과제가 정말 풀어야 할 문제인지 따져보세요.
+/* ── Stage 1: 전제 도출 프롬프트 (가설 기반 사고) ── */
+const ASSUMPTION_PROMPT = `당신은 전략기획 전문가입니다. 주어진 과제의 숨겨진 전제를 찾으세요.
 
-[사고 방식]
-1. 표면 과제를 받아들이지 말고, 이 과제가 나온 진짜 이유를 파악하세요.
-2. 이 과제가 의미 있으려면 참이어야 하는 전제를 찾으세요. 그 전제가 거짓이면 어떤 위험이 있는지 구체적으로 밝히세요.
-3. 전제 점검을 바탕으로, 진짜 물어야 할 질문을 재정의하세요.
-4. 이 재정의를 받아들이면 뭐가 달라지는지 설명하세요.
+[사고 방식: 가설 기반 사고 + 4축 전제 점검]
+- 이 과제가 나온 진짜 이유는 무엇인가? 가설을 세우세요.
+- 이 과제가 의미 있으려면 참이어야 하는 전제를 찾으세요.
+- 네 가지 축으로 점검: (1) 고객 가치 (2) 실행 가능성 (3) 사업성 (4) 조직 역량
 
 아래 JSON 구조로 응답하세요.
-
 1. surface_task: 사용자가 말한 과제를 한 문장으로 정리
-2. hidden_assumptions: 이 과제가 의미 있으려면 참이어야 하는 전제 2-3개. 각 전제에 대해:
-   - assumption: 전제 내용
-   - risk_if_false: 이 전제가 거짓이면 구체적으로 어떤 위험이 생기는지
-3. reframed_question: 전제 점검을 바탕으로 재정의한 진짜 질문. "~인가?", "~할 수 있는가?" 형태의 의문문으로.
-4. why_reframing_matters: 이 관점 전환을 받아들이면 의사결정이 어떻게 달라지는지 1-2문장
-5. reasoning_narrative: "처음에는 X라고 생각했지만, Y를 고려하면 Z가 본질적이다" 형태의 사고 과정 2-3문장
-6. hidden_questions: 이 상황에서 추구할 수 있는 방향 2-3개. 각각 다른 관점에서 문제를 바라봄.
-   - question: 질문 텍스트
-   - reasoning: 이 방향을 택하면 무엇이 달라지는지 한 문장
-7. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개 (문자열 배열)
+2. hidden_assumptions: 이 과제가 성립하려면 맞아야 하는 전제 3-4개. 각 전제에 대해:
+   - assumption: 전제 내용 (한 문장, 명확하게)
+   - risk_if_false: 이 전제가 틀리면 구체적으로 어떤 위험이 생기는지
+3. reasoning_narrative: 왜 이 전제들이 중요한지 2-3문장으로 설명
 
-반드시 JSON만 응답하세요. 마크다운 코드블록이나 설명을 추가하지 마세요.`;
+반드시 JSON만 응답하세요.`;
+
+/* ── Stage 2: 리프레이밍 프롬프트 (사용자 평가 기반) ── */
+const REFRAMING_PROMPT = `당신은 전략기획 전문가입니다. 사용자의 전제 평가를 바탕으로 진짜 질문을 재정의하세요.
+
+[사고 방식: 리프레이밍 + 관점 전환]
+- 사용자가 "의심됨"으로 표시한 전제에서 핵심 리프레이밍을 도출하세요.
+- 사용자가 "불확실"로 표시한 전제에서 검증이 필요한 방향을 제안하세요.
+- 각 방향은 의심된 전제와 직접 연결되어야 합니다.
+
+아래 JSON 구조로 응답하세요.
+1. reframed_question: 전제 평가를 바탕으로 재정의한 진짜 질문
+2. why_reframing_matters: 이 관점 전환을 받아들이면 의사결정이 어떻게 달라지는지 1-2문장
+3. hidden_questions: 추구할 수 있는 방향 2-3개. 각각:
+   - question: 질문 텍스트
+   - reasoning: 이 방향을 택하면 무엇이 달라지는지
+   - source_assumption: 어떤 전제의 의심/불확실에서 이 질문이 나왔는지 (전제 내용 요약)
+4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
+
+반드시 JSON만 응답하세요.`;
 
 /* ───────────────────────────────────────────
    Interview entry steps
@@ -89,7 +101,31 @@ const DECOMPOSE_ENTRY_STEPS = [
       { value: 'unclear', emoji: '❓', label: '아직 모르겠음', description: '성공의 기준이 아직 불명확하다' },
     ],
   },
+  {
+    key: 'stakeholder',
+    question: '이 결과를 누구에게 보여줘야 하나요?',
+    options: [
+      { value: 'executive', emoji: '👔', label: '경영진/의사결정자', description: '최종 결정권자에게 보고한다' },
+      { value: 'team', emoji: '👥', label: '팀원/동료', description: '함께 실행할 사람들과 공유한다' },
+      { value: 'client', emoji: '🤝', label: '고객/외부', description: '외부 이해관계자에게 제안한다' },
+      { value: 'self', emoji: '💡', label: '나 자신', description: '내 판단을 정리하는 것이 목적이다' },
+    ],
+  },
 ];
+
+// Locked step — unlocks after 3+ sessions
+const LOCKED_STEP = {
+  key: 'history',
+  question: '이전에 비슷한 시도가 있었나요?',
+  options: [
+    { value: 'failed', emoji: '❌', label: '시도했지만 실패', description: '비슷한 접근이 있었지만 성과가 없었다' },
+    { value: 'partial', emoji: '🔶', label: '부분적 성공', description: '일부 성과가 있었지만 완전하지 않았다' },
+    { value: 'first', emoji: '🆕', label: '처음 시도', description: '이런 종류의 과제는 처음이다' },
+    { value: 'unknown', emoji: '❓', label: '잘 모르겠음', description: '조직 내 이력을 모른다' },
+  ],
+  locked: true,
+  unlockMessage: '3회 이상 분석 후 열리는 질문입니다. 연주를 반복하면 더 깊은 맥락을 수집합니다.',
+};
 
 /* ───────────────────────────────────────────
    Normalize legacy data
@@ -131,6 +167,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [error, setError] = useState('');
   const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
   const [currentStrategy, setCurrentStrategy] = useState<ReframingStrategy | null>(null);
+  const [reviewStage, setReviewStage] = useState<'evaluate' | 'reframe'>('evaluate');
+  const [reframing, setReframing] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -187,17 +225,23 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     setCurrentStrategy(strategy);
 
     try {
-      // Build system prompt: base + user patterns + strategy-specific guidance
-      let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT);
-      if (strategy) {
-        systemPrompt = applyReframingStrategy(systemPrompt, strategy);
-      }
+      // Stage 1: Generate assumptions only (user evaluates before reframing)
+      const systemPrompt = buildEnhancedSystemPrompt(ASSUMPTION_PROMPT);
 
       const analysis = await callLLMJson<DecomposeAnalysis>(
         [{ role: 'user', content: finalPrompt }],
-        { system: systemPrompt, maxTokens: 2000 }
+        { system: systemPrompt, maxTokens: 1200 }
       );
+      // Initialize evaluations as 'uncertain' (default)
+      if (analysis.hidden_assumptions) {
+        analysis.hidden_assumptions = analysis.hidden_assumptions.map((a: any) =>
+          typeof a === 'string'
+            ? { assumption: a, risk_if_false: '', evaluation: 'uncertain' }
+            : { ...a, evaluation: a.evaluation || 'uncertain' }
+        );
+      }
       updateItem(id, { analysis, status: 'review' });
+      setReviewStage('evaluate');
     } catch (err) {
       setError(err instanceof Error ? err.message : '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
@@ -228,9 +272,58 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     }, 1000);
   };
 
+  const handleReframe = async () => {
+    if (!current || !currentId || !current.analysis) return;
+    setReframing(true);
+    setError('');
+
+    try {
+      // Build evaluation summary for Stage 2 prompt
+      const assumptions = current.analysis.hidden_assumptions || [];
+      const evalSummary = assumptions
+        .map((a: any, i: number) => {
+          const label = a.evaluation === 'doubtful' ? '의심됨' : a.evaluation === 'likely_true' ? '맞을 가능성 높음' : '불확실';
+          return `${i + 1}. [${label}] "${a.assumption}" → ${a.risk_if_false || ''}`;
+        })
+        .join('\n');
+
+      const doubtful = assumptions.filter((a: any) => a.evaluation === 'doubtful');
+      const uncertain = assumptions.filter((a: any) => a.evaluation === 'uncertain');
+
+      let reframingPrompt = buildEnhancedSystemPrompt(REFRAMING_PROMPT);
+      if (currentStrategy) {
+        reframingPrompt = applyReframingStrategy(reframingPrompt, currentStrategy);
+      }
+
+      const userMessage = `[원래 과제]\n${current.analysis.surface_task}\n\n[사용자의 전제 평가]\n${evalSummary}\n\n${doubtful.length > 0 ? `의심된 전제 ${doubtful.length}건, ` : ''}${uncertain.length > 0 ? `불확실한 전제 ${uncertain.length}건` : ''}\n\n이 평가를 바탕으로 진짜 질문을 재정의해주세요.`;
+
+      const reframingResult = await callLLMJson<Partial<DecomposeAnalysis>>(
+        [{ role: 'user', content: userMessage }],
+        { system: reframingPrompt, maxTokens: 1500 }
+      );
+
+      // Merge Stage 2 results into existing analysis
+      updateItem(currentId, {
+        analysis: {
+          ...current.analysis,
+          reframed_question: reframingResult.reframed_question || '',
+          why_reframing_matters: reframingResult.why_reframing_matters || '',
+          hidden_questions: reframingResult.hidden_questions || [],
+          ai_limitations: reframingResult.ai_limitations || current.analysis.ai_limitations || [],
+        },
+      });
+      setReviewStage('reframe');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '질문을 재정의할 수 없었습니다.');
+    } finally {
+      setReframing(false);
+    }
+  };
+
   const handleConfirm = () => {
     if (!current || !currentId || !current.analysis) return;
     updateItem(currentId, { status: 'done' });
+    track('decompose_complete', { assumptions: current.analysis.hidden_assumptions?.length || 0 });
 
     // Phase 1: Record binary evals for strategy learning
     recordDecomposeEval(current, currentStrategy);
@@ -258,6 +351,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       setError(err instanceof Error ? err.message : '악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.');
       updateItem(currentId, { status: 'review' });
     }
+  };
+
+  const handleEvaluateAssumption = (index: number, evaluation: 'likely_true' | 'uncertain' | 'doubtful') => {
+    if (!current || !currentId || !current.analysis) return;
+    const assumptions = [...current.analysis.hidden_assumptions] as any[];
+    assumptions[index] = { ...assumptions[index], evaluation };
+    updateItem(currentId, { analysis: { ...current.analysis, hidden_assumptions: assumptions } });
   };
 
   const handleToggleAssumption = (index: number) => {
@@ -359,14 +459,21 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {(!current || current.status === 'input') && !currentId && (
         <Card>
           <StepEntry
-            steps={DECOMPOSE_ENTRY_STEPS}
-            textLabel="핵심 내용을 한두 문장으로"
+            steps={[
+              ...DECOMPOSE_ENTRY_STEPS,
+              // Unlock 5th question after 3+ done sessions
+              items.filter(i => i.status === 'done').length >= 3
+                ? { ...LOCKED_STEP, locked: false }
+                : LOCKED_STEP,
+            ]}
+            textLabel="과제를 구체적으로 설명해주세요"
             textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
-            textHint="선택한 맥락을 바탕으로 AI가 더 정확하게 분석합니다."
+            textHint="위에서 선택한 맥락이 반영됩니다. 구체적일수록 정확합니다."
             onSubmit={(selections, text) => {
+              const allSteps = [...DECOMPOSE_ENTRY_STEPS, LOCKED_STEP];
               const context = Object.entries(selections)
                 .map(([k, v]) => {
-                  const step = DECOMPOSE_ENTRY_STEPS.find(s => s.key === k);
+                  const step = allSteps.find(s => s.key === k);
                   const opt = step?.options.find(o => o.value === v);
                   if (!opt) return '';
                   return `${step?.question.replace('?', '')}: ${opt.label}${opt.description ? ` (${opt.description})` : ''}`;
@@ -430,133 +537,124 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         return (
           <div className="phrase-entrance space-y-5">
 
-            {/* ─────────────────────────────────
-                Card 1: 진단 — The Score Card
-                Three clearly separated sections:
-                surface → premises → real question
-               ───────────────────────────────── */}
-            <div className="rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
-
-              {/* ── 1. 받은 악보 (Situation) ── */}
-              <div className="px-6 pt-6 pb-5">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
-                    <p className="text-[12px] font-medium text-[var(--text-tertiary)]">받은 악보</p>
-                  </div>
-                  {currentStrategy && (
-                    <span className="text-[11px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
-                      {STRATEGY_LABELS[currentStrategy].label}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
-                  {analysis.surface_task}
-                </p>
-              </div>
-
-              {/* ── 2. 점검이 필요한 전제 (Complication) ── */}
-              <div className="px-6 py-5 bg-amber-50/80 border-y border-amber-200/40">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      <p className="text-[12px] font-medium text-amber-700">점검이 필요한 전제</p>
-                    </div>
-                    <p className="text-[12px] text-amber-600/70 ml-[14px]">
-                      이미 확인한 전제는 체크하세요
-                    </p>
-                  </div>
-                  {analysis.hidden_assumptions.some(a => a.verified) && (
-                    <span className="text-[11px] text-[var(--success)] font-medium">
-                      {analysis.hidden_assumptions.filter(a => a.verified).length}건 확인됨
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {analysis.hidden_assumptions.map((a, i) => (
-                    <div
-                      key={i}
-                      className={`
-                        flex items-start gap-3 pl-4 border-l-2 rounded-r-lg py-2.5 pr-3
-                        transition-all duration-300
-                        ${a.verified
-                          ? 'border-l-emerald-400/50 bg-emerald-50/30'
-                          : 'border-l-amber-400/50'
-                        }
-                      `}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] font-medium leading-relaxed transition-colors duration-300 ${
-                          a.verified ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'
-                        }`}>
-                          {a.assumption}
-                        </p>
-                        {a.risk_if_false && !a.verified && (
-                          <p className="text-[12px] text-amber-700/60 mt-1 leading-relaxed">
-                            만약 아니라면 &rarr; {a.risk_if_false}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleToggleAssumption(i)}
-                        className={`
-                          shrink-0 mt-0.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium
-                          transition-all duration-300 cursor-pointer
-                          ${a.verified
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                            : 'bg-white/60 text-[var(--text-tertiary)] hover:bg-white hover:text-amber-700'
-                          }
-                        `}
-                      >
-                        {a.verified ? (
-                          <><Check size={10} /> 확인됨</>
-                        ) : (
-                          <>확인됨?</>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── 3. 이 곡의 진짜 주제 (Resolution) ── */}
-              <div className="px-6 pt-5 pb-6">
-                <div className="pl-4 border-l-[3px] border-[var(--accent)]">
-                  <p className="text-[12px] font-medium text-[var(--accent)] mb-3">
-                    이 곡의 진짜 주제
-                  </p>
-                  <p className="text-[18px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
-                    {analysis.reframed_question}
-                  </p>
-                  {analysis.why_reframing_matters && (
-                    <p className="text-[13px] text-[var(--text-secondary)] mt-3 leading-relaxed">
-                      {analysis.why_reframing_matters}
-                    </p>
-                  )}
-                </div>
-
-                {/* 사고 과정 */}
-                {analysis.reasoning_narrative && (
-                  <div className="mt-5 pt-4 border-t border-dashed border-[var(--border-subtle)]">
-                    <p className="text-[12px] text-[var(--text-tertiary)] italic leading-relaxed">
-                      {analysis.reasoning_narrative}
-                    </p>
-                  </div>
+            {/* ── 1. 받은 악보 ── */}
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)]">받은 악보</p>
+                {currentStrategy && (
+                  <span className="text-[11px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
+                    {STRATEGY_LABELS[currentStrategy].label}
+                  </span>
                 )}
+              </div>
+              <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
+                {analysis.surface_task}
+              </p>
+            </div>
+
+            {/* ── 2. 점검이 필요한 전제 ── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-[14px] font-bold text-[var(--text-primary)]">점검이 필요한 전제</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">이미 확인한 전제는 체크하세요</p>
+                </div>
+                {analysis.hidden_assumptions.some(a => a.verified) && (
+                  <span className="text-[12px] text-[var(--success)] font-semibold">
+                    {analysis.hidden_assumptions.filter(a => a.verified).length}건 확인됨
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2.5">
+                {analysis.hidden_assumptions.map((a, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg overflow-hidden transition-all duration-300"
+                    style={{ borderLeft: `3px solid ${a.verified ? '#34d399' : '#d97706'}` }}
+                  >
+                    <div className={`px-4 py-3 ${a.verified ? 'bg-emerald-50/30' : 'bg-amber-50/40'}`}>
+                      <div className="flex items-start gap-3">
+                        <span className="text-[16px] font-bold leading-none shrink-0 pt-0.5 tabular-nums select-none" style={{ color: a.verified ? '#34d39940' : '#d9770630' }}>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[14px] font-semibold leading-snug transition-colors duration-300 ${
+                            a.verified ? 'text-[var(--text-secondary)] line-through decoration-1' : 'text-[var(--text-primary)]'
+                          }`}>
+                            {a.assumption}
+                          </p>
+                          {a.risk_if_false && !a.verified && (
+                            <p className="text-[13px] text-amber-700/70 mt-1.5 leading-relaxed">
+                              <span className="font-semibold">거짓이면</span> &rarr; {a.risk_if_false}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleToggleAssumption(i)}
+                          className={`
+                            shrink-0 mt-0.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium
+                            transition-all duration-300 cursor-pointer
+                            ${a.verified
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              : 'bg-white/70 text-[var(--text-tertiary)] hover:bg-white hover:text-amber-700 border border-[var(--border-subtle)]'
+                            }
+                          `}
+                        >
+                          {a.verified ? (
+                            <><Check size={11} /> 확인됨</>
+                          ) : (
+                            <>확인됨?</>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* ─────────────────────────────────
-                Card 2: 방향 선택 — The Fermata
-                Where the user pauses to decide.
-               ───────────────────────────────── */}
+            {/* ── 3. 재정의된 질문 ── */}
+            <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
+              <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">재정의된 질문</p>
+              <p className="text-[18px] md:text-[20px] font-bold leading-snug">
+                {analysis.reframed_question}
+              </p>
+              {analysis.why_reframing_matters && (
+                <div className="mt-4 pt-3 border-t border-white/15">
+                  <p className="text-[14px] text-white/70 leading-relaxed">
+                    {analysis.why_reframing_matters}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 사고 과정 — 의미있는 인사이트로 표현 */}
+            {analysis.reasoning_narrative && (
+              <div className="flex items-start gap-3 bg-[var(--ai)] rounded-lg px-4 py-3">
+                <Lightbulb size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[11px] font-bold text-[#2d4a7c] uppercase tracking-wider mb-1">왜 이렇게 재정의했는가</p>
+                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
+                    {analysis.reasoning_narrative}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Section divider ── */}
+            <div className="flex items-center gap-3 pt-2">
+              <div className="h-px flex-1 bg-[var(--border)]" />
+              <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">방향 선택</span>
+              <div className="h-px flex-1 bg-[var(--border)]" />
+            </div>
+
+            {/* ─── Card 2: 방향 선택 ─── */}
             <div className="rounded-[20px] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm p-6">
               <div className="flex items-center gap-2.5 mb-1">
                 <Fermata size={18} color="var(--gold)" />
                 <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 해석을 선택하시겠습니까?</h3>
               </div>
-              <p className="text-[12px] text-[var(--text-tertiary)] mb-5 ml-[30px]">
+              <p className="text-[13px] text-[var(--text-secondary)] mb-5 ml-[30px]">
                 선택한 방향이 편곡 단계의 출발점이 됩니다.
               </p>
 
@@ -590,7 +688,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                       </div>
                       <div>
                         <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
-                        <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                        <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
                           <span className="text-[var(--text-tertiary)]">택하면</span> &rarr; {hq.reasoning}
                         </p>
                       </div>

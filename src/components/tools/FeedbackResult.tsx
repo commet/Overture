@@ -203,6 +203,7 @@ export function FeedbackResult({ record, personas, onNavigate }: FeedbackResultP
       trigger_reason: '초기 피드백',
       issues_from_feedback: issues,
       constraints_added: [],
+      depth: 'quick',
       feedback_record_id: record.id,
       delta_summary: '초기 분석 결과에 대한 이해관계자 피드백',
       unresolved_count: issues.length,

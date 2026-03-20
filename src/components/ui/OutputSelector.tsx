@@ -11,6 +11,9 @@ import { generateProjectBrief } from '@/lib/project-brief';
 import { generatePromptChain } from '@/lib/prompt-chain';
 import { generateAgentSpec } from '@/lib/agent-spec';
 import { generateChecklist } from '@/lib/checklist';
+import { generateDecisionRationale } from '@/lib/decision-rationale';
+import { track } from '@/lib/analytics';
+import { Scale } from 'lucide-react';
 
 interface OutputSelectorProps {
   project: Project;
@@ -58,6 +61,14 @@ const formats: OutputFormat[] = [
     generator: generateChecklist,
     fileExt: 'md',
   },
+  {
+    key: 'rationale',
+    icon: <Scale size={18} />,
+    label: '판단 근거서 · Decision Rationale',
+    description: '각 단계에서 왜 이렇게 판단했는지, 설계 세계관을 공유합니다.',
+    generator: generateDecisionRationale,
+    fileExt: 'md',
+  },
 ];
 
 export function OutputSelector({ project }: OutputSelectorProps) {
@@ -87,9 +98,11 @@ export function OutputSelector({ project }: OutputSelectorProps) {
     if (selectedKey === format.key) {
       setSelectedKey(null);
       setPreview('');
+      return;
     } else {
       setSelectedKey(format.key);
       setPreview(format.generator(project));
+      track('output_generated', { format: format.key });
     }
   };
 
