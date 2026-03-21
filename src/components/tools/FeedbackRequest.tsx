@@ -178,7 +178,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
               value={documentText}
               onChange={(e) => setDocumentText(e.target.value)}
               placeholder="보고서, 기획서, 제안서 등의 내용을 붙여넣으세요..."
-              className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[14px] leading-relaxed placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[14px] leading-relaxed placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none"
               rows={6}
             />
             <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-[var(--border)] text-[12px] text-[var(--text-secondary)] hover:border-[var(--accent)] cursor-pointer">

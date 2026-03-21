@@ -390,11 +390,11 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
                     <PersonaCard persona={p} onClick={() => setViewingPersona(p)} />
                     <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                       <button onClick={(e) => { e.stopPropagation(); setEditingPersona(p); setShowForm(true); }}
-                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                        className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
                         <Pencil size={11} />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
-                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
+                        className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
                         <Trash2 size={11} />
                       </button>
                     </div>
@@ -449,9 +449,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               <p className="text-[13px] font-semibold">실제 피드백 기록 추가</p>
               <div className="grid grid-cols-2 gap-2">
                 <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)}
-                  className="bg-[#fafbfc] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
+                  className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
                 <input type="text" placeholder="상황 (예: Q1 보고)" value={logContext} onChange={(e) => setLogContext(e.target.value)}
-                  className="bg-[#fafbfc] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
+                  className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
               </div>
               <Field placeholder="이 사람이 실제로 했던 피드백을 기록하세요" value={logFeedback} onChange={(e) => setLogFeedback(e.target.value)} rows={2} />
               <Button size="sm" onClick={handleAddLog} disabled={!logFeedback.trim()}>추가</Button>

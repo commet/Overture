@@ -8,10 +8,10 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User } from 'lucide-react';
 
 const processSteps = [
-  { step: 'decompose', label: '악보 해석', subtitle: '문제 재정의', icon: Layers },
-  { step: 'orchestrate', label: '편곡', subtitle: '실행 설계', icon: Map },
-  { step: 'persona-feedback', label: '리허설', subtitle: '사전 검증', icon: Users },
-  { step: 'refinement-loop', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw },
+  { step: 'decompose', label: '악보 해석', subtitle: '문제 재정의', icon: Layers, color: '#2d4a7c' },
+  { step: 'orchestrate', label: '편곡', subtitle: '실행 설계', icon: Map, color: '#8b6914' },
+  { step: 'persona-feedback', label: '리허설', subtitle: '사전 검증', icon: Users, color: '#6b4c9a' },
+  { step: 'refinement-loop', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw, color: '#2d6b2d' },
 ];
 
 const utilityItems = [
@@ -73,8 +73,9 @@ export function Sidebar() {
                   ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)]'
               }`}
+              style={isActive ? { borderLeft: `2px solid ${item.color}` } : undefined}
             >
-              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} style={isActive ? { color: item.color } : undefined} />
               <div className="flex items-baseline gap-1.5">
                 <span className="font-medium">{item.label}</span>
                 <span className={`text-[10px] ${isActive ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-tertiary)]'}`}>

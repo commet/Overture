@@ -322,7 +322,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               category="질문" categoryIcon={<MessageCircleQuestion size={10} />} variant="default" delay={480}>
               <ul className="space-y-1.5">
                 {selectedResult.first_questions.map((q, i) => (
-                  <li key={i} className="px-2.5 py-1.5 rounded-lg bg-white/60">{q}</li>
+                  <li key={i} className="px-2.5 py-1.5 rounded-lg bg-[var(--surface)]/60">{q}</li>
                 ))}
               </ul>
             </FeedbackMessage>

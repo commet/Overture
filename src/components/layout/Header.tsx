@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, Sun, Moon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
@@ -21,7 +21,24 @@ export function Header() {
   const { user, loading, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Theme initialization
+  useEffect(() => {
+    const saved = localStorage.getItem('overture-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = saved === 'dark' || (!saved && prefersDark);
+    setDarkMode(isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    localStorage.setItem('overture-theme', next ? 'dark' : 'light');
+  };
 
   // Close user menu on outside click
   useEffect(() => {
@@ -48,8 +65,8 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-[10px] bg-[var(--primary)] flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300">
-              <span className="text-white text-[13px] font-black tracking-tight">O</span>
+            <div className="w-8 h-8 rounded-[10px] bg-[var(--accent)] flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300">
+              <span className="text-[var(--bg)] text-[13px] font-black tracking-tight">O</span>
             </div>
             <span className="text-[var(--primary)] font-extrabold text-[18px] tracking-tight">Overture</span>
           </Link>
@@ -75,13 +92,22 @@ export function Header() {
               })}
             </nav>
 
-            {/* Status badges */}
-            {user && (
-              <div className="flex items-center gap-2">
-                <SyncStatus />
-                <RateLimitBadge />
-              </div>
-            )}
+            {/* Theme toggle + Status badges */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+                title={darkMode ? 'Light mode' : 'Dark mode'}
+              >
+                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              {user && (
+                <>
+                  <SyncStatus />
+                  <RateLimitBadge />
+                </>
+              )}
+            </div>
 
             {/* User area */}
             {!loading && (
