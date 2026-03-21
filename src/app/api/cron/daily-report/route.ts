@@ -30,11 +30,12 @@ export async function GET(req: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   const yesterday = kstYesterday();
-  // Convert KST date range to UTC for query
-  const utcStart = `${yesterday}T15:00:00+00`; // KST 00:00 = UTC-9h previous day 15:00
-  const d = new Date(`${yesterday}T00:00:00+09:00`);
-  d.setDate(d.getDate() + 1);
-  const utcEnd = d.toISOString().replace(/\.\d+Z$/, '+00');
+  // KST yesterday 00:00~23:59 → UTC (yesterday-1day) 15:00 ~ yesterday 15:00
+  // e.g. KST 3/21 → UTC 3/20 15:00 ~ 3/21 15:00
+  const startKST = new Date(`${yesterday}T00:00:00+09:00`);
+  const endKST = new Date(`${yesterday}T23:59:59+09:00`);
+  const utcStart = startKST.toISOString();
+  const utcEnd = endKST.toISOString();
 
   // ── Queries ──
 
