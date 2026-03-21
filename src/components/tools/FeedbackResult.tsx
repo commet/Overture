@@ -278,129 +278,149 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             <ArrowLeft size={14} /> 전체 결과로
           </button>
 
-          {/* Persona header */}
-          <div className="flex items-center gap-3 mb-2">
-            <PersonaAvatar name={selectedPersona.name} personaId={selectedPersona.id} size={40} influence={selectedPersona.influence} />
+          {/* ── Persona header (1회만) ── */}
+          <div className="flex items-center gap-3">
+            <PersonaAvatar name={selectedPersona.name} personaId={selectedPersona.id} size={44} influence={selectedPersona.influence} />
             <div>
-              <span className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{selectedPersona.name}</span>
+              <span className="text-[16px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{selectedPersona.name}</span>
               <span className="text-[13px] text-[var(--text-secondary)] ml-2">{selectedPersona.role}</span>
             </div>
           </div>
 
-          {/* Messages as conversation */}
-          <div className="space-y-3">
-            {/* Overall reaction */}
-            <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-              category="전반적 반응" variant="default" delay={0}>
-              {selectedResult.overall_reaction}
-            </FeedbackMessage>
+          {/* ── 전반적 반응 (한 줄 요약) ── */}
+          <div className="rounded-xl bg-[var(--ai)] px-4 py-3">
+            <p className="text-[14px] font-medium text-[var(--text-primary)] leading-relaxed">
+              &ldquo;{selectedResult.overall_reaction}&rdquo;
+            </p>
+          </div>
 
-            {/* Section: 위험 신호 */}
-            <div className="flex items-center gap-2 pt-1">
-              <div className="h-px flex-1 bg-red-200" />
-              <span className="text-[10px] font-bold text-red-400 tracking-wider shrink-0">위험 신호</span>
-              <div className="h-px flex-1 bg-red-200" />
+          {/* ── 리스크 분석 (하나의 통합 카드) ── */}
+          {(selectedResult.failure_scenario || (selectedResult.untested_assumptions?.length ?? 0) > 0 || (selectedResult.classified_risks?.length ?? 0) > 0 || selectedResult.concerns.length > 0) && (
+            <Card className="!border-l-4 !border-l-red-400 space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={14} className="text-red-500" />
+                <span className="text-[13px] font-bold text-red-600">리스크 분석</span>
+              </div>
+
+              {/* 1. 실패 시나리오 */}
+              {selectedResult.failure_scenario && (
+                <div>
+                  <p className="text-[11px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
+                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
+                </div>
+              )}
+
+              {/* 2. 그 이유: 검증 안 된 전제 */}
+              {(selectedResult.untested_assumptions?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-amber-600 mb-1">왜? 이 전제들이 검증되지 않았기 때문</p>
+                  <ul className="space-y-1">
+                    {selectedResult.untested_assumptions!.map((a, i) => (
+                      <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-1.5">
+                        <span className="text-amber-500 mt-0.5 shrink-0">&#x25CF;</span> {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 3. 리스크 분류 — 심각도별 */}
+              {(selectedResult.classified_risks?.length ?? 0) > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-0.5">리스크 분류</p>
+                  {selectedResult.classified_risks!.filter(r => r.category === 'critical').map((risk, i) => (
+                    <div key={`c-${i}`} className="flex items-start gap-2 text-[13px]">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700">위협</span>
+                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    </div>
+                  ))}
+                  {selectedResult.classified_risks!.filter(r => r.category === 'manageable').map((risk, i) => (
+                    <div key={`m-${i}`} className="flex items-start gap-2 text-[13px]">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700">관리</span>
+                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    </div>
+                  ))}
+                  {selectedResult.classified_risks!.filter(r => r.category === 'unspoken').map((risk, i) => (
+                    <div key={`u-${i}`} className="flex items-start gap-2 text-[13px]">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700">침묵</span>
+                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 4. 우려/지적 */}
+              {selectedResult.concerns.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-amber-600 mb-1">우려/지적</p>
+                  <ul className="space-y-1">
+                    {selectedResult.concerns.map((c, i) => (
+                      <li key={i} className="text-[13px] text-[var(--text-primary)]">- {c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* ── 긍정 평가 ── */}
+          {selectedResult.praise.length > 0 && (
+            <Card className="!border-l-4 !border-l-[var(--success)]">
+              <div className="flex items-center gap-2 mb-2">
+                <ThumbsUp size={14} className="text-[var(--success)]" />
+                <span className="text-[13px] font-bold text-[var(--success)]">잘한 부분</span>
+              </div>
+              <ul className="space-y-1">
+                {selectedResult.praise.map((p, i) => (
+                  <li key={i} className="text-[13px] text-[var(--text-primary)]">+ {p}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* ── 이 사람이 원하는 것 (질문 + 추가 요청 + 승인 조건 통합) ── */}
+          <Card className="!border-l-4 !border-l-[var(--accent)] space-y-4">
+            <div className="flex items-center gap-2">
+              <MessageCircleQuestion size={14} className="text-[var(--accent)]" />
+              <span className="text-[13px] font-bold text-[var(--accent)]">이 사람이 원하는 것</span>
             </div>
 
-            {/* Failure scenario */}
-            {selectedResult.failure_scenario && (
-              <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-                category="실패 시나리오" categoryIcon={<AlertTriangle size={10} />} variant="risk-critical" delay={80}>
-                <p className="text-[11px] font-semibold text-red-600 mb-1">이 계획이 실패한다면?</p>
-                {selectedResult.failure_scenario}
-              </FeedbackMessage>
-            )}
-
-            {/* Untested assumptions */}
-            {selectedResult.untested_assumptions?.length > 0 && (
-              <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-                category="검증 안 된 전제" categoryIcon={<AlertTriangle size={10} />} variant="concern" delay={160}>
-                <ul className="space-y-1">
-                  {selectedResult.untested_assumptions.map((a, i) => (
-                    <li key={i}>&#x2022; {a}</li>
+            {/* 질문 */}
+            {selectedResult.first_questions.length > 0 && (
+              <div>
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">먼저 물어볼 질문</p>
+                <ul className="space-y-1.5">
+                  {selectedResult.first_questions.map((q, i) => (
+                    <li key={i} className="text-[13px] text-[var(--text-primary)] px-3 py-2 rounded-lg bg-[var(--bg)]">{q}</li>
                   ))}
                 </ul>
-              </FeedbackMessage>
+              </div>
             )}
 
-            {/* Classified risks */}
-            {selectedResult.classified_risks?.length > 0 && (
-              <>
-                {selectedResult.classified_risks.filter(r => r.category === 'critical').map((risk, i) => (
-                  <FeedbackMessage key={`c-${i}`} personaName={selectedPersona.name} personaId={selectedPersona.id}
-                    category="핵심 위협" categoryIcon={<ShieldAlert size={10} />} variant="risk-critical" delay={240 + i * 60}>
-                    {risk.text}
-                  </FeedbackMessage>
-                ))}
-                {selectedResult.classified_risks.filter(r => r.category === 'manageable').map((risk, i) => (
-                  <FeedbackMessage key={`m-${i}`} personaName={selectedPersona.name} personaId={selectedPersona.id}
-                    category="관리 가능" categoryIcon={<Shield size={10} />} variant="risk-manageable" delay={320 + i * 60}>
-                    {risk.text}
-                  </FeedbackMessage>
-                ))}
-                {selectedResult.classified_risks.filter(r => r.category === 'unspoken').map((risk, i) => (
-                  <FeedbackMessage key={`u-${i}`} personaName={selectedPersona.name} personaId={selectedPersona.id}
-                    category="침묵의 리스크" categoryIcon={<EyeOff size={10} />} variant="risk-unspoken" delay={400 + i * 60}>
-                    {risk.text}
-                  </FeedbackMessage>
-                ))}
-              </>
-            )}
-
-            {/* Section: 긍정 & 다음 단계 */}
-            <div className="flex items-center gap-2 pt-1">
-              <div className="h-px flex-1 bg-emerald-200" />
-              <span className="text-[10px] font-bold text-emerald-400 tracking-wider shrink-0">긍정 & 다음 단계</span>
-              <div className="h-px flex-1 bg-emerald-200" />
-            </div>
-
-            {/* First questions */}
-            <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-              category="질문" categoryIcon={<MessageCircleQuestion size={10} />} variant="default" delay={480}>
-              <ul className="space-y-1.5">
-                {selectedResult.first_questions.map((q, i) => (
-                  <li key={i} className="px-2.5 py-1.5 rounded-lg bg-[var(--surface)]/60">{q}</li>
-                ))}
-              </ul>
-            </FeedbackMessage>
-
-            {/* Praise */}
-            <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-              category="칭찬" categoryIcon={<ThumbsUp size={10} />} variant="praise" delay={560}>
-              <ul className="space-y-1">
-                {selectedResult.praise.map((p, i) => <li key={i}>+ {p}</li>)}
-              </ul>
-            </FeedbackMessage>
-
-            {/* Concerns */}
-            <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-              category="우려/지적" categoryIcon={<AlertTriangle size={10} />} variant="concern" delay={640}>
-              <ul className="space-y-1">
-                {selectedResult.concerns.map((c, i) => <li key={i}>- {c}</li>)}
-              </ul>
-            </FeedbackMessage>
-
-            {/* Wants more */}
-            {selectedResult.wants_more?.length > 0 && (
-              <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-                category="추가 요청" categoryIcon={<Search size={10} />} variant="default" delay={720}>
+            {/* 추가 요청 */}
+            {(selectedResult.wants_more?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1">추가로 보고 싶은 것</p>
                 <ul className="space-y-1">
-                  {selectedResult.wants_more.map((w, i) => <li key={i}>{w}</li>)}
+                  {selectedResult.wants_more!.map((w, i) => (
+                    <li key={i} className="text-[13px] text-[var(--text-primary)]">{w}</li>
+                  ))}
                 </ul>
-              </FeedbackMessage>
+              </div>
             )}
 
-            {/* Approval conditions */}
-            {selectedResult.approval_conditions?.length > 0 && (
-              <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-                category="승인 조건" categoryIcon={<Check size={10} />} variant="approval" delay={800}>
-                <p className="text-[10px] text-[var(--text-secondary)] mb-1">이것을 보여주면 OK하겠다</p>
+            {/* 승인 조건 */}
+            {(selectedResult.approval_conditions?.length ?? 0) > 0 && (
+              <div className="pt-2 border-t border-[var(--border-subtle)]">
+                <p className="text-[11px] font-bold text-[var(--success)] mb-1">이것을 보여주면 OK</p>
                 <ul className="space-y-1">
-                  {selectedResult.approval_conditions.map((c, i) => <li key={i}>&#x2713; {c}</li>)}
+                  {selectedResult.approval_conditions!.map((c, i) => (
+                    <li key={i} className="text-[13px] text-[var(--text-primary)]">&#x2713; {c}</li>
+                  ))}
                 </ul>
-              </FeedbackMessage>
+              </div>
             )}
-          </div>
+          </Card>
 
           {/* Accuracy Rating */}
           {!ratingState[selectedPersona.id]?.saved ? (

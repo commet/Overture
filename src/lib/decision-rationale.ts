@@ -67,11 +67,17 @@ export function generateDecisionRationale(project: Project | null): string {
     s.push('');
 
     if (a.hidden_assumptions?.length) {
-      s.push('**발견한 전제** (이 과제가 유효하려면 참이어야 하는 것):');
+      s.push('**전제 점검 결과**:');
       for (const ha of a.hidden_assumptions) {
-        const assumption = typeof ha === 'string' ? ha : (ha as HiddenAssumption).assumption;
-        const risk = typeof ha === 'string' ? '' : (ha as HiddenAssumption).risk_if_false;
-        s.push(`- "${assumption}"${risk ? ` → 거짓이면: ${risk}` : ''}`);
+        if (typeof ha === 'string') {
+          s.push(`- "${ha}"`);
+        } else {
+          const evalLabel = ha.evaluation === 'likely_true' ? '✅ 확인'
+            : ha.evaluation === 'doubtful' ? '❌ 의심'
+            : ha.evaluation === 'uncertain' ? '❓ 불확실'
+            : '⬜ 미평가';
+          s.push(`- [${evalLabel}] "${ha.assumption}"${ha.risk_if_false ? ` → 거짓이면: ${ha.risk_if_false}` : ''}`);
+        }
       }
       s.push('');
     }

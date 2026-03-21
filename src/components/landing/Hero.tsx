@@ -89,7 +89,7 @@ export function Hero() {
                 <span className="w-4.5 h-4.5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[9px] font-extrabold shrink-0">1</span>
                 <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">숨겨진 전제 발견</span>
               </div>
-              <p className="text-[13px] text-[var(--text-primary)] font-semibold leading-snug ml-6">
+              <p className="text-[15px] text-[var(--text-primary)] font-bold leading-snug ml-6">
                 &ldquo;경쟁사와 같은 시장에서 싸워야 한다&rdquo;
               </p>
             </div>
@@ -104,7 +104,7 @@ export function Hero() {
                 <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">재정의된 질문</span>
               </div>
               <p className="text-[15px] font-bold text-[var(--text-primary)] leading-snug ml-6">
-                경쟁사를 따라갈 것인가, 우리만의 판을 만들 것인가?
+                경쟁사를 따라갈 것인가,<br />우리만의 판을 만들 것인가?
               </p>
             </div>
           </div>

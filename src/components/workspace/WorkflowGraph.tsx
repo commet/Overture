@@ -316,7 +316,9 @@ export function WorkflowGraph({
 
                         {/* Expand hint */}
                         {!isExpanded && editable && (
-                          <p className="text-[11px] text-[var(--text-secondary)] mt-2">상세 입력 &darr;</p>
+                          <p className="text-[11px] text-[var(--text-secondary)] mt-2">
+                            {step.actor === 'ai' ? 'AI 방향 설정 ↓' : step.actor === 'human' ? '판단 입력 ↓' : '방향 설정 & 판단 ↓'}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -327,12 +329,37 @@ export function WorkflowGraph({
                         {/* AI guide input */}
                         {editable && (step.actor === 'ai' || step.actor === 'both') && (
                           <div>
-                            <p className="text-[11px] font-semibold text-[#2d4a7c] mb-1">AI에게 방향 지시</p>
+                            <p className="text-[11px] font-semibold text-[#2d4a7c] mb-1">AI 실행 방향</p>
+                            {step.ai_direction_options && step.ai_direction_options.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {step.ai_direction_options.map((opt, j) => (
+                                  <button
+                                    key={j}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const current = step.user_ai_guide || '';
+                                      const isSelected = current.includes(opt);
+                                      const next = isSelected
+                                        ? current.split(', ').filter(s => s !== opt).join(', ')
+                                        : current ? `${current}, ${opt}` : opt;
+                                      onUpdateField?.(i, { user_ai_guide: next });
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                                      (step.user_ai_guide || '').includes(opt)
+                                        ? 'border-[#3b6dcc] bg-[#3b6dcc]/10 text-[#2d4a7c]'
+                                        : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#3b6dcc]/50'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                             <input
                               type="text"
                               value={step.user_ai_guide || ''}
                               onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
-                              placeholder="예: 국내 시장 중심으로, 최근 3년 데이터 기준으로"
+                              placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로, 최근 3년 데이터 기준으로'}
                               className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
                               onClick={(e) => e.stopPropagation()}
                             />

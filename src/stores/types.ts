@@ -112,6 +112,7 @@ export interface OrchestrateStep {
   parallel_with?: number;
   user_ai_guide?: string;
   user_decision?: string;
+  ai_direction_options?: string[];
 }
 
 export interface KeyAssumption {
@@ -152,6 +153,7 @@ export interface OrchestrateAnalysis {
   design_rationale?: string;
   reviews?: WorkflowReview[];
   previous_reviews?: WorkflowReview[];
+  ai_limitation_warnings?: string[];
 }
 
 export interface OrchestrateItem {
@@ -189,6 +191,7 @@ export interface Persona {
   influence: 'high' | 'medium' | 'low';
   extracted_traits: string[];
   feedback_logs: FeedbackLog[];
+  is_example?: boolean;
   created_at: string;
   updated_at: string;
 }

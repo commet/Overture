@@ -4,6 +4,45 @@ import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
 
+const DEFAULT_PERSONAS: Omit<Persona, 'id' | 'created_at' | 'updated_at' | 'feedback_logs'>[] = [
+  {
+    name: '최진우 대표',
+    role: 'CEO',
+    organization: '',
+    priorities: '비전과 전략 방향, 스토리라인의 전체 정합성, "그래서 한 마디로 뭔데?"',
+    communication_style: '큰 그림부터 듣고 싶어함. 디테일보다 So What을 먼저 찾음. 내러티브가 없으면 관심을 잃음.',
+    known_concerns: '전략적 방향성과 시장 포지셔닝, 이사회/투자자에게 설명 가능한 스토리',
+    relationship_notes: '',
+    influence: 'high',
+    extracted_traits: ['스토리 중심', '큰 그림 우선', 'So What 집착', '직관적 판단'],
+    is_example: true,
+  },
+  {
+    name: '박서연 실장',
+    role: '사업기획실장',
+    organization: '',
+    priorities: '상위 가이드라인 부합 여부, 보고 라인 정렬, 리스크 사전 차단',
+    communication_style: '"본부장님이 지난번에 말씀하신 방향이랑 맞나요?" 가 입버릇. 정치적 감각이 있고 보고 라인을 빠짐없이 챙김.',
+    known_concerns: '상사의 기존 방침과의 충돌, 조직 내 합의 부족, 프로세스 누락',
+    relationship_notes: '',
+    influence: 'high',
+    extracted_traits: ['가이드라인 준수', '보고 라인 민감', '리스크 회피', '정치적 감각'],
+    is_example: true,
+  },
+  {
+    name: '김도현 팀장',
+    role: '데이터분석팀장',
+    organization: '',
+    priorities: '숫자와 데이터의 정합성, 정량적 근거, 출처 명시',
+    communication_style: '"근거 자료 있어요?" 가 입버릇. 표와 수치가 없으면 넘어가지 않음. 감이나 추정을 싫어함.',
+    known_concerns: '데이터 없는 주장, 숫자 간 불일치, 출처 불명확한 통계',
+    relationship_notes: '',
+    influence: 'medium',
+    extracted_traits: ['숫자 집착', '근거 요구', '정합성 검증', '꼼꼼함'],
+    is_example: true,
+  },
+];
+
 interface PersonaState {
   personas: Persona[];
   feedbackHistory: FeedbackRecord[];
@@ -15,6 +54,7 @@ interface PersonaState {
   deleteFeedbackLog: (personaId: string, logId: string) => void;
   addFeedbackRecord: (record: Omit<FeedbackRecord, 'id' | 'created_at'>) => string;
   getPersona: (id: string) => Persona | undefined;
+  seedDefaultPersonas: () => void;
 }
 
 export const usePersonaStore = create<PersonaState>((set, get) => ({
@@ -109,4 +149,19 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
   },
 
   getPersona: (id) => get().personas.find((p) => p.id === id),
+
+  seedDefaultPersonas: () => {
+    if (get().personas.length > 0) return;
+    const now = new Date().toISOString();
+    const seeded: Persona[] = DEFAULT_PERSONAS.map((d) => ({
+      ...d,
+      id: generateId(),
+      feedback_logs: [],
+      created_at: now,
+      updated_at: now,
+    }));
+    set({ personas: seeded });
+    setStorage(STORAGE_KEYS.PERSONAS, seeded);
+    for (const p of seeded) upsertToSupabase('personas', p);
+  },
 }));

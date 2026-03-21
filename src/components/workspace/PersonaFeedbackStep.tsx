@@ -6,8 +6,6 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Tab } from '@/components/ui/Tab';
-import { Field } from '@/components/ui/Field';
 import { PersonaCard } from '@/components/tools/PersonaCard';
 import { PersonaForm } from '@/components/tools/PersonaForm';
 import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
@@ -18,7 +16,7 @@ import type { Persona, FeedbackRecord, PersonaFeedbackResult, HiddenAssumption, 
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Plus, Trash2, ArrowLeft, Pencil, Loader2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw } from 'lucide-react';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -60,7 +58,19 @@ ${recentLogs || '(없음)'}
 
 ## 피드백 지침
 - 관점: ${perspective}
+  ${{
+    '전반적 인상': '전체적인 완성도, 논리 구조, 실행 가능성을 균형있게 평가하세요.',
+    '논리 구조': '주장의 논리적 연결, 인과관계의 비약, 근거 없는 결론에 집중하세요. "왜?"를 반복하세요.',
+    '실행 가능성': '자원, 일정, 역량, 의존성 관점에서 실행할 수 있는지만 집중하세요.',
+    '리스크': '실패 확률과 임팩트를 중심으로. failure_scenario와 classified_risks에 특히 집중하세요.',
+    '숫자/데이터': '수치의 근거, 추정의 합리성, 빠진 데이터를 중점 검토하세요.',
+  }[perspective] || '이 관점에서 자료를 검토하세요.'}
 - 강도: ${intensity}
+  ${{
+    '부드럽게': '건설적 톤. praise를 3개 이상 구체적으로. concerns는 "~하면 더 좋을 것 같습니다" 형태로. classified_risks에서 critical은 정말 치명적인 것만.',
+    '솔직하게': '좋은 점과 문제점을 균형있게. 빈말 없이 핵심만.',
+    '까다롭게': '비판적 관점 강화. "왜 이것이 안 되는지"를 기본 태도로. classified_risks에서 critical과 unspoken을 적극 사용. praise는 정말 뛰어난 부분만 0-1개. approval_conditions를 높은 기준으로.',
+  }[intensity] || ''}
 ${persona.influence === 'high' ? '- ⚠️ 이 사람의 영향력이 높습니다. 당신의 의견은 이 프로젝트의 성패에 결정적입니다. 구체적인 승인 조건을 제시하세요.' : persona.influence === 'low' ? '- 이 사람의 영향력은 제한적이지만 현장의 시각을 반영합니다.' : ''}
 
 ## 응답 형식 (JSON만 출력)
@@ -83,29 +93,35 @@ ${buildPersonaAccuracyContext(persona.id)}
 반드시 JSON만 응답하세요.`;
 };
 
+/* ────────────────────────────────────────────
+   Phase-based flow (matches Decompose/Orchestrate pattern)
+   setup → running → results
+   ──────────────────────────────────────────── */
+
+type RehearsalPhase = 'setup' | 'running' | 'results';
+
 interface PersonaFeedbackStepProps {
   onNavigate: (step: string) => void;
 }
 
 export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
-  const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackLog, deleteFeedbackLog, addFeedbackRecord, getPersona } = usePersonaStore();
+  const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackRecord, getPersona, seedDefaultPersonas } = usePersonaStore();
   const { loadSettings } = useSettingsStore();
   const { loadRatings } = useAccuracyStore();
-  const [activeTab, setActiveTab] = useState('personas');
-  const [showForm, setShowForm] = useState(false);
-  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
-  const [viewingPersona, setViewingPersona] = useState<Persona | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [discussionLoading, setDiscussionLoading] = useState(false);
-  const [latestFeedback, setLatestFeedback] = useState<FeedbackRecord | null>(null);
-  const [logDate, setLogDate] = useState('');
-  const [logContext, setLogContext] = useState('');
-  const [logFeedback, setLogFeedback] = useState('');
   const { handoff, clearHandoff } = useHandoffStore();
   const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
   const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+
+  const [phase, setPhase] = useState<RehearsalPhase>('setup');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [latestFeedback, setLatestFeedback] = useState<FeedbackRecord | null>(null);
   const [handoffContent, setHandoffContent] = useState<string>('');
   const [handoffTitle, setHandoffTitle] = useState<string>('');
+  const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
+  const [showPersonaForm, setShowPersonaForm] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+  const [managingPersonas, setManagingPersonas] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -115,29 +131,35 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     loadOrchestrate();
   }, [loadData, loadSettings, loadRatings, loadDecompose, loadOrchestrate]);
 
-  const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
+  // Seed default example personas on first use
+  useEffect(() => {
+    seedDefaultPersonas();
+  }, [seedDefaultPersonas]);
 
+  // Handle handoff from previous step
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content);
       setHandoffTitle(`${handoff.from === 'decompose' ? '악보 해석' : handoff.from === 'orchestrate' ? '편곡' : '리허설'} 결과물`);
       setPendingProjectId(handoff.projectId);
-      setActiveTab('feedback');
+      setPhase('setup');
       clearHandoff();
     }
-  }, []);  // Run once on mount
+  }, []);
 
+  // ── Persona management ──
   const handleSavePersona = (data: Partial<Persona>) => {
     if (editingPersona) {
       updatePersona(editingPersona.id, data);
     } else {
       createPersona(data);
     }
-    setShowForm(false);
+    setShowPersonaForm(false);
     setEditingPersona(null);
   };
 
+  // ── Feedback submit (setup → running → results) ──
   const handleFeedbackSubmit = async (data: {
     documentTitle: string;
     documentText: string;
@@ -145,29 +167,27 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     perspective: string;
     intensity: string;
   }) => {
+    setPhase('running');
     setFeedbackLoading(true);
     try {
       const results: PersonaFeedbackResult[] = [];
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
-        // Phase 3: Build system prompt with structured context injection
         let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
 
-        // Inject persona accuracy model (behavioral calibration)
         const accuracyCtx = buildPersonaAccuracyContext(personaId);
         if (accuracyCtx) {
           systemPrompt = `${systemPrompt}\n\n${accuracyCtx}`;
         }
 
-        // Inject orchestrate + decompose context for assumption attack
         const projectId = pendingProjectId;
         if (projectId) {
           const relDecompose = decomposeItems
             .filter(d => d.project_id === projectId && d.status === 'done' && d.analysis)
             .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
           const relOrchestrate = orchestrateItems
-            .filter(o => o.project_id === projectId && o.analysis)
+            .filter(o => o.project_id === projectId && o.analysis && o.status === 'done')
             .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
           if (relOrchestrate) {
             const orchCtx = buildOrchestrateContext(relOrchestrate);
@@ -226,7 +246,6 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           structured_synthesis = synthResult;
           synthesis = `공통 합의: ${synthResult.common_agreements.join(', ')}. 핵심 갈등: ${synthResult.key_conflicts.map(c => c.topic).join(', ')}.`;
         } catch {
-          // Fallback to plain text synthesis
           synthesis = await callLLM(
             [{ role: 'user', content: feedbackSummary }],
             { system: '여러 이해관계자의 피드백을 종합하세요. 1) 공통 지적 사항 2) 페르소나별로 다른 반응 3) 우선 수정 권고. 한국어로 답변하세요.', maxTokens: 1500 }
@@ -248,9 +267,8 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
 
       const record = usePersonaStore.getState().feedbackHistory.find((r) => r.id === recordId);
       if (record) setLatestFeedback(record);
-      setActiveTab('result');
+      setPhase('results');
       track('feedback_complete', { personas_count: results.length, has_synthesis: !!synthesis });
-      // Audio feedback on completion
       const { settings } = useSettingsStore.getState();
       if (settings.audio_enabled) {
         resumeAudioContext();
@@ -258,23 +276,13 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       }
     } catch (err) {
       alert('리허설을 진행할 수 없었습니다. 다시 시도하거나, 자료를 더 구체적으로 작성해보세요. ' + (err instanceof Error ? err.message : ''));
+      setPhase('setup');
     } finally {
       setFeedbackLoading(false);
     }
   };
 
-  const handleAddLog = () => {
-    if (!viewingPersona || !logFeedback.trim()) return;
-    addFeedbackLog(viewingPersona.id, {
-      date: logDate || new Date().toISOString().split('T')[0],
-      context: logContext,
-      feedback: logFeedback,
-    });
-    setLogDate(''); setLogContext(''); setLogFeedback('');
-    const updated = usePersonaStore.getState().personas.find((p) => p.id === viewingPersona.id);
-    if (updated) setViewingPersona(updated);
-  };
-
+  // ── Discussion simulation ──
   const handleStartDiscussion = async () => {
     if (!latestFeedback || latestFeedback.results.length < 2) return;
     setDiscussionLoading(true);
@@ -325,11 +333,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const updatedRecord: FeedbackRecord = {
         ...latestFeedback,
         discussion: discussionResult.messages,
-        // Store key_takeaway alongside
       };
       updatedRecord.discussion_takeaway = discussionResult.key_takeaway;
       setLatestFeedback(updatedRecord);
-
       track('discussion_complete', { message_count: discussionResult.messages.length });
     } catch (err) {
       alert('토론을 생성할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
@@ -350,146 +356,124 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         </div>
       </div>
 
-      <Tab
-        tabs={[
-          { key: 'personas', label: '페르소나 관리', count: personas.length },
-          { key: 'feedback', label: '피드백 받기' },
-          ...(latestFeedback ? [{ key: 'result', label: '결과' }] : []),
-          { key: 'history', label: '이력', count: feedbackHistory.length },
-        ]}
-        activeKey={activeTab}
-        onChange={setActiveTab}
-      />
-
-      {activeTab === 'personas' && !viewingPersona && (
-        <div className="space-y-4">
-          {showForm && (
-            <Card><PersonaForm persona={editingPersona || undefined} onSave={handleSavePersona} onCancel={() => { setShowForm(false); setEditingPersona(null); }} /></Card>
+      {/* ── History pills (visible in all phases) ── */}
+      {feedbackHistory.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {phase !== 'setup' && (
+            <button
+              onClick={() => { setPhase('setup'); setLatestFeedback(null); }}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium border border-dashed border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer transition-colors flex items-center gap-1.5"
+            >
+              <RotateCcw size={11} /> 새 리허설
+            </button>
           )}
-          {personas.length === 0 && !showForm ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--bg)] flex items-center justify-center">
-                <Users size={28} className="text-[var(--text-tertiary)]" />
-              </div>
-              <p className="text-[16px] font-bold text-[var(--text-primary)] mb-1">이해관계자를 등록하세요</p>
-              <p className="text-[13px] text-[var(--text-secondary)] max-w-sm mx-auto mb-6">
-                보고서를 보낼 사람(CEO, CFO, 투자자 등)을 등록하면,
-                그 사람의 관점에서 미리 피드백을 시뮬레이션합니다.
-              </p>
-              <Button onClick={() => { setEditingPersona(null); setShowForm(true); }}>
-                <Plus size={14} /> 이해관계자 추가
-              </Button>
-            </div>
-          ) : !showForm && (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-[12px] text-[var(--text-secondary)] font-medium">{personas.length}명의 이해관계자</p>
-                <Button size="sm" onClick={() => { setEditingPersona(null); setShowForm(true); }}>
-                  <Plus size={14} /> 추가
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {personas.map((p) => (
-                  <div key={p.id} className="relative group">
-                    <PersonaCard persona={p} onClick={() => setViewingPersona(p)} />
-                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      <button onClick={(e) => { e.stopPropagation(); setEditingPersona(p); setShowForm(true); }}
-                        className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
-                        <Pencil size={11} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
-                        className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          {[...feedbackHistory].reverse().slice(0, 5).map((record) => (
+            <button
+              key={record.id}
+              onClick={() => { setLatestFeedback(record); setPhase('results'); }}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-colors ${
+                latestFeedback?.id === record.id && phase === 'results'
+                  ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
+              }`}
+            >
+              {record.document_title || '제목 없음'}
+              <span className="text-[var(--text-tertiary)] ml-1.5">{record.results.length}명</span>
+            </button>
+          ))}
         </div>
       )}
 
-      {activeTab === 'personas' && viewingPersona && (
-        <div className="space-y-4">
-          <button onClick={() => setViewingPersona(null)} className="flex items-center gap-1 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">
-            <ArrowLeft size={14} /> 목록으로
-          </button>
-          <Card>
-            <h3 className="text-[18px] font-bold">{viewingPersona.name}</h3>
-            <p className="text-[14px] text-[var(--text-secondary)]">{viewingPersona.role} {viewingPersona.organization && `· ${viewingPersona.organization}`}</p>
-            {viewingPersona.extracted_traits.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {viewingPersona.extracted_traits.map((t, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-[var(--ai)] text-[#2d4a7c] rounded-full text-[11px] font-semibold">{t}</span>
-                ))}
-              </div>
-            )}
-            <div className="mt-4 space-y-2 text-[14px]">
-              {viewingPersona.priorities && <div><span className="font-semibold">우선순위:</span> {viewingPersona.priorities}</div>}
-              {viewingPersona.communication_style && <div><span className="font-semibold">스타일:</span> {viewingPersona.communication_style}</div>}
-              {viewingPersona.known_concerns && <div><span className="font-semibold">관심사/우려:</span> {viewingPersona.known_concerns}</div>}
-              {viewingPersona.relationship_notes && <div><span className="font-semibold">관계:</span> {viewingPersona.relationship_notes}</div>}
+      {/* ══════════════ SETUP PHASE ══════════════ */}
+      {phase === 'setup' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Persona management bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users size={14} className="text-[var(--text-secondary)]" />
+              <span className="text-[13px] font-semibold text-[var(--text-primary)]">{personas.length}명의 이해관계자</span>
+              {personas.some(p => p.is_example) && (
+                <span className="text-[10px] text-[var(--text-tertiary)]">예시 포함</span>
+              )}
             </div>
-          </Card>
-          <Card>
-            <h4 className="text-[15px] font-bold mb-3">피드백 로그</h4>
-            <p className="text-[12px] text-[var(--text-secondary)] mb-3">실제 피드백을 기록하면 AI가 더 정확한 시뮬레이션을 합니다.</p>
-            {viewingPersona.feedback_logs.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {viewingPersona.feedback_logs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-2 p-2 bg-[var(--bg)] rounded-lg text-[13px]">
-                    <div className="flex-1">
-                      <span className="text-[var(--text-secondary)]">[{log.date}]</span>{' '}
-                      {log.context && <span className="font-medium">{log.context}:</span>}{' '}{log.feedback}
-                    </div>
-                    <button onClick={() => { deleteFeedbackLog(viewingPersona.id, log.id); const u = usePersonaStore.getState().personas.find((p) => p.id === viewingPersona.id); if (u) setViewingPersona(u); }}
-                      className="text-[var(--text-secondary)] hover:text-red-500 cursor-pointer shrink-0"><Trash2 size={12} /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="space-y-2 border-t border-[var(--border)] pt-3">
-              <p className="text-[13px] font-semibold">실제 피드백 기록 추가</p>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)}
-                  className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
-                <input type="text" placeholder="상황 (예: Q1 보고)" value={logContext} onChange={(e) => setLogContext(e.target.value)}
-                  className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px]" />
-              </div>
-              <Field placeholder="이 사람이 실제로 했던 피드백을 기록하세요" value={logFeedback} onChange={(e) => setLogFeedback(e.target.value)} rows={2} />
-              <Button size="sm" onClick={handleAddLog} disabled={!logFeedback.trim()}>추가</Button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setManagingPersonas(!managingPersonas)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer transition-colors"
+              >
+                <Pencil size={10} className="inline mr-1" />
+                {managingPersonas ? '접기' : '편집'}
+              </button>
+              <button
+                onClick={() => { setEditingPersona(null); setShowPersonaForm(true); setManagingPersonas(true); }}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--ai)] cursor-pointer transition-colors"
+              >
+                <Plus size={10} className="inline mr-1" /> 새 페르소나
+              </button>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
 
-      {activeTab === 'feedback' && (
-        <>
-          {feedbackLoading && (
+          {/* Inline persona form */}
+          {showPersonaForm && managingPersonas && (
             <Card>
-              <LoadingSteps steps={[
-                '이해관계자를 무대 앞으로 초대하고 있습니다...',
-                '각자의 관점에서 자료를 검토하고 있습니다...',
-                '침묵의 리스크를 찾고 있습니다...',
-              ]} />
+              <PersonaForm
+                persona={editingPersona || undefined}
+                onSave={handleSavePersona}
+                onCancel={() => { setShowPersonaForm(false); setEditingPersona(null); }}
+              />
             </Card>
           )}
-          {!feedbackLoading && (
-            <FeedbackRequest
-              personas={personas}
-              onSubmit={handleFeedbackSubmit}
-              loading={feedbackLoading}
-              initialContent={handoffContent}
-              initialTitle={handoffTitle}
-            />
+
+          {/* Persona management grid (edit/delete) */}
+          {managingPersonas && !showPersonaForm && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {personas.map((p) => (
+                <div key={p.id} className="relative group">
+                  <PersonaCard persona={p} onClick={() => { setEditingPersona(p); setShowPersonaForm(true); }} />
+                  {p.is_example && (
+                    <span className="absolute top-2 left-3 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--ai)] text-[var(--accent)]">예시</span>
+                  )}
+                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button onClick={() => { setEditingPersona(p); setShowPersonaForm(true); }}
+                      className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                      <Pencil size={11} />
+                    </button>
+                    <button onClick={() => { if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
+                      className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-        </>
+
+          {/* FeedbackRequest: document + persona selection + settings + submit */}
+          <FeedbackRequest
+            personas={personas}
+            onSubmit={handleFeedbackSubmit}
+            loading={feedbackLoading}
+            initialContent={handoffContent}
+            initialTitle={handoffTitle}
+          />
+        </div>
       )}
 
-      {activeTab === 'result' && latestFeedback && (
-        <>
-          {/* Context chain: from decompose + orchestrate */}
+      {/* ══════════════ RUNNING PHASE ══════════════ */}
+      {phase === 'running' && (
+        <Card>
+          <LoadingSteps steps={[
+            '이해관계자를 무대 앞으로 초대하고 있습니다...',
+            '각자의 관점에서 자료를 검토하고 있습니다...',
+            '침묵의 리스크를 찾고 있습니다...',
+          ]} />
+        </Card>
+      )}
+
+      {/* ══════════════ RESULTS PHASE ══════════════ */}
+      {phase === 'results' && latestFeedback && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Context chain */}
           {(() => {
             const projectId = latestFeedback.project_id;
             if (!projectId) return null;
@@ -519,6 +503,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               : `편곡의 핵심 가정 ${orchestrate?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
             return <ContextChainBlock summary={summary} items={items} />;
           })()}
+
           <FeedbackResult
             record={latestFeedback}
             personas={personas}
@@ -526,28 +511,13 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
             onStartDiscussion={handleStartDiscussion}
             discussionLoading={discussionLoading}
           />
+
           {latestFeedback?.project_id && (
             <NextStepGuide
               currentTool="persona-feedback"
               projectId={latestFeedback.project_id}
+              onSendTo={(href) => onNavigate(href.replace('/tools/', ''))}
             />
-          )}
-        </>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="space-y-3">
-          {feedbackHistory.length === 0 ? (
-            <Card className="text-center py-8"><p className="text-[var(--text-secondary)]">아직 리허설 기록이 없습니다.</p></Card>
-          ) : (
-            [...feedbackHistory].reverse().map((record) => (
-              <Card key={record.id} hoverable onClick={() => { setLatestFeedback(record); setActiveTab('result'); }}>
-                <h4 className="text-[14px] font-bold">{record.document_title}</h4>
-                <p className="text-[12px] text-[var(--text-secondary)] mt-1">
-                  {record.feedback_perspective} · {record.feedback_intensity} · {record.results.length}명 · {new Date(record.created_at).toLocaleDateString('ko-KR')}
-                </p>
-              </Card>
-            ))
           )}
         </div>
       )}

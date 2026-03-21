@@ -18,6 +18,9 @@ import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, Chevr
 import { track } from '@/lib/analytics';
 import { buildPersonaAccuracyContext } from '@/lib/context-builder';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
+import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext } from '@/lib/context-chain';
+import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useDecomposeStore } from '@/stores/useDecomposeStore';
 
 // ── Revision prompt ──
 const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다.
@@ -110,6 +113,22 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
       const revisionPrompt = `[기획안]\n${currentPlan}\n\n[반영할 이해관계자 피드백 (${selectedIssueList.length}건)]\n${issueText}${directivePart}`;
 
+      // Build revision system prompt with original design context
+      let revisionSystem = REVISION_SYSTEM;
+      const { items: orchestrateItems } = useOrchestrateStore.getState();
+      const { items: decomposeItems } = useDecomposeStore.getState();
+      const relOrch = orchestrateItems
+        .filter(o => o.project_id === activeLoop.project_id && o.status === 'done' && o.analysis)
+        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+      const relDec = decomposeItems
+        .filter(d => d.project_id === activeLoop.project_id && d.status === 'done' && d.analysis)
+        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+      if (relOrch) {
+        const orchCtx = buildOrchestrateContext(relOrch);
+        const decCtx = relDec ? buildDecomposeContext(relDec) : undefined;
+        revisionSystem = `${REVISION_SYSTEM}\n\n${buildRefinementContext(orchCtx, decCtx)}`;
+      }
+
       // ── Phase A: Plan Revision ──
       const revision = await callLLMJson<{
         revised_plan: string;
@@ -117,7 +136,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         not_addressed: string[];
       }>(
         [{ role: 'user', content: revisionPrompt }],
-        { system: REVISION_SYSTEM, maxTokens: 3500 }
+        { system: revisionSystem, maxTokens: 3500 }
       );
 
       // ── Phase B: Re-review with same personas ──
@@ -157,9 +176,9 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 ${recentLogs || '(없음)'}
 
 ## 피드백 지침
-- 관점: 전반적 인상
-- 강도: 솔직하게
-- ⚠️ 이것은 수정된 버전입니다. 이전 피드백이 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
+- 관점: ${latestFeedbackRecord?.feedback_perspective || '전반적 인상'}
+- 강도: ${latestFeedbackRecord?.feedback_intensity || '솔직하게'}
+- ⚠️ 이것은 수정된 버전입니다. 문서 끝에 수정 내역이 첨부되어 있습니다. 이전 피드백이 적절히 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
 ${persona.influence === 'high' ? '- ⚠️ 영향력 높음. 구체적인 승인 조건을 제시하세요.' : ''}
 
 ## 응답 형식 (JSON만 출력)
@@ -179,8 +198,16 @@ ${buildPersonaAccuracyContext(personaId)}
 
 반드시 JSON만 응답하세요.`;
 
+        // Include diff context so persona can verify what changed
+        const changesContext = (revision.changes || [])
+          .map(c => `- ${c.what}: ${c.why} (대응: ${c.addressing})`)
+          .join('\n');
+        const reReviewContent = changesContext
+          ? `${revision.revised_plan}\n\n---\n[이번 수정 사항]\n${changesContext}`
+          : revision.revised_plan;
+
         const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(
-          [{ role: 'user', content: revision.revised_plan }],
+          [{ role: 'user', content: reReviewContent }],
           { system: systemPrompt, maxTokens: 2000 }
         );
         reReviewResults.push({ ...result, persona_id: personaId });

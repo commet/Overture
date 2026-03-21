@@ -28,6 +28,7 @@ interface StepEntryProps {
   onSubmit: (selections: Record<string, string>, text: string) => void;
   disabled?: boolean;
   initialText?: string;
+  contextPanel?: React.ReactNode;
 }
 
 export function StepEntry({
@@ -39,6 +40,7 @@ export function StepEntry({
   onSubmit,
   disabled,
   initialText,
+  contextPanel,
 }: StepEntryProps) {
   const [currentStep, setCurrentStep] = useState(initialText ? steps.length : 0);
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -175,6 +177,7 @@ export function StepEntry({
       {/* Text input (final step) */}
       {isLastStep && (
         <div className="animate-fade-in space-y-3">
+          {contextPanel}
           <div className="flex items-center justify-between">
             <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{textLabel}</h3>
             <button onClick={handleBack} className="flex items-center gap-1 text-[12px] text-[var(--accent)] cursor-pointer hover:underline">

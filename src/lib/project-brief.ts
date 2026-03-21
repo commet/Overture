@@ -71,12 +71,16 @@ export function generateProjectBrief(project: Project | null): string {
         sections.push('');
       }
       if (latest.analysis.hidden_assumptions?.length > 0) {
-        sections.push('### 검증 필요한 전제');
+        sections.push('### 전제 점검 결과');
         latest.analysis.hidden_assumptions.forEach((a: HiddenAssumption | string) => {
           if (typeof a === 'string') {
             sections.push(`- ${a}`);
           } else {
-            sections.push(`- ${a.assumption}${a.risk_if_false ? ` → 거짓이면: ${a.risk_if_false}` : ''}`);
+            const evalLabel = a.evaluation === 'likely_true' ? '✅ 확인됨'
+              : a.evaluation === 'doubtful' ? '❌ 의심됨'
+              : a.evaluation === 'uncertain' ? '❓ 불확실'
+              : '⬜ 미평가';
+            sections.push(`- ${evalLabel} — ${a.assumption}${a.risk_if_false ? ` → 거짓이면: ${a.risk_if_false}` : ''}`);
           }
         });
         sections.push('');

@@ -284,14 +284,23 @@ body {
   transform: translateY(0);
   transition: opacity 0.7s var(--ease-musical), transform 0.7s var(--ease-musical);
 }
+.scroll-hidden-x {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+.scroll-visible-x {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.6s var(--ease-musical), transform 0.6s var(--ease-musical);
+}
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .scroll-hidden {
+  .scroll-hidden, .scroll-hidden-x {
     opacity: 1;
     transform: none;
   }
-  .scroll-visible {
+  .scroll-visible, .scroll-visible-x {
     transition: none;
   }
   .phrase-entrance > * {

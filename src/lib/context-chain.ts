@@ -140,24 +140,49 @@ export function injectDecomposeContext(
     sections.push(`- 리프레이밍 이유: ${ctx.why_reframing_matters}`);
   }
 
-  // Unverified assumptions → these should become key_assumptions
-  if (ctx.unverified_assumptions.length > 0) {
+  // Assumptions — grouped by user's evaluation state
+  const allAssumptions = [...ctx.unverified_assumptions, ...ctx.verified_assumptions];
+  const doubtful = allAssumptions.filter(a => a.evaluation === 'doubtful');
+  const uncertain = allAssumptions.filter(a => a.evaluation === 'uncertain');
+  const confirmed = allAssumptions.filter(a => a.evaluation === 'likely_true');
+  const noEval = allAssumptions.filter(a => !a.evaluation);
+
+  if (doubtful.length > 0) {
     sections.push('');
-    sections.push('### 미확인 전제 (key_assumptions에 포함시키세요)');
-    ctx.unverified_assumptions.forEach((a, i) => {
-      sections.push(`${i + 1}. "${a.assumption}"`);
-      if (a.risk_if_false) {
-        sections.push(`   만약 아니라면: ${a.risk_if_false}`);
-      }
+    sections.push('### 의심된 전제 (key_assumptions 최우선 — 검증 단계 필수)');
+    doubtful.forEach((a, i) => {
+      sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 의심됨)`);
+      if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
     });
   }
 
-  // Verified assumptions → noted but lower priority
-  if (ctx.verified_assumptions.length > 0) {
+  if (uncertain.length > 0) {
     sections.push('');
-    sections.push('### 확인된 전제 (참고만, 재검증 불필요)');
-    ctx.verified_assumptions.forEach(a => {
-      sections.push(`- ${a.assumption} (확인됨)`);
+    sections.push('### 불확실한 전제 (key_assumptions에 포함 — 검증 방법 제시)');
+    uncertain.forEach((a, i) => {
+      sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 불확실)`);
+      if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
+    });
+  }
+
+  if (confirmed.length > 0) {
+    sections.push('');
+    if (doubtful.length === 0 && uncertain.length === 0) {
+      // 모든 전제 확인됨 → 방향 강화 근거로 활용
+      sections.push('### 확인된 전제 (계획의 근거로 활용하세요)');
+    } else {
+      sections.push('### 확인된 전제 (참고, 재검증 불필요)');
+    }
+    confirmed.forEach(a => sections.push(`- ${a.assumption} (확인됨)`));
+  }
+
+  // Legacy: 평가 없는 전제 (이전 데이터 호환)
+  if (noEval.length > 0) {
+    sections.push('');
+    sections.push('### 전제 (평가 미완료 — key_assumptions에 포함시키세요)');
+    noEval.forEach((a, i) => {
+      sections.push(`${i + 1}. "${a.assumption}"`);
+      if (a.risk_if_false) sections.push(`   만약 아니라면: ${a.risk_if_false}`);
     });
   }
 
@@ -209,6 +234,36 @@ export function injectOrchestrateContext(
   sections.push('## 편곡에서 설계된 실행 계획');
   sections.push(`- 핵심 방향: ${orchestrateCtx.governing_idea}`);
 
+  // Storyline — 왜 이 접근인지 구조적 맥락
+  if (orchestrateCtx.storyline) {
+    const s = orchestrateCtx.storyline;
+    sections.push(`- 상황: ${s.situation}`);
+    sections.push(`- 문제: ${s.complication}`);
+    sections.push(`- 해결: ${s.resolution}`);
+  }
+
+  // Design rationale
+  if (orchestrateCtx.design_rationale) {
+    sections.push(`- 설계 근거: ${orchestrateCtx.design_rationale}`);
+  }
+
+  // Step summary — 압축된 실행 흐름 (페르소나가 전체 그림을 볼 수 있도록)
+  if (orchestrateCtx.steps.length > 0) {
+    const actorLabel: Record<string, string> = { ai: 'AI', human: '사람', both: '협업' };
+    const stepSummary = orchestrateCtx.steps
+      .map((step, i) => {
+        const num = i + 1;
+        const cp = step.checkpoint ? ' ⚑' : '';
+        const onCriticalPath = orchestrateCtx.critical_path?.includes(num) ? ' ★' : '';
+        return `${num}. ${step.task} [${actorLabel[step.actor] || step.actor}]${cp}${onCriticalPath}`;
+      })
+      .join(' / ');
+    sections.push('');
+    sections.push(`### 실행 흐름 (⚑=체크포인트, ★=크리티컬패스)`);
+    sections.push(stepSummary);
+  }
+
+  // Key assumptions — 공격 대상
   if (orchestrateCtx.key_assumptions.length > 0) {
     sections.push('');
     sections.push('### 핵심 가정 (공격 대상)');
@@ -218,15 +273,70 @@ export function injectOrchestrateContext(
     });
   }
 
+  // Decompose unverified assumptions
   if (decomposeCtx?.unverified_assumptions?.length) {
+    const doubtful = decomposeCtx.unverified_assumptions.filter(a => a.evaluation === 'doubtful');
+    const others = decomposeCtx.unverified_assumptions.filter(a => a.evaluation !== 'doubtful');
+    if (doubtful.length > 0) {
+      sections.push('');
+      sections.push('### 사용자가 의심한 전제 (우선 검증 대상)');
+      doubtful.forEach(a => sections.push(`- "${a.assumption}"`));
+    }
+    if (others.length > 0) {
+      sections.push('');
+      sections.push('### 악보 해석에서 미확인된 전제');
+      others.forEach(a => sections.push(`- "${a.assumption}"`));
+    }
+  }
+
+  // AI limitations from decompose
+  if (decomposeCtx?.ai_limitations?.length) {
     sections.push('');
-    sections.push('### 악보 해석에서 미확인된 전제 (연결 검증)');
-    decomposeCtx.unverified_assumptions.forEach(a => {
-      sections.push(`- "${a.assumption}" → 편곡에서 검증 단계가 있는지 확인하세요`);
-    });
+    sections.push('### AI 한계 (이 영역은 사람이 판단해야 함)');
+    decomposeCtx.ai_limitations.forEach(l => sections.push(`- ${l}`));
   }
 
   return `${basePrompt}\n\n---\n\n${sections.join('\n')}`;
+}
+
+/**
+ * Build refinement-specific context from orchestrate + decompose.
+ * Gives the revision AI awareness of original design constraints.
+ */
+export function buildRefinementContext(
+  orchestrateCtx: OrchestrateContext,
+  decomposeCtx?: DecomposeContext
+): string {
+  const sections: string[] = [];
+
+  sections.push('## 원래 설계 맥락 (수정 시 위반하지 마세요)');
+  sections.push(`- 핵심 방향: ${orchestrateCtx.governing_idea}`);
+
+  if (orchestrateCtx.design_rationale) {
+    sections.push(`- 설계 근거: ${orchestrateCtx.design_rationale}`);
+  }
+
+  // Critical path awareness
+  if (orchestrateCtx.critical_path?.length > 0 && orchestrateCtx.steps.length > 0) {
+    const cpSteps = orchestrateCtx.critical_path
+      .map(i => orchestrateCtx.steps[i - 1]?.task)
+      .filter(Boolean);
+    if (cpSteps.length > 0) {
+      sections.push(`- 크리티컬 패스: ${cpSteps.join(' → ')}`);
+    }
+  }
+
+  if (decomposeCtx) {
+    const question = decomposeCtx.selected_direction || decomposeCtx.reframed_question;
+    if (question) {
+      sections.push(`- 근본 질문: ${question}`);
+    }
+    if (decomposeCtx.ai_limitations?.length > 0) {
+      sections.push(`- AI 한계: ${decomposeCtx.ai_limitations.join(', ')}`);
+    }
+  }
+
+  return sections.join('\n');
 }
 
 /* ────────────────────────────────────
