@@ -718,25 +718,25 @@ function PersonaSection() {
           <Users size={14} /> 3악장 &middot; 리허설
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight">
-          이해관계자의 눈으로 보다
+          보고 전에, 대표의 반응을 예측하다
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          보고서를 보내기 전에, 박 대표라면 어떻게 반응할지 시뮬레이션합니다.
+          앞서 설계한 <strong className="text-[var(--text-primary)]">5단계 실행 계획</strong>을 박 대표에게 보고한다면 어떤 반응이 올까요?
         </p>
       </div>
 
       {/* Persona header + reaction */}
       <Card>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[16px] font-bold shrink-0">박</div>
+          <div className="w-12 h-12 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[18px] font-bold shrink-0">박</div>
           <div>
-            <span className="text-[15px] font-bold text-[var(--text-primary)]">{p.name}</span>
+            <span className="text-[16px] font-bold text-[var(--text-primary)]">{p.name}</span>
             <span className="text-[13px] text-[var(--text-secondary)] ml-2">{p.role}</span>
             <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">영향력 높음</span>
           </div>
         </div>
-        <div className="rounded-xl bg-[var(--ai)] px-4 py-3">
-          <p className="text-[14px] font-medium text-[var(--text-primary)] leading-relaxed">
+        <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5">
+          <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed">
             &ldquo;{f.overall_reaction}&rdquo;
           </p>
         </div>
@@ -744,25 +744,24 @@ function PersonaSection() {
 
       {/* 리스크 분석 — 통합 카드 */}
       <Card className="!border-l-4 !border-l-red-400 space-y-4">
-        <p className="text-[13px] font-bold text-red-600">리스크 분석</p>
+        <p className="text-[14px] font-bold text-red-600">이 계획의 리스크</p>
 
         <div>
-          <p className="text-[11px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
-          <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{f.failure_scenario}</p>
+          <p className="text-[13px] font-bold text-red-500 mb-1.5">실패 시나리오</p>
+          <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{f.failure_scenario}</p>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-[11px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
+        <div className="space-y-3 pt-1">
           {f.classified_risks.map((risk, i) => {
             const tag = risk.category === 'critical'
-              ? { label: '위협', cls: 'bg-red-100 text-red-700' }
+              ? { label: '핵심 위협', cls: 'bg-red-100 text-red-700' }
               : risk.category === 'manageable'
-              ? { label: '관리', cls: 'bg-amber-100 text-amber-700' }
-              : { label: '침묵', cls: 'bg-purple-100 text-purple-700' };
+              ? { label: '관리 가능', cls: 'bg-amber-100 text-amber-700' }
+              : { label: '침묵의 리스크', cls: 'bg-purple-100 text-purple-700' };
             return (
-              <div key={i} className="flex items-start gap-2 text-[13px]">
-                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${tag.cls}`}>{tag.label}</span>
-                <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
+              <div key={i} className={`rounded-lg px-3.5 py-3 ${risk.category === 'unspoken' ? 'bg-purple-50 border border-purple-200' : 'bg-[var(--bg)]'}`}>
+                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mb-1.5 ${tag.cls}`}>{tag.label}</span>
+                <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{risk.text}</p>
               </div>
             );
           })}
@@ -771,11 +770,11 @@ function PersonaSection() {
 
       {/* 승인 조건 */}
       <Card className="!border-l-4 !border-l-[var(--success)]">
-        <p className="text-[13px] font-bold text-[var(--success)] mb-2">이것을 보여주면 OK</p>
-        <ul className="space-y-1.5">
+        <p className="text-[14px] font-bold text-[var(--success)] mb-2.5">이것을 보여주면 OK</p>
+        <ul className="space-y-2">
           {f.approval_conditions.map((c, i) => (
-            <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2">
-              <Check size={14} className="text-[var(--success)] shrink-0 mt-0.5" /> {c}
+            <li key={i} className="text-[14px] text-[var(--text-primary)] flex items-start gap-2.5">
+              <Check size={16} className="text-[var(--success)] shrink-0 mt-0.5" /> {c}
             </li>
           ))}
         </ul>
@@ -784,7 +783,7 @@ function PersonaSection() {
       <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">핵심:</span> &ldquo;침묵의 리스크&rdquo;를 보세요 &mdash; CEO가 직접 따온 적자 계약이라는 사실. 모두 알지만 아무도 꺼내지 않는 문제를 미리 파악하면 보고서의 톤이 달라집니다.
+          <span className="font-bold">핵심:</span> &ldquo;침묵의 리스크&rdquo;를 보세요 &mdash; CEO가 직접 따온 적자 계약. 모두 알지만 아무도 꺼내지 않는 문제를 미리 파악하면 보고서의 톤이 완전히 달라집니다.
         </p>
       </div>
     </div>
