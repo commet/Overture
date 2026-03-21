@@ -16,7 +16,7 @@ export function ModeToggle({ mode, onChange }: ModeToggleProps) {
         onClick={() => onChange('direct')}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
           mode === 'direct'
-            ? 'bg-[var(--primary)] text-white shadow-sm'
+            ? 'bg-[var(--primary)] text-[var(--bg)] shadow-sm'
             : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
         }`}
       >
@@ -27,7 +27,7 @@ export function ModeToggle({ mode, onChange }: ModeToggleProps) {
         onClick={() => onChange('interview')}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
           mode === 'interview'
-            ? 'bg-[var(--primary)] text-white shadow-sm'
+            ? 'bg-[var(--primary)] text-[var(--bg)] shadow-sm'
             : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
         }`}
       >

@@ -157,7 +157,7 @@ function ChipSelector({
         value={customValue}
         onChange={(e) => onCustomChange(e.target.value)}
         placeholder="+ 직접 추가..."
-        className="w-full bg-[#fafbfc] border border-dashed border-[var(--border)] rounded-lg px-3 py-2 text-[12px] text-[var(--text-secondary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+        className="w-full bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-lg px-3 py-2 text-[12px] text-[var(--text-secondary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
       />
     </div>
   );
@@ -489,7 +489,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
             placeholder="김 상무님은 CFO입니다. ROI를 최우선시하고, 결론부터 듣고 싶어합니다. 최근 신사업 실패로 보수적..."
-            className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
+            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
             rows={5}
           />
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -530,18 +530,18 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-semibold">이름 *</label>
               <input type="text" value={form.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder="실명 또는 별칭"
-                className="bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
+                className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-semibold">역할 *</label>
               <input type="text" value={form.role} onChange={(e) => handleFieldChange('role', e.target.value)} placeholder="직책/역할"
-                className="bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
+                className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[13px] font-semibold">소속</label>
             <input type="text" value={form.organization} onChange={(e) => handleFieldChange('organization', e.target.value)} placeholder="우리 회사 / 투자사 / 고객사"
-              className="bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
+              className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
           </div>
           <Field label="우선순위 *" placeholder="이 사람이 가장 중요하게 보는 것"
             value={form.priorities} onChange={(e) => handleFieldChange('priorities', e.target.value)} />

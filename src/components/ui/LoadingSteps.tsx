@@ -30,9 +30,9 @@ export function LoadingSteps({ steps, intervalMs = 2500 }: LoadingStepsProps) {
           >
             <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
               i < currentStep
-                ? 'bg-[var(--success)] text-white'
+                ? 'bg-[var(--success)] text-[var(--bg)]'
                 : i === currentStep
-                ? 'bg-[var(--accent)] text-white'
+                ? 'bg-[var(--accent)] text-[var(--bg)]'
                 : 'bg-[var(--border)] text-[var(--text-secondary)]'
             }`}>
               {i < currentStep ? (

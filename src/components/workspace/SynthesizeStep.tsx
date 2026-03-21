@@ -283,7 +283,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
                     value={bulkInput}
                     onChange={(e) => setBulkInput(e.target.value)}
                     placeholder={"ChatGPT 답변:\n시장 규모는 약 500억 원으로...\n\nClaude 답변:\n해당 시장은 300~700억 원 사이로..."}
-                    className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
+                    className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
                     rows={8}
                   />
                   <div className="flex justify-end">
@@ -315,7 +315,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
                           value={source.content}
                           onChange={(e) => updateIndividualSource(i, 'content', e.target.value)}
                           placeholder="이 소스의 결과물이나 의견을 붙여넣으세요"
-                          className="w-full bg-[#fafbfc] border border-[var(--border)] rounded-lg px-3 py-2 text-[14px] leading-[1.6] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[14px] leading-[1.6] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] resize-none"
                           rows={4}
                         />
                       </div>
@@ -438,7 +438,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
                       value={conflict.user_reasoning || ''}
                       onChange={(e) => handleJudgmentReasoning(conflict.id, e.target.value)}
                       placeholder="판단 근거 (선택사항)"
-                      className="w-full bg-white border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] focus:outline-none focus:border-[var(--accent)]"
+                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] focus:outline-none focus:border-[var(--accent)]"
                     />
                   </div>
                 </Card>

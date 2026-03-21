@@ -204,7 +204,7 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
         <button
           onClick={handleSubmit}
           disabled={!input.trim() || loading}
-          className="p-2 rounded-lg bg-[var(--accent)] text-white disabled:opacity-40 cursor-pointer hover:bg-[var(--accent-light)] transition-colors shrink-0"
+          className="p-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] disabled:opacity-40 cursor-pointer hover:bg-[var(--accent-light)] transition-colors shrink-0"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         </button>

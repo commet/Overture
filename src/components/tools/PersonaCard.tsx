@@ -36,7 +36,7 @@ export function PersonaCard({ persona, onClick, selected, selectable, onSelect }
         {/* Avatar with influence ring */}
         <div className={`
           w-11 h-11 rounded-xl flex items-center justify-center text-[18px] font-bold shrink-0
-          ${selected ? 'bg-[var(--accent)] text-white' : `${inf.bg} ${inf.text}`}
+          ${selected ? 'bg-[var(--accent)] text-[var(--bg)]' : `${inf.bg} ${inf.text}`}
         `}>
           {persona.name.charAt(0).toUpperCase()}
         </div>

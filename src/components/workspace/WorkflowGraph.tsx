@@ -124,7 +124,7 @@ function ActorToggle({
   onChange: (actor: 'ai' | 'human' | 'both') => void;
 }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-white/80 p-0.5">
+    <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]/80 p-0.5">
       {(['ai', 'both', 'human'] as const).map((actor) => {
         const a = ACTORS[actor];
         const active = current === actor;
@@ -308,7 +308,7 @@ export function WorkflowGraph({
                               value={step.user_ai_guide || ''}
                               onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
                               placeholder="예: 국내 시장 중심으로, 최근 3년 데이터 기준으로"
-                              className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-white placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
+                              className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
                               onClick={(e) => e.stopPropagation()}
                             />
                           </div>
@@ -346,7 +346,7 @@ export function WorkflowGraph({
                                   value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
                                   onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
                                   placeholder="또는 직접 입력..."
-                                  className="w-full text-[12px] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:bg-white focus:outline-none"
+                                  className="w-full text-[12px] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:bg-[var(--surface)] focus:outline-none"
                                   onClick={(e) => e.stopPropagation()}
                                 />
                               </div>
@@ -356,7 +356,7 @@ export function WorkflowGraph({
                                 value={step.user_decision || ''}
                                 onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
                                 placeholder="결정 사항을 입력하세요..."
-                                className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-white placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
+                                className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
                                 onClick={(e) => e.stopPropagation()}
                               />
                             )}

@@ -134,12 +134,12 @@ export function ExecutionReadiness({ projectId }: Props) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 {check.status === 'done' ? (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--success)' }}>
-                    <Check size={12} className="text-white" />
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[var(--success)]">
+                    <Check size={12} className="text-[var(--bg)]" />
                   </div>
                 ) : check.status === 'partial' ? (
-                  <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center">
-                    <AlertTriangle size={11} className="text-white" />
+                  <div className="w-5 h-5 rounded-full bg-[var(--risk-manageable)] flex items-center justify-center">
+                    <AlertTriangle size={11} className="text-[var(--bg)]" />
                   </div>
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-[var(--border)] flex items-center justify-center">

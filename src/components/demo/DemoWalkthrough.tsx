@@ -200,8 +200,8 @@ export function DemoWalkthrough() {
                 className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${active ? 'scale-110' : 'opacity-50 hover:opacity-80'}`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-colors ${
-                  active ? 'bg-[var(--accent)] text-white shadow-sm' :
-                  done ? 'bg-[var(--accent)] text-white' :
+                  active ? 'bg-[var(--accent)] text-[var(--bg)] shadow-sm' :
+                  done ? 'bg-[var(--accent)] text-[var(--bg)]' :
                   'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)]'
                 }`}>
                   {done ? <Check size={14} /> : <Icon size={14} />}
@@ -373,7 +373,7 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
       </div>
 
       {/* 3. 재정의된 질문 — dramatic reveal */}
-      <div className="rounded-xl bg-[var(--primary)] text-white p-5 md:p-6">
+      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] p-5 md:p-6">
         <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/50 mb-3">재정의된 질문</p>
         <p className="text-[17px] md:text-[19px] font-bold leading-snug">{d.reframed_question}</p>
         <div className="mt-4 pt-3 border-t border-white/15">
@@ -595,7 +595,7 @@ function OrchestrateSection() {
                           <Bot size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
                           AI 실행 가이드
                         </span>
-                        <p className="text-[12px] text-[var(--text-primary)] leading-relaxed bg-white/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
+                        <p className="text-[12px] text-[var(--text-primary)] leading-relaxed bg-[var(--surface)]/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
                           {s.user_ai_guide}
                         </p>
                       </div>
@@ -610,7 +610,7 @@ function OrchestrateSection() {
                         </span>
 
                         {/* Judgment question */}
-                        <p className="text-[12px] text-[var(--text-primary)] mb-2.5 leading-relaxed bg-white/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
+                        <p className="text-[12px] text-[var(--text-primary)] mb-2.5 leading-relaxed bg-[var(--surface)]/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
                           {s.judgment}
                         </p>
 
@@ -718,7 +718,7 @@ function PersonaSection() {
       <div className="rounded-2xl overflow-hidden border border-purple-200/60 shadow-sm">
         <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 px-5 py-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center text-[24px] shrink-0">
+            <div className="w-14 h-14 rounded-xl bg-[var(--surface)] shadow-sm flex items-center justify-center text-[24px] shrink-0">
               &#x1F454;
             </div>
             <div>
@@ -733,7 +733,7 @@ function PersonaSection() {
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
             {p.traits.map((t, i) => (
-              <span key={i} className="px-2.5 py-1 bg-white/80 text-purple-700 rounded-lg text-[11px] font-semibold shadow-xs">{t}</span>
+              <span key={i} className="px-2.5 py-1 bg-[var(--surface)]/80 text-purple-700 rounded-lg text-[11px] font-semibold shadow-xs">{t}</span>
             ))}
           </div>
         </div>
@@ -750,7 +750,7 @@ function PersonaSection() {
       </div>
 
       {/* Failure scenario — dark card */}
-      <div className="rounded-2xl bg-[var(--primary)] text-white p-5">
+      <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] p-5">
         <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
         <p className="text-[14px] leading-relaxed text-white/90">{f.failure_scenario}</p>
       </div>
@@ -848,7 +848,7 @@ function RefinementSection() {
             <TrendingUp size={14} className="text-[var(--success)]" />
           </div>
         </div>
-        <div className="h-2.5 bg-white/50 rounded-full overflow-hidden mb-2">
+        <div className="h-2.5 bg-[var(--surface)]/50 rounded-full overflow-hidden mb-2">
           <div className="h-full bg-[var(--success)] rounded-full transition-all" style={{ width: '92%' }} />
         </div>
         <p className="text-[12px] text-[#2d6b2d]">수렴 임계값(80%)을 초과했습니다. 보고 준비가 완료되었습니다.</p>

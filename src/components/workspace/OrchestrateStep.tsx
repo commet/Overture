@@ -444,7 +444,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               )}
 
               {/* 핵심 방향 */}
-              <div className="rounded-xl bg-[var(--primary)] text-white px-5 py-4">
+              <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4">
                 <p className="text-[11px] font-medium text-white/50 mb-1">{t('orchestrate.governingIdea')}</p>
                 <p className="text-[16px] font-bold leading-snug">
                   {current.analysis.governing_idea}

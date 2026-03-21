@@ -236,7 +236,7 @@ export function InterviewInput({
             onChange={(e) => handleTextChange(step.key, e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={step.placeholder}
-            className="w-full mt-4 bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
+            className="w-full mt-4 bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
             rows={step.rows || 3}
             autoFocus
           />

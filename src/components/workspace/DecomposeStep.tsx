@@ -771,7 +771,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     </div>
 
                     {/* 재정의된 질문 — 메인 */}
-                    <div className="bg-[var(--primary)] text-white px-5 py-5 md:px-6 md:py-6">
+                    <div className="bg-[var(--primary)] text-[var(--bg)] px-5 py-5 md:px-6 md:py-6">
                       <p className="text-[11px] font-semibold text-white/50 mb-2">재정의된 질문</p>
                       <p className="text-[18px] md:text-[20px] font-bold leading-snug">
                         {analysis.reframed_question}

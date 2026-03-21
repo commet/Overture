@@ -219,7 +219,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
                   {/* Avatar */}
                   <div className={`
                     w-10 h-10 rounded-xl flex items-center justify-center text-[16px] font-bold shrink-0
-                    ${selected ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg)] text-[var(--text-secondary)]'}
+                    ${selected ? 'bg-[var(--accent)] text-[var(--bg)]' : 'bg-[var(--bg)] text-[var(--text-secondary)]'}
                   `}>
                     {p.name.charAt(0)}
                   </div>

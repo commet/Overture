@@ -155,7 +155,7 @@ export default function SettingsPage() {
               value={settings.anthropic_api_key}
               onChange={(e) => updateSettings({ anthropic_api_key: e.target.value })}
               placeholder="sk-ant-..."
-              className="w-full bg-[#fafbfc] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
             />
             <button
               onClick={() => setShowKey(!showKey)}
@@ -192,7 +192,7 @@ export default function SettingsPage() {
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
           </div>
-          <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-[var(--danger)]/10 rounded-lg">
             <div>
               <p className="text-[14px] font-medium text-red-700">데이터 초기화</p>
               <p className="text-[12px] text-red-400">모든 저장된 데이터를 삭제합니다</p>
@@ -202,6 +202,35 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+      </Card>
+
+      {/* Language */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[15px] font-bold">언어 / Language</h3>
+        </div>
+        <div className="flex gap-2">
+          {[
+            { value: 'ko' as const, label: '한국어' },
+            { value: 'en' as const, label: 'English' },
+          ].map((lang) => (
+            <button
+              key={lang.value}
+              onClick={() => { updateSettings({ language: lang.value }); window.location.reload(); }}
+              className={`flex-1 py-2.5 rounded-lg text-[13px] font-medium border text-center transition-colors cursor-pointer ${
+                settings.language === lang.value
+                  ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
+              }`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-[var(--text-tertiary)] mt-2">
+          {settings.language === 'en' ? 'Partial English support. Some UI text may still appear in Korean.' : '일부 UI 텍스트는 아직 한국어로만 제공됩니다.'}
+        </p>
       </Card>
 
       {/* Audio Settings */}
@@ -231,7 +260,7 @@ export default function SettingsPage() {
                 settings.audio_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
               }`}
             >
-              <span className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+              <span className={`block w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform ${
                 settings.audio_enabled ? 'translate-x-[22px]' : 'translate-x-[2px]'
               } mt-[2px]`} />
             </button>

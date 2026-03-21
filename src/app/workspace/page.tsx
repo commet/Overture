@@ -102,7 +102,7 @@ function WorkspaceContent() {
                         track('project_created');
                       }
                     }}
-                    className="w-full px-4 py-3 rounded-lg bg-[var(--accent)] text-white font-medium text-[14px] hover:opacity-90 transition-opacity cursor-pointer"
+                    className="w-full px-4 py-3 rounded-lg bg-[var(--accent)] text-[var(--bg)] font-medium text-[14px] hover:opacity-90 transition-opacity cursor-pointer"
                   >
                     프로젝트 시작
                   </button>

@@ -94,8 +94,8 @@ export function NextStepGuide({
         {options.map((option, i) => (
           <div
             key={i}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:border-[var(--accent)] hover:bg-white ${
-              option.primary ? 'border-[var(--accent)] bg-white shadow-sm' : 'border-[var(--border)]'
+            className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--surface)] ${
+              option.primary ? 'border-[var(--accent)] bg-[var(--surface)] shadow-sm' : 'border-[var(--border)]'
             }`}
             onClick={() => {
               if (onSendTo && option.primary) {
@@ -104,7 +104,7 @@ export function NextStepGuide({
             }}
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-              option.primary ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg)] text-[var(--text-secondary)]'
+              option.primary ? 'bg-[var(--accent)] text-[var(--bg)]' : 'bg-[var(--bg)] text-[var(--text-secondary)]'
             }`}>
               {option.icon}
             </div>
@@ -112,7 +112,7 @@ export function NextStepGuide({
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-bold text-[var(--text-primary)]">{option.label}</span>
                 {option.primary && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-white font-semibold">추천</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--bg)] font-semibold">추천</span>
                 )}
               </div>
               <p className="text-[12px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{option.reason}</p>
