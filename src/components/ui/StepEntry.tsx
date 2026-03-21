@@ -128,7 +128,7 @@ export function StepEntry({
               </button>
             </div>
           ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {currentEntryStep.options.map((option) => {
               const isSelected = selections[currentEntryStep.key] === option.value;
               return (

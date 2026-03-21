@@ -124,7 +124,7 @@ export function OutputSelector({ project }: OutputSelectorProps) {
       <h3 className="text-[14px] font-bold text-[var(--text-primary)]">공연 — 산출물 선택</h3>
       <p className="text-[12px] text-[var(--text-secondary)]">같은 서곡에서 무대 위 목적에 맞는 형식으로 내보냅니다.</p>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {formats.map((format) => (
           <button
             key={format.key}

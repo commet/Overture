@@ -120,7 +120,7 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
             프로젝트를 만들면 맥락이 연결된 Output을 생성합니다
           </p>
         )}
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {outputFormats.map((fmt) => (
             <button
               key={fmt.key}

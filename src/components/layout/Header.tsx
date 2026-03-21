@@ -171,7 +171,7 @@ export function Header() {
       {/* Mobile menu */}
       {mobileMenuOpen && (
         <nav className="md:hidden border-t border-[var(--border-subtle)] bg-[var(--surface)]/95 backdrop-blur-xl animate-slide-down">
-          <div className="px-3 py-2 space-y-0.5">
+          <div className="px-4 py-2 space-y-0.5">
             {navItems.map((item) => (
               <Link
                 key={item.href}

@@ -385,7 +385,7 @@ ${buildPersonaAccuracyContext(personaId)}
           <Card className={`!p-4 ${convergence.converged ? '!bg-[var(--collab)] !border-green-200' : ''}`}>
             <h3 className="text-[13px] font-bold text-[var(--text-primary)] mb-3">수렴 상태</h3>
 
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               {/* Critical risks */}
               <div className={`rounded-lg p-3 text-center border ${convergence.critical_remaining === 0 ? 'bg-[var(--collab)] border-[var(--success)]/20' : 'bg-[var(--danger)]/10 border-[var(--danger)]/20'}`}>
                 <p className={`text-[18px] font-bold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>

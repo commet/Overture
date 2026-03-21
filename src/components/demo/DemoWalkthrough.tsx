@@ -185,7 +185,7 @@ export function DemoWalkthrough() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto px-5 md:px-0">
       {/* ─── Progress ─── */}
       <nav className="flex items-center justify-center gap-0 mb-8 md:mb-12">
         {STEPS.map((s, i) => {
