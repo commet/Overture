@@ -596,23 +596,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
          ═══════════════════════════════════════ */}
       {current?.status === 'analyzing' && (
         <Card>
-          {isStreaming && streamingText ? (
-            <div className="animate-fade-in">
-              <div className="flex items-center gap-2 mb-3">
-                <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
-                <span className="text-[13px] font-medium text-[var(--text-secondary)]">전제를 분석하는 중...</span>
-              </div>
-              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
-                {streamingText}
-              </pre>
-            </div>
-          ) : (
-            <LoadingSteps steps={[
-              '과제의 전제를 점검하고 있습니다',
-              '숨겨진 질문을 찾고 있습니다',
-              '진짜 주제를 읽어내고 있습니다',
-            ]} />
-          )}
+          <LoadingSteps steps={[
+            '과제의 전제를 점검하고 있습니다',
+            '숨겨진 질문을 찾고 있습니다',
+            '진짜 주제를 읽어내고 있습니다',
+          ]} />
         </Card>
       )}
 
@@ -703,23 +691,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {/* Reframing loading state / Streaming Preview */}
                 {reframing && (
                   <Card>
-                    {isStreaming && streamingText ? (
-                      <div className="animate-fade-in">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
-                          <span className="text-[13px] font-medium text-[var(--text-secondary)]">질문을 재정의하는 중...</span>
-                        </div>
-                        <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
-                          {streamingText}
-                        </pre>
-                      </div>
-                    ) : (
-                      <LoadingSteps steps={[
-                        '당신의 전제 평가를 분석하고 있습니다',
-                        '의심된 전제를 기반으로 질문을 재구성합니다',
-                        '새로운 방향을 도출하고 있습니다',
-                      ]} />
-                    )}
+                    <LoadingSteps steps={[
+                      '당신의 전제 평가를 분석하고 있습니다',
+                      '의심된 전제를 기반으로 질문을 재구성합니다',
+                      '새로운 방향을 도출하고 있습니다',
+                    ]} />
                   </Card>
                 )}
 

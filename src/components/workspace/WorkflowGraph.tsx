@@ -271,8 +271,8 @@ export function WorkflowGraph({
                         </p>
 
                         {step.expected_output && (
-                          <p className="text-[12px] text-[var(--text-primary)]/70 mt-1.5 flex items-start gap-1.5">
-                            <Package size={11} className="shrink-0 mt-0.5 opacity-50" />
+                          <p className="text-[12px] text-[var(--text-primary)] mt-1.5 flex items-start gap-1.5">
+                            <Package size={11} className="shrink-0 mt-0.5 text-[var(--text-secondary)]" />
                             {step.expected_output}
                           </p>
                         )}

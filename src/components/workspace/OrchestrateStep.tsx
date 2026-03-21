@@ -51,7 +51,7 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
    - actor: "ai" | "human" | "both"
    - actor_reasoning: 왜 이 담당이 적절한지 한 문장
    - expected_output: 이 단계의 구체적 기대 산출물 (예: "3개년 매출 시나리오 3개 + 민감도 분석")
-   - judgment: actor가 "human" 또는 "both"일 때, 사람이 무엇을 결정해야 하는지와 고려할 선택지 (actor가 "ai"면 빈 문자열)
+   - judgment: actor가 "human" 또는 "both"일 때, 사람이 결정할 사항을 "질문: 선택지A vs 선택지B vs 선택지C" 형태로 작성. 예: "시장 진입 전략: 국내 우선 vs 글로벌 동시 vs 단계적 확장". actor가 "ai"면 빈 문자열
    - checkpoint: true/false (사람이 반드시 확인해야 하는 단계인지)
    - checkpoint_reason: checkpoint가 true일 때 이유
    - estimated_time: 예상 소요시간 (예: "30분", "2시간", "1일")
@@ -410,19 +410,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── Loading / Streaming Preview ─── */}
       {current?.status === 'analyzing' && (
         <Card>
-          {isStreaming && streamingText ? (
-            <div className="animate-fade-in">
-              <div className="flex items-center gap-2 mb-3">
-                <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
-                <span className="text-[13px] font-medium text-[var(--text-secondary)]">편곡 중...</span>
-              </div>
-              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
-                {streamingText}
-              </pre>
-            </div>
-          ) : (
-            <OrchestrationLoader />
-          )}
+          <OrchestrationLoader />
         </Card>
       )}
 
