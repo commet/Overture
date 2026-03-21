@@ -28,9 +28,9 @@ const DEMO = {
   decompose: {
     surface_task: 'Meridian 계약 유지를 위한 대응 방안을 2주 안에 수립',
     hidden_assumptions: [
-      { assumption: 'Meridian을 반드시 유지해야 한다', risk_if_false: 'Meridian이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크' },
-      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 Meridian 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응' },
-      { assumption: '가격 양보나 추가 서비스로 잡을 수 있다', risk_if_false: '이미 적자인 계약에서 추가 양보는 손실 확대. 선례가 되면 다른 고객도 같은 요구' },
+      { assumption: 'Meridian을 반드시 유지해야 한다', risk_if_false: 'Meridian이 적자 계약이라면 유지할수록 손해. 매출 의존도 40%가 오히려 구조적 리스크', evaluation: 'doubtful' as const },
+      { assumption: '이탈 사유가 우리의 서비스 품질 때문이다', risk_if_false: '실은 Meridian 내부 구조조정이나 경쟁사의 공격적 제안 때문일 수 있음. 원인 오진 시 엉뚱한 대응', evaluation: 'uncertain' as const },
+      { assumption: '가격 양보나 추가 서비스로 잡을 수 있다', risk_if_false: '이미 적자인 계약에서 추가 양보는 손실 확대. 선례가 되면 다른 고객도 같은 요구', evaluation: 'doubtful' as const },
     ],
     reframed_question: 'Meridian 의존도 40%라는 구조적 리스크를 해소하면서, 이 위기를 포트폴리오 다각화의 전환점으로 만들 수 있는가?',
     why_reframing_matters: "'어떻게 잡을까'가 아니라 '잡아야 하는가, 어떤 조건에서 잡아야 하는가'로 바꾸면 대표에게 Go/No-Go 의사결정 근거를 제공할 수 있습니다.",
@@ -343,32 +343,36 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
         <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{d.surface_task}</p>
       </div>
 
-      {/* 2. 전제 점검 — each assumption as its own item */}
+      {/* 2. 전제 점검 — 3가지 판단 */}
       <div>
-        <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">점검이 필요한 전제</p>
-        <p className="text-[12px] text-[var(--text-secondary)] mb-3">이 과제가 성립하려면 다음이 참이어야 합니다</p>
+        <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">전제 점검</p>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-3">이 과제가 성립하려면 다음이 참이어야 합니다. 각 전제를 판단해보세요.</p>
         <div className="space-y-2.5">
-          {d.hidden_assumptions.map((a, i) => (
-            <div
-              key={i}
-              className="rounded-lg overflow-hidden"
-              style={{ borderLeft: '3px solid #d97706' }}
-            >
-              <div className="px-4 py-3 bg-amber-50/40">
-                <div className="flex items-start gap-3">
-                  <span className="text-[16px] font-bold text-amber-400/60 leading-none shrink-0 pt-0.5 tabular-nums select-none">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{a.assumption}</p>
-                    <p className="text-[12px] text-amber-700 mt-1.5 leading-relaxed">
-                      <span className="font-semibold">거짓이면</span> &rarr; {a.risk_if_false}
-                    </p>
+          {d.hidden_assumptions.map((a, i) => {
+            const evalConfig = {
+              doubtful: { label: '의심됨', icon: '❌', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+              uncertain: { label: '불확실', icon: '❓', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+              likely_true: { label: '확인', icon: '✅', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
+            };
+            const ev = evalConfig[a.evaluation || 'uncertain'];
+            return (
+              <div key={i} className="rounded-lg border border-[var(--border-subtle)] overflow-hidden">
+                <div className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">&ldquo;{a.assumption}&rdquo;</p>
+                      <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                        거짓이면 &rarr; {a.risk_if_false}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold ${ev.bg} ${ev.border} ${ev.text} border`}>
+                      {ev.icon} {ev.label}
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -652,22 +656,6 @@ function OrchestrateSection() {
         })}
       </div>
 
-      {/* Prerequisites */}
-      <div>
-        <h4 className="text-[13px] font-bold text-[var(--text-primary)] mb-3">전제 조건 <span className="font-normal text-[var(--text-secondary)]">&mdash; 이 워크플로우가 유효하려면</span></h4>
-        <div className="space-y-2">
-          {o.key_assumptions.map((ka, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]">
-              <span className={`shrink-0 mt-1 w-2 h-2 rounded-full ${ka.importance === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{ka.assumption}</p>
-                <p className="text-[12px] text-red-600/70 mt-1">틀리면 &rarr; {ka.if_wrong}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
         <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
@@ -686,16 +674,10 @@ function PersonaSection() {
   const p = DEMO.persona;
   const f = p.feedback;
 
-  const riskConfig: Record<string, { emoji: string; color: string; bg: string; label: string; labelBg: string }> = {
-    critical: { emoji: '🔴', color: '#E24B4A', bg: 'bg-red-50/80', label: '핵심 위협', labelBg: 'bg-red-600 text-white' },
-    manageable: { emoji: '🟡', color: '#EF9F27', bg: 'bg-amber-50/80', label: '관리 가능', labelBg: 'bg-amber-500 text-white' },
-    unspoken: { emoji: '🟣', color: '#7F77DD', bg: 'bg-purple-50/80', label: '침묵의 리스크', labelBg: 'bg-purple-600 text-white' },
-  };
-
   return (
     <div className="space-y-5">
       <div>
-        <div className="flex items-center gap-2 text-[12px] text-purple-600 font-semibold tracking-wider uppercase mb-2">
+        <div className="flex items-center gap-2 text-[12px] text-[#6b4c9a] font-semibold tracking-wider uppercase mb-2">
           <Users size={14} /> 3악장 &middot; 리허설
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight">
@@ -706,100 +688,66 @@ function PersonaSection() {
         </p>
       </div>
 
-      {/* Context chain */}
-      <div className="flex items-start gap-2.5 bg-[var(--checkpoint)] rounded-xl px-4 py-3">
-        <Link2 size={14} className="text-amber-700 shrink-0 mt-1" />
-        <div className="text-[12px] text-amber-800">
-          <span className="font-bold">맥락 체인</span> &mdash; 편곡의 <strong>핵심 가정 3건</strong>을 이 리허설에서 검증합니다.
-        </div>
-      </div>
-
-      {/* Persona card — gradient, prominent */}
-      <div className="rounded-2xl overflow-hidden border border-purple-200/60 shadow-sm">
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 px-5 py-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-[var(--surface)] shadow-sm flex items-center justify-center text-[24px] shrink-0">
-              &#x1F454;
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{p.name}</h3>
-                <span className="text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  High Influence
-                </span>
-              </div>
-              <p className="text-[13px] text-purple-700 mt-0.5">{p.role}</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {p.traits.map((t, i) => (
-              <span key={i} className="px-2.5 py-1 bg-[var(--surface)]/80 text-purple-700 rounded-lg text-[11px] font-semibold shadow-xs">{t}</span>
-            ))}
+      {/* Persona header + reaction */}
+      <Card>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-11 h-11 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[16px] font-bold shrink-0">박</div>
+          <div>
+            <span className="text-[15px] font-bold text-[var(--text-primary)]">{p.name}</span>
+            <span className="text-[13px] text-[var(--text-secondary)] ml-2">{p.role}</span>
+            <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">영향력 높음</span>
           </div>
         </div>
-      </div>
-
-      {/* Overall reaction — quote style */}
-      <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 shadow-sm">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-purple-500 mb-3">박 대표의 반응</p>
-        <div className="pl-4 border-l-3 border-purple-400">
-          <p className="text-[15px] text-[var(--text-primary)] leading-relaxed font-medium italic">
+        <div className="rounded-xl bg-[var(--ai)] px-4 py-3">
+          <p className="text-[14px] font-medium text-[var(--text-primary)] leading-relaxed">
             &ldquo;{f.overall_reaction}&rdquo;
           </p>
         </div>
-      </div>
+      </Card>
 
-      {/* Failure scenario — dark card */}
-      <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] p-5">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">이 계획이 실패한다면</p>
-        <p className="text-[14px] leading-relaxed text-white/90">{f.failure_scenario}</p>
-      </div>
+      {/* 리스크 분석 — 통합 카드 */}
+      <Card className="!border-l-4 !border-l-red-400 space-y-4">
+        <p className="text-[13px] font-bold text-red-600">리스크 분석</p>
 
-      {/* Risk cards — 3 columns, bold colors */}
-      <div>
-        <p className="text-[14px] font-bold text-[var(--text-primary)] mb-3">3분류 리스크</p>
-        <div className="grid grid-cols-1 gap-3">
+        <div>
+          <p className="text-[11px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
+          <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{f.failure_scenario}</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
           {f.classified_risks.map((risk, i) => {
-            const rc = riskConfig[risk.category];
+            const tag = risk.category === 'critical'
+              ? { label: '위협', cls: 'bg-red-100 text-red-700' }
+              : risk.category === 'manageable'
+              ? { label: '관리', cls: 'bg-amber-100 text-amber-700' }
+              : { label: '침묵', cls: 'bg-purple-100 text-purple-700' };
             return (
-              <div key={i} className={`${rc.bg} rounded-2xl p-4 relative`} style={{ borderLeft: `4px solid ${rc.color}` }}>
-                {risk.category === 'unspoken' && (
-                  <span className="absolute -top-2 right-4 text-[9px] font-bold text-white bg-purple-600 px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
-                    주목
-                  </span>
-                )}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[16px]">{rc.emoji}</span>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${rc.labelBg}`}>
-                    {rc.label}
-                  </span>
-                </div>
-                <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{risk.text}</p>
+              <div key={i} className="flex items-start gap-2 text-[13px]">
+                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${tag.cls}`}>{tag.label}</span>
+                <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
               </div>
             );
           })}
         </div>
-      </div>
+      </Card>
 
-      {/* Approval conditions */}
-      <div className="rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50/50 border border-green-200/60 p-5">
-        <p className="text-[12px] font-bold text-emerald-700 mb-3 uppercase tracking-wider">승인 조건</p>
-        <ul className="space-y-2">
+      {/* 승인 조건 */}
+      <Card className="!border-l-4 !border-l-[var(--success)]">
+        <p className="text-[13px] font-bold text-[var(--success)] mb-2">이것을 보여주면 OK</p>
+        <ul className="space-y-1.5">
           {f.approval_conditions.map((c, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)]">
-              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
-                <Check size={12} className="text-white" />
-              </div>
-              {c}
+            <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2">
+              <Check size={14} className="text-[var(--success)] shrink-0 mt-0.5" /> {c}
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
-        <Lightbulb size={16} className="text-purple-600 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 bg-[var(--ai)] rounded-xl px-4 py-3">
+        <Lightbulb size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
-          <span className="font-bold">핵심:</span> &ldquo;침묵의 리스크&rdquo;를 보세요. CEO가 직접 따온 적자 계약이라는 사실 &mdash; 모두 알지만 아무도 꺼내지 않는 문제. 이걸 미리 파악하면 보고서의 톤과 프레이밍이 완전히 달라집니다.
+          <span className="font-bold">핵심:</span> &ldquo;침묵의 리스크&rdquo;를 보세요 &mdash; CEO가 직접 따온 적자 계약이라는 사실. 모두 알지만 아무도 꺼내지 않는 문제를 미리 파악하면 보고서의 톤이 달라집니다.
         </p>
       </div>
     </div>
@@ -877,44 +825,37 @@ function RefinementSection() {
         </svg>
       </Card>
 
-      {/* Iteration cards */}
-      <div className="space-y-2">
-        {iters.map((it, i) => {
-          const prev = i > 0 ? iters[i - 1] : null;
-          const delta = prev ? it.score - prev.score : it.score;
-          return (
-            <Card key={i} className="!p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${
-                    it.score >= 0.8 ? 'bg-[var(--collab)] text-[var(--success)]' : 'bg-[var(--ai)] text-[#2d4a7c]'
-                  }`}>
-                    {it.number}
-                  </div>
-                  <div>
+      {/* Iteration timeline */}
+      <div className="relative">
+        {/* Vertical line */}
+        <div className="absolute left-[19px] top-4 bottom-4 w-px bg-[var(--border)]" />
+
+        <div className="space-y-4">
+          {iters.map((it, i) => {
+            const prev = i > 0 ? iters[i - 1] : null;
+            const delta = prev ? it.score - prev.score : it.score;
+            const isLast = i === iters.length - 1;
+            return (
+              <div key={i} className="flex gap-4 relative">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 z-10 ${
+                  isLast ? 'bg-[var(--success)] text-white' : 'bg-[var(--surface)] border-2 border-[var(--border)] text-[var(--text-secondary)]'
+                }`}>
+                  {it.number}차
+                </div>
+                <Card className="flex-1 !p-3.5">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)]">반복 {it.number}</p>
-                      <span className={`text-[11px] font-bold ${delta > 0 ? 'text-[var(--success)]' : 'text-[var(--text-secondary)]'}`}>
-                        +{Math.round(delta * 100)}%
-                      </span>
+                      <span className="text-[13px] font-bold text-[var(--text-primary)]">{Math.round(it.score * 100)}%</span>
+                      <span className="text-[11px] font-bold text-[var(--success)]">+{Math.round(delta * 100)}%</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] mt-0.5">
-                      <span className="text-[var(--success)]">{it.resolved}건 해결</span>
-                      <span className="text-amber-600">{it.unresolved}건 미해결</span>
-                    </div>
+                    <span className="text-[11px] text-[var(--text-secondary)]">{it.resolved}/{it.total}건 해결</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-12 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${it.score * 100}%` }} />
-                  </div>
-                  <span className="text-[11px] font-bold text-[var(--text-secondary)]">{Math.round(it.score * 100)}%</span>
-                </div>
+                  <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{it.summary}</p>
+                </Card>
               </div>
-              <p className="text-[12px] text-[var(--text-secondary)] mt-2 bg-[var(--bg)] rounded-lg px-3 py-2">{it.summary}</p>
-            </Card>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex items-start gap-3 bg-[var(--collab)] rounded-xl px-4 py-3">

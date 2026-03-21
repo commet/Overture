@@ -118,12 +118,17 @@ export function Header() {
                     className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-[var(--surface)] transition-colors cursor-pointer"
                   >
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center">
-                        <span className="text-white text-[11px] font-bold">{displayName.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="w-7 h-7 rounded-full"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+                      />
+                    ) : null}
+                    <div className={`w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center ${avatarUrl ? 'hidden' : ''}`}>
+                      <span className="text-white text-[11px] font-bold">{displayName.charAt(0).toUpperCase()}</span>
+                    </div>
                   </button>
 
                   {userMenuOpen && (
