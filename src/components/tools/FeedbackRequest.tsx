@@ -32,9 +32,9 @@ const perspectives = [
 ];
 
 const intensities = [
-  { value: '부드럽게', emoji: '🟢', description: '건설적 피드백 위주' },
-  { value: '솔직하게', emoji: '🟡', description: '좋은 점과 문제점 균형' },
-  { value: '까다롭게', emoji: '🔴', description: '최악의 시나리오 중심' },
+  { value: '부드럽게', mark: 'p', description: '건설적 피드백 위주' },
+  { value: '솔직하게', mark: 'mf', description: '좋은 점과 문제점 균형' },
+  { value: '까다롭게', mark: 'ff', description: '최악의 시나리오 중심' },
 ];
 
 const INFLUENCE_STYLES = {
@@ -276,7 +276,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
                     : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
                 }`}
               >
-                {item.emoji} {item.value}
+                <span className="font-serif italic mr-1">{item.mark}</span> {item.value}
               </button>
             ))}
           </div>

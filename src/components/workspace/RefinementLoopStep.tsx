@@ -284,7 +284,7 @@ ${buildPersonaAccuracyContext(personaId)}
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">합주 연습 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 피드백 반영</span></h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>합주 연습 <span className="text-[16px] font-normal text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-display)' }}>| 피드백 반영</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           기획안을 수정하고 이해관계자에게 재리뷰를 받습니다. 핵심 위협이 해소될 때까지.
         </p>

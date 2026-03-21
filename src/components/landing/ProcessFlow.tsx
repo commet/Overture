@@ -13,7 +13,6 @@ const steps = [
     href: '/workspace?step=decompose',
     icon: Layers,
     color: '#2d4a7c',
-    bg: '#eaeff8',
   },
   {
     number: '02',
@@ -23,7 +22,6 @@ const steps = [
     href: '/workspace?step=orchestrate',
     icon: Map,
     color: '#8b6914',
-    bg: '#fef4e4',
   },
   {
     number: '03',
@@ -33,7 +31,6 @@ const steps = [
     href: '/workspace?step=persona-feedback',
     icon: Users,
     color: '#6b4c9a',
-    bg: '#f5f0fa',
   },
   {
     number: '04',
@@ -43,34 +40,40 @@ const steps = [
     href: '/workspace?step=refinement-loop',
     icon: RefreshCw,
     color: '#2d6b2d',
-    bg: '#eaf5ea',
   },
 ];
 
-function StepCard({ step, delay }: { step: typeof steps[number]; delay: number }) {
+function StepRow({ step, delay, isLast }: { step: typeof steps[number]; delay: number; isLast: boolean }) {
   const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ delay });
   const Icon = step.icon;
 
   return (
-    <div ref={ref} className={`h-full ${isVisible ? 'scroll-visible' : 'scroll-hidden'}`}>
-      <Link href={step.href} className="group block h-full">
-        <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 md:p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-1 hover:border-[var(--border)]">
-          <div className="flex items-center gap-3 mb-3 md:mb-4">
-            <span className="text-[24px] md:text-[28px] font-extrabold leading-none select-none" style={{ color: step.color, opacity: 0.2 }}>
-              {step.number}
-            </span>
-            <div className="w-7 md:w-8 h-7 md:h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: step.bg }}>
-              <Icon size={15} style={{ color: step.color }} strokeWidth={2} />
-            </div>
+    <div ref={ref} className={isVisible ? 'scroll-visible' : 'scroll-hidden'}>
+      <Link href={step.href} className="group flex items-start gap-4 md:gap-5">
+        {/* Number + line */}
+        <div className="flex flex-col items-center shrink-0">
+          <div
+            className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-[14px] md:text-[16px] font-extrabold transition-colors group-hover:shadow-md"
+            style={{ backgroundColor: `${step.color}12`, color: step.color }}
+          >
+            {step.number}
           </div>
+          {!isLast && (
+            <div className="w-px flex-1 min-h-[32px] mt-2" style={{ backgroundColor: `${step.color}20` }} />
+          )}
+        </div>
 
-          <h3 className="text-[16px] md:text-[17px] font-bold text-[var(--text-primary)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
-            {step.title}
-          </h3>
-          <p className="text-[11px] md:text-[12px] font-semibold uppercase tracking-wider mt-0.5 mb-2" style={{ color: step.color }}>
-            {step.metaphor}
-          </p>
-
+        {/* Content */}
+        <div className="pt-1 pb-6 md:pb-8 flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 mb-1">
+            <h3 className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
+              {step.title}
+            </h3>
+            <span className="text-[10px] md:text-[11px] font-semibold uppercase tracking-wider" style={{ color: step.color }}>
+              {step.metaphor}
+            </span>
+            <Icon size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" />
+          </div>
           <p className="text-[13px] md:text-[14px] text-[var(--text-secondary)] leading-relaxed">
             {step.desc}
           </p>
@@ -83,7 +86,7 @@ function StepCard({ step, delay }: { step: typeof steps[number]; delay: number }
 export function ProcessFlow() {
   return (
     <section>
-      <div className="max-w-5xl mx-auto px-5 md:px-6 py-12 md:py-16">
+      <div className="max-w-2xl mx-auto px-5 md:px-6 py-12 md:py-16">
         <div className="text-center mb-8 md:mb-10">
           <h2
             className="text-[24px] md:text-[36px] font-bold text-[var(--text-primary)] tracking-tight"
@@ -91,14 +94,14 @@ export function ProcessFlow() {
           >
             네 단계로 작동합니다
           </h2>
-          <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)] max-w-3xl mx-auto">
-            오케스트라가 공연 전에 악보 해석, 편곡, 리허설, 합주를 거치듯 — Overture는 실행 전에 판단을 설계합니다.
+          <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)]">
+            오케스트라가 악보 해석, 편곡, 리허설, 합주를 거치듯.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+        <div>
           {steps.map((step, i) => (
-            <StepCard key={step.number} step={step} delay={i * 100} />
+            <StepRow key={step.number} step={step} delay={i * 100} isLast={i === steps.length - 1} />
           ))}
         </div>
       </div>

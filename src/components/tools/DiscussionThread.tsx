@@ -1,7 +1,8 @@
 'use client';
 
 import type { DiscussionMessage, Persona } from '@/stores/types';
-import { PersonaAvatar, getPersonaColor } from './FeedbackMessage';
+import { PersonaAvatar } from './FeedbackMessage';
+import { StaffLines } from '@/components/ui/MusicalElements';
 import { Handshake, GitBranch, Lightbulb, HelpCircle } from 'lucide-react';
 
 interface DiscussionThreadProps {
@@ -21,7 +22,8 @@ export function DiscussionThread({ messages, personas, keyTakeaway }: Discussion
   const getPersona = (id: string) => personas.find(p => p.id === id);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 relative">
+      <StaffLines opacity={0.04} spacing={12} />
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex -space-x-2">

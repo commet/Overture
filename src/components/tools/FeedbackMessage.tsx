@@ -16,14 +16,19 @@ interface PersonaAvatarProps {
   name: string;
   personaId: string;
   size?: number;
+  influence?: 'high' | 'medium' | 'low';
 }
 
-export function PersonaAvatar({ name, personaId, size = 32 }: PersonaAvatarProps) {
+export function PersonaAvatar({ name, personaId, size = 32, influence }: PersonaAvatarProps) {
   const color = getPersonaColor(personaId);
+  const ringWidth = influence === 'high' ? 3 : influence === 'medium' ? 2 : 0;
   return (
     <div
       className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.4 }}
+      style={{
+        width: size, height: size, backgroundColor: color, fontSize: size * 0.4,
+        ...(ringWidth > 0 ? { boxShadow: `0 0 0 ${ringWidth}px var(--accent-light)` } : {}),
+      }}
     >
       {name.charAt(0).toUpperCase()}
     </div>

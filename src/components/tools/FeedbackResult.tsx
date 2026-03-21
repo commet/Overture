@@ -160,7 +160,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                   className="text-left p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <PersonaAvatar name={persona.name} personaId={persona.id} size={44} />
+                    <PersonaAvatar name={persona.name} personaId={persona.id} size={44} influence={persona.influence} />
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold text-[var(--text-primary)] truncate">{persona.name}</p>
                       <p className="text-[11px] text-[var(--text-secondary)] truncate">{persona.role}</p>
@@ -207,6 +207,29 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             </div>
           )}
 
+          {/* Approval conditions preview */}
+          {(() => {
+            const allConditions = record.results.flatMap(r => {
+              const p = personas.find(pp => pp.id === r.persona_id);
+              return (r.approval_conditions || []).map(c => ({ condition: c, name: p?.name || '', influence: p?.influence || 'medium' }));
+            }).filter(c => c.influence === 'high');
+            if (allConditions.length === 0) return null;
+            return (
+              <div className="px-4 py-3 rounded-xl border border-[var(--accent-light)]/20 bg-[var(--checkpoint)]">
+                <p className="text-[11px] font-bold text-[var(--accent)] mb-2">승인 조건 (고영향력)</p>
+                <div className="space-y-1">
+                  {allConditions.map((ac, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[12px]">
+                      <span className="text-[var(--text-tertiary)] mt-0.5">○</span>
+                      <span className="text-[var(--text-primary)]">{ac.condition}</span>
+                      <span className="text-[var(--text-tertiary)] shrink-0">— {ac.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             {record.results.length > 1 && (record.structured_synthesis || record.synthesis) && (
@@ -234,9 +257,9 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
 
           {/* Persona header */}
           <div className="flex items-center gap-3 mb-2">
-            <PersonaAvatar name={selectedPersona.name} personaId={selectedPersona.id} size={40} />
+            <PersonaAvatar name={selectedPersona.name} personaId={selectedPersona.id} size={40} influence={selectedPersona.influence} />
             <div>
-              <span className="text-[15px] font-bold">{selectedPersona.name}</span>
+              <span className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{selectedPersona.name}</span>
               <span className="text-[13px] text-[var(--text-secondary)] ml-2">{selectedPersona.role}</span>
             </div>
           </div>

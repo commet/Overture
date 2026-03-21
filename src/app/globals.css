@@ -3,8 +3,8 @@
 :root {
   --primary: #1a1a1a;
   --primary-light: #2e2e2e;
-  --accent: #3b6dcc;
-  --accent-light: #5b8ae0;
+  --accent: #96782e;         /* Gold — contrast-safe on white (4.5:1+) */
+  --accent-light: #b8963e;   /* Brighter gold for backgrounds/borders */
   --bg: #f8f7f5;
   --surface: #ffffff;
   --border: #e5e2dc;
@@ -13,8 +13,8 @@
   --text-secondary: #868279;
   --text-tertiary: #b0aa9f;
 
-  /* Semantic — unchanged */
-  --ai: #eaeff8;
+  /* Semantic */
+  --ai: #f5f0e6;
   --human: #fef4e4;
   --collab: #eaf5ea;
   --checkpoint: #fffbf0;
