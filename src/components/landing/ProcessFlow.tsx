@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Layers, Map, Users, RefreshCw, ArrowRight } from 'lucide-react';
+import { Layers, Map, Users, RefreshCw } from 'lucide-react';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const steps = [
   {
@@ -46,13 +47,48 @@ const steps = [
   },
 ];
 
+function StepCard({ step, delay }: { step: typeof steps[number]; delay: number }) {
+  const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ delay });
+  const Icon = step.icon;
+
+  return (
+    <div ref={ref} className={isVisible ? 'scroll-visible' : 'scroll-hidden'}>
+      <Link href={step.href} className="group block h-full">
+        <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-1 hover:border-[var(--border)]">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[28px] font-extrabold leading-none select-none" style={{ color: step.color, opacity: 0.2 }}>
+              {step.number}
+            </span>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: step.bg }}>
+              <Icon size={16} style={{ color: step.color }} strokeWidth={2} />
+            </div>
+          </div>
+
+          <h3 className="text-[17px] font-bold text-[var(--text-primary)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
+            {step.title}
+          </h3>
+          <p className="text-[12px] font-semibold uppercase tracking-wider mt-0.5 mb-2" style={{ color: step.color }}>
+            {step.metaphor}
+          </p>
+
+          <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">
+            {step.desc}
+          </p>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
 export function ProcessFlow() {
   return (
-    <section className="border-t border-[var(--border-subtle)]">
+    <section>
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-16">
-        {/* Header */}
         <div className="text-center mb-10">
-          <h2 className="text-[28px] md:text-[36px] font-extrabold text-[var(--text-primary)] tracking-tight">
+          <h2
+            className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] tracking-tight"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
             네 단계로 작동합니다
           </h2>
           <p className="mt-2 text-[15px] text-[var(--text-secondary)] max-w-3xl mx-auto">
@@ -60,39 +96,10 @@ export function ProcessFlow() {
           </p>
         </div>
 
-        {/* 4 steps — cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {steps.map((step) => {
-            const Icon = step.icon;
-            return (
-              <Link key={step.number} href={step.href} className="group">
-                <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-1 hover:border-[var(--border)]">
-                  {/* Number + icon */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-[28px] font-extrabold leading-none select-none" style={{ color: `${step.color}30` }}>
-                      {step.number}
-                    </span>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: step.bg }}>
-                      <Icon size={16} style={{ color: step.color }} strokeWidth={2} />
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-[17px] font-bold text-[var(--text-primary)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
-                    {step.title}
-                  </h3>
-                  <p className="text-[12px] font-semibold uppercase tracking-wider mt-0.5 mb-2" style={{ color: step.color }}>
-                    {step.metaphor}
-                  </p>
-
-                  {/* Description */}
-                  <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">
-                    {step.desc}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+          {steps.map((step, i) => (
+            <StepCard key={step.number} step={step} delay={i * 100} />
+          ))}
         </div>
       </div>
     </section>

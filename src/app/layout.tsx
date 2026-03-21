@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { LayoutShell } from '@/components/layout/LayoutShell';
 import { Providers } from '@/components/layout/Providers';
 import { Analytics } from '@/components/layout/Analytics';
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Overture — Think before you orchestrate',
@@ -19,24 +20,32 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
           as="style"
           crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&display=swap"
+        />
       </head>
       <body>
         <Providers>
           <Analytics />
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <div className="flex flex-1">
-              <LayoutShell>
-                {children}
-              </LayoutShell>
+          <ErrorBoundary>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex flex-1">
+                <LayoutShell>
+                  {children}
+                </LayoutShell>
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>

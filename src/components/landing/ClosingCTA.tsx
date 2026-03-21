@@ -1,11 +1,31 @@
+'use client';
+
 import Link from 'next/link';
+import { BarLine } from '@/components/ui/MusicalElements';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function ClosingCTA() {
+  const { ref, isVisible } = useScrollReveal({ threshold: 0.3 });
+
   return (
-    <section className="border-t border-[var(--border-subtle)]">
-      <div className="max-w-5xl mx-auto px-6 py-10 md:py-14">
-        <div className="max-w-2xl mx-auto text-center">
-          <blockquote className="text-[18px] md:text-[22px] font-medium text-[var(--text-primary)] leading-relaxed tracking-tight">
+    <section className="relative">
+      {/* Manuscript texture background */}
+      <div className="absolute inset-0 manuscript-bg pointer-events-none" />
+
+      <div className="max-w-5xl mx-auto px-6 py-10 md:py-14 relative">
+        <div
+          ref={ref}
+          className={`max-w-2xl mx-auto text-center ${isVisible ? 'scroll-visible' : 'scroll-hidden'}`}
+        >
+          {/* Finale bar line */}
+          <div className="flex justify-center mb-8">
+            <BarLine type="final" height={24} />
+          </div>
+
+          <blockquote
+            className="text-[18px] md:text-[22px] font-medium text-[var(--text-primary)] leading-relaxed tracking-tight"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
             에이전트는 점점 더 많은 것을 만들어 줄 것입니다.
             <br />
             <span className="text-[var(--text-secondary)]">

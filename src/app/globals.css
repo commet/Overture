@@ -39,6 +39,9 @@
   --gold-muted: rgba(184, 150, 62, 0.06);
   --staff-line: rgba(181, 166, 140, 0.10);
 
+  /* Typography */
+  --font-display: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
+
   /* Easing */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
@@ -214,6 +217,17 @@ body {
       transparent 1px,
       transparent 3px
     );
+}
+
+/* ── Scroll reveal ── */
+.scroll-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.scroll-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s var(--ease-musical), transform 0.7s var(--ease-musical);
 }
 
 /* ── Global transitions ── */
