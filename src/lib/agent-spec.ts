@@ -1,14 +1,16 @@
 import { getStorage, STORAGE_KEYS } from './storage';
 import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord } from '@/stores/types';
 import { buildDecomposeContext } from './context-chain';
+import { projectFilter } from './output-helpers';
 
-export function generateAgentSpec(project: Project): string {
+export function generateAgentSpec(project: Project | null): string {
+  const pf = projectFilter(project);
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
-    .filter((d) => d.project_id === project.id && d.status === 'done');
+    .filter((d) => pf(d) && d.status === 'done');
   const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
-    .filter((o) => o.project_id === project.id);
+    .filter(pf);
   const feedbacks = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, [])
-    .filter((f) => f.project_id === project.id);
+    .filter(pf);
 
   const lines: string[] = [];
 
@@ -16,8 +18,8 @@ export function generateAgentSpec(project: Project): string {
   lines.push(`# Generated: ${new Date().toISOString().split('T')[0]}`);
   lines.push('');
   lines.push(`project:`);
-  lines.push(`  name: "${project.name}"`);
-  lines.push(`  created: "${project.created_at.split('T')[0]}"`);
+  lines.push(`  name: "${project?.name || 'Untitled'}"`);
+  lines.push(`  created: "${project?.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]}"`);;
   lines.push('');
 
   // Task definition from decompose

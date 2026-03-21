@@ -20,15 +20,35 @@ const ACTORS = {
   both: { label: '협업', color: '#2d6b2d', bg: '#eaf5ea', text: '#2d6b2d', Icon: Handshake },
 } as const;
 
-/** Extract selectable options from judgment text */
+/** Extract selectable options from judgment text — parses "A vs B vs C" and "A/B/C" */
 function extractOptions(judgment?: string): string[] {
-  if (!judgment || !judgment.includes('/')) return [];
-  const clauses = judgment.split(/[,.]\s*/);
-  for (const clause of clauses) {
-    if (!clause.includes('/')) continue;
-    const opts = clause.split('/').map(o => o.trim()).filter(o => o.length >= 1 && o.length <= 20);
-    if (opts.length >= 2) return opts;
+  if (!judgment) return [];
+
+  // Strategy 1: "vs" separated (most common from Korean LLM output)
+  if (judgment.includes(' vs ')) {
+    const sentences = judgment.split(/[.]\s*/);
+    for (const sentence of sentences) {
+      if (!sentence.includes(' vs ')) continue;
+      // Remove prefix like "결정:" or "설정:"
+      const cleaned = sentence.replace(/^[^:]*:\s*/, '');
+      const opts = cleaned
+        .split(/\s+vs\s+/)
+        .map(o => o.replace(/\s+중\s.*$/, '').replace(/\s+을\s.*$/, '').replace(/\s+에서\s.*$/, '').trim())
+        .filter(o => o.length >= 2 && o.length <= 25);
+      if (opts.length >= 2) return opts;
+    }
   }
+
+  // Strategy 2: "/" separated
+  if (judgment.includes('/')) {
+    const clauses = judgment.split(/[,.]\s*/);
+    for (const clause of clauses) {
+      if (!clause.includes('/')) continue;
+      const opts = clause.split('/').map(o => o.trim()).filter(o => o.length >= 1 && o.length <= 25);
+      if (opts.length >= 2) return opts;
+    }
+  }
+
   return [];
 }
 
@@ -78,7 +98,7 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
         {checkpoints !== undefined && checkpoints > 0 && (
           <>
             <span className="text-[var(--text-tertiary)]">|</span>
-            <span className="text-amber-700 font-semibold"><Flag size={10} className="inline mr-0.5" />체크포인트 {checkpoints}</span>
+            <span className="text-amber-700 font-semibold"><Flag size={10} className="inline mr-0.5" />체크포인트 {checkpoints} <span className="font-normal text-[var(--text-secondary)]">(사람 확인 필수)</span></span>
           </>
         )}
         {totalTime && (
@@ -145,7 +165,9 @@ export function WorkflowGraph({
   onRemoveStep,
   onUpdateField,
 }: WorkflowGraphProps) {
-  const criticalSet = new Set(analysis?.critical_path || []);
+  const rawCritical = new Set(analysis?.critical_path || []);
+  // If more than half the steps are "critical", it's meaningless — suppress
+  const criticalSet = rawCritical.size > Math.ceil(steps.length / 2) ? new Set<number>() : rawCritical;
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const toggleStep = (i: number) => setExpandedSteps(prev => {
     const next = new Set(prev);
@@ -301,31 +323,43 @@ export function WorkflowGraph({
                                 {step.judgment}
                               </p>
                             )}
-                            {options.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mb-2">
-                                {options.map((opt, j) => (
-                                  <button
-                                    key={j}
-                                    onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
-                                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
-                                      step.user_decision === opt
-                                        ? 'border-[#8b6914] bg-[#8b6914] text-white'
-                                        : 'border-[var(--border)] text-[var(--text-primary)] hover:border-[#8b6914]'
-                                    }`}
-                                  >
-                                    {opt}
-                                  </button>
-                                ))}
+                            {options.length > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {options.map((opt, j) => (
+                                    <button
+                                      key={j}
+                                      onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
+                                      className={`px-4 py-2 rounded-xl text-[13px] font-semibold border-2 cursor-pointer transition-all ${
+                                        step.user_decision === opt
+                                          ? 'border-[#8b6914] bg-[#8b6914] text-white shadow-sm'
+                                          : 'border-[var(--border)] text-[var(--text-primary)] hover:border-[#8b6914] hover:bg-amber-50'
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                                {/* Direct input — always available as alternative */}
+                                <input
+                                  type="text"
+                                  value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
+                                  onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                  placeholder="또는 직접 입력..."
+                                  className="w-full text-[12px] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:bg-white focus:outline-none"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
                               </div>
+                            ) : (
+                              <input
+                                type="text"
+                                value={step.user_decision || ''}
+                                onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                placeholder="결정 사항을 입력하세요..."
+                                className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-white placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             )}
-                            <input
-                              type="text"
-                              value={step.user_decision || ''}
-                              onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                              placeholder={options.length > 0 ? '또는 직접 입력...' : '결정 사항을 입력하세요...'}
-                              className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-white placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
-                              onClick={(e) => e.stopPropagation()}
-                            />
                           </div>
                         )}
 
@@ -344,17 +378,11 @@ export function WorkflowGraph({
                         )}
 
                         {/* Actor reasoning — readable */}
-                        {step.actor_reasoning?.trim() && (
-                          <p className="text-[12px] text-[var(--text-primary)]/70 leading-relaxed italic">
-                            {step.actor_reasoning}
-                          </p>
-                        )}
-
-                        {/* Checkpoint reason — only in expanded */}
+                        {/* Checkpoint reason */}
                         {step.checkpoint && step.checkpoint_reason && (
                           <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-lg px-3 py-2">
                             <Flag size={11} className="text-amber-700 shrink-0 mt-0.5" />
-                            <p className="text-amber-800"><span className="font-semibold">체크포인트:</span> {step.checkpoint_reason}</p>
+                            <p className="text-amber-800"><span className="font-semibold">이 단계를 넘기기 전:</span> {step.checkpoint_reason}</p>
                           </div>
                         )}
                       </div>
