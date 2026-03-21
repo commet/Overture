@@ -42,7 +42,7 @@ export function ClosingCTA() {
           <div className="mt-7 md:mt-8 flex flex-col items-center gap-3">
             <Link
               href="/workspace"
-              className="inline-flex items-center gap-2.5 px-6 md:px-7 py-3 md:py-3.5 bg-[var(--primary)] text-white rounded-full text-[14px] md:text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md"
+              className="inline-flex items-center gap-2.5 px-6 md:px-7 py-3 md:py-3.5 bg-[var(--primary)] text-[var(--bg)] rounded-full text-[14px] md:text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md"
             >
               서곡 시작하기
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

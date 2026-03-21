@@ -1,8 +1,9 @@
-import type { RefinementLoop, RefinementIssue, RefinementIteration } from '@/stores/types';
+import type { RefinementLoop, FeedbackRecord, ApprovalCondition, Persona, PersonaFeedbackResult } from '@/stores/types';
 import {
-  calculateWeightedScore,
-  detectConvergence,
-  matchIssuesAcrossIterations,
+  extractIssuesFromFeedback,
+  extractApprovalConditions,
+  checkLoopConvergence,
+  matchApprovalConditions,
 } from '@/lib/convergence';
 import { computeSimilarity } from '@/lib/similarity';
 
@@ -10,302 +11,171 @@ vi.mock('@/lib/similarity', () => ({
   computeSimilarity: vi.fn(),
 }));
 
-const mockedComputeSimilarity = computeSimilarity as ReturnType<typeof vi.fn>;
+const mockedSimilarity = computeSimilarity as ReturnType<typeof vi.fn>;
 
-/* ────────────────────────────────────
-   Helper: create a RefinementIssue
-   ──────────────────────────────────── */
-
-function makeIssue(
-  overrides: Partial<RefinementIssue> = {}
-): RefinementIssue {
+function makePersona(overrides: Partial<Persona> = {}): Persona {
   return {
-    id: 'issue-1',
-    source_persona_id: 'p1',
-    source_persona_name: 'Persona 1',
-    category: 'concern',
-    severity: 'improvement',
-    text: '이슈 텍스트',
-    resolved: false,
+    id: 'p1', name: 'CEO', role: 'CEO', organization: 'Acme',
+    priorities: '', communication_style: '', known_concerns: '',
+    relationship_notes: '', influence: 'high', extracted_traits: [],
+    feedback_logs: [], created_at: '', updated_at: '',
     ...overrides,
   };
 }
 
-/* ────────────────────────────────────
-   Helper: create a RefinementIteration
-   ──────────────────────────────────── */
-
-function makeIteration(
-  overrides: Partial<RefinementIteration> = {}
-): RefinementIteration {
+function makeResult(overrides: Partial<PersonaFeedbackResult> = {}): PersonaFeedbackResult {
   return {
-    iteration_number: 1,
-    trigger_reason: '피드백 기반',
-    issues_from_feedback: [],
-    constraints_added: [],
-    depth: 'quick',
-    delta_summary: '',
-    unresolved_count: 0,
-    total_issue_count: 0,
-    convergence_score: 0,
-    created_at: '2024-01-01',
+    persona_id: 'p1', overall_reaction: '', failure_scenario: '',
+    untested_assumptions: [], classified_risks: [], first_questions: [],
+    praise: [], concerns: [], wants_more: [], approval_conditions: [],
     ...overrides,
   };
 }
 
-/* ────────────────────────────────────
-   Helper: create a RefinementLoop
-   ──────────────────────────────────── */
-
-function makeLoop(
-  overrides: Partial<RefinementLoop> = {}
-): RefinementLoop {
+function makeRecord(overrides: Partial<FeedbackRecord> = {}): FeedbackRecord {
   return {
-    id: 'loop-1',
-    project_id: 'proj-1',
-    name: '테스트 루프',
-    goal: '수렴 테스트',
-    iterations: [],
-    status: 'active',
-    max_iterations: 5,
-    convergence_threshold: 0.8,
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01',
+    id: 'fb1', document_title: '', document_text: '',
+    persona_ids: ['p1'], feedback_perspective: '', feedback_intensity: '',
+    results: [], synthesis: '', created_at: '',
     ...overrides,
   };
 }
 
-/* ────────────────────────────────────
-   calculateWeightedScore
-   ──────────────────────────────────── */
+function makeLoop(overrides: Partial<RefinementLoop> = {}): RefinementLoop {
+  return {
+    id: 'loop-1', project_id: 'proj-1', name: 'test',
+    goal: 'test', original_plan: '', initial_feedback_record_id: 'fb1',
+    initial_approval_conditions: [], persona_ids: ['p1'],
+    iterations: [], status: 'active', max_iterations: 3,
+    created_at: '', updated_at: '',
+    ...overrides,
+  };
+}
 
-describe('calculateWeightedScore', () => {
-  it('returns score 1 for empty issues', () => {
-    const { score } = calculateWeightedScore([]);
-    expect(score).toBe(1);
+describe('extractIssuesFromFeedback', () => {
+  it('extracts critical risks, concerns, questions, wants_more', () => {
+    const record = makeRecord({
+      results: [makeResult({
+        persona_id: 'p1',
+        classified_risks: [{ text: 'critical risk', category: 'critical' }],
+        concerns: ['concern 1'],
+        first_questions: ['question 1'],
+        wants_more: ['want 1'],
+      })],
+    });
+    const personas = [makePersona()];
+    const issues = extractIssuesFromFeedback(record, personas);
+
+    expect(issues).toHaveLength(4);
+    expect(issues[0].severity).toBe('critical');
+    expect(issues[1].severity).toBe('concern');
+    expect(issues[2].severity).toBe('question');
+    expect(issues[3].severity).toBe('wants_more');
   });
 
-  it('applies blocker weight 3x, improvement 1x, nice_to_have 0.5x', () => {
-    const issues: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'blocker', resolved: true }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '3', severity: 'nice_to_have', resolved: false }),
-    ];
-
-    const { score } = calculateWeightedScore(issues);
-    // weighted resolved = 3 (blocker resolved)
-    // weighted total = 3 + 1 + 0.5 = 4.5
-    // score = 3 / 4.5 = 0.6667
-    expect(score).toBeCloseTo(3 / 4.5, 4);
-  });
-
-  it('counts resolved items correctly', () => {
-    const issues: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'blocker', resolved: true }),
-      makeIssue({ id: '2', severity: 'blocker', resolved: false }),
-      makeIssue({ id: '3', severity: 'improvement', resolved: true }),
-    ];
-
-    const { score, breakdown } = calculateWeightedScore(issues);
-    expect(breakdown.blocker.resolved).toBe(1);
-    expect(breakdown.blocker.total).toBe(2);
-    expect(breakdown.improvement.resolved).toBe(1);
-    expect(breakdown.improvement.total).toBe(1);
-    // weighted resolved = 3 + 1 = 4, weighted total = 6 + 1 = 7
-    expect(score).toBeCloseTo(4 / 7, 4);
-  });
-
-  it('breakdown has correct totals', () => {
-    const issues: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'blocker', resolved: false }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: true }),
-      makeIssue({ id: '3', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '4', severity: 'nice_to_have', resolved: true }),
-    ];
-
-    const { breakdown } = calculateWeightedScore(issues);
-    expect(breakdown.blocker).toEqual({ resolved: 0, total: 1 });
-    expect(breakdown.improvement).toEqual({ resolved: 1, total: 2 });
-    expect(breakdown.nice_to_have).toEqual({ resolved: 1, total: 1 });
+  it('handles empty/missing fields', () => {
+    const record = makeRecord({ results: [makeResult()] });
+    const issues = extractIssuesFromFeedback(record, [makePersona()]);
+    expect(issues).toHaveLength(0);
   });
 });
 
-/* ────────────────────────────────────
-   detectConvergence
-   ──────────────────────────────────── */
+describe('extractApprovalConditions', () => {
+  it('extracts conditions with persona metadata', () => {
+    const record = makeRecord({
+      results: [makeResult({
+        persona_id: 'p1',
+        approval_conditions: ['condition A', 'condition B'],
+      })],
+    });
+    const personas = [makePersona({ id: 'p1', name: 'CEO', influence: 'high' })];
+    const conditions = extractApprovalConditions(record, personas);
 
-describe('detectConvergence', () => {
-  it('returns score 0 and continue for empty iterations', () => {
-    const loop = makeLoop({ iterations: [] });
-    const result = detectConvergence(loop);
-    expect(result.score).toBe(0);
-    expect(result.recommendation).toBe('continue');
-    expect(result.shouldStop).toBe(false);
-  });
-
-  it('returns shouldStop when max iterations reached', () => {
-    const iterations = [
-      makeIteration({
-        iteration_number: 1,
-        issues_from_feedback: [makeIssue({ resolved: false })],
-      }),
-      makeIteration({
-        iteration_number: 2,
-        issues_from_feedback: [makeIssue({ resolved: false })],
-      }),
-    ];
-
-    const loop = makeLoop({ iterations, max_iterations: 2 });
-    const result = detectConvergence(loop);
-    expect(result.shouldStop).toBe(true);
-    expect(result.recommendation).toBe('stop');
-  });
-
-  it('returns shouldStop when score >= threshold', () => {
-    const iterations = [
-      makeIteration({
-        iteration_number: 1,
-        issues_from_feedback: [
-          makeIssue({ id: '1', severity: 'blocker', resolved: true }),
-          makeIssue({ id: '2', severity: 'improvement', resolved: true }),
-        ],
-      }),
-    ];
-
-    const loop = makeLoop({ iterations, convergence_threshold: 0.8 });
-    const result = detectConvergence(loop);
-    // All resolved → score = 1, which is >= 0.8
-    expect(result.score).toBe(1);
-    expect(result.shouldStop).toBe(true);
-    expect(result.recommendation).toBe('stop');
-  });
-
-  it('recommends one_more when stalling (improvement <= 0.02)', () => {
-    // Two iterations with nearly identical scores
-    const issues1: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: true }),
-    ];
-    const issues2: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: true }),
-    ];
-
-    const iterations = [
-      makeIteration({ iteration_number: 1, issues_from_feedback: issues1 }),
-      makeIteration({ iteration_number: 2, issues_from_feedback: issues2 }),
-    ];
-
-    const loop = makeLoop({ iterations, convergence_threshold: 0.8, max_iterations: 5 });
-    const result = detectConvergence(loop);
-    // Both have score 0.5, improvement = 0 <= 0.02
-    expect(result.recommendation).toBe('one_more');
-    expect(result.shouldStop).toBe(false);
-  });
-
-  it('continues when score is below threshold and improving', () => {
-    const issues1: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '3', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '4', severity: 'improvement', resolved: false }),
-    ];
-    const issues2: RefinementIssue[] = [
-      makeIssue({ id: '1', severity: 'improvement', resolved: true }),
-      makeIssue({ id: '2', severity: 'improvement', resolved: true }),
-      makeIssue({ id: '3', severity: 'improvement', resolved: false }),
-      makeIssue({ id: '4', severity: 'improvement', resolved: false }),
-    ];
-
-    const iterations = [
-      makeIteration({ iteration_number: 1, issues_from_feedback: issues1 }),
-      makeIteration({ iteration_number: 2, issues_from_feedback: issues2 }),
-    ];
-
-    const loop = makeLoop({ iterations, convergence_threshold: 0.8, max_iterations: 5 });
-    const result = detectConvergence(loop);
-    // iter1 score = 0, iter2 score = 0.5, improvement = 0.5 > 0.02
-    expect(result.recommendation).toBe('continue');
-    expect(result.shouldStop).toBe(false);
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0].condition).toBe('condition A');
+    expect(conditions[0].persona_name).toBe('CEO');
+    expect(conditions[0].influence).toBe('high');
+    expect(conditions[0].met).toBe(false);
   });
 });
 
-/* ────────────────────────────────────
-   matchIssuesAcrossIterations
-   ──────────────────────────────────── */
-
-describe('matchIssuesAcrossIterations', () => {
-  beforeEach(() => {
-    mockedComputeSimilarity.mockReset();
+describe('checkLoopConvergence', () => {
+  it('returns not converged for empty iterations', () => {
+    const loop = makeLoop();
+    const result = checkLoopConvergence(loop);
+    expect(result.converged).toBe(false);
   });
 
-  it('marks issues as resolved when not found in new concerns', () => {
-    mockedComputeSimilarity.mockReturnValue(0.1);
-
-    const previousIssues: RefinementIssue[] = [
-      makeIssue({ id: '1', text: '이전 이슈', resolved: false }),
-    ];
-
-    const result = matchIssuesAcrossIterations(previousIssues, ['완전히 다른 내용']);
-    expect(result.resolved).toContain('이전 이슈');
-    expect(result.persisting).toHaveLength(0);
-    expect(result.newIssues).toContain('완전히 다른 내용');
+  it('converges when critical=0 and approval >= 80%', () => {
+    const loop = makeLoop({
+      initial_approval_conditions: [
+        { persona_id: 'p1', persona_name: 'CEO', influence: 'high', condition: 'A', met: true },
+      ],
+      iterations: [{
+        iteration_number: 1, issues_to_address: [], revised_plan: '',
+        changes: [], feedback_record_id: 'fb2',
+        convergence: {
+          critical_risks: 0, total_issues: 2,
+          approval_conditions: [
+            { persona_id: 'p1', persona_name: 'CEO', influence: 'high', condition: 'A', met: true, met_at_iteration: 1 },
+          ],
+        },
+        created_at: '',
+      }],
+    });
+    const result = checkLoopConvergence(loop);
+    expect(result.converged).toBe(true);
   });
 
-  it('marks issues as persisting when similarity > 0.4', () => {
-    mockedComputeSimilarity.mockReturnValue(0.6);
+  it('does not converge with remaining critical risks', () => {
+    const loop = makeLoop({
+      iterations: [{
+        iteration_number: 1, issues_to_address: [], revised_plan: '',
+        changes: [], feedback_record_id: 'fb2',
+        convergence: { critical_risks: 2, total_issues: 5, approval_conditions: [] },
+        created_at: '',
+      }],
+    });
+    const result = checkLoopConvergence(loop);
+    expect(result.converged).toBe(false);
+    expect(result.critical_remaining).toBe(2);
+  });
+});
 
-    const previousIssues: RefinementIssue[] = [
-      makeIssue({ id: '1', text: '비용 이슈', resolved: false }),
+describe('matchApprovalConditions', () => {
+  beforeEach(() => mockedSimilarity.mockReset());
+
+  it('marks condition as met when not in re-review approval_conditions', () => {
+    mockedSimilarity.mockReturnValue(0.1); // not similar → condition gone → met
+    const initial: ApprovalCondition[] = [
+      { persona_id: 'p1', persona_name: 'CEO', influence: 'high', condition: 'ROI 제시', met: false },
     ];
-
-    const result = matchIssuesAcrossIterations(previousIssues, ['비용 관련 문제']);
-    expect(result.persisting).toContain('비용 이슈');
-    expect(result.resolved).toHaveLength(0);
-    expect(result.newIssues).toHaveLength(0);
+    const reReview = makeRecord({
+      results: [makeResult({ persona_id: 'p1', approval_conditions: [], praise: [] })],
+    });
+    const result = matchApprovalConditions(initial, reReview, 1);
+    expect(result[0].met).toBe(true);
+    expect(result[0].met_at_iteration).toBe(1);
   });
 
-  it('identifies new issues with no match to previous', () => {
-    mockedComputeSimilarity.mockReturnValue(0.1);
-
-    const previousIssues: RefinementIssue[] = [
-      makeIssue({ id: '1', text: '이전 이슈', resolved: false }),
+  it('keeps condition unmet when still in re-review', () => {
+    mockedSimilarity.mockReturnValue(0.8); // similar → still required
+    const initial: ApprovalCondition[] = [
+      { persona_id: 'p1', persona_name: 'CEO', influence: 'high', condition: 'ROI 제시', met: false },
     ];
-
-    const result = matchIssuesAcrossIterations(previousIssues, ['이전 이슈와 비슷', '완전 새 이슈']);
-    expect(result.newIssues).toHaveLength(2);
-    expect(result.resolved).toContain('이전 이슈');
+    const reReview = makeRecord({
+      results: [makeResult({ persona_id: 'p1', approval_conditions: ['ROI 근거 필요'], praise: [] })],
+    });
+    const result = matchApprovalConditions(initial, reReview, 1);
+    expect(result[0].met).toBe(false);
   });
 
-  it('skips already-resolved previous issues', () => {
-    mockedComputeSimilarity.mockReturnValue(0.8);
-
-    const previousIssues: RefinementIssue[] = [
-      makeIssue({ id: '1', text: '이미 해결됨', resolved: true }),
+  it('preserves already-met conditions', () => {
+    const initial: ApprovalCondition[] = [
+      { persona_id: 'p1', persona_name: 'CEO', influence: 'high', condition: 'A', met: true, met_at_iteration: 1 },
     ];
-
-    const result = matchIssuesAcrossIterations(previousIssues, ['이미 해결됨 비슷']);
-    // resolved:true issues are skipped entirely
-    expect(result.resolved).toHaveLength(0);
-    expect(result.persisting).toHaveLength(0);
-    expect(result.newIssues).toContain('이미 해결됨 비슷');
-  });
-
-  it('does not double-match new concerns', () => {
-    // First call matches, second does not
-    mockedComputeSimilarity
-      .mockReturnValueOnce(0.6) // prev1 vs new[0] → match
-      .mockReturnValueOnce(0.1) // prev2 vs new[0] → already matched, skip
-      .mockReturnValueOnce(0.1); // prev2 vs new[1] → no match
-
-    const previousIssues: RefinementIssue[] = [
-      makeIssue({ id: '1', text: '이슈A', resolved: false }),
-      makeIssue({ id: '2', text: '이슈B', resolved: false }),
-    ];
-
-    const result = matchIssuesAcrossIterations(previousIssues, ['비슷한A', '새로운C']);
-    expect(result.persisting).toEqual(['이슈A']);
-    expect(result.resolved).toEqual(['이슈B']);
-    expect(result.newIssues).toEqual(['새로운C']);
+    const result = matchApprovalConditions(initial, makeRecord(), 2);
+    expect(result[0].met).toBe(true);
+    expect(result[0].met_at_iteration).toBe(1);
   });
 });

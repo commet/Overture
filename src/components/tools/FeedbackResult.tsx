@@ -167,9 +167,9 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                     </div>
                     {persona.influence && (
                       <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        persona.influence === 'high' ? 'bg-red-50 text-red-700'
-                        : persona.influence === 'medium' ? 'bg-amber-50 text-amber-700'
-                        : 'bg-gray-100 text-gray-600'
+                        persona.influence === 'high' ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                        : persona.influence === 'medium' ? 'bg-[var(--checkpoint)] text-[var(--risk-manageable)]'
+                        : 'bg-[var(--bg)] text-[var(--text-secondary)]'
                       }`}>
                         {persona.influence === 'high' ? '높음' : persona.influence === 'medium' ? '중간' : '낮음'}
                       </span>
@@ -392,7 +392,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                           &#x2713; {aspect}
                         </button>
                         <button onClick={() => toggleAspect(selectedPersona.id, aspect, 'inaccurate')}
-                          className={`px-2 py-1 rounded text-[11px] font-medium border cursor-pointer ${isInaccurate ? 'border-red-300 bg-red-50 text-red-500' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                          className={`px-2 py-1 rounded text-[11px] font-medium border cursor-pointer ${isInaccurate ? 'border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
                           &#x2717;
                         </button>
                       </div>
@@ -492,7 +492,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                     {record.structured_synthesis.priority_actions.map((action, i) => (
                       <div key={i} className="flex items-start gap-2 text-[13px]">
                         <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                          action.priority === 'high' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                          action.priority === 'high' ? 'bg-[var(--danger)]/10 text-[var(--danger)]' : 'bg-[var(--checkpoint)] text-[var(--risk-manageable)]'
                         }`}>
                           {action.priority === 'high' ? '긴급' : '권고'}
                         </span>

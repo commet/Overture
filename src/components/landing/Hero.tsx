@@ -46,7 +46,7 @@ export function Hero() {
           <div className="mt-8 flex items-center justify-center gap-3 md:gap-4 flex-wrap">
             <Link
               href="/demo"
-              className="inline-flex items-center gap-2.5 px-6 md:px-7 py-3 md:py-3.5 bg-[var(--primary)] text-white rounded-full text-[14px] md:text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2.5 px-6 md:px-7 py-3 md:py-3.5 bg-[var(--primary)] text-[var(--bg)] rounded-full text-[14px] md:text-[15px] font-semibold hover:opacity-90 transition-opacity duration-200 shadow-md hover:shadow-lg"
             >
               5분 데모 체험
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -80,7 +80,7 @@ export function Hero() {
 
           {/* After */}
           <div className="rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface)]/80 backdrop-blur-sm p-4 md:p-5 relative">
-            <div className="absolute -top-2.5 left-4 bg-[var(--accent)] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full tracking-wide uppercase">
+            <div className="absolute -top-2.5 left-4 bg-[var(--accent)] text-[var(--bg)] text-[10px] font-bold px-2.5 py-0.5 rounded-full tracking-wide uppercase">
               Overture를 거치면
             </div>
 

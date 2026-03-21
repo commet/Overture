@@ -300,7 +300,7 @@ ${buildPersonaAccuracyContext(personaId)}
               <p className="text-[var(--text-secondary)] text-[12px] mt-1 max-w-xs mx-auto">
                 리허설에서 피드백을 받은 뒤, &ldquo;합주 연습 시작&rdquo;을 눌러 반복 개선을 시작하세요.
               </p>
-              <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+              <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
                 리허설 먼저 진행하기 <ArrowRight size={14} />
               </button>
             </Card>
@@ -350,7 +350,7 @@ ${buildPersonaAccuracyContext(personaId)}
 
             <div className="grid grid-cols-3 gap-3 mb-3">
               {/* Critical risks */}
-              <div className={`rounded-lg p-3 text-center border ${convergence.critical_remaining === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className={`rounded-lg p-3 text-center border ${convergence.critical_remaining === 0 ? 'bg-[var(--collab)] border-[var(--success)]/20' : 'bg-[var(--danger)]/10 border-[var(--danger)]/20'}`}>
                 <p className={`text-[18px] font-bold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
                   {convergence.critical_remaining < 0 ? '-' : convergence.critical_remaining}
                 </p>
@@ -360,7 +360,7 @@ ${buildPersonaAccuracyContext(personaId)}
               </div>
 
               {/* Approval conditions */}
-              <div className={`rounded-lg p-3 text-center border ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+              <div className={`rounded-lg p-3 text-center border ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'bg-[var(--collab)] border-[var(--success)]/20' : 'bg-[var(--checkpoint)] border-[var(--risk-manageable)]/20'}`}>
                 <p className={`text-[18px] font-bold ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'text-[var(--success)]' : 'text-amber-700'}`}>
                   {convergence.approval_met}/{convergence.approval_total}
                 </p>
@@ -555,7 +555,7 @@ ${buildPersonaAccuracyContext(personaId)}
               )}
 
               {error && (
-                <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mb-3">
+                <div className="flex items-center gap-2 text-[var(--danger)] text-[13px] bg-[var(--danger)]/10 rounded-lg px-3 py-2 mb-3">
                   <AlertTriangle size={14} /> {error}
                 </div>
               )}
@@ -582,7 +582,7 @@ ${buildPersonaAccuracyContext(personaId)}
 
           {/* Max iterations reached */}
           {activeLoop.status === 'active' && activeLoop.iterations.length >= activeLoop.max_iterations && (
-            <Card className="!bg-amber-50 !border-amber-200">
+            <Card className="!bg-[var(--checkpoint)] !border-[var(--risk-manageable)]/20">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
@@ -628,8 +628,8 @@ function IssueCheckbox({ issue, selected, onToggle, variant }: {
   variant: 'critical' | 'concern' | 'question';
 }) {
   const styles = {
-    critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
-    concern: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+    critical: { bg: 'bg-[var(--danger)]/10', border: 'border-[var(--danger)]/20', text: 'text-[var(--danger)]' },
+    concern: { bg: 'bg-[var(--checkpoint)]', border: 'border-[var(--risk-manageable)]/20', text: 'text-[var(--risk-manageable)]' },
     question: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
   };
   const s = styles[variant];

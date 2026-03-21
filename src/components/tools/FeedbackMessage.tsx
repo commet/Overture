@@ -48,11 +48,11 @@ interface FeedbackMessageProps {
 const VARIANT_STYLES: Record<string, string> = {
   default: 'bg-[var(--ai)] border-[var(--ai)]',
   praise: 'bg-[var(--collab)] border-[var(--collab)]',
-  concern: 'bg-amber-50 border-amber-100',
-  'risk-critical': 'bg-red-50 border-red-100',
-  'risk-manageable': 'bg-amber-50 border-amber-100',
-  'risk-unspoken': 'bg-purple-50 border-purple-100',
-  approval: 'bg-emerald-50 border-emerald-100',
+  concern: 'bg-[var(--checkpoint)] border-[var(--checkpoint)]',
+  'risk-critical': 'bg-[var(--danger)]/10 border-[var(--danger)]/20',
+  'risk-manageable': 'bg-[var(--checkpoint)] border-[var(--checkpoint)]',
+  'risk-unspoken': 'bg-[var(--risk-unspoken)]/10 border-[var(--risk-unspoken)]/20',
+  approval: 'bg-[var(--collab)] border-[var(--collab)]',
   reaction: 'bg-[var(--bg)] border-[var(--border-subtle)]',
 };
 
