@@ -325,6 +325,14 @@ function IntroSection() {
 
 function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
   const d = DEMO.decompose;
+  const [evals, setEvals] = useState<Record<number, string>>(
+    Object.fromEntries(d.hidden_assumptions.map((a, i) => [i, a.evaluation || 'uncertain']))
+  );
+  const evalOptions = [
+    { key: 'likely_true', label: '확인', icon: '✅', bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-700', activeBg: 'bg-green-100' },
+    { key: 'doubtful', label: '의심', icon: '❌', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', activeBg: 'bg-red-100' },
+    { key: 'uncertain', label: '불확실', icon: '❓', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', activeBg: 'bg-amber-100' },
+  ];
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -349,25 +357,28 @@ function DecomposeSection({ selected, onSelect }: { selected: number; onSelect: 
         <p className="text-[12px] text-[var(--text-secondary)] mb-3">이 과제가 성립하려면 다음이 참이어야 합니다. 각 전제를 판단해보세요.</p>
         <div className="space-y-2.5">
           {d.hidden_assumptions.map((a, i) => {
-            const evalConfig = {
-              doubtful: { label: '의심됨', icon: '❌', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
-              uncertain: { label: '불확실', icon: '❓', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
-              likely_true: { label: '확인', icon: '✅', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
-            };
-            const ev = evalConfig[a.evaluation || 'uncertain'];
+            const current = evals[i] || 'uncertain';
             return (
               <div key={i} className="rounded-lg border border-[var(--border-subtle)] overflow-hidden">
                 <div className="px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">&ldquo;{a.assumption}&rdquo;</p>
-                      <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                        거짓이면 &rarr; {a.risk_if_false}
-                      </p>
-                    </div>
-                    <span className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold ${ev.bg} ${ev.border} ${ev.text} border`}>
-                      {ev.icon} {ev.label}
-                    </span>
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">&ldquo;{a.assumption}&rdquo;</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                    거짓이면 &rarr; {a.risk_if_false}
+                  </p>
+                  <div className="flex gap-1.5 mt-2.5">
+                    {evalOptions.map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setEvals(prev => ({ ...prev, [i]: opt.key }))}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer transition-all ${
+                          current === opt.key
+                            ? `${opt.activeBg} ${opt.border} ${opt.text}`
+                            : 'border-[var(--border)] text-[var(--text-tertiary)] hover:border-[var(--border-subtle)]'
+                        }`}
+                      >
+                        {opt.icon} {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
