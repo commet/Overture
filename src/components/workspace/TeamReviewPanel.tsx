@@ -245,7 +245,7 @@ export function TeamReviewPanel({
       project_id: projectId,
       user_id: userId,
       phase,
-      target_type: data.targetType as any,
+      target_type: data.targetType as TeamReviewInput['target_type'],
       target_id: data.targetId,
       input_type: 'rating',
       rating: data.rating,

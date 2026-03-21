@@ -1,5 +1,7 @@
 import { supabase, getCurrentUserId } from './supabase';
 import { getStorage, setStorage } from './storage';
+import { handleError } from './error-handler';
+import { log } from './logger';
 
 /**
  * Database abstraction layer.
@@ -27,7 +29,7 @@ interface Timestamped {
  * - Items only in remote → keep (from another device)
  * - Items in both → pick the one with newer updated_at
  */
-function mergeByTimestamp<T extends Timestamped>(local: T[], remote: T[]): T[] {
+export function mergeByTimestamp<T extends Timestamped>(local: T[], remote: T[]): T[] {
   const map = new Map<string, T>();
 
   for (const item of local) {
@@ -88,11 +90,12 @@ export async function loadAndMerge<T extends Timestamped>(
       await supabase
         .from(table)
         .upsert(localOnly.map(item => ({ ...item, user_id: userId })), { onConflict: 'id' })
-        .then(({ error }) => { if (error) console.error(`[db] push local-only to ${table}:`, error.message); });
+        .then(({ error }) => { if (error) log.error(`push local-only to ${table}: ${error.message}`, { context: 'db' }); });
     }
 
     return merged;
-  } catch {
+  } catch (err) {
+    handleError(err, `db.loadAndMerge:${table}`);
     return local; // Network error — fall back to local
   }
 }
@@ -117,10 +120,10 @@ export async function syncToSupabase(table: TableName, localItems: any[]): Promi
       .upsert(itemsWithUser, { onConflict: 'id' });
 
     if (error) {
-      console.error(`[db] sync to ${table} failed:`, error.message);
+      log.error(`sync to ${table} failed: ${error.message}`, { context: 'db' });
     }
   } catch (err) {
-    console.error(`[db] sync to ${table} error:`, err);
+    log.error(`sync to ${table} error`, { context: 'db', data: err });
   }
 }
 
@@ -143,7 +146,8 @@ export async function fetchFromSupabase<T extends Record<string, unknown> | obje
 
     if (error) return [];
     return (data || []) as T[];
-  } catch {
+  } catch (err) {
+    handleError(err, `db.fetch:${table}`);
     return [];
   }
 }
@@ -162,9 +166,11 @@ export async function upsertToSupabase(table: TableName, item: any): Promise<voi
       .upsert({ ...item, user_id: userId }, { onConflict: 'id' });
 
     if (error) {
-      console.error(`[db] upsert to ${table} failed:`, error.message);
+      log.error(`upsert to ${table} failed: ${error.message}`, { context: 'db' });
     }
-  } catch {}
+  } catch (err) {
+    handleError(err, `db.upsert:${table}`);
+  }
 }
 
 /**
@@ -180,7 +186,9 @@ export async function deleteFromSupabase(table: TableName, id: string): Promise<
       .delete()
       .eq('id', id)
       .eq('user_id', userId);
-  } catch {}
+  } catch (err) {
+    handleError(err, `db.delete:${table}`);
+  }
 }
 
 /**
@@ -199,7 +207,9 @@ export async function deleteAllUserData(): Promise<void> {
   for (const table of tables) {
     try {
       await supabase.from(table).delete().eq('user_id', userId);
-    } catch {}
+    } catch (err) {
+      handleError(err, `db.deleteAll:${table}`);
+    }
   }
 }
 
@@ -217,7 +227,9 @@ export async function insertToSupabase(table: TableName, item: any): Promise<voi
       .insert({ ...item, user_id: userId });
 
     if (error) {
-      console.error(`[db] insert to ${table} failed:`, error.message);
+      log.error(`insert to ${table} failed: ${error.message}`, { context: 'db' });
     }
-  } catch {}
+  } catch (err) {
+    handleError(err, `db.insert:${table}`);
+  }
 }

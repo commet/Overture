@@ -1,7 +1,8 @@
 import { getStorage, STORAGE_KEYS } from './storage';
 import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord } from '@/stores/types';
 
-export function generateChecklist(project: Project): string {
+export function generateChecklist(project: Project | null): string {
+  if (!project) return '';
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
     .filter((d) => d.project_id === project.id && d.status === 'done');
   const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])

@@ -1,17 +1,23 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { Settings } from '@/stores/types';
 
-interface LLMMessage {
+export interface LLMMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-interface LLMOptions {
+export interface LLMOptions {
   system: string;
   maxTokens?: number;
 }
 
-function parseJSON<T = unknown>(text: string): T {
+export interface StreamCallbacks {
+  onToken: (text: string) => void;
+  onComplete: (fullText: string) => void;
+  onError: (error: Error) => void;
+}
+
+export function parseJSON<T = unknown>(text: string): T {
   try {
     return JSON.parse(text);
   } catch {
@@ -21,11 +27,34 @@ function parseJSON<T = unknown>(text: string): T {
   }
 }
 
-export async function callLLM(
-  messages: LLMMessage[],
-  options: LLMOptions
-): Promise<string> {
-  const settings = getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
+// ─── Retry logic for transient HTTP errors ───
+
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+
+async function fetchWithRetry(
+  input: RequestInfo,
+  init: RequestInit,
+  maxRetries = 2
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(input, init);
+    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt === maxRetries) {
+      return res;
+    }
+    const delay = 1000 * Math.pow(2, attempt);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[llm] 재시도 ${attempt + 1}/${maxRetries} (status ${res.status}, ${delay}ms 후)`);
+    }
+    await new Promise(r => setTimeout(r, delay));
+  }
+  // Unreachable but satisfies TypeScript
+  return fetch(input, init);
+}
+
+// ─── Settings helper ───
+
+function getSettings(): Settings {
+  return getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
     anthropic_api_key: '',
     llm_mode: 'proxy',
     local_endpoint: '',
@@ -33,6 +62,15 @@ export async function callLLM(
     audio_enabled: false,
     audio_volume: 0.15,
   });
+}
+
+// ─── Non-streaming calls ───
+
+export async function callLLM(
+  messages: LLMMessage[],
+  options: LLMOptions
+): Promise<string> {
+  const settings = getSettings();
 
   // Direct mode: user's own API key, routed through server-side proxy
   if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
@@ -52,7 +90,7 @@ async function callServerWithUserKey(
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
-  const res = await fetch('/api/llm/direct', {
+  const res = await fetchWithRetry('/api/llm/direct', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -87,7 +125,7 @@ async function callProxy(
     headers['Authorization'] = `Bearer ${session.access_token}`;
   }
 
-  const res = await fetch('/api/llm', {
+  const res = await fetchWithRetry('/api/llm', {
     method: 'POST',
     headers,
     body: JSON.stringify({ messages, system: options.system, maxTokens: options.maxTokens }),
@@ -108,4 +146,92 @@ export async function callLLMJson<T = unknown>(
 ): Promise<T> {
   const text = await callLLM(messages, options);
   return parseJSON<T>(text);
+}
+
+// ─── Streaming call ───
+
+export async function callLLMStream(
+  messages: LLMMessage[],
+  options: LLMOptions,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const settings = getSettings();
+
+  const isDirect = settings.llm_mode === 'direct' && settings.anthropic_api_key;
+  const url = isDirect ? '/api/llm/direct' : '/api/llm';
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  if (!isDirect) {
+    const { supabase } = await import('./supabase');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  }
+
+  const bodyObj: Record<string, unknown> = {
+    messages,
+    system: options.system,
+    maxTokens: options.maxTokens,
+    stream: true,
+  };
+  if (isDirect) {
+    bodyObj.apiKey = settings.anthropic_api_key;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(bodyObj),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('Stream not available');
+
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              fullText += parsed.text;
+              callbacks.onToken(fullText);
+            }
+            if (parsed.rateLimit !== undefined) {
+              // Dispatch rate limit info for RateLimitBadge
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('overture:ratelimit', {
+                  detail: { remaining: parsed.rateLimit },
+                }));
+              }
+            }
+          } catch {
+            // Skip malformed lines
+          }
+        }
+      }
+    }
+
+    callbacks.onComplete(fullText);
+  } catch (error) {
+    callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+  }
 }

@@ -26,7 +26,8 @@ export function setStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.error('localStorage write failed:', e);
+    // Use console directly to avoid circular dependency with logger
+    if (typeof console !== 'undefined') console.error('[storage] localStorage write failed:', e);
   }
 }
 

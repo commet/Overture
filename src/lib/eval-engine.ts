@@ -34,6 +34,8 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
     question: '사용자가 AI 제안 질문을 수정 없이 채택했는가?',
     measure: (item) => {
       if (!item.analysis || !item.selected_question) return false;
+      // Phase 2A: user_edited_question 플래그로 복사-붙여넣기 우회 방지
+      if (item.user_edited_question) return false;
       return item.analysis.hidden_questions.some(
         hq => hq.question === item.selected_question
       );
@@ -45,7 +47,7 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
     measure: (item) => {
       if (!item.analysis) return false;
       return item.analysis.hidden_assumptions.some(
-        (a: any) => a.verified === true
+        a => a.verified === true
       );
     },
   },
@@ -53,9 +55,8 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
     id: 'no_immediate_reanalyze',
     question: '사용자가 즉시 재분석을 요청하지 않았는가?',
     measure: (item) => {
-      // If the item went straight to 'done' without re-analysis, pass
-      // We track this by checking if the item has been in 'review' only once
-      return item.status === 'done';
+      // Phase 2A: 재분석 횟수 추적으로 정확한 측정
+      return item.status === 'done' && (item.reanalysis_count || 0) <= 1;
     },
   },
   {
@@ -64,7 +65,7 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
     measure: (item) => {
       if (!item.analysis) return false;
       return item.analysis.hidden_assumptions.some(
-        (a: any) => !a.verified
+        a => !a.verified
       );
     },
   },

@@ -1,0 +1,64 @@
+export const ko = {
+  // Common UI
+  'common.retry': '다시 시도',
+  'common.confirm': '확정',
+  'common.cancel': '취소',
+  'common.delete': '삭제',
+  'common.save': '저장',
+  'common.loading': '로딩 중...',
+  'common.error': '오류가 발생했습니다',
+  'common.newStart': '새로 시작',
+
+  // Tools
+  'tool.decompose': '악보 해석',
+  'tool.decompose.subtitle': '문제 재정의',
+  'tool.orchestrate': '편곡',
+  'tool.orchestrate.subtitle': '실행 설계',
+  'tool.rehearsal': '리허설',
+  'tool.rehearsal.subtitle': '페르소나 피드백',
+  'tool.ensemble': '합주',
+  'tool.ensemble.subtitle': '수렴 연습',
+
+  // Decompose
+  'decompose.placeholder': '해결하고 싶은 과제를 입력하세요',
+  'decompose.analyzing': '악보를 읽고 있습니다...',
+  'decompose.direction': '어떤 방향으로 접근하시겠습니까?',
+  'decompose.reframe': '질문 재정의',
+  'decompose.reframing': '질문을 재정의하고 있습니다...',
+  'decompose.assumptions': '검증 필요한 전제',
+  'decompose.aiLimitations': 'AI 한계',
+
+  // Orchestrate
+  'orchestrate.placeholder': '맥락을 선택하고 목표를 입력하세요',
+  'orchestrate.analyzing': '편곡하고 있습니다...',
+  'orchestrate.governingIdea': '핵심 방향',
+  'orchestrate.review': '3가지 관점에서 검증',
+  'orchestrate.reviewing': '3가지 관점에서 검증 중...',
+
+  // Rehearsal
+  'rehearsal.title': '리허설',
+  'rehearsal.feedback': '피드백 받기',
+
+  // Ensemble
+  'ensemble.convergence': '수렴도',
+  'ensemble.blocker': '차단 이슈',
+  'ensemble.improvement': '개선 이슈',
+
+  // Rate limit
+  'rateLimit.remaining': '{remaining}/{total} 남음',
+  'rateLimit.exceeded': '일일 무료 사용량을 초과했습니다',
+  'rateLimit.useApiKey': 'API 키를 입력하면 제한 없이 사용할 수 있습니다',
+
+  // Errors
+  'error.network': '네트워크 연결을 확인해주세요',
+  'error.auth': '인증이 필요합니다. 다시 로그인해주세요',
+  'error.llm': 'LLM 호출 중 오류가 발생했습니다',
+  'error.unexpected': '예기치 않은 오류가 발생했습니다',
+
+  // Settings
+  'settings.language': '언어',
+  'settings.apiKey': 'API 키',
+  'settings.mode': 'LLM 모드',
+} as const;
+
+export type TranslationKey = keyof typeof ko;

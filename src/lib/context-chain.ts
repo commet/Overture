@@ -36,12 +36,12 @@ export function buildDecomposeContext(item: DecomposeItem): DecomposeContext {
   }
 
   // Normalize assumptions (handle legacy string[] format)
-  const assumptions: HiddenAssumption[] = (analysis.hidden_assumptions || []).map((a: any) =>
+  const assumptions: HiddenAssumption[] = (analysis.hidden_assumptions || []).map((a: HiddenAssumption | string) =>
     typeof a === 'string' ? { assumption: a, risk_if_false: '', verified: false } : a
   );
 
-  // Extract interview signals from input_text if present
-  const interviewSignals = extractInterviewSignals(item.input_text);
+  // Phase 2C: Use structured signals first, fall back to text extraction
+  const interviewSignals = item.interview_signals || extractInterviewSignals(item.input_text);
 
   return {
     surface_task: analysis.surface_task,

@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
-import { callLLMJson } from '@/lib/llm';
+import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
 import type { OrchestrateAnalysis, OrchestrateStep as OrchestrateStepType } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -26,6 +26,7 @@ import type { DecomposeContext, WorkflowReview } from '@/stores/types';
 import { runWorkflowReview, countBySeverity } from '@/lib/workflow-review';
 import { TeamReviewPanel } from './TeamReviewPanel';
 import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -177,6 +178,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const [decomposeCtx, setDecomposeCtx] = useState<DecomposeContext | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewExpanded, setReviewExpanded] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -232,22 +235,56 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       setPendingProjectId(undefined);
     }
 
-    try {
-      // Build system prompt: base + user patterns + typed decompose context
-      let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT);
+    // Build system prompt: base + user patterns + typed decompose context
+    let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT);
 
-      // Inject typed context from decompose (Phase 0 pipeline)
-      const ctx = decomposeCtx || (relatedDecompose ? buildDecomposeContext(relatedDecompose) : null);
-      if (ctx) {
-        systemPrompt = injectDecomposeContext(systemPrompt, ctx);
+    // Inject typed context from decompose (Phase 0 pipeline)
+    const ctx = decomposeCtx || (relatedDecompose ? buildDecomposeContext(relatedDecompose) : null);
+    if (ctx) {
+      systemPrompt = injectDecomposeContext(systemPrompt, ctx);
+    }
+
+    // Start streaming for preview
+    setIsStreaming(true);
+    setStreamingText('');
+
+    try {
+      const fullText = await new Promise<string>((resolve, reject) => {
+        callLLMStream(
+          [{ role: 'user', content: finalPrompt }],
+          { system: systemPrompt, maxTokens: 3500 },
+          {
+            onToken: (text) => setStreamingText(text),
+            onComplete: (text) => resolve(text),
+            onError: (err) => reject(err),
+          }
+        );
+      });
+
+      setIsStreaming(false);
+      setStreamingText('');
+
+      // Try to parse JSON from the streamed text
+      let analysis: OrchestrateAnalysis;
+      try {
+        analysis = parseJSON<OrchestrateAnalysis>(fullText);
+      } catch {
+        // JSON parse failed — fall back to non-streaming call
+        analysis = await callLLMJson<OrchestrateAnalysis>(
+          [{ role: 'user', content: finalPrompt }],
+          { system: systemPrompt, maxTokens: 3500 }
+        );
       }
 
-      const analysis = await callLLMJson<OrchestrateAnalysis>(
-        [{ role: 'user', content: finalPrompt }],
-        { system: systemPrompt, maxTokens: 3500 }
-      );
+      // Phase 2B: Preserve existing reviews when re-analyzing
+      const existingReviews = current?.analysis?.reviews;
+      if (existingReviews && existingReviews.length > 0) {
+        analysis.previous_reviews = existingReviews;
+      }
       updateItem(id, { analysis, steps: analysis.steps, status: 'review' });
     } catch (err) {
+      setIsStreaming(false);
+      setStreamingText('');
       setError(err instanceof Error ? err.message : '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
@@ -303,7 +340,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">편곡 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 실행 설계</span></h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">{t('tool.orchestrate')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.orchestrate.subtitle')}</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             맥락을 선택하고 목표를 입력하면 AI가 전체 워크플로우를 설계합니다.
           </p>
@@ -370,10 +407,22 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         </Card>
       )}
 
-      {/* ─── Loading ─── */}
+      {/* ─── Loading / Streaming Preview ─── */}
       {current?.status === 'analyzing' && (
         <Card>
-          <OrchestrationLoader />
+          {isStreaming && streamingText ? (
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">편곡 중...</span>
+              </div>
+              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+                {streamingText}
+              </pre>
+            </div>
+          ) : (
+            <OrchestrationLoader />
+          )}
         </Card>
       )}
 
@@ -396,7 +445,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
 
               {/* 핵심 방향 */}
               <div className="rounded-xl bg-[var(--primary)] text-white px-5 py-4">
-                <p className="text-[11px] font-medium text-white/50 mb-1">핵심 방향</p>
+                <p className="text-[11px] font-medium text-white/50 mb-1">{t('orchestrate.governingIdea')}</p>
                 <p className="text-[16px] font-bold leading-snug">
                   {current.analysis.governing_idea}
                 </p>
@@ -461,9 +510,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                   disabled={isReviewing}
                 >
                   {isReviewing ? (
-                    <><Loader2 size={14} className="animate-spin" /> 3가지 관점에서 검증 중...</>
+                    <><Loader2 size={14} className="animate-spin" /> {t('orchestrate.reviewing')}</>
                   ) : (
-                    <><Shield size={14} /> 워크플로우 검증</>
+                    <><Shield size={14} /> {t('orchestrate.review')}</>
                   )}
                 </Button>
               ) : (
@@ -539,12 +588,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             {current.status === 'review' ? (
               <>
                 <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); setPendingProjectId(undefined); }}>
-                  <RotateCcw size={14} /> 새로 시작
+                  <RotateCcw size={14} /> {t('common.newStart')}
                 </Button>
                 <div className="flex gap-2">
                   <CopyButton getText={() => orchestrateToMarkdown(current)} />
                   <Button onClick={handleConfirm}>
-                    <Check size={14} /> 확정
+                    <Check size={14} /> {t('common.confirm')}
                   </Button>
                 </div>
               </>

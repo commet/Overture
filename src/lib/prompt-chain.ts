@@ -2,7 +2,8 @@ import { getStorage, STORAGE_KEYS } from './storage';
 import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
 import { buildDecomposeContext } from './context-chain';
 
-export function generatePromptChain(project: Project): string {
+export function generatePromptChain(project: Project | null): string {
+  if (!project) return '';
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
     .filter((d) => d.project_id === project.id && d.status === 'done');
   const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
@@ -164,7 +165,7 @@ export function generatePromptChain(project: Project): string {
     if (latest.analysis) {
       const reframedQ = latest.selected_question
         || latest.analysis.reframed_question
-        || (latest.analysis as any).hypothesis
+        || latest.analysis.hypothesis
         || '';
       sections.push(`---`);
       sections.push('');
@@ -180,7 +181,7 @@ export function generatePromptChain(project: Project): string {
       if (latest.analysis.hidden_assumptions?.length > 0) {
         promptParts.push('');
         promptParts.push('검증이 필요한 전제:');
-        latest.analysis.hidden_assumptions.forEach((a: any) => {
+        latest.analysis.hidden_assumptions.forEach((a: HiddenAssumption | string) => {
           if (typeof a === 'string') {
             promptParts.push(`- ${a}`);
           } else {

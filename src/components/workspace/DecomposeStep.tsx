@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { decomposeToMarkdown } from '@/lib/export';
-import { callLLMJson } from '@/lib/llm';
-import type { DecomposeAnalysis, DecomposeItem, HiddenAssumption } from '@/stores/types';
+import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
+import type { DecomposeAnalysis, DecomposeItem, DecomposeHiddenQuestion, HiddenAssumption } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -20,11 +20,13 @@ import { findSimilarItems } from '@/lib/similarity';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send, Loader2 } from 'lucide-react';
 import { StaffLines, BarLine } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
 import { recordDecomposeEval, getBestStrategy, getSessionInsights } from '@/lib/eval-engine';
+import { applyPromptMutations } from '@/lib/prompt-mutation';
+import { t } from '@/lib/i18n';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -169,6 +171,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [currentStrategy, setCurrentStrategy] = useState<ReframingStrategy | null>(null);
   const [reviewStage, setReviewStage] = useState<'evaluate' | 'reframe'>('evaluate');
   const [reframing, setReframing] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -224,25 +228,60 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     }
     setCurrentStrategy(strategy);
 
-    try {
-      // Stage 1: Generate assumptions only (user evaluates before reframing)
-      const systemPrompt = buildEnhancedSystemPrompt(ASSUMPTION_PROMPT);
+    // Phase 2C: Store structured interview signals directly on the item
+    if (signals) {
+      updateItem(id, { interview_signals: signals });
+    }
 
-      const analysis = await callLLMJson<DecomposeAnalysis>(
-        [{ role: 'user', content: finalPrompt }],
-        { system: systemPrompt, maxTokens: 1200 }
-      );
+    // Stage 1: Generate assumptions only (user evaluates before reframing)
+    // Phase 4B: Apply prompt mutations from eval learning
+    const systemPrompt = applyPromptMutations(buildEnhancedSystemPrompt(ASSUMPTION_PROMPT));
+
+    // Start streaming for preview
+    setIsStreaming(true);
+    setStreamingText('');
+
+    try {
+      const fullText = await new Promise<string>((resolve, reject) => {
+        callLLMStream(
+          [{ role: 'user', content: finalPrompt }],
+          { system: systemPrompt, maxTokens: 1200 },
+          {
+            onToken: (text) => setStreamingText(text),
+            onComplete: (text) => resolve(text),
+            onError: (err) => reject(err),
+          }
+        );
+      });
+
+      setIsStreaming(false);
+      setStreamingText('');
+
+      // Try to parse JSON from the streamed text
+      let analysis: DecomposeAnalysis;
+      try {
+        analysis = parseJSON<DecomposeAnalysis>(fullText);
+      } catch {
+        // JSON parse failed — fall back to non-streaming call
+        analysis = await callLLMJson<DecomposeAnalysis>(
+          [{ role: 'user', content: finalPrompt }],
+          { system: systemPrompt, maxTokens: 1200 }
+        );
+      }
+
       // Initialize evaluations as 'uncertain' (default)
       if (analysis.hidden_assumptions) {
-        analysis.hidden_assumptions = analysis.hidden_assumptions.map((a: any) =>
+        analysis.hidden_assumptions = analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
           typeof a === 'string'
-            ? { assumption: a, risk_if_false: '', evaluation: 'uncertain' }
+            ? { assumption: a, risk_if_false: '', evaluation: 'uncertain' as const }
             : { ...a, evaluation: a.evaluation || 'uncertain' }
         );
       }
       updateItem(id, { analysis, status: 'review' });
       setReviewStage('evaluate');
     } catch (err) {
+      setIsStreaming(false);
+      setStreamingText('');
       setError(err instanceof Error ? err.message : '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
@@ -253,7 +292,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
   const handleSelectQuestion = (question: string) => {
     if (!current || !currentId || !current.analysis) return;
-    updateItem(currentId, { selected_question: question });
+    // Phase 2A: Track if user edited the question (vs selecting AI suggestion)
+    const analysis = normalizeAnalysis(current.analysis);
+    const isCustom = !analysis.hidden_questions.some(hq => hq.question === question);
+    updateItem(currentId, {
+      selected_question: question,
+      user_edited_question: isCustom,
+    });
 
     // Debounce judgment recording (prevents spam from custom question typing)
     if (judgmentTimerRef.current) clearTimeout(judgmentTimerRef.current);
@@ -281,14 +326,14 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       // Build evaluation summary for Stage 2 prompt
       const assumptions = current.analysis.hidden_assumptions || [];
       const evalSummary = assumptions
-        .map((a: any, i: number) => {
+        .map((a: HiddenAssumption, i: number) => {
           const label = a.evaluation === 'doubtful' ? '의심됨' : a.evaluation === 'likely_true' ? '맞을 가능성 높음' : '불확실';
           return `${i + 1}. [${label}] "${a.assumption}" → ${a.risk_if_false || ''}`;
         })
         .join('\n');
 
-      const doubtful = assumptions.filter((a: any) => a.evaluation === 'doubtful');
-      const uncertain = assumptions.filter((a: any) => a.evaluation === 'uncertain');
+      const doubtful = assumptions.filter((a: HiddenAssumption) => a.evaluation === 'doubtful');
+      const uncertain = assumptions.filter((a: HiddenAssumption) => a.evaluation === 'uncertain');
 
       let reframingPrompt = buildEnhancedSystemPrompt(REFRAMING_PROMPT);
       if (currentStrategy) {
@@ -297,10 +342,36 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
       const userMessage = `[원래 과제]\n${current.analysis.surface_task}\n\n[사용자의 전제 평가]\n${evalSummary}\n\n${doubtful.length > 0 ? `의심된 전제 ${doubtful.length}건, ` : ''}${uncertain.length > 0 ? `불확실한 전제 ${uncertain.length}건` : ''}\n\n이 평가를 바탕으로 진짜 질문을 재정의해주세요.`;
 
-      const reframingResult = await callLLMJson<Partial<DecomposeAnalysis>>(
-        [{ role: 'user', content: userMessage }],
-        { system: reframingPrompt, maxTokens: 1500 }
-      );
+      // Start streaming for preview
+      setIsStreaming(true);
+      setStreamingText('');
+
+      const fullText = await new Promise<string>((resolve, reject) => {
+        callLLMStream(
+          [{ role: 'user', content: userMessage }],
+          { system: reframingPrompt, maxTokens: 1500 },
+          {
+            onToken: (text) => setStreamingText(text),
+            onComplete: (text) => resolve(text),
+            onError: (err) => reject(err),
+          }
+        );
+      });
+
+      setIsStreaming(false);
+      setStreamingText('');
+
+      // Try to parse JSON from the streamed text
+      let reframingResult: Partial<DecomposeAnalysis>;
+      try {
+        reframingResult = parseJSON<Partial<DecomposeAnalysis>>(fullText);
+      } catch {
+        // JSON parse failed — fall back to non-streaming call
+        reframingResult = await callLLMJson<Partial<DecomposeAnalysis>>(
+          [{ role: 'user', content: userMessage }],
+          { system: reframingPrompt, maxTokens: 1500 }
+        );
+      }
 
       // Merge Stage 2 results into existing analysis
       updateItem(currentId, {
@@ -314,6 +385,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       });
       setReviewStage('reframe');
     } catch (err) {
+      setIsStreaming(false);
+      setStreamingText('');
       setError(err instanceof Error ? err.message : '질문을 재정의할 수 없었습니다.');
     } finally {
       setReframing(false);
@@ -337,7 +410,9 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const handleReanalyze = async () => {
     if (!current || !currentId) return;
     setError('');
-    updateItem(currentId, { status: 'analyzing', analysis: null });
+    // Phase 2A: Track reanalysis count for eval gaming prevention
+    const newCount = (current.reanalysis_count || 0) + 1;
+    updateItem(currentId, { status: 'analyzing', analysis: null, reanalysis_count: newCount });
     try {
       const prompt = current.selected_question
         ? `원래 과제: ${current.input_text}\n\n재정의된 질문으로 다시 분석해주세요: ${current.selected_question}`
@@ -355,14 +430,14 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
   const handleEvaluateAssumption = (index: number, evaluation: 'likely_true' | 'uncertain' | 'doubtful') => {
     if (!current || !currentId || !current.analysis) return;
-    const assumptions = [...current.analysis.hidden_assumptions] as any[];
+    const assumptions = [...current.analysis.hidden_assumptions];
     assumptions[index] = { ...assumptions[index], evaluation };
     updateItem(currentId, { analysis: { ...current.analysis, hidden_assumptions: assumptions } });
   };
 
   const handleToggleAssumption = (index: number) => {
     if (!current || !currentId || !current.analysis) return;
-    const assumptions = [...current.analysis.hidden_assumptions] as any[];
+    const assumptions = [...current.analysis.hidden_assumptions];
     const a = assumptions[index];
     if (typeof a === 'string') {
       assumptions[index] = { assumption: a, risk_if_false: '', verified: true };
@@ -381,9 +456,9 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {/* ─── Header ─── */}
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">악보 해석</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">{t('tool.decompose')}</h1>
           <span className="text-[13px] text-[var(--text-tertiary)]">|</span>
-          <span className="text-[14px] text-[var(--text-secondary)]">문제 재정의</span>
+          <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.decompose.subtitle')}</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           주어진 과제 뒤에 숨은 진짜 질문을 찾아냅니다.
@@ -517,15 +592,27 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       )}
 
       {/* ═══════════════════════════════════════
-          STEP 2: Analyzing (Loading)
+          STEP 2: Analyzing (Loading / Streaming Preview)
          ═══════════════════════════════════════ */}
       {current?.status === 'analyzing' && (
         <Card>
-          <LoadingSteps steps={[
-            '과제의 전제를 점검하고 있습니다',
-            '숨겨진 질문을 찾고 있습니다',
-            '진짜 주제를 읽어내고 있습니다',
-          ]} />
+          {isStreaming && streamingText ? (
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">전제를 분석하는 중...</span>
+              </div>
+              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+                {streamingText}
+              </pre>
+            </div>
+          ) : (
+            <LoadingSteps steps={[
+              '과제의 전제를 점검하고 있습니다',
+              '숨겨진 질문을 찾고 있습니다',
+              '진짜 주제를 읽어내고 있습니다',
+            ]} />
+          )}
         </Card>
       )}
 
@@ -613,14 +700,26 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 </div>
 
                 {/* Stage 1 → Stage 2 버튼 */}
-                {/* Reframing loading state */}
+                {/* Reframing loading state / Streaming Preview */}
                 {reframing && (
                   <Card>
-                    <LoadingSteps steps={[
-                      '당신의 전제 평가를 분석하고 있습니다',
-                      '의심된 전제를 기반으로 질문을 재구성합니다',
-                      '새로운 방향을 도출하고 있습니다',
-                    ]} />
+                    {isStreaming && streamingText ? (
+                      <div className="animate-fade-in">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
+                          <span className="text-[13px] font-medium text-[var(--text-secondary)]">질문을 재정의하는 중...</span>
+                        </div>
+                        <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+                          {streamingText}
+                        </pre>
+                      </div>
+                    ) : (
+                      <LoadingSteps steps={[
+                        '당신의 전제 평가를 분석하고 있습니다',
+                        '의심된 전제를 기반으로 질문을 재구성합니다',
+                        '새로운 방향을 도출하고 있습니다',
+                      ]} />
+                    )}
                   </Card>
                 )}
 
@@ -630,7 +729,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                       <RotateCcw size={14} /> 전제 재분석
                     </Button>
                     <Button onClick={handleReframe}>
-                      질문 재정의하기 &rarr;
+                      {t('decompose.reframe')} &rarr;
                     </Button>
                   </div>
                 )}
@@ -696,11 +795,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
-                      <p className="text-[13px] font-bold text-[var(--text-primary)]">어떤 방향으로 접근하시겠습니까?</p>
+                      <p className="text-[13px] font-bold text-[var(--text-primary)]">{t('decompose.direction')}</p>
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
                     </div>
                     <div className="space-y-2.5">
-                      {analysis.hidden_questions.map((hq: any, i: number) => (
+                      {analysis.hidden_questions.map((hq: DecomposeHiddenQuestion, i: number) => (
                         <div
                           key={i}
                           onClick={() => handleSelectQuestion(hq.question)}
@@ -762,7 +861,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {analysis.ai_limitations?.length > 0 && (
                   <div className="text-[12px] text-[var(--text-tertiary)]">
                     <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5" />
-                    AI 한계: {analysis.ai_limitations.join(' · ')}
+                    {t('decompose.aiLimitations')}: {analysis.ai_limitations.join(' · ')}
                   </div>
                 )}
               </>
@@ -784,7 +883,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 <div className="flex gap-2">
                   <CopyButton getText={() => decomposeToMarkdown(current)} />
                   <Button onClick={handleConfirm} disabled={!current.selected_question}>
-                    <Check size={14} /> 확정
+                    <Check size={14} /> {t('common.confirm')}
                   </Button>
                 </div>
               </div>

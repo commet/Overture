@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
+import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
+import { SyncStatus } from '@/components/ui/SyncStatus';
 
 const navItems = [
   { href: '/workspace', label: '워크스페이스', primary: true },
@@ -72,6 +74,14 @@ export function Header() {
                 );
               })}
             </nav>
+
+            {/* Status badges */}
+            {user && (
+              <div className="flex items-center gap-2">
+                <SyncStatus />
+                <RateLimitBadge />
+              </div>
+            )}
 
             {/* User area */}
             {!loading && (

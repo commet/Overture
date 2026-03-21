@@ -12,7 +12,7 @@ export function decomposeToMarkdown(item: DecomposeItem): string {
 
   const selectedQ = item.selected_question
     || analysis.reframed_question
-    || (analysis as any).hypothesis
+    || analysis.hypothesis
     || analysis.hidden_questions[0]?.question
     || '';
 

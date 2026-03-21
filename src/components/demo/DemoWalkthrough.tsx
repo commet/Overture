@@ -50,9 +50,9 @@ const DEMO = {
       resolution: '먼저 Meridian 계약의 실제 수익성을 밝히고, 3가지 시나리오별 재무 영향을 비교한 뒤, 대표가 데이터로 판단하게 한다.',
     },
     steps: [
-      { task: 'Meridian 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일', judgment: '직접비만/간접비 포함/기회비용 포함 중 원가 분석 범위를 결정', ai_guide_hint: 'Meridian 전용 인프라 비용과 인건비를 분리하여 실질 마진을 산출' },
+      { task: 'Meridian 계약 수익성 정밀 분석', actor: 'both' as const, expected_output: '실수익률 보고서 + 기회비용 산출', checkpoint: true, checkpoint_reason: '이 숫자가 이후 모든 시나리오의 기반', estimated_time: '2일', judgment: '직접비만/간접비 포함/기회비용 포함 중 원가 분석 범위를 결정', user_ai_guide: 'Meridian 전용 인프라 비용과 인건비를 분리하여 실질 마진을 산출' },
       { task: 'Meridian 이탈 사유 파악', actor: 'human' as const, expected_output: '이탈 사유 인텔리전스 보고서', checkpoint: false, estimated_time: '3일', judgment: '내부 정보원 접촉/공식 미팅 요청/경쟁사 동향 우선 중 접근 순서를 결정' },
-      { task: '3가지 시나리오 재무 모델링', actor: 'ai' as const, expected_output: '시나리오별 12개월 P&L 시뮬레이션', checkpoint: false, estimated_time: '4시간', ai_guide_hint: '전면 유지, 조건부 축소, 포트폴리오 재구성 3가지 시나리오로 모델링' },
+      { task: '3가지 시나리오 재무 모델링', actor: 'ai' as const, expected_output: '시나리오별 12개월 P&L 시뮬레이션', checkpoint: false, estimated_time: '4시간', user_ai_guide: '전면 유지, 조건부 축소, 포트폴리오 재구성 3가지 시나리오로 모델링' },
       { task: '대체 매출 파이프라인 현실성 평가', actor: 'both' as const, expected_output: '전환 가능 고객 리스트 + 시점 매트릭스', checkpoint: true, checkpoint_reason: "'놓을 수 있는 카드'인지 여기서 결정", estimated_time: '2일', judgment: '기존 파이프라인/신규 발굴/기존 고객 확대 중 집중 영역을 결정' },
       { task: '대표 보고용 의사결정 문서 작성', actor: 'human' as const, expected_output: '시나리오 비교표 + 추천안 (10p)', checkpoint: true, checkpoint_reason: '최종 보고 전 프레이밍 검수', estimated_time: '1일', judgment: '전면 유지/조건부 축소/포트폴리오 재구성 중 추천안을 선택' },
     ],
@@ -589,14 +589,14 @@ function OrchestrateSection() {
                   <div className="ml-0 sm:ml-[30px] pt-3 border-t border-[var(--border-subtle)] space-y-3">
 
                     {/* AI guide (for ai and both steps) */}
-                    {(s.actor === 'ai' || s.actor === 'both') && (s as any).ai_guide_hint && (
+                    {(s.actor === 'ai' || s.actor === 'both') && s.user_ai_guide && (
                       <div>
                         <span className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: actorConfig.ai.text }}>
                           <Bot size={10} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
                           AI 실행 가이드
                         </span>
                         <p className="text-[12px] text-[var(--text-primary)] leading-relaxed bg-white/50 rounded-md px-3 py-2 border border-[var(--border-subtle)]">
-                          {(s as any).ai_guide_hint}
+                          {s.user_ai_guide}
                         </p>
                       </div>
                     )}

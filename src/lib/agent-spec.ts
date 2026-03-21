@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord } from '@/stores/types';
+import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
 import { buildDecomposeContext } from './context-chain';
 import { projectFilter } from './output-helpers';
 
@@ -33,7 +33,7 @@ export function generateAgentSpec(project: Project | null): string {
       lines.push(`  hypothesis: "${hyp}"`);
       if (latest.analysis.hidden_assumptions.length > 0) {
         lines.push(`  assumptions_to_validate:`);
-        latest.analysis.hidden_assumptions.forEach((a: any) => {
+        latest.analysis.hidden_assumptions.forEach((a: HiddenAssumption | string) => {
           const text = typeof a === 'string' ? a : a.assumption;
           lines.push(`    - "${text}"`);
         });
@@ -48,7 +48,7 @@ export function generateAgentSpec(project: Project | null): string {
       lines.push(`context_chain:`);
       lines.push(`  hypothesis: "${latest.analysis.reframed_question || latest.analysis.hypothesis || ''}"`);
       lines.push(`  assumptions_to_validate:`);
-      latest.analysis.hidden_assumptions.forEach((a: any) => {
+      latest.analysis.hidden_assumptions.forEach((a: HiddenAssumption | string) => {
         const text = typeof a === 'string' ? a : a.assumption;
         lines.push(`    - "${text}"`);
       });

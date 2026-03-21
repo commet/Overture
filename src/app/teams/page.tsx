@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { TeamInvite } from '@/stores/types';
 import { useTeamStore } from '@/stores/useTeamStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,7 +23,7 @@ export default function TeamsPage() {
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState('');
-  const [myInvites, setMyInvites] = useState<any[]>([]);
+  const [myInvites, setMyInvites] = useState<TeamInvite[]>([]);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
