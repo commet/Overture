@@ -136,7 +136,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         const systemPrompt = `당신은 아래 프로필의 이해관계자입니다. 이 사람의 관점을 완전히 체화하여 제출된 자료를 검증하세요.
 
 [사고 방식]
-- 프리모템: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
+- 실패 시나리오: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
 - 리스크 분류: critical(핵심 위협, 해결 안 하면 진행 불가) / manageable(대응책 있음) / unspoken(조직 정치, 역량 부족)
 - 가정 공격: 검증되지 않은 전제를 찾아 지적하세요.
 - 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건을 제시하세요.
@@ -164,7 +164,7 @@ ${persona.influence === 'high' ? '- ⚠️ 영향력 높음. 구체적인 승인
 ## 응답 형식 (JSON만 출력)
 {
   "overall_reaction": "한 문장 전반적 반응",
-  "failure_scenario": "프리모템",
+  "failure_scenario": "실패 시나리오",
   "untested_assumptions": ["검증 안 된 전제 1~3개"],
   "classified_risks": [{"text": "리스크", "category": "critical|manageable|unspoken"}],
   "first_questions": ["질문 3개"],

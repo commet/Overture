@@ -9,7 +9,7 @@ import { DiscussionThread } from './DiscussionThread';
 import type { Persona, FeedbackRecord } from '@/stores/types';
 import {
   MessageCircleQuestion, ThumbsUp, AlertTriangle, Search, Star, Check, RefreshCw,
-  ShieldAlert, Shield, EyeOff, ArrowLeft, MessageSquare, Loader2,
+  ShieldAlert, Shield, EyeOff, ArrowLeft, MessageSquare, Loader2, ArrowRight,
 } from 'lucide-react';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
@@ -23,11 +23,12 @@ interface FeedbackResultProps {
   onNavigate?: (step: string) => void;
   onStartDiscussion?: () => void;
   discussionLoading?: boolean;
+  onStartDebate?: () => void;
 }
 
 type ViewMode = 'overview' | 'persona-detail' | 'discussion' | 'synthesis';
 
-export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion, discussionLoading }: FeedbackResultProps) {
+export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion, discussionLoading, onStartDebate }: FeedbackResultProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
 
@@ -90,7 +91,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
       const p = personas.find((persona) => persona.id === result.persona_id);
       text += `### ${p?.name || '페르소나'} (${p?.role || ''})\n\n`;
       text += `**전반적 반응**: ${result.overall_reaction}\n\n`;
-      if (result.failure_scenario) text += `**프리모템**\n${result.failure_scenario}\n\n`;
+      if (result.failure_scenario) text += `**이 계획이 실패한다면?**\n${result.failure_scenario}\n\n`;
       if (result.classified_risks?.length > 0) {
         for (const r of result.classified_risks) text += `**[${r.category}]** ${r.text}\n`;
         text += '\n';
@@ -230,18 +231,40 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             );
           })()}
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Action area */}
+          <div className="space-y-3">
             {record.results.length > 1 && (record.structured_synthesis || record.synthesis) && (
               <Button size="sm" variant="secondary" onClick={() => setViewMode('synthesis')}>
                 종합 분석 보기
               </Button>
             )}
+
+            {/* Discussion card — explains what 토론 does */}
             {record.results.length > 1 && onStartDiscussion && (
-              <Button size="sm" onClick={() => record.discussion ? setViewMode('discussion') : onStartDiscussion()} disabled={discussionLoading}>
-                {discussionLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
-                {record.discussion ? '토론 보기' : discussionLoading ? '토론 생성 중...' : '토론 시작'}
-              </Button>
+              <div className={`p-3.5 rounded-xl border transition-colors ${record.discussion ? 'border-[var(--accent)]/20 bg-[var(--accent)]/5' : 'border-dashed border-[var(--border)]'}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${record.discussion ? 'bg-[var(--accent)]/10' : 'bg-[var(--bg)]'}`}>
+                    <MessageSquare size={16} className={record.discussion ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-[var(--text-primary)]">
+                      {record.discussion ? '이해관계자 토론' : '이해관계자 토론 시뮬레이션'}
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                      {record.discussion
+                        ? `${record.discussion.length}건의 발언${record.discussion_takeaway ? ` — "${record.discussion_takeaway}"` : ''}`
+                        : `${record.results.length}명의 이해관계자가 서로의 피드백에 반응하는 가상 토론을 생성합니다. 갈등 포인트와 합의점을 발견할 수 있습니다.`
+                      }
+                    </p>
+                    <Button size="sm" className="mt-2.5"
+                      onClick={() => record.discussion ? setViewMode('discussion') : onStartDiscussion()}
+                      disabled={discussionLoading}>
+                      {discussionLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                      {record.discussion ? '토론 보기' : discussionLoading ? '토론 생성 중...' : '토론 시작'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -272,10 +295,17 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               {selectedResult.overall_reaction}
             </FeedbackMessage>
 
-            {/* Pre-mortem */}
+            {/* Section: 위험 신호 */}
+            <div className="flex items-center gap-2 pt-1">
+              <div className="h-px flex-1 bg-red-200" />
+              <span className="text-[10px] font-bold text-red-400 tracking-wider shrink-0">위험 신호</span>
+              <div className="h-px flex-1 bg-red-200" />
+            </div>
+
+            {/* Failure scenario */}
             {selectedResult.failure_scenario && (
               <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
-                category="프리모템" categoryIcon={<AlertTriangle size={10} />} variant="risk-critical" delay={80}>
+                category="실패 시나리오" categoryIcon={<AlertTriangle size={10} />} variant="risk-critical" delay={80}>
                 <p className="text-[11px] font-semibold text-red-600 mb-1">이 계획이 실패한다면?</p>
                 {selectedResult.failure_scenario}
               </FeedbackMessage>
@@ -316,6 +346,13 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                 ))}
               </>
             )}
+
+            {/* Section: 긍정 & 다음 단계 */}
+            <div className="flex items-center gap-2 pt-1">
+              <div className="h-px flex-1 bg-emerald-200" />
+              <span className="text-[10px] font-bold text-emerald-400 tracking-wider shrink-0">긍정 & 다음 단계</span>
+              <div className="h-px flex-1 bg-emerald-200" />
+            </div>
 
             {/* First questions */}
             <FeedbackMessage personaName={selectedPersona.name} personaId={selectedPersona.id}
@@ -432,6 +469,21 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               <p className="text-[var(--text-secondary)]">토론이 아직 생성되지 않았습니다.</p>
             </Card>
           )}
+
+          {/* CTA after discussion */}
+          {record.project_id && record.discussion && (
+            <Card className="!bg-[var(--checkpoint)] !border-amber-200">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[13px] font-bold text-[var(--text-primary)]">토론을 마쳤습니다</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">발견한 갈등과 우려를 제약조건으로 변환하여 반복 개선합니다.</p>
+                </div>
+                <Button size="sm" onClick={handleStartLoop}>
+                  <RefreshCw size={14} /> 합주 연습 시작
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -516,19 +568,51 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
         </div>
       )}
 
-      {/* ── Refinement loop CTA ── */}
+      {/* ── Next Steps CTA ── */}
       {record.project_id && record.results.length > 0 && viewMode === 'overview' && (
-        <Card className="!bg-[var(--checkpoint)] !border-amber-200 mt-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[13px] font-bold text-[var(--text-primary)]">피드백을 반영하여 반복 개선하시겠어요?</p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">우려사항을 제약조건으로 변환하여 다시 분석합니다.</p>
-            </div>
-            <Button size="sm" onClick={handleStartLoop}>
-              <RefreshCw size={14} /> 합주 연습
-            </Button>
+        <div className="space-y-3 mt-2">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-[var(--border)]" />
+            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider shrink-0">다음 단계</span>
+            <div className="h-px flex-1 bg-[var(--border)]" />
           </div>
-        </Card>
+
+          {/* Issue summary */}
+          <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 rounded-xl bg-[var(--bg)] text-[12px]">
+            <span className="text-[var(--text-secondary)] font-medium">추출된 이슈</span>
+            {riskCounts.critical > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-50 text-red-700 font-bold border border-red-200">차단 {riskCounts.critical}</span>}
+            {(() => { const c = record.results.reduce((s, r) => s + r.concerns.length, 0); return c > 0 ? <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200">우려 {c}</span> : null; })()}
+            {(() => { const w = record.results.reduce((s, r) => s + r.wants_more.length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">추가 요청 {w}</span> : null; })()}
+          </div>
+
+          {/* Two paths: debate (filter issues) or direct start */}
+          <div className={`grid gap-3 ${onStartDebate ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            {onStartDebate && (
+              <button onClick={onStartDebate}
+                className="flex items-center gap-3 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm transition-all cursor-pointer text-left group">
+                <div className="w-9 h-9 rounded-lg bg-[var(--ai)] flex items-center justify-center shrink-0">
+                  <MessageSquare size={16} className="text-[var(--accent)]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-bold text-[var(--text-primary)]">이슈 정리</p>
+                  <p className="text-[11px] text-[var(--text-secondary)]">반영할 이슈를 선별하고 추가합니다</p>
+                </div>
+                <ArrowRight size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
+              </button>
+            )}
+            <button onClick={handleStartLoop}
+              className="flex items-center gap-3 p-4 rounded-xl border border-[var(--accent)]/30 bg-[var(--checkpoint)] hover:border-[var(--accent)]/50 hover:shadow-sm transition-all cursor-pointer text-left group">
+              <div className="w-9 h-9 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0">
+                <RefreshCw size={16} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[13px] font-bold text-[var(--text-primary)]">합주 연습 시작</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">전체 이슈를 반영하여 반복 개선</p>
+              </div>
+              <ArrowRight size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

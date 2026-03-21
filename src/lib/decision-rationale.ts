@@ -163,7 +163,7 @@ export function generateDecisionRationale(project: Project | null): string {
       s.push('');
 
       if (result.failure_scenario) {
-        s.push(`**프리모템**: ${result.failure_scenario}`);
+        s.push(`**실패 시나리오**: ${result.failure_scenario}`);
         s.push('');
       }
 

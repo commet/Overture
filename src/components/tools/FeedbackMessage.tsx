@@ -58,7 +58,7 @@ const VARIANT_STYLES: Record<string, string> = {
 
 const CATEGORY_COLORS: Record<string, string> = {
   '전반적 반응': 'text-[var(--accent)]',
-  '프리모템': 'text-red-600',
+  '실패 시나리오': 'text-red-600',
   '검증 안 된 전제': 'text-amber-700',
   '핵심 위협': 'text-[#E24B4A]',
   '관리 가능': 'text-[#EF9F27]',

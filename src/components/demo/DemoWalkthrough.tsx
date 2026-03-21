@@ -751,7 +751,7 @@ function PersonaSection() {
 
       {/* Failure scenario — dark card */}
       <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] p-5">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">프리모템 &mdash; 이 계획이 실패한다면</p>
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-300 mb-2">이 계획이 실패한다면</p>
         <p className="text-[14px] leading-relaxed text-white/90">{f.failure_scenario}</p>
       </div>
 
