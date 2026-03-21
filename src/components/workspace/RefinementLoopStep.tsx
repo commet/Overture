@@ -15,7 +15,7 @@ import { callLLMJson } from '@/lib/llm';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
 import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
-import { track } from '@/lib/analytics';
+import { track, trackError } from '@/lib/analytics';
 import { buildPersonaAccuracyContext } from '@/lib/context-builder';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext } from '@/lib/context-chain';
@@ -292,9 +292,15 @@ ${buildPersonaAccuracyContext(personaId)}
       track('real_iteration_complete', {
         iteration: activeLoop.iterations.length + 1,
         critical_remaining: newCriticalCount,
-        issues: newIssues.length,
+        issues_total: newIssues.length,
+        issues_selected: selectedIssueList.length,
+        changes_made: revision.changes?.length || 0,
+        not_addressed: revision.not_addressed?.length || 0,
+        has_user_directive: !!userDirective.trim(),
+        personas_count: personaIds.length,
       });
     } catch (err) {
+      trackError('refinement_iterate', err);
       setError(err instanceof Error ? err.message : '개선안을 생성할 수 없었습니다.');
     } finally {
       setIsRefining(false);

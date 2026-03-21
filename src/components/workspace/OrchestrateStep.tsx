@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { track } from '@/lib/analytics';
+import { track, trackError } from '@/lib/analytics';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -366,6 +366,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
+      trackError('orchestrate_analyze', err);
       setError(err instanceof Error ? err.message : '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
@@ -374,7 +375,15 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const handleConfirm = () => {
     if (!currentId) return;
     updateItem(currentId, { status: 'done' });
-    track('orchestrate_complete', { steps: steps.length, checkpoints: steps.filter(s => s.checkpoint).length });
+    track('orchestrate_complete', {
+      steps: steps.length,
+      checkpoints: steps.filter(s => s.checkpoint).length,
+      ai_steps: steps.filter(s => s.actor === 'ai').length,
+      human_steps: steps.filter(s => s.actor === 'human').length,
+      both_steps: steps.filter(s => s.actor === 'both').length,
+      has_reviews: !!(current?.analysis?.reviews?.length),
+      ai_limitation_warnings: current?.analysis?.ai_limitation_warnings?.length || 0,
+    });
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);
@@ -387,6 +396,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     if (!currentId) return;
     const step = steps[stepIndex];
     if (step && step.actor !== newActor) {
+      track('actor_changed', { from: step.actor, to: newActor, step_task: step.task.slice(0, 50) });
       addJudgment({
         type: 'actor_override',
         context: step.task,

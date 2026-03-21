@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { track } from '@/lib/analytics';
+import { track, trackError } from '@/lib/analytics';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Card } from '@/components/ui/Card';
@@ -268,13 +268,25 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const record = usePersonaStore.getState().feedbackHistory.find((r) => r.id === recordId);
       if (record) setLatestFeedback(record);
       setPhase('results');
-      track('feedback_complete', { personas_count: results.length, has_synthesis: !!synthesis });
+      const criticalCount = results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical')).length;
+      const unspokenCount = results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'unspoken')).length;
+      track('feedback_complete', {
+        personas_count: results.length,
+        has_synthesis: !!synthesis,
+        perspective: data.perspective,
+        intensity: data.intensity,
+        critical_risks: criticalCount,
+        unspoken_risks: unspokenCount,
+        total_concerns: results.flatMap(r => r.concerns || []).length,
+        total_approval_conditions: results.flatMap(r => r.approval_conditions || []).length,
+      });
       const { settings } = useSettingsStore.getState();
       if (settings.audio_enabled) {
         resumeAudioContext();
         playSuccessTone(settings.audio_volume);
       }
     } catch (err) {
+      trackError('feedback_generate', err);
       alert('리허설을 진행할 수 없었습니다. 다시 시도하거나, 자료를 더 구체적으로 작성해보세요. ' + (err instanceof Error ? err.message : ''));
       setPhase('setup');
     } finally {

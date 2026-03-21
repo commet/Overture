@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { track } from '@/lib/analytics';
+import { track, trackError } from '@/lib/analytics';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -279,6 +279,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
+      trackError('decompose_analyze', err);
       setError(err instanceof Error ? err.message : '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       updateItem(id, { status: 'input' });
     }
@@ -384,6 +385,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
+      trackError('decompose_reframe', err);
       setError(err instanceof Error ? err.message : '질문을 재정의할 수 없었습니다.');
     } finally {
       setReframing(false);
@@ -393,7 +395,25 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const handleConfirm = () => {
     if (!current || !currentId || !current.analysis) return;
     updateItem(currentId, { status: 'done' });
-    track('decompose_complete', { assumptions: current.analysis.hidden_assumptions?.length || 0 });
+
+    // Rich tracking: eval pattern, strategy, user behavior
+    const assumptions = current.analysis.hidden_assumptions || [];
+    const dCount = assumptions.filter(a => a.evaluation === 'doubtful').length;
+    const uCount = assumptions.filter(a => a.evaluation === 'uncertain').length;
+    const cCount = assumptions.filter(a => a.evaluation === 'likely_true').length;
+    const evalPattern = dCount === 0 && uCount === 0 ? 'all_confirmed'
+      : dCount >= assumptions.length * 0.5 ? 'mostly_doubtful'
+      : 'mixed';
+    track('decompose_complete', {
+      assumptions: assumptions.length,
+      eval_pattern: evalPattern,
+      confirmed: cCount,
+      doubtful: dCount,
+      uncertain: uCount,
+      strategy: currentStrategy || 'none',
+      user_edited_question: current.user_edited_question || false,
+      reanalysis_count: current.reanalysis_count || 0,
+    });
 
     // Phase 1: Record binary evals for strategy learning
     recordDecomposeEval(current, currentStrategy);

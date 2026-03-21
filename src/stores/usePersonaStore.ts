@@ -3,6 +3,7 @@ import type { Persona, FeedbackLog, FeedbackRecord, PersonaFeedbackResult } from
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
+import { track } from '@/lib/analytics';
 
 const DEFAULT_PERSONAS: Omit<Persona, 'id' | 'created_at' | 'updated_at' | 'feedback_logs'>[] = [
   {
@@ -92,6 +93,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
     upsertToSupabase('personas', newPersona);
+    track('persona_created', { influence: newPersona.influence, has_traits: newPersona.extracted_traits.length > 0 });
     return newPersona.id;
   },
 
