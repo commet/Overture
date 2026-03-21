@@ -62,7 +62,8 @@ export function StepEntry({
   };
 
   const handleSubmit = () => {
-    if (!text.trim()) return;
+    // Text is optional if card selections provide enough context
+    if (!text.trim() && Object.keys(selections).length === 0) return;
     onSubmit(selections, text);
   };
 
@@ -212,7 +213,7 @@ export function StepEntry({
           />
 
           <div className="flex justify-end">
-            <Button onClick={handleSubmit} disabled={!text.trim() || disabled}>
+            <Button onClick={handleSubmit} disabled={(!text.trim() && Object.keys(selections).length === 0) || disabled}>
               <Sparkles size={14} /> {submitLabel}
             </Button>
           </div>

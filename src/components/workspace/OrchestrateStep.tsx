@@ -97,6 +97,26 @@ const ORCHESTRATE_ENTRY_STEPS = [
     ],
   },
   {
+    key: 'timeline',
+    question: '기한이 어떻게 되나요?',
+    options: [
+      { value: 'urgent', emoji: '🔥', label: '1주 이내', description: '급한 요청, 속도 우선' },
+      { value: 'normal', emoji: '📅', label: '2~3주', description: '일반적인 프로젝트 기한' },
+      { value: 'relaxed', emoji: '🗓️', label: '한 달 이상', description: '충분한 검토 시간' },
+      { value: 'undefined', emoji: '❓', label: '아직 미정', description: '기한 없이 진행' },
+    ],
+  },
+  {
+    key: 'teamSize',
+    question: '누구와 함께 하나요?',
+    options: [
+      { value: 'solo', emoji: '🧑', label: '혼자', description: '1인 작업' },
+      { value: 'small', emoji: '👥', label: '2~3명', description: '소규모 협업' },
+      { value: 'team', emoji: '👨‍👩‍👧‍👦', label: '5명 이상 팀', description: '역할 분담 필요' },
+      { value: 'cross', emoji: '🏢', label: '외부 협력 포함', description: '타 부서·외주·파트너' },
+    ],
+  },
+  {
     key: 'aiComfort',
     question: 'AI에게 어디까지 맡기시겠어요?',
     options: [
@@ -439,9 +459,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         <Card>
           <StepEntry
             steps={ORCHESTRATE_ENTRY_STEPS}
-            textLabel="무엇을, 언제까지, 누구와 만드나요?"
-            textPlaceholder="예: 동남아 진출 전략 보고서를 혼자서 2주 안에 경영진에게 보고해야 함"
-            textHint="팀 규모와 기한을 포함하면 더 현실적인 역할 배정이 됩니다."
+            textLabel="추가로 알려줄 맥락이 있나요?"
+            textPlaceholder="예: 지난 분기 실적 데이터를 반드시 포함해야 함 / 마케팅팀과 병렬 진행 중 / 대표가 '고객 관점'을 강조했음"
+            textHint="위에서 선택한 내용만으로도 충분합니다. 특수한 조건이나 배경이 있다면 자유롭게 적어주세요."
             submitLabel="워크플로우 설계"
             initialText={inputText}
             contextPanel={decomposeCtx ? (
@@ -470,7 +490,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                 })
                 .filter(Boolean)
                 .join('\n');
-              const fullPrompt = context ? `[맥락]\n${context}\n\n[목표]\n${text}` : text;
+              const fullPrompt = context
+                ? (text.trim() ? `[맥락]\n${context}\n\n[추가 맥락]\n${text}` : `[맥락]\n${context}`)
+                : text;
               handleAnalyze(fullPrompt);
             }}
           />
