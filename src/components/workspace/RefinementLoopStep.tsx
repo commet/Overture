@@ -4,56 +4,40 @@ import { useEffect, useState } from 'react';
 import { useRefinementStore } from '@/stores/useRefinementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
-import { ContextChainBlock } from './ContextChainBlock';
 import { ConvergenceChart } from './ConvergenceChart';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { FeedbackResult } from '@/components/tools/FeedbackResult';
+import { LoadingSteps } from '@/components/ui/LoadingSteps';
+import { CopyButton } from '@/components/ui/CopyButton';
 import { callLLMJson } from '@/lib/llm';
-import { matchIssuesAcrossIterations, calculateWeightedScore } from '@/lib/convergence';
-import { generateId } from '@/lib/uuid';
-import type { RefinementIssue } from '@/stores/types';
-import { RefreshCw, Check, AlertTriangle, ArrowRight, Play, Square, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
+import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis } from '@/stores/types';
+import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
 import { track } from '@/lib/analytics';
+import { buildPersonaAccuracyContext } from '@/lib/context-builder';
 
-const SEVERITY_LABELS = { blocker: '차단', improvement: '개선', nice_to_have: '참고' } as const;
-const SEVERITY_COLORS = {
-  blocker: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', border: 'border-red-200' },
-  improvement: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', border: 'border-amber-200' },
-  nice_to_have: { bg: 'bg-blue-50', text: 'text-blue-600', dot: 'bg-blue-400', border: 'border-blue-200' },
-} as const;
+// ── Revision prompt ──
+const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다.
+이해관계자 피드백을 반영하여 기획안을 수정합니다.
 
-const QUICK_PROMPT = `당신은 전략기획 리뷰 전문가입니다. 이전 계획에 대한 이해관계자 피드백을 반영하여 개선안을 만드세요.
+규칙:
+- 원본 구조를 유지하면서 문제가 된 부분만 정확히 수정
+- 각 수정에 대해 왜 수정했는지 근거를 명시
+- 수정하지 않은 부분도 포함한 완전한 문서를 출력
+- 과도한 수정보다 핵심 이슈에 집중
 
-아래 JSON 구조로 응답하세요.
-1. delta_summary: 무엇을 어떻게 변경했는지 2-3문장 (구체적으로)
-2. predicted_concerns: 변경 후에도 남아있거나 새로 발생할 우려사항 (문자열 배열). 해결된 것은 절대 포함하지 마세요.
-
-반드시 JSON만 응답하세요.`;
-
-const DEEP_PROMPT = `당신은 전략기획 심층 분석 전문가입니다. 이해관계자 피드백을 반영하여 구체적이고 검증 가능한 개선안을 만드세요.
-
-[분석 원칙]
-- 각 이슈에 대해 근본 원인을 파악하고, 단순 대응이 아닌 구조적 해결을 제시하세요.
-- 변경의 근거를 데이터나 논리로 뒷받침하세요.
-- 대안적 접근도 검토한 후 최선안을 선택하세요.
-- 이 개선안이 유효하려면 어떤 데이터가 추가로 필요한지 밝히세요.
-
-아래 JSON 구조로 응답하세요.
-1. delta_summary: 핵심 변경사항 2-3문장
-2. deep_analysis: 각 이슈별 분석 과정과 해결 근거를 서술 (왜 이 접근인지, 어떤 대안을 검토했는지, 어떤 데이터로 뒷받침하는지). 3-5문단.
-3. data_gaps: 이 개선안을 더 강화하려면 확인해야 할 데이터나 검증 포인트 (문자열 배열, 2-4개)
-4. predicted_concerns: 변경 후에도 남아있거나 새로 발생할 우려사항 (문자열 배열). 해결된 것은 절대 포함하지 마세요.
-
-반드시 JSON만 응답하세요.`;
-
-interface RefinementResult {
-  delta_summary: string;
-  deep_analysis?: string;
-  data_gaps?: string[];
-  predicted_concerns: string[];
+응답 형식 (JSON만 출력):
+{
+  "revised_plan": "수정된 전체 기획안 (마크다운)",
+  "changes": [
+    {"what": "무엇을 수정", "why": "왜 수정", "addressing": "어떤 이슈 대응"}
+  ],
+  "not_addressed": ["이번에 반영 안 한 이슈와 이유"]
 }
+
+반드시 JSON만 응답하세요.`;
 
 interface RefinementLoopStepProps {
   onNavigate: (step: string) => void;
@@ -62,132 +46,226 @@ interface RefinementLoopStepProps {
 export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence } = useRefinementStore();
   const { projects, loadProjects } = useProjectStore();
-  const { personas, feedbackHistory, loadData: loadPersonaData } = usePersonaStore();
-  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+  const { personas, feedbackHistory, loadData: loadPersonaData, getPersona, addFeedbackRecord } = usePersonaStore();
 
   const [expandedIteration, setExpandedIteration] = useState<number | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState('');
   const [userDirective, setUserDirective] = useState('');
-  const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
 
   useEffect(() => {
     loadLoops();
     loadProjects();
     loadPersonaData();
-    loadOrchestrate();
-  }, [loadLoops, loadProjects, loadPersonaData, loadOrchestrate]);
+  }, [loadLoops, loadProjects, loadPersonaData]);
 
   const activeLoop = loops.find((l) => l.id === activeLoopId);
   const convergence = activeLoop ? checkConvergence(activeLoop.id) : null;
   const latestIteration = activeLoop?.iterations[activeLoop.iterations.length - 1];
 
-  // Find the original document that was reviewed (from iteration 1's feedback record)
-  const originalDocument = (() => {
-    if (!activeLoop) return null;
-    const firstIter = activeLoop.iterations[0];
-    if (!firstIter?.feedback_record_id) return null;
-    const record = feedbackHistory.find(f => f.id === firstIter.feedback_record_id);
-    return record ? { title: record.document_title, text: record.document_text } : null;
-  })();
+  // Get the current plan text (latest revised or original)
+  const currentPlan = latestIteration?.revised_plan || activeLoop?.original_plan || '';
 
-  const unresolvedIssues = latestIteration
-    ? latestIteration.issues_from_feedback
-        .filter((i) => !i.resolved)
-        .sort((a, b) => {
-          const severityOrder: Record<string, number> = { blocker: 0, improvement: 1, nice_to_have: 2 };
-          return (severityOrder[a.severity] || 1) - (severityOrder[b.severity] || 1);
-        })
+  // Get the latest feedback record (from latest iteration or initial)
+  const latestFeedbackRecordId = latestIteration?.feedback_record_id || activeLoop?.initial_feedback_record_id;
+  const latestFeedbackRecord = latestFeedbackRecordId
+    ? feedbackHistory.find(f => f.id === latestFeedbackRecordId)
+    : null;
+
+  // Extract issues from latest feedback
+  const currentIssues = latestFeedbackRecord
+    ? extractIssuesFromFeedback(latestFeedbackRecord, personas)
     : [];
 
-  const toggleIssue = (id: string) => {
-    setSelectedIssues((prev) => {
+  const criticalIssues = currentIssues.filter(i => i.severity === 'critical');
+  const concernIssues = currentIssues.filter(i => i.severity === 'concern');
+  const questionIssues = currentIssues.filter(i => i.severity === 'question');
+
+  const toggleIssue = (text: string) => {
+    setSelectedIssues(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(text)) next.delete(text);
+      else next.add(text);
       return next;
     });
   };
 
+  // ── The Real Loop: Revise → Re-review → Converge ──
   const handleRunIteration = async () => {
-    if (!activeLoop || !latestIteration || selectedIssues.size === 0) return;
-
+    if (!activeLoop || selectedIssues.size === 0) return;
     setIsRefining(true);
     setError('');
 
-    const issues = unresolvedIssues.filter((i) => selectedIssues.has(i.id));
-    const constraintText = issues
-      .map((i) => `- [${SEVERITY_LABELS[i.severity]}][${i.source_persona_name}] ${i.text}`)
-      .join('\n');
-
-    const prevAdjustments = activeLoop.iterations
-      .filter(iter => iter.delta_summary && iter.iteration_number > 1)
-      .map(iter => `반복 ${iter.iteration_number}: ${iter.delta_summary}`)
-      .join('\n');
-
-    const directivePart = userDirective.trim()
-      ? `\n\n[사용자 지시]\n${userDirective.trim()}`
-      : '';
-
-    const documentPart = originalDocument
-      ? `\n\n[현재 기획안]\n${originalDocument.text}`
-      : '';
-
-    const prompt = `[목표]\n${activeLoop.goal}${documentPart}\n\n${prevAdjustments ? `[이전 변경사항]\n${prevAdjustments}\n\n` : ''}[이번에 반영할 피드백 (${issues.length}건)]\n${constraintText}${directivePart}\n\n위 피드백을 반영하여 기획안의 구체적인 개선안을 만들어주세요.`;
-
     try {
-      const isDeep = depth === 'deep';
-      const result = await callLLMJson<RefinementResult>(
-        [{ role: 'user', content: prompt }],
-        { system: isDeep ? DEEP_PROMPT : QUICK_PROMPT, maxTokens: isDeep ? 3500 : 1500 }
+      const selectedIssueList = currentIssues.filter(i => selectedIssues.has(i.text));
+      const issueText = selectedIssueList
+        .map(i => `- [${i.persona_name}] ${i.text}`)
+        .join('\n');
+
+      const directivePart = userDirective.trim()
+        ? `\n\n[사용자 추가 지시]\n${userDirective.trim()}`
+        : '';
+
+      const revisionPrompt = `[기획안]\n${currentPlan}\n\n[반영할 이해관계자 피드백 (${selectedIssueList.length}건)]\n${issueText}${directivePart}`;
+
+      // ── Phase A: Plan Revision ──
+      const revision = await callLLMJson<{
+        revised_plan: string;
+        changes: RevisionChange[];
+        not_addressed: string[];
+      }>(
+        [{ role: 'user', content: revisionPrompt }],
+        { system: REVISION_SYSTEM, maxTokens: 3500 }
       );
 
-      const previousIssues = latestIteration.issues_from_feedback;
-      const { resolved, persisting, newIssues } = matchIssuesAcrossIterations(previousIssues, result.predicted_concerns);
+      // ── Phase B: Re-review with same personas ──
+      const reReviewResults: PersonaFeedbackResult[] = [];
+      const personaIds = activeLoop.persona_ids;
 
-      const newIterationIssues: RefinementIssue[] = [];
-      for (const prev of previousIssues) {
-        if (resolved.includes(prev.text)) {
-          newIterationIssues.push({ ...prev, resolved: true, resolved_at_iteration: activeLoop.iterations.length + 1 });
-        } else {
-          newIterationIssues.push({ ...prev });
+      for (const personaId of personaIds) {
+        const persona = getPersona(personaId);
+        if (!persona) continue;
+
+        // Build the same system prompt used in initial feedback
+        const recentLogs = persona.feedback_logs
+          .slice(-5)
+          .map(log => `- [${log.date}] ${log.context}: ${log.feedback}`)
+          .join('\n');
+
+        const systemPrompt = `당신은 아래 프로필의 이해관계자입니다. 이 사람의 관점을 완전히 체화하여 제출된 자료를 검증하세요.
+
+[사고 방식]
+- 프리모템: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
+- 리스크 분류: critical(핵심 위협, 해결 안 하면 진행 불가) / manageable(대응책 있음) / unspoken(조직 정치, 역량 부족)
+- 가정 공격: 검증되지 않은 전제를 찾아 지적하세요.
+- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건을 제시하세요.
+- 이 사람의 말투와 관심사로 답하세요.
+
+## 페르소나
+- 이름: ${persona.name}
+- 역할: ${persona.role}
+- 소속: ${persona.organization}
+- 우선순위: ${persona.priorities}
+- 커뮤니케이션 스타일: ${persona.communication_style}
+- 최근 관심사/우려: ${persona.known_concerns}
+- 의사결정 영향력: ${persona.influence || 'medium'}
+- 핵심 성향: ${persona.extracted_traits.join(', ')}
+
+## 과거 피드백 (참고)
+${recentLogs || '(없음)'}
+
+## 피드백 지침
+- 관점: 전반적 인상
+- 강도: 솔직하게
+- ⚠️ 이것은 수정된 버전입니다. 이전 피드백이 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
+${persona.influence === 'high' ? '- ⚠️ 영향력 높음. 구체적인 승인 조건을 제시하세요.' : ''}
+
+## 응답 형식 (JSON만 출력)
+{
+  "overall_reaction": "한 문장 전반적 반응",
+  "failure_scenario": "프리모템",
+  "untested_assumptions": ["검증 안 된 전제 1~3개"],
+  "classified_risks": [{"text": "리스크", "category": "critical|manageable|unspoken"}],
+  "first_questions": ["질문 3개"],
+  "praise": ["칭찬 1~3개"],
+  "concerns": ["우려 1~3개"],
+  "wants_more": ["추가 요청 1~2개"],
+  "approval_conditions": ["승인 조건 1~2개"]
+}
+
+${buildPersonaAccuracyContext(personaId)}
+
+반드시 JSON만 응답하세요.`;
+
+        const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(
+          [{ role: 'user', content: revision.revised_plan }],
+          { system: systemPrompt, maxTokens: 2000 }
+        );
+        reReviewResults.push({ ...result, persona_id: personaId });
+      }
+
+      // Synthesis for re-review
+      let synthesis = '';
+      let structured_synthesis: StructuredSynthesis | undefined;
+      if (reReviewResults.length > 1) {
+        const feedbackSummary = reReviewResults.map(r => {
+          const p = getPersona(r.persona_id);
+          return `### ${p?.name} (ID: ${r.persona_id}, 영향력: ${p?.influence || 'medium'})\n우려: ${r.concerns.join('; ')}\n리스크: ${(r.classified_risks || []).map(cr => `[${cr.category}] ${cr.text}`).join('; ')}`;
+        }).join('\n\n');
+
+        try {
+          structured_synthesis = await callLLMJson<StructuredSynthesis>(
+            [{ role: 'user', content: feedbackSummary }],
+            { system: `이해관계자 재리뷰 피드백을 종합하세요. JSON: {"common_agreements":["합의점"],"key_conflicts":[{"topic":"","positions":[{"persona_id":"","stance":""}]}],"priority_actions":[{"action":"","requested_by":"","priority":"high|medium"}]}. 한국어. JSON만.`, maxTokens: 1500 }
+          );
+          synthesis = `합의: ${structured_synthesis.common_agreements.join(', ')}`;
+        } catch {
+          synthesis = '종합 분석 생성 실패';
         }
       }
-      for (const concern of newIssues) {
-        newIterationIssues.push({
-          id: generateId(),
-          source_persona_id: '',
-          source_persona_name: 'AI 예측',
-          category: 'concern',
-          severity: 'improvement',
-          text: concern,
-          resolved: false,
-        });
+
+      // Validate re-review results
+      if (reReviewResults.length === 0) {
+        throw new Error('재리뷰를 수행할 수 있는 페르소나가 없습니다. 페르소나를 확인해주세요.');
       }
 
-      const { score } = calculateWeightedScore(newIterationIssues);
-      const unresolvedCount = newIterationIssues.filter(i => !i.resolved).length;
+      // Save re-review as FeedbackRecord
+      const reReviewRecordId = addFeedbackRecord({
+        document_title: `${activeLoop.goal} (v${activeLoop.iterations.length + 2})`,
+        document_text: revision.revised_plan,
+        persona_ids: personaIds,
+        feedback_perspective: '전반적 인상',
+        feedback_intensity: '솔직하게',
+        results: reReviewResults,
+        synthesis,
+        structured_synthesis,
+        project_id: activeLoop.project_id,
+        loop_id: activeLoop.id,
+        iteration_number: activeLoop.iterations.length + 1,
+      });
 
+      // ── Phase C: Convergence check ──
+      const reReviewRecord = usePersonaStore.getState().feedbackHistory.find(f => f.id === reReviewRecordId);
+      if (!reReviewRecord) throw new Error('재리뷰 기록을 찾을 수 없습니다.');
+
+      // Match approval conditions
+      const prevConditions = latestIteration?.convergence.approval_conditions
+        || activeLoop.initial_approval_conditions;
+      const updatedConditions = matchApprovalConditions(
+        prevConditions,
+        reReviewRecord,
+        activeLoop.iterations.length + 1
+      );
+
+      // Count issues from re-review
+      const newIssues = extractIssuesFromFeedback(reReviewRecord, personas);
+      const newCriticalCount = newIssues.filter(i => i.severity === 'critical').length;
+
+      // Add iteration
       addIteration(activeLoop.id, {
         iteration_number: activeLoop.iterations.length + 1,
-        trigger_reason: `${issues.length}건 반영 (차단 ${issues.filter(i => i.severity === 'blocker').length}건)`,
-        issues_from_feedback: newIterationIssues,
-        constraints_added: issues.map(i => i.text),
+        issues_to_address: selectedIssueList.map(i => i.text),
         user_directive: userDirective.trim() || undefined,
-        depth,
-        delta_summary: result.delta_summary,
-        deep_analysis: result.deep_analysis,
-        data_gaps: result.data_gaps,
-        unresolved_count: unresolvedCount,
-        total_issue_count: newIterationIssues.length,
-        convergence_score: score,
+        revised_plan: revision.revised_plan,
+        changes: revision.changes,
+        not_addressed: revision.not_addressed,
+        feedback_record_id: reReviewRecordId,
+        convergence: {
+          critical_risks: newCriticalCount,
+          total_issues: newIssues.length,
+          approval_conditions: updatedConditions,
+        },
       });
 
       setSelectedIssues(new Set());
       setUserDirective('');
       setExpandedIteration(activeLoop.iterations.length);
-      track('iteration_complete', { iteration: activeLoop.iterations.length + 1, convergence: Math.round(score * 100), issues_addressed: issues.length });
+      track('real_iteration_complete', {
+        iteration: activeLoop.iterations.length + 1,
+        critical_remaining: newCriticalCount,
+        issues: newIssues.length,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : '개선안을 생성할 수 없었습니다.');
     } finally {
@@ -195,16 +273,24 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
     }
   };
 
+  // ── Initial issue count (from initial feedback) ──
+  const initialFeedbackRecord = activeLoop?.initial_feedback_record_id
+    ? feedbackHistory.find(f => f.id === activeLoop.initial_feedback_record_id)
+    : null;
+  const initialIssueCount = initialFeedbackRecord
+    ? extractIssuesFromFeedback(initialFeedbackRecord, personas).length
+    : 0;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">합주 연습 <span className="text-[16px] font-normal text-[var(--text-secondary)]">| 피드백 반영</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          이해관계자 피드백을 반복적으로 반영하여 수렴할 때까지 개선합니다.
+          기획안을 수정하고 이해관계자에게 재리뷰를 받습니다. 핵심 위협이 해소될 때까지.
         </p>
       </div>
 
-      {/* Loop list */}
+      {/* ═══ Loop list ═══ */}
       {!activeLoop && (
         <div className="space-y-3">
           {loops.length === 0 ? (
@@ -212,15 +298,15 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
               <RefreshCw size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
               <p className="text-[var(--text-secondary)] text-[14px] font-medium">아직 합주가 시작되지 않았습니다.</p>
               <p className="text-[var(--text-secondary)] text-[12px] mt-1 max-w-xs mx-auto">
-                리허설에서 이해관계자 피드백을 받은 뒤, 피드백을 반영하여 반복 개선하는 단계입니다.
+                리허설에서 피드백을 받은 뒤, &ldquo;합주 연습 시작&rdquo;을 눌러 반복 개선을 시작하세요.
               </p>
               <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
                 리허설 먼저 진행하기 <ArrowRight size={14} />
               </button>
             </Card>
           ) : (
-            loops.map((loop) => {
-              const project = projects.find((p) => p.id === loop.project_id);
+            loops.map(loop => {
+              const project = projects.find(p => p.id === loop.project_id);
               const conv = checkConvergence(loop.id);
               return (
                 <Card key={loop.id} hoverable onClick={() => setActiveLoopId(loop.id)}>
@@ -229,11 +315,15 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{loop.name}</h3>
                         <Badge variant={loop.status === 'active' ? 'ai' : loop.status === 'converged' ? 'both' : 'default'}>
-                          {loop.status === 'active' ? '진행 중' : loop.status === 'converged' ? '하모니 완성' : '중단됨'}
+                          {loop.status === 'active' ? '진행 중' : loop.status === 'converged' ? '수렴 완료' : '중단됨'}
                         </Badge>
                       </div>
                       {project && <p className="text-[12px] text-[var(--text-secondary)]">{project.name}</p>}
-                      <p className="text-[12px] text-[var(--text-secondary)] mt-1">반복 {loop.iterations.length}/{loop.max_iterations} · 수렴률 {Math.round(conv.score * 100)}%</p>
+                      <p className="text-[12px] text-[var(--text-secondary)] mt-1">
+                        반복 {loop.iterations.length}/{loop.max_iterations}
+                        {conv.critical_remaining >= 0 && ` · 핵심 위협 ${conv.critical_remaining}건`}
+                        {` · 승인 ${conv.approval_met}/${conv.approval_total}`}
+                      </p>
                     </div>
                     <ArrowRight size={16} className="text-[var(--text-secondary)] mt-1" />
                   </div>
@@ -244,290 +334,314 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         </div>
       )}
 
-      {/* Active loop detail */}
+      {/* ═══ Active loop detail ═══ */}
       {activeLoop && convergence && (
         <div className="space-y-5 animate-fade-in">
           <div className="flex items-center justify-between">
-            <button onClick={() => setActiveLoopId(null)} className="text-[12px] text-[var(--accent)] hover:underline cursor-pointer">← 목록으로</button>
+            <button onClick={() => setActiveLoopId(null)} className="text-[12px] text-[var(--accent)] hover:underline cursor-pointer">&larr; 목록으로</button>
             <Badge variant={activeLoop.status === 'active' ? 'ai' : 'both'}>
               {activeLoop.status === 'active' ? '진행 중' : activeLoop.status === 'converged' ? '수렴 완료' : '중단됨'}
             </Badge>
           </div>
 
-          <Card>
-            <div className="flex items-center gap-2 mb-2">
-              <RefreshCw size={16} className="text-[var(--accent)]" />
-              <h2 className="text-[17px] font-bold text-[var(--text-primary)]">{activeLoop.name}</h2>
-            </div>
-            <p className="text-[13px] text-[var(--text-secondary)]">{activeLoop.goal}</p>
-          </Card>
-
-          {/* Context chain */}
-          {(() => {
-            const projectOrch = orchestrateItems.find(o => o.project_id === activeLoop.project_id && o.analysis);
-            const latestFb = feedbackHistory.find(f => f.project_id === activeLoop.project_id);
-            if (!projectOrch?.analysis && !latestFb) return null;
-            const items = [];
-            if (projectOrch?.analysis?.key_assumptions?.length) {
-              items.push({ label: '편곡의 핵심 가정', count: projectOrch.analysis.key_assumptions.length, details: projectOrch.analysis.key_assumptions.map((ka: { assumption: string }) => ka.assumption) });
-            }
-            const criticalRisks = latestFb?.results.flatMap(r => (r.classified_risks || []).filter(cr => cr.category === 'critical')) || [];
-            if (criticalRisks.length > 0) items.push({ label: '핵심 위협', count: criticalRisks.length, details: criticalRisks.map(r => r.text), color: 'text-[var(--risk-critical)]' });
-            return items.length > 0 ? <ContextChainBlock summary="리허설에서 발견된 이슈들을 해결합니다." items={items} /> : null;
-          })()}
-
           {/* ═══ Convergence Dashboard ═══ */}
-          <Card className={`!p-4 ${convergence.shouldStop ? '!bg-[var(--collab)]' : ''}`}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[13px] font-bold text-[var(--text-primary)]">수렴 분석</span>
-              <span className="text-[14px] font-bold text-[var(--accent)]">{Math.round(convergence.score * 100)}%</span>
+          <Card className={`!p-4 ${convergence.converged ? '!bg-[var(--collab)] !border-green-200' : ''}`}>
+            <h3 className="text-[13px] font-bold text-[var(--text-primary)] mb-3">수렴 상태</h3>
+
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              {/* Critical risks */}
+              <div className={`rounded-lg p-3 text-center border ${convergence.critical_remaining === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                <p className={`text-[18px] font-bold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
+                  {convergence.critical_remaining < 0 ? '-' : convergence.critical_remaining}
+                </p>
+                <p className={`text-[10px] font-semibold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
+                  핵심 위협
+                </p>
+              </div>
+
+              {/* Approval conditions */}
+              <div className={`rounded-lg p-3 text-center border ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                <p className={`text-[18px] font-bold ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'text-[var(--success)]' : 'text-amber-700'}`}>
+                  {convergence.approval_met}/{convergence.approval_total}
+                </p>
+                <p className="text-[10px] font-semibold text-amber-700">승인 조건</p>
+              </div>
+
+              {/* Total issues */}
+              <div className="rounded-lg p-3 text-center border bg-[var(--ai)] border-blue-200">
+                <p className="text-[18px] font-bold text-[var(--accent)]">{convergence.total_issues}</p>
+                <p className="text-[10px] font-semibold text-[var(--accent)]">총 이슈</p>
+              </div>
             </div>
-            <div className="h-2.5 bg-[var(--border)] rounded-full overflow-hidden mb-3">
-              <div className={`h-full rounded-full transition-all ${convergence.score >= activeLoop.convergence_threshold ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} style={{ width: `${Math.min(convergence.score * 100, 100)}%` }} />
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {(['blocker', 'improvement', 'nice_to_have'] as const).map((sev) => {
-                const d = convergence.breakdown[sev];
-                const c = SEVERITY_COLORS[sev];
-                return (
-                  <div key={sev} className={`${c.bg} rounded-lg p-2.5 text-center border ${c.border}`}>
-                    <p className={`text-[15px] font-bold ${c.text}`}>{d.resolved}/{d.total}</p>
-                    <p className={`text-[10px] font-semibold ${c.text}`}>{SEVERITY_LABELS[sev]}</p>
-                  </div>
-                );
-              })}
-            </div>
+
             <div className="flex items-start gap-2 bg-[var(--surface)] rounded-lg px-3 py-2">
-              {convergence.recommendation === 'stop' ? <Check size={14} className="text-[var(--success)] mt-0.5 shrink-0" /> : <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />}
+              {convergence.converged ? <Check size={14} className="text-[var(--success)] mt-0.5 shrink-0" /> : <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />}
               <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{convergence.guidance}</p>
             </div>
           </Card>
 
-          <ConvergenceChart iterations={activeLoop.iterations} threshold={activeLoop.convergence_threshold} />
+          {/* Approval conditions checklist */}
+          {(() => {
+            const conditions = latestIteration?.convergence.approval_conditions || activeLoop.initial_approval_conditions;
+            const highConditions = conditions.filter(ac => ac.influence === 'high');
+            if (highConditions.length === 0) return null;
+            return (
+              <Card className="!p-4">
+                <h4 className="text-[12px] font-bold text-[var(--text-secondary)] mb-2">고영향력 승인 조건</h4>
+                <div className="space-y-1.5">
+                  {highConditions.map((ac, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[12px]">
+                      <span className={`mt-0.5 shrink-0 ${ac.met ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'}`}>
+                        {ac.met ? '✓' : '○'}
+                      </span>
+                      <div>
+                        <span className={ac.met ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]'}>{ac.condition}</span>
+                        <span className="text-[var(--text-tertiary)] ml-1.5">— {ac.persona_name}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            );
+          })()}
+
+          {/* Issue trend chart */}
+          <ConvergenceChart iterations={activeLoop.iterations} initialIssueCount={initialIssueCount} />
 
           {/* ═══ Iteration Timeline ═══ */}
-          <div className="space-y-3">
-            <h3 className="text-[14px] font-bold text-[var(--text-primary)]">반복 이력</h3>
-            {activeLoop.iterations.map((iter, i) => {
-              const prevIter = i > 0 ? activeLoop.iterations[i - 1] : null;
-              const prevScore = prevIter ? calculateWeightedScore(prevIter.issues_from_feedback).score : 0;
-              const currResult = calculateWeightedScore(iter.issues_from_feedback);
-              const scoreDelta = currResult.score - prevScore;
-
-              return (
-                <Card key={i} className={`!p-4 ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}>
-                  <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedIteration(expandedIteration === i ? null : i)}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${currResult.score > 0.7 ? 'bg-[var(--collab)] text-[var(--success)]' : 'bg-[var(--ai)] text-[#2d4a7c]'}`}>{iter.iteration_number}</div>
-                      <div>
-                        <p className="text-[13px] font-semibold text-[var(--text-primary)]">반복 {iter.iteration_number}</p>
-                        <div className="flex items-center gap-2 text-[11px] mt-0.5">
-                          <span className="text-red-600">차단 {currResult.breakdown.blocker.resolved}/{currResult.breakdown.blocker.total}</span>
-                          <span className="text-amber-600">개선 {currResult.breakdown.improvement.resolved}/{currResult.breakdown.improvement.total}</span>
-                          {i > 0 && <span className={`font-bold ${scoreDelta > 0 ? 'text-[var(--success)]' : scoreDelta < 0 ? 'text-red-500' : 'text-[var(--text-secondary)]'}`}>{scoreDelta > 0 ? '+' : ''}{Math.round(scoreDelta * 100)}%</span>}
+          {activeLoop.iterations.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-[14px] font-bold text-[var(--text-primary)]">반복 이력</h3>
+              {activeLoop.iterations.map((iter, i) => {
+                const iterFeedback = feedbackHistory.find(f => f.id === iter.feedback_record_id);
+                return (
+                  <Card key={i} className={`!p-4 ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}>
+                    <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedIteration(expandedIteration === i ? null : i)}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${
+                          iter.convergence.critical_risks === 0 ? 'bg-[var(--collab)] text-[var(--success)]' : 'bg-[var(--ai)] text-[#2d4a7c]'
+                        }`}>
+                          v{i + 2}
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                            수정 {iter.changes.length}건 반영
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] mt-0.5">
+                            <span className={iter.convergence.critical_risks > 0 ? 'text-red-600' : 'text-[var(--success)]'}>
+                              위협 {iter.convergence.critical_risks}
+                            </span>
+                            <span className="text-[var(--text-secondary)]">이슈 {iter.convergence.total_issues}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${currResult.score * 100}%` }} />
-                      </div>
-                      <span className="text-[10px] font-bold text-[var(--text-secondary)]">{Math.round(currResult.score * 100)}%</span>
                       {expandedIteration === i ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </div>
-                  </div>
 
-                  {expandedIteration === i && (
-                    <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-3 animate-fade-in">
-                      {/* User directive that was given */}
-                      {iter.user_directive && (
-                        <p className="text-[12px] text-[var(--text-secondary)] bg-[var(--surface)] rounded-lg px-3 py-2 border border-dashed border-[var(--border)]">
-                          <span className="font-semibold text-[var(--text-primary)]">사용자 지시:</span> {iter.user_directive}
-                        </p>
-                      )}
-
-                      {iter.delta_summary && (
-                        <p className="text-[12px] text-[var(--text-primary)] bg-[var(--bg)] rounded-lg px-3 py-2">
-                          <span className="font-semibold">개선 내용:</span> {iter.delta_summary}
-                        </p>
-                      )}
-
-                      {/* Deep analysis (only in deep mode) */}
-                      {iter.deep_analysis && (
-                        <div className="bg-[var(--ai)] rounded-lg px-3 py-2.5">
-                          <p className="text-[11px] font-bold text-[#2d4a7c] mb-1">심층 분석</p>
-                          <p className="text-[12px] text-[var(--text-primary)] leading-relaxed whitespace-pre-line">{iter.deep_analysis}</p>
-                        </div>
-                      )}
-
-                      {/* Data gaps */}
-                      {iter.data_gaps && iter.data_gaps.length > 0 && (
-                        <div className="bg-[var(--checkpoint)] rounded-lg px-3 py-2.5">
-                          <p className="text-[11px] font-bold text-amber-700 mb-1">추가 검증 필요</p>
-                          <ul className="space-y-0.5">
-                            {iter.data_gaps.map((gap, gi) => (
-                              <li key={gi} className="text-[12px] text-amber-800">• {gap}</li>
+                    {expandedIteration === i && (
+                      <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-3 animate-fade-in">
+                        {/* Changes made */}
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">수정 사항</p>
+                          <div className="space-y-1.5">
+                            {iter.changes.map((change, ci) => (
+                              <div key={ci} className="text-[12px] bg-[var(--collab)] rounded-lg px-3 py-2">
+                                <span className="font-semibold text-[var(--success)]">{change.what}</span>
+                                <span className="text-[var(--text-secondary)]"> — {change.why}</span>
+                              </div>
                             ))}
-                          </ul>
-                        </div>
-                      )}
-                      {(['blocker', 'improvement', 'nice_to_have'] as const).map((sev) => {
-                        const sevIssues = iter.issues_from_feedback.filter(issue => (issue.severity || 'improvement') === sev);
-                        if (sevIssues.length === 0) return null;
-                        const c = SEVERITY_COLORS[sev];
-                        return (
-                          <div key={sev}>
-                            <p className={`text-[11px] font-bold ${c.text} mb-1`}>{SEVERITY_LABELS[sev]} ({sevIssues.filter(i => i.resolved).length}/{sevIssues.length})</p>
-                            <div className="space-y-0.5">
-                              {sevIssues.map((issue) => (
-                                <div key={issue.id} className="flex items-start gap-2 text-[12px]">
-                                  <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${issue.resolved ? 'bg-[var(--success)]' : c.dot}`} />
-                                  <span className={issue.resolved ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]'}>
-                                    <span className="font-medium text-[var(--accent)]">[{issue.source_persona_name}]</span> {issue.text}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {prevIter && (
-                        <div className="border-t border-[var(--border)] pt-2">
-                          <div className="grid grid-cols-3 gap-2 text-[11px]">
-                            <div className="bg-[var(--collab)] rounded-lg p-2 text-center">
-                              <p className="font-bold text-[var(--success)]">{iter.issues_from_feedback.filter(i => i.resolved && i.resolved_at_iteration === iter.iteration_number).length}건</p>
-                              <p className="text-[var(--success)] text-[9px]">이번에 해결</p>
-                            </div>
-                            <div className="bg-[var(--checkpoint)] rounded-lg p-2 text-center">
-                              <p className="font-bold text-amber-700">{iter.issues_from_feedback.filter(i => !i.resolved).length}건</p>
-                              <p className="text-amber-600 text-[9px]">미해결</p>
-                            </div>
-                            <div className="bg-[var(--ai)] rounded-lg p-2 text-center">
-                              <p className="font-bold text-[#2d4a7c]">{iter.issues_from_feedback.filter(i => !i.resolved && !prevIter.issues_from_feedback.some(pi => pi.id === i.id)).length}건</p>
-                              <p className="text-[#2d4a7c] text-[9px]">새 이슈</p>
-                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
+
+                        {/* Not addressed */}
+                        {iter.not_addressed && iter.not_addressed.length > 0 && (
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--text-tertiary)] mb-1">미반영</p>
+                            {iter.not_addressed.map((na, ni) => (
+                              <p key={ni} className="text-[11px] text-[var(--text-tertiary)]">- {na}</p>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Revised plan (collapsible) */}
+                        <details className="group">
+                          <summary className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] cursor-pointer hover:underline">
+                            <FileText size={11} /> 수정된 문서 전체 보기
+                          </summary>
+                          <div className="mt-2 relative">
+                            <CopyButton getText={() => iter.revised_plan} label="복사" />
+                            <pre className="text-[11px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto bg-[var(--bg)] rounded-lg p-3 pr-16">
+                              {iter.revised_plan}
+                            </pre>
+                          </div>
+                        </details>
+
+                        {/* Re-review feedback (embedded FeedbackResult) */}
+                        {iterFeedback && (
+                          <div className="border-t border-[var(--border)] pt-3">
+                            <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-2">재리뷰 결과</p>
+                            <FeedbackResult record={iterFeedback} personas={personas} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
           {/* ═══ Next Iteration Controls ═══ */}
-          {activeLoop.status === 'active' && (
+          {activeLoop.status === 'active' && activeLoop.iterations.length < activeLoop.max_iterations && (
             <Card className="!border-amber-200 !bg-[var(--checkpoint)]">
-              <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">다음 반복</h3>
+              <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">
+                다음 반복 {convergence.converged && '(수렴 달성 — 선택적)'}
+              </h3>
+
               {isRefining ? (
-                <div className="flex items-center gap-3 py-4">
-                  <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
-                  <p className="text-[13px] text-[var(--text-secondary)]">피드백을 반영하여 개선안을 생성하고 있습니다...</p>
-                </div>
-              ) : unresolvedIssues.length > 0 ? (
+                <LoadingSteps steps={[
+                  '피드백을 반영하여 기획안을 수정하고 있습니다...',
+                  '이해관계자에게 수정된 기획안의 재리뷰를 요청하고 있습니다...',
+                  '수렴 분석 중...',
+                ]} />
+              ) : currentIssues.length > 0 ? (
                 <>
-                  <p className="text-[12px] text-[var(--text-secondary)] mb-3">해결할 이슈를 선택하세요. 차단 이슈를 우선 해결하면 수렴률이 크게 올라갑니다.</p>
-                  <div className="space-y-1.5 mb-4">
-                    {unresolvedIssues.map((issue) => {
-                      const c = SEVERITY_COLORS[issue.severity || 'improvement'];
-                      return (
-                        <label key={issue.id} className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${selectedIssues.has(issue.id) ? 'border-[var(--accent)] bg-[var(--ai)]' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}>
-                          <input type="checkbox" checked={selectedIssues.has(issue.id)} onChange={() => toggleIssue(issue.id)} className="mt-0.5 accent-[var(--accent)]" />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${c.bg} ${c.text}`}>{SEVERITY_LABELS[issue.severity || 'improvement']}</span>
-                              <span className="text-[12px] font-semibold text-[var(--accent)]">[{issue.source_persona_name}]</span>
-                            </div>
-                            <p className="text-[12px] text-[var(--text-primary)] mt-0.5">{issue.text}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                  <p className="text-[12px] text-[var(--text-secondary)] mb-3">
+                    해결할 이슈를 선택하세요. {criticalIssues.length > 0 && <span className="text-red-600 font-semibold">핵심 위협 {criticalIssues.length}건을 우선 해결하세요.</span>}
+                  </p>
+
+                  <div className="space-y-1.5 mb-4 max-h-80 overflow-y-auto">
+                    {/* Critical first */}
+                    {criticalIssues.length > 0 && (
+                      <p className="text-[10px] font-bold text-[#E24B4A] uppercase tracking-wider mt-1">핵심 위협</p>
+                    )}
+                    {criticalIssues.map((issue, i) => (
+                      <IssueCheckbox key={`c-${i}`} issue={issue} selected={selectedIssues.has(issue.text)} onToggle={() => toggleIssue(issue.text)} variant="critical" />
+                    ))}
+
+                    {/* Concerns */}
+                    {concernIssues.length > 0 && (
+                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mt-2">우려/지적</p>
+                    )}
+                    {concernIssues.map((issue, i) => (
+                      <IssueCheckbox key={`co-${i}`} issue={issue} selected={selectedIssues.has(issue.text)} onToggle={() => toggleIssue(issue.text)} variant="concern" />
+                    ))}
+
+                    {/* Questions */}
+                    {questionIssues.length > 0 && (
+                      <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider mt-2">질문</p>
+                    )}
+                    {questionIssues.map((issue, i) => (
+                      <IssueCheckbox key={`q-${i}`} issue={issue} selected={selectedIssues.has(issue.text)} onToggle={() => toggleIssue(issue.text)} variant="question" />
+                    ))}
                   </div>
 
                   {/* User directive */}
                   {selectedIssues.size > 0 && (
-                    <div className="space-y-3 mb-4 pt-3 border-t border-[var(--border-subtle)]">
-                      <div>
-                        <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-1.5">추가 지시 <span className="font-normal text-[var(--text-tertiary)]">(선택)</span></p>
-                        <textarea
-                          value={userDirective}
-                          onChange={(e) => setUserDirective(e.target.value)}
-                          placeholder="특정 이슈에 대한 접근 방향, 강조점, 추가 맥락 등을 자유롭게 입력하세요. 예: 'ROI 분석은 3개년 시나리오로, CEO가 시장 점유율 속도를 중시하니까 그 부분 강조해줘'"
-                          className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
-                          rows={3}
-                        />
-                      </div>
-
-                      {/* Depth selector */}
-                      <div className="flex items-center gap-2">
-                        <p className="text-[12px] font-semibold text-[var(--text-primary)]">분석 깊이:</p>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setDepth('quick')}
-                            className={`px-3 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-colors ${
-                              depth === 'quick' ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
-                            }`}
-                          >
-                            빠른 개선
-                          </button>
-                          <button
-                            onClick={() => setDepth('deep')}
-                            className={`px-3 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-colors ${
-                              depth === 'deep' ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
-                            }`}
-                          >
-                            심층 분석
-                          </button>
-                        </div>
-                        <span className="text-[10px] text-[var(--text-tertiary)]">
-                          {depth === 'deep' ? '근거·대안·데이터 검증 포함 (토큰 2배)' : '핵심 변경만 빠르게'}
-                        </span>
-                      </div>
+                    <div className="mb-4 pt-3 border-t border-[var(--border-subtle)]">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-1.5">추가 지시 <span className="font-normal text-[var(--text-tertiary)]">(선택)</span></p>
+                      <textarea
+                        value={userDirective}
+                        onChange={e => setUserDirective(e.target.value)}
+                        placeholder="특정 이슈에 대한 접근 방향이나 맥락을 자유롭게 입력하세요"
+                        className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
+                        rows={2}
+                      />
                     </div>
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-[var(--text-secondary)] mb-3">미해결 이슈가 없습니다. 합주를 마무리하세요.</p>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-3">최신 피드백에서 추출된 이슈가 없습니다.</p>
               )}
+
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mb-3">
                   <AlertTriangle size={14} /> {error}
                 </div>
               )}
+
               <div className="flex items-center justify-between">
                 <div className="flex gap-2">
-                  <Button variant="danger" size="sm" onClick={() => { if (activeLoop) updateLoop(activeLoop.id, { status: 'stopped_by_user' }); }}>
-                    <Square size={12} /> 연습 중단
+                  <Button variant="danger" size="sm" onClick={() => updateLoop(activeLoop.id, { status: 'stopped_by_user' })}>
+                    <Square size={12} /> 중단
                   </Button>
-                  {convergence.score > 0.5 && (
-                    <Button variant="secondary" size="sm" onClick={() => { if (activeLoop) { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length, score: Math.round((convergence?.score || 0) * 100) }); } }}>
-                      <Check size={12} /> 하모니 완성
+                  {convergence.converged && (
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); }}>
+                      <Check size={12} /> 수렴 완료
                     </Button>
                   )}
                 </div>
                 {selectedIssues.size > 0 && !isRefining && (
                   <Button size="sm" onClick={handleRunIteration}>
-                    <Play size={12} /> {selectedIssues.size}건 반영하여 개선
+                    <RefreshCw size={12} /> {selectedIssues.size}건 반영 &rarr; 수정 &rarr; 재리뷰
                   </Button>
                 )}
               </div>
             </Card>
           )}
 
+          {/* Max iterations reached */}
+          {activeLoop.status === 'active' && activeLoop.iterations.length >= activeLoop.max_iterations && (
+            <Card className="!bg-amber-50 !border-amber-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
+                </div>
+                <Button size="sm" onClick={() => updateLoop(activeLoop.id, { status: convergence.converged ? 'converged' : 'stopped_by_user' })}>
+                  마무리
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Completed state */}
           {activeLoop.status !== 'active' && (
             <Card className={activeLoop.status === 'converged' ? '!bg-[var(--collab)] !border-green-200' : ''}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 {activeLoop.status === 'converged' ? <Check size={16} className="text-[var(--success)]" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
                 <p className="text-[14px] font-semibold text-[var(--text-primary)]">
-                  {activeLoop.status === 'converged' ? `하모니 완성 — ${activeLoop.iterations.length}회 합주, 수렴률 ${Math.round(convergence.score * 100)}%` : `연습 중단 — ${activeLoop.iterations.length}회 합주`}
+                  {activeLoop.status === 'converged'
+                    ? `수렴 완료 — ${activeLoop.iterations.length}회 반복`
+                    : `중단 — ${activeLoop.iterations.length}회 반복`}
                 </p>
               </div>
+              {latestIteration && (
+                <div className="mt-2">
+                  <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서</p>
+                  <CopyButton getText={() => latestIteration.revised_plan} label="최종 문서 복사" />
+                </div>
+              )}
             </Card>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Issue checkbox component ──
+function IssueCheckbox({ issue, selected, onToggle, variant }: {
+  issue: { text: string; persona_name: string };
+  selected: boolean;
+  onToggle: () => void;
+  variant: 'critical' | 'concern' | 'question';
+}) {
+  const styles = {
+    critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+    concern: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+    question: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
+  };
+  const s = styles[variant];
+  return (
+    <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+      selected ? 'border-[var(--accent)] bg-[var(--ai)]' : `${s.border} hover:border-[var(--accent)]`
+    }`}>
+      <input type="checkbox" checked={selected} onChange={onToggle} className="mt-0.5 accent-[var(--accent)]" />
+      <div className="flex-1">
+        <span className="text-[12px] font-semibold text-[var(--accent)]">[{issue.persona_name}]</span>
+        <p className="text-[12px] text-[var(--text-primary)] mt-0.5">{issue.text}</p>
+      </div>
+    </label>
   );
 }

@@ -5,7 +5,8 @@ import type {
   Persona, HiddenAssumption,
 } from '@/stores/types';
 
-export function generateDecisionRationale(project: Project): string {
+export function generateDecisionRationale(project: Project | null): string {
+  if (!project) return '';
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
     .filter(d => d.project_id === project.id && d.status === 'done');
   const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
@@ -47,7 +48,7 @@ export function generateDecisionRationale(project: Project): string {
     }
     if (loop) {
       const lastIter = loop.iterations[loop.iterations.length - 1];
-      parts.push(`${loop.iterations.length}회 반복 끝에 수렴률 ${lastIter ? Math.round(lastIter.convergence_score * 100) : 0}%에 도달했습니다.`);
+      parts.push(`${loop.iterations.length}회 반복 끝에 핵심 위협 ${lastIter?.convergence?.critical_risks ?? '?'}건이 남았습니다.`);
     }
     if (parts.length > 0) {
       s.push('## 요약');
@@ -193,11 +194,12 @@ export function generateDecisionRationale(project: Project): string {
     s.push('## 4. 반복과 수렴');
     s.push('');
     const lastIter = loop.iterations[loop.iterations.length - 1];
-    s.push(`**${loop.iterations.length}회 반복**, 수렴률 ${lastIter ? Math.round(lastIter.convergence_score * 100) : 0}%`);
+    s.push(`**${loop.iterations.length}회 반복**, 핵심 위협 ${lastIter?.convergence?.critical_risks ?? '?'}건 남음`);
     s.push('');
 
     for (const iter of loop.iterations) {
-      s.push(`- ${iter.iteration_number}차 (${Math.round(iter.convergence_score * 100)}%): ${iter.delta_summary}`);
+      const summary = iter.changes?.map(c => c.what).join(', ') || '수정 사항 없음';
+      s.push(`- ${iter.iteration_number}차 (위협 ${iter.convergence?.critical_risks ?? '?'}): ${summary}`);
     }
     s.push('');
   }

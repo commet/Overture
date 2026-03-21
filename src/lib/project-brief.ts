@@ -1,7 +1,8 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, PersonaFeedbackResult, RefinementLoop } from '@/stores/types';
+import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord, PersonaFeedbackResult, RefinementLoop, HiddenAssumption } from '@/stores/types';
 
-export function generateProjectBrief(project: Project): string {
+export function generateProjectBrief(project: Project | null): string {
+  if (!project) return '';
   const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
     .filter((d) => d.project_id === project.id && d.status === 'done');
   const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
@@ -46,7 +47,7 @@ export function generateProjectBrief(project: Project): string {
       }
       if (latestL && latestL.iterations.length > 0) {
         const lastIter = latestL.iterations[latestL.iterations.length - 1];
-        sections.push(`합주 수렴도: ${Math.round(lastIter.convergence_score * 100)}%`);
+        sections.push(`합주 결과: 핵심 위협 ${lastIter.convergence?.critical_risks ?? '?'}건 남음`);
       }
     }
     sections.push('');
@@ -71,7 +72,7 @@ export function generateProjectBrief(project: Project): string {
       }
       if (latest.analysis.hidden_assumptions?.length > 0) {
         sections.push('### 검증 필요한 전제');
-        latest.analysis.hidden_assumptions.forEach((a: any) => {
+        latest.analysis.hidden_assumptions.forEach((a: HiddenAssumption | string) => {
           if (typeof a === 'string') {
             sections.push(`- ${a}`);
           } else {

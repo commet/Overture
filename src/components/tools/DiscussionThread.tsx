@@ -1,0 +1,86 @@
+'use client';
+
+import type { DiscussionMessage, Persona } from '@/stores/types';
+import { PersonaAvatar, getPersonaColor } from './FeedbackMessage';
+import { Handshake, GitBranch, Lightbulb, HelpCircle } from 'lucide-react';
+
+interface DiscussionThreadProps {
+  messages: DiscussionMessage[];
+  personas: Persona[];
+  keyTakeaway?: string;
+}
+
+const TYPE_CONFIG = {
+  agreement: { icon: Handshake, label: '동의', color: 'text-[var(--success)]' },
+  disagreement: { icon: GitBranch, label: '반박', color: 'text-[#E24B4A]' },
+  elaboration: { icon: Lightbulb, label: '보충', color: 'text-[var(--accent)]' },
+  question: { icon: HelpCircle, label: '질문', color: 'text-amber-600' },
+};
+
+export function DiscussionThread({ messages, personas, keyTakeaway }: DiscussionThreadProps) {
+  const getPersona = (id: string) => personas.find(p => p.id === id);
+
+  return (
+    <div className="space-y-1">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex -space-x-2">
+          {personas.slice(0, 3).map(p => (
+            <PersonaAvatar key={p.id} name={p.name} personaId={p.id} size={28} />
+          ))}
+        </div>
+        <h4 className="text-[14px] font-bold text-[var(--text-primary)]">이해관계자 토론</h4>
+      </div>
+
+      {/* Messages */}
+      <div className="space-y-3 phrase-entrance">
+        {messages.map((msg, i) => {
+          const persona = getPersona(msg.persona_id);
+          if (!persona) return null;
+          const config = TYPE_CONFIG[msg.type];
+          const TypeIcon = config.icon;
+          const reactingTo = msg.reacting_to ? getPersona(msg.reacting_to) : null;
+
+          return (
+            <div key={i} className="flex gap-2.5 md:gap-3">
+              <div className="flex flex-col items-center shrink-0">
+                <PersonaAvatar name={persona.name} personaId={persona.id} size={36} />
+                {i < messages.length - 1 && (
+                  <div className="w-px flex-1 mt-1 bg-[var(--border-subtle)]" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0 pb-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[13px] font-bold text-[var(--text-primary)]">{persona.name}</span>
+                  <span className="text-[11px] text-[var(--text-tertiary)]">{persona.role}</span>
+                </div>
+                {reactingTo && (
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <TypeIcon size={11} className={config.color} />
+                    <span className={`text-[10px] font-semibold ${config.color}`}>
+                      {reactingTo.name}에게 {config.label}
+                    </span>
+                  </div>
+                )}
+                <div className="rounded-xl rounded-tl-sm bg-[var(--surface)] border border-[var(--border-subtle)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[var(--text-primary)]">
+                  {msg.message}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Key takeaway */}
+      {keyTakeaway && (
+        <div className="mt-4 flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[var(--checkpoint)] border border-amber-200">
+          <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[11px] font-bold text-amber-700 mb-0.5">핵심 결론</p>
+            <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{keyTakeaway}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

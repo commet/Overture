@@ -123,7 +123,7 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
       {/* Active loop info */}
       {activeLoops.length > 0 && activeStep === 'refinement-loop' && (
         <div className="px-3 pt-1 text-[10px] text-[var(--text-secondary)]">
-          {activeLoops[0].iterations.length}회 반복 · 수렴 {Math.round((activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence_score || 0) * 100)}%
+          {activeLoops[0].iterations.length}회 반복 · 위협 {activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence?.critical_risks ?? '?'}건
         </div>
       )}
     </div>

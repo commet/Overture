@@ -1,22 +1,30 @@
 import { create } from 'zustand';
-import type { RefinementLoop, RefinementIteration } from '@/stores/types';
+import type { RefinementLoop, RefinementIteration, ApprovalCondition } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { detectConvergence } from '@/lib/convergence';
+import { checkLoopConvergence } from '@/lib/convergence';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface RefinementState {
   loops: RefinementLoop[];
   activeLoopId: string | null;
   loadLoops: () => void;
-  createLoop: (projectId: string, goal: string, name?: string) => string;
+  createLoop: (params: {
+    projectId: string;
+    goal: string;
+    originalPlan: string;
+    initialFeedbackRecordId: string;
+    initialApprovalConditions: ApprovalCondition[];
+    personaIds: string[];
+    name?: string;
+  }) => string;
   updateLoop: (id: string, data: Partial<RefinementLoop>) => void;
   deleteLoop: (id: string) => void;
   setActiveLoopId: (id: string | null) => void;
   getActiveLoop: () => RefinementLoop | undefined;
   addIteration: (loopId: string, iteration: Omit<RefinementIteration, 'created_at'>) => void;
   getLoopsByProject: (projectId: string) => RefinementLoop[];
-  checkConvergence: (loopId: string) => ReturnType<typeof detectConvergence>;
+  checkConvergence: (loopId: string) => ReturnType<typeof checkLoopConvergence>;
 }
 
 export const useRefinementStore = create<RefinementState>((set, get) => ({
@@ -30,17 +38,20 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
       .then((merged) => set({ loops: merged }));
   },
 
-  createLoop: (projectId, goal, name) => {
+  createLoop: (params) => {
     const now = new Date().toISOString();
     const loop: RefinementLoop = {
       id: generateId(),
-      project_id: projectId,
-      name: name || goal.slice(0, 30),
-      goal,
+      project_id: params.projectId,
+      name: params.name || params.goal.slice(0, 30),
+      goal: params.goal,
+      original_plan: params.originalPlan,
+      initial_feedback_record_id: params.initialFeedbackRecordId,
+      initial_approval_conditions: params.initialApprovalConditions,
+      persona_ids: params.personaIds,
       iterations: [],
       status: 'active',
-      max_iterations: 5,
-      convergence_threshold: 0.85,
+      max_iterations: 3,
       created_at: now,
       updated_at: now,
     };
@@ -96,7 +107,11 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
 
   checkConvergence: (loopId) => {
     const loop = get().loops.find((l) => l.id === loopId);
-    if (!loop) return { score: 0, shouldStop: false, reason: '', recommendation: 'continue' as const, breakdown: { blocker: { resolved: 0, total: 0 }, improvement: { resolved: 0, total: 0 }, nice_to_have: { resolved: 0, total: 0 } }, guidance: '' };
-    return detectConvergence(loop);
+    if (!loop) return {
+      converged: false, critical_remaining: 0, approval_met: 0,
+      approval_total: 0, total_issues: 0, issue_trend: [],
+      guidance: '',
+    };
+    return checkLoopConvergence(loop);
   },
 }));

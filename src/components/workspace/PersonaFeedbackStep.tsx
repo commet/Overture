@@ -14,7 +14,7 @@ import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import { buildPersonaAccuracyContext } from '@/lib/context-builder';
-import type { Persona, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
+import type { Persona, FeedbackRecord, PersonaFeedbackResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
@@ -95,6 +95,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [viewingPersona, setViewingPersona] = useState<Persona | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [discussionLoading, setDiscussionLoading] = useState(false);
   const [latestFeedback, setLatestFeedback] = useState<FeedbackRecord | null>(null);
   const [logDate, setLogDate] = useState('');
   const [logContext, setLogContext] = useState('');
@@ -182,16 +183,54 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       }
 
       let synthesis = '';
+      let structured_synthesis: StructuredSynthesis | undefined;
       if (results.length > 1) {
         const feedbackSummary = results.map((r) => {
           const p = getPersona(r.persona_id);
           const influence = p?.influence || 'medium';
-          return `### ${p?.name} (영향력: ${influence})\n질문: ${r.first_questions.join('; ')}\n칭찬: ${r.praise.join('; ')}\n우려: ${r.concerns.join('; ')}${r.classified_risks ? `\n리스크: ${r.classified_risks.map(cr => `[${cr.category}] ${cr.text}`).join('; ')}` : ''}`;
+          return `### ${p?.name} (ID: ${r.persona_id}, 영향력: ${influence})\n질문: ${r.first_questions.join('; ')}\n칭찬: ${r.praise.join('; ')}\n우려: ${r.concerns.join('; ')}${r.classified_risks ? `\n리스크: ${r.classified_risks.map(cr => `[${cr.category}] ${cr.text}`).join('; ')}` : ''}`;
         }).join('\n\n');
-        synthesis = await callLLM(
-          [{ role: 'user', content: feedbackSummary }],
-          { system: '여러 이해관계자의 피드백을 종합하세요. 1) 공통 지적 사항 2) 페르소나별로 다른 반응 3) 우선 수정 권고 — 영향력(influence)이 높은 이해관계자의 우려를 우선하세요. 충돌이 있을 때는 "영향력이 높은 [이름]의 우려가 우선합니다"라고 명시하세요. 4) 핵심 위협(critical)과 침묵의 리스크(unspoken)를 강조하세요. 한국어로 답변하세요.', maxTokens: 1500 }
-        );
+
+        try {
+          const synthResult = await callLLMJson<StructuredSynthesis>(
+            [{ role: 'user', content: feedbackSummary }],
+            { system: `여러 이해관계자의 피드백을 종합 분석하세요.
+
+응답 형식 (JSON만 출력):
+{
+  "common_agreements": ["모든 이해관계자가 동의하는 포인트 1~3개"],
+  "key_conflicts": [
+    {
+      "topic": "갈등 주제",
+      "positions": [
+        {"persona_id": "해당 페르소나 ID", "stance": "이 사람의 입장 요약"}
+      ]
+    }
+  ],
+  "priority_actions": [
+    {
+      "action": "우선 수정해야 할 사항",
+      "requested_by": "요청한 이해관계자 이름",
+      "priority": "high 또는 medium"
+    }
+  ]
+}
+
+규칙:
+- 영향력 높은 이해관계자의 우려를 priority "high"로
+- 핵심 위협(critical)과 침묵의 리스크(unspoken)를 우선 반영
+- 한국어로 작성
+- 반드시 JSON만 응답`, maxTokens: 1500 }
+          );
+          structured_synthesis = synthResult;
+          synthesis = `공통 합의: ${synthResult.common_agreements.join(', ')}. 핵심 갈등: ${synthResult.key_conflicts.map(c => c.topic).join(', ')}.`;
+        } catch {
+          // Fallback to plain text synthesis
+          synthesis = await callLLM(
+            [{ role: 'user', content: feedbackSummary }],
+            { system: '여러 이해관계자의 피드백을 종합하세요. 1) 공통 지적 사항 2) 페르소나별로 다른 반응 3) 우선 수정 권고. 한국어로 답변하세요.', maxTokens: 1500 }
+          );
+        }
       }
 
       const recordId = addFeedbackRecord({
@@ -202,6 +241,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         feedback_intensity: data.intensity,
         results,
         synthesis,
+        structured_synthesis,
         project_id: pendingProjectId,
       });
 
@@ -232,6 +272,69 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     setLogDate(''); setLogContext(''); setLogFeedback('');
     const updated = usePersonaStore.getState().personas.find((p) => p.id === viewingPersona.id);
     if (updated) setViewingPersona(updated);
+  };
+
+  const handleStartDiscussion = async () => {
+    if (!latestFeedback || latestFeedback.results.length < 2) return;
+    setDiscussionLoading(true);
+    try {
+      const personaProfiles = latestFeedback.results.map(r => {
+        const p = getPersona(r.persona_id);
+        return `## ${p?.name} (ID: ${r.persona_id}, ${p?.role}, 영향력: ${p?.influence || 'medium'})
+성향: ${p?.extracted_traits.join(', ')}
+전반적 반응: ${r.overall_reaction}
+주요 우려: ${r.concerns.join('; ')}
+질문: ${r.first_questions.join('; ')}
+리스크: ${(r.classified_risks || []).map(cr => `[${cr.category}] ${cr.text}`).join('; ')}`;
+      }).join('\n\n');
+
+      const discussionResult = await callLLMJson<{ messages: DiscussionMessage[]; key_takeaway: string }>(
+        [{ role: 'user', content: personaProfiles }],
+        {
+          system: `이해관계자들이 자료를 검토한 후 회의실에서 토론합니다.
+각 이해관계자의 개별 피드백을 보고, 서로의 의견에 반응하는 대화를 시뮬레이션하세요.
+
+규칙:
+- 첫 발화는 영향력이 가장 높은 이해관계자가 시작
+- 각 발화는 다른 이해관계자의 구체적 발언에 반응해야 함
+- 단순 동의("맞습니다")보다 이유나 관점 차이를 드러내기
+- 영향력이 높은 이해관계자의 발언이 대화를 주도
+- 6~10개 메시지로 핵심 쟁점만 다루기
+- 각 이해관계자의 말투와 관심사를 유지
+- 모든 이해관계자가 최소 2번씩 발언
+
+응답 형식 (JSON만 출력):
+{
+  "messages": [
+    {
+      "persona_id": "해당 페르소나 ID",
+      "message": "이 사람의 말투로 된 발언. 구체적이고 자연스럽게.",
+      "reacting_to": "반응 대상 persona_id 또는 null (첫 발언)",
+      "type": "agreement 또는 disagreement 또는 elaboration 또는 question"
+    }
+  ],
+  "key_takeaway": "토론의 핵심 결론 1문장"
+}
+
+한국어로 작성하세요. 반드시 JSON만 응답하세요.`,
+          maxTokens: 2500,
+        }
+      );
+
+      const updatedRecord: FeedbackRecord = {
+        ...latestFeedback,
+        discussion: discussionResult.messages,
+        // Store key_takeaway alongside
+      };
+      updatedRecord.discussion_takeaway = discussionResult.key_takeaway;
+      setLatestFeedback(updatedRecord);
+
+      track('discussion_complete', { message_count: discussionResult.messages.length });
+    } catch (err) {
+      alert('토론을 생성할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
+    } finally {
+      setDiscussionLoading(false);
+    }
   };
 
   return (
@@ -394,7 +497,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               items.push({
                 label: '검증되지 않은 전제',
                 count: decompose.analysis.hidden_assumptions.length,
-                details: decompose.analysis.hidden_assumptions.map((a: any) =>
+                details: decompose.analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
                   typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
                 ),
                 color: 'text-amber-700',
@@ -412,7 +515,13 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               : `편곡의 핵심 가정 ${orchestrate?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
             return <ContextChainBlock summary={summary} items={items} />;
           })()}
-          <FeedbackResult record={latestFeedback} personas={personas} onNavigate={onNavigate} />
+          <FeedbackResult
+            record={latestFeedback}
+            personas={personas}
+            onNavigate={onNavigate}
+            onStartDiscussion={handleStartDiscussion}
+            discussionLoading={discussionLoading}
+          />
           {latestFeedback?.project_id && (
             <NextStepGuide
               currentTool="persona-feedback"

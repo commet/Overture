@@ -102,7 +102,7 @@ export default function ProjectPage() {
         icon: <RefreshCw size={18} />,
         href: '/workspace?step=refinement-loop',
         status: latestLoop?.status === 'converged' ? 'done' : latestLoop?.status === 'active' ? 'in-progress' : 'not-started',
-        summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 수렴 ${Math.round((latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence_score || 0) * 100)}%` : undefined,
+        summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 위협 ${latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence?.critical_risks ?? '?'}건` : undefined,
         color: 'text-[#2d6b2d]',
         bgColor: 'bg-[var(--collab)]',
       },

@@ -50,7 +50,8 @@ export function ExecutionReadiness({ projectId }: Props) {
   const keyAssumptions = latestO?.analysis?.key_assumptions || [];
   const personaCount = latestFb?.results?.length || 0;
   const criticalRisks = latestFb?.results?.flatMap(r => r.classified_risks?.filter(cr => cr.category === 'critical') || []) || [];
-  const convergence = latestLoop?.iterations?.[latestLoop.iterations.length - 1]?.convergence_score || 0;
+  const lastIter = latestLoop?.iterations?.[latestLoop.iterations.length - 1];
+  const convergence = lastIter?.convergence ? (lastIter.convergence.critical_risks === 0 ? 1 : 0.5) : 0;
 
   const checks: ReadinessCheck[] = [
     {

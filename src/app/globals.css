@@ -36,7 +36,7 @@
   /* Concert hall accents */
   --gold: #b8963e;
   --gold-light: #d4b968;
-  --gold-muted: rgba(184, 150, 62, 0.06);
+  --gold-muted: rgba(184, 150, 62, 0.10);
   --staff-line: rgba(181, 166, 140, 0.10);
 
   /* Typography */
@@ -228,6 +228,28 @@ body {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 0.7s var(--ease-musical), transform 0.7s var(--ease-musical);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hidden {
+    opacity: 1;
+    transform: none;
+  }
+  .scroll-visible {
+    transition: none;
+  }
+  .phrase-entrance > * {
+    animation: none;
+    opacity: 1;
+  }
+  .animate-fade-in,
+  .animate-slide-down,
+  .animate-slide-in-right,
+  .animate-slide-in-left,
+  .animate-crescendo {
+    animation: none;
+  }
 }
 
 /* ── Global transitions ── */

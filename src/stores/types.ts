@@ -5,6 +5,7 @@ export interface DecomposeHiddenQuestion {
   reasoning: string;
   selected?: boolean;
   edited?: string;
+  source_assumption?: string;
 }
 
 export interface HiddenAssumption {
@@ -35,6 +36,12 @@ export interface DecomposeAnalysis {
   decomposition?: DecomposeSubtask[];
 }
 
+export interface InterviewSignals {
+  origin?: 'top-down' | 'external' | 'self' | 'fire';
+  uncertainty?: 'why' | 'what' | 'how' | 'none';
+  success?: 'measurable' | 'risk' | 'opportunity' | 'unclear';
+}
+
 export interface DecomposeItem {
   id: string;
   project_id?: string;
@@ -45,6 +52,9 @@ export interface DecomposeItem {
   selected_question: string;
   final_decomposition?: DecomposeSubtask[];
   status: 'input' | 'analyzing' | 'review' | 'done';
+  user_edited_question?: boolean;
+  reanalysis_count?: number;
+  interview_signals?: InterviewSignals;
   created_at: string;
   updated_at: string;
 }
@@ -141,6 +151,7 @@ export interface OrchestrateAnalysis {
   human_ratio: number;
   design_rationale?: string;
   reviews?: WorkflowReview[];
+  previous_reviews?: WorkflowReview[];
 }
 
 export interface OrchestrateItem {
@@ -200,6 +211,26 @@ export interface PersonaFeedbackResult {
   approval_conditions: string[];
 }
 
+export interface DiscussionMessage {
+  persona_id: string;
+  message: string;
+  reacting_to?: string;
+  type: 'agreement' | 'disagreement' | 'elaboration' | 'question';
+}
+
+export interface StructuredSynthesis {
+  common_agreements: string[];
+  key_conflicts: Array<{
+    topic: string;
+    positions: Array<{ persona_id: string; stance: string }>;
+  }>;
+  priority_actions: Array<{
+    action: string;
+    requested_by: string;
+    priority: 'high' | 'medium';
+  }>;
+}
+
 export interface FeedbackRecord {
   id: string;
   project_id?: string;
@@ -212,6 +243,9 @@ export interface FeedbackRecord {
   feedback_intensity: string;
   results: PersonaFeedbackResult[];
   synthesis: string;
+  structured_synthesis?: StructuredSynthesis;
+  discussion?: DiscussionMessage[];
+  discussion_takeaway?: string;
   created_at: string;
 }
 
@@ -310,6 +344,56 @@ export interface JudgmentRecord {
 
 // ─── Refinement Loop ───
 
+export interface ApprovalCondition {
+  persona_id: string;
+  persona_name: string;
+  influence: 'high' | 'medium' | 'low';
+  condition: string;
+  met: boolean;
+  met_at_iteration?: number;
+}
+
+export interface RevisionChange {
+  what: string;
+  why: string;
+  addressing: string;
+}
+
+export interface IterationConvergence {
+  critical_risks: number;
+  total_issues: number;
+  approval_conditions: ApprovalCondition[];
+}
+
+export interface RefinementIteration {
+  iteration_number: number;
+  issues_to_address: string[];
+  user_directive?: string;
+  revised_plan: string;
+  changes: RevisionChange[];
+  not_addressed?: string[];
+  feedback_record_id: string;
+  convergence: IterationConvergence;
+  created_at: string;
+}
+
+export interface RefinementLoop {
+  id: string;
+  project_id: string;
+  name: string;
+  goal: string;
+  original_plan: string;
+  initial_feedback_record_id: string;
+  initial_approval_conditions: ApprovalCondition[];
+  persona_ids: string[];
+  iterations: RefinementIteration[];
+  status: 'active' | 'converged' | 'stopped_by_user';
+  max_iterations: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Legacy type kept for backward compatibility with existing data
 export interface RefinementIssue {
   id: string;
   source_persona_id: string;
@@ -319,39 +403,6 @@ export interface RefinementIssue {
   text: string;
   resolved: boolean;
   resolved_at_iteration?: number;
-}
-
-export interface RefinementIteration {
-  iteration_number: number;
-  trigger_reason: string;
-  issues_from_feedback: RefinementIssue[];
-  constraints_added: string[];
-  user_directive?: string;
-  depth: 'quick' | 'deep';
-  decompose_item_id?: string;
-  orchestrate_item_id?: string;
-  synthesize_item_id?: string;
-  feedback_record_id?: string;
-  delta_summary: string;
-  deep_analysis?: string;
-  data_gaps?: string[];
-  unresolved_count: number;
-  total_issue_count: number;
-  convergence_score: number;
-  created_at: string;
-}
-
-export interface RefinementLoop {
-  id: string;
-  project_id: string;
-  name: string;
-  goal: string;
-  iterations: RefinementIteration[];
-  status: 'active' | 'converged' | 'stopped_by_user';
-  max_iterations: number;
-  convergence_threshold: number;
-  created_at: string;
-  updated_at: string;
 }
 
 // ─── Persona Accuracy ───
