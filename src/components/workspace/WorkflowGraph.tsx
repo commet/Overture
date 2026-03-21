@@ -20,33 +20,58 @@ const ACTORS = {
   both: { label: '협업', color: '#2d6b2d', bg: '#eaf5ea', text: '#2d6b2d', Icon: Handshake },
 } as const;
 
-/** Extract selectable options from judgment text — parses "A vs B vs C" and "A/B/C" */
+/** Strip Korean particles from end of option text */
+function stripParticles(text: string): string {
+  return text
+    .replace(/\s*(중에서|사이에서|으로|를|을|에서|로|이|가|은|는|와|과|도|만)\s*.*$/, '')
+    .replace(/\s*(결정|선택|판단|비교|검토).*$/, '')
+    .trim();
+}
+
+/** Extract selectable options from judgment text */
 function extractOptions(judgment?: string): string[] {
   if (!judgment) return [];
 
-  // Strategy 1: "vs" separated (most common from Korean LLM output)
+  // Strategy 1: "vs" separated
   if (judgment.includes(' vs ')) {
     const sentences = judgment.split(/[.]\s*/);
     for (const sentence of sentences) {
       if (!sentence.includes(' vs ')) continue;
-      // Remove prefix like "결정:" or "설정:"
       const cleaned = sentence.replace(/^[^:]*:\s*/, '');
       const opts = cleaned
-        .split(/\s+vs\s+/)
-        .map(o => o.replace(/\s+중\s.*$/, '').replace(/\s+을\s.*$/, '').replace(/\s+에서\s.*$/, '').trim())
-        .filter(o => o.length >= 2 && o.length <= 25);
+        .split(/\s+vs\.?\s+/)
+        .map(o => stripParticles(o))
+        .filter(o => o.length >= 2 && o.length <= 40);
       if (opts.length >= 2) return opts;
     }
   }
 
-  // Strategy 2: "/" separated
-  if (judgment.includes('/')) {
+  // Strategy 2: "/" separated (but not dates like 2024/2025)
+  if (judgment.includes('/') && !/\d{4}\/\d/.test(judgment)) {
     const clauses = judgment.split(/[,.]\s*/);
     for (const clause of clauses) {
       if (!clause.includes('/')) continue;
-      const opts = clause.split('/').map(o => o.trim()).filter(o => o.length >= 1 && o.length <= 25);
-      if (opts.length >= 2) return opts;
+      const opts = clause.split('/').map(o => o.trim()).filter(o => o.length >= 2 && o.length <= 40);
+      if (opts.length >= 2 && opts.length <= 5) return opts;
     }
+  }
+
+  // Strategy 3: "~할지 ~할지" pattern (Korean decision phrasing)
+  const haljiMatch = judgment.match(/(.{2,20})할지[,\s]+(.{2,20})할지/);
+  if (haljiMatch) {
+    return [haljiMatch[1].trim() + '하기', haljiMatch[2].trim() + '하기'];
+  }
+
+  // Strategy 4: "~인지 ~인지" pattern
+  const injiMatch = judgment.match(/(.{2,20})인지[,\s]+(.{2,20})인지/);
+  if (injiMatch) {
+    return [injiMatch[1].trim(), injiMatch[2].trim()];
+  }
+
+  // Strategy 5: numbered list "1) A 2) B" or "1. A 2. B"
+  const numbered = judgment.match(/[1-5][.)]\s*([^1-5]{2,30})/g);
+  if (numbered && numbered.length >= 2) {
+    return numbered.map(n => n.replace(/^[1-5][.)]\s*/, '').trim()).filter(o => o.length >= 2);
   }
 
   return [];
@@ -332,8 +357,8 @@ export function WorkflowGraph({
                                       onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
                                       className={`px-4 py-2 rounded-xl text-[13px] font-semibold border-2 cursor-pointer transition-all ${
                                         step.user_decision === opt
-                                          ? 'border-[#8b6914] bg-[#8b6914] text-white shadow-sm'
-                                          : 'border-[var(--border)] text-[var(--text-primary)] hover:border-[#8b6914] hover:bg-amber-50'
+                                          ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--bg)] shadow-sm'
+                                          : 'border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--checkpoint)]'
                                       }`}
                                     >
                                       {opt}
@@ -351,14 +376,16 @@ export function WorkflowGraph({
                                 />
                               </div>
                             ) : (
-                              <input
-                                type="text"
-                                value={step.user_decision || ''}
-                                onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                placeholder="결정 사항을 입력하세요..."
-                                className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
-                                onClick={(e) => e.stopPropagation()}
-                              />
+                              <div className="space-y-2">
+                                <textarea
+                                  value={step.user_decision || ''}
+                                  onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                  placeholder="이 단계에서의 판단을 입력하세요..."
+                                  rows={2}
+                                  className="w-full text-[13px] px-3 py-2 rounded-lg border-2 border-[var(--accent-light)]/30 bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
                             )}
                           </div>
                         )}
