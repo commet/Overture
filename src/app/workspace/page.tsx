@@ -10,6 +10,7 @@ import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
 import { PersonaFeedbackStep } from '@/components/workspace/PersonaFeedbackStep';
 import { RefinementLoopStep } from '@/components/workspace/RefinementLoopStep';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
+import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { Menu } from 'lucide-react';
@@ -140,6 +141,9 @@ function WorkspaceContent() {
         {/* Quick chat bar */}
         <QuickChatBar activeStep={activeStep} onNavigate={handleNavigate} />
       </div>
+
+      {/* Concertmaster strip — right edge */}
+      <ConcertmasterStrip />
 
       {/* Mobile bottom tab bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-1 py-2 z-40">

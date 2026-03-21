@@ -24,8 +24,9 @@ import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, Rota
 import { StaffLines, BarLine } from '@/components/ui/MusicalElements';
 import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy, type InterviewSignals } from '@/lib/reframing-strategy';
-import { recordDecomposeEval, getBestStrategy, getSessionInsights } from '@/lib/eval-engine';
+import { recordDecomposeEval, getBestStrategy } from '@/lib/eval-engine';
 import { applyPromptMutations } from '@/lib/prompt-mutation';
+import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 
 /* ───────────────────────────────────────────
@@ -192,10 +193,6 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
   const current = getCurrentItem();
   const hasLearning = judgments.length >= 3;
-
-  const codaInsights = projects.filter(
-    (p) => p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently
-  );
 
   useEffect(() => {
     if (!inputText || inputText.length < 8) {
@@ -497,35 +494,9 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         </div>
       )}
 
-      {/* ─── Session insights (micro loop feedback) ─── */}
-      {(!current || current.status === 'input') && !currentId && (() => {
-        const insights = getSessionInsights();
-        if (insights.length === 0) return null;
-        return (
-          <div className="flex flex-wrap gap-2">
-            {insights.map((insight, i) => (
-              <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--ai)] text-[12px] text-[#2d4a7c]">
-                <Brain size={11} />
-                <span>{insight.message}</span>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* ─── Coda insights ─── */}
-      {(!current || current.status === 'input') && !currentId && codaInsights.length > 0 && (
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--gold-muted)] p-4">
-          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--gold)]">이전 무대에서의 깨달음</p>
-          <div className="space-y-1 mt-2">
-            {codaInsights.slice(0, 2).map((p) => (
-              <p key={p.id} className="text-[12px] text-[var(--text-primary)] leading-relaxed">
-                <span className="font-semibold">{p.name}</span>:{' '}
-                {p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently}
-              </p>
-            ))}
-          </div>
-        </div>
+      {/* ─── Concertmaster inline coaching ─── */}
+      {(!current || current.status === 'input') && !currentId && (
+        <ConcertmasterInline step="decompose" />
       )}
 
       {/* ═══════════════════════════════════════

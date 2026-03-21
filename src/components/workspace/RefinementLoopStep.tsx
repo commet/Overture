@@ -17,6 +17,7 @@ import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCon
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { buildPersonaAccuracyContext } from '@/lib/context-builder';
+import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 
 // ── Revision prompt ──
 const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다.
@@ -288,6 +289,9 @@ ${buildPersonaAccuracyContext(personaId)}
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           기획안을 수정하고 이해관계자에게 재리뷰를 받습니다. 핵심 위협이 해소될 때까지.
         </p>
+        <div className="mt-2">
+          <ConcertmasterInline step="refinement-loop" />
+        </div>
       </div>
 
       {/* ═══ Loop list ═══ */}

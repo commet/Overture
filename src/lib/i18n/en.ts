@@ -49,6 +49,17 @@ export const en: Record<TranslationKey, string> = {
   'error.llm': 'Error during LLM call',
   'error.unexpected': 'An unexpected error occurred',
 
+  'concertmaster.title': 'Concertmaster',
+  'concertmaster.open': 'Open Concertmaster',
+  'concertmaster.close': 'Close',
+  'concertmaster.noInsights': 'No new insights.',
+  'concertmaster.firstSession': 'Insights will accumulate after your first analysis.',
+  'concertmaster.sessions': '{count} analyses',
+  'concertmaster.projects': '{count} projects',
+  'concertmaster.preferredStrategy': 'Preferred strategy: {strategy}',
+  'concertmaster.overrideRate': 'AI override rate: {rate}%',
+  'concertmaster.avgPassRate': 'Avg utilization: {rate}%',
+
   'settings.language': 'Language',
   'settings.apiKey': 'API Key',
   'settings.mode': 'LLM Mode',

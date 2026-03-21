@@ -15,7 +15,7 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { FileText, Trash2, Check, Plus, Bot, Brain, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
+import { FileText, Trash2, Check, Plus, Bot, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { WorkflowGraph } from './WorkflowGraph';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -26,6 +26,7 @@ import type { DecomposeContext, WorkflowReview } from '@/stores/types';
 import { runWorkflowReview, countBySeverity } from '@/lib/workflow-review';
 import { TeamReviewPanel } from './TeamReviewPanel';
 import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
@@ -344,12 +345,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             맥락을 선택하고 목표를 입력하면 AI가 전체 워크플로우를 설계합니다.
           </p>
-          {judgments.length >= 3 && (
-            <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] mt-2">
-              <Brain size={12} />
-              <span>이전 {judgments.length}건의 판단이 반영되고 있습니다</span>
-            </div>
-          )}
+          <div className="mt-2">
+            <ConcertmasterInline step="orchestrate" />
+          </div>
         </div>
       </div>
 

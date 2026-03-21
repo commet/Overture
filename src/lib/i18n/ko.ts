@@ -55,6 +55,18 @@ export const ko = {
   'error.llm': 'LLM 호출 중 오류가 발생했습니다',
   'error.unexpected': '예기치 않은 오류가 발생했습니다',
 
+  // Concertmaster
+  'concertmaster.title': '악장',
+  'concertmaster.open': '악장 열기',
+  'concertmaster.close': '닫기',
+  'concertmaster.noInsights': '새로운 인사이트가 없습니다.',
+  'concertmaster.firstSession': '첫 분석을 시작하면 인사이트가 쌓입니다.',
+  'concertmaster.sessions': '{count}회 분석',
+  'concertmaster.projects': '{count}개 프로젝트',
+  'concertmaster.preferredStrategy': '선호 전략: {strategy}',
+  'concertmaster.overrideRate': 'AI 수정률: {rate}%',
+  'concertmaster.avgPassRate': '평균 활용률: {rate}%',
+
   // Settings
   'settings.language': '언어',
   'settings.apiKey': 'API 키',

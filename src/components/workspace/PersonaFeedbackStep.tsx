@@ -24,6 +24,7 @@ import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
+import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildDecomposeContext, buildOrchestrateContext, injectOrchestrateContext } from '@/lib/context-chain';
 
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
@@ -344,6 +345,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           보고서를 보낼 사람의 시점에서 미리 피드백을 받습니다. 보내기 전에.
         </p>
+        <div className="mt-2">
+          <ConcertmasterInline step="persona-feedback" />
+        </div>
       </div>
 
       <Tab
