@@ -15,6 +15,7 @@ import type { DecomposeItem } from '@/stores/types';
 import type { ReframingStrategy, InterviewSignals } from '@/lib/reframing-strategy';
 import { getStorage, setStorage } from '@/lib/storage';
 import { extractInterviewSignals as extractSignals } from '@/lib/context-chain';
+import { recordSignal } from '@/lib/signal-recorder';
 
 const EVAL_STORAGE_KEY = 'overture_eval_results';
 
@@ -114,12 +115,25 @@ export function recordDecomposeEval(
     recorded_at: new Date().toISOString(),
   };
 
-  // Persist
+  // Persist to localStorage
   const history = getStorage<EvalResult[]>(EVAL_STORAGE_KEY, []);
   history.push(evalResult);
   // Keep last 200 results
   if (history.length > 200) history.splice(0, history.length - 200);
   setStorage(EVAL_STORAGE_KEY, history);
+
+  // Sync to Supabase via quality_signals (fire-and-forget)
+  recordSignal({
+    tool: 'decompose',
+    signal_type: 'eval_result',
+    signal_data: {
+      item_id: evalResult.item_id,
+      strategy: evalResult.strategy,
+      interview_signals: evalResult.interview_signals,
+      evals: evalResult.evals,
+      pass_rate: evalResult.pass_rate,
+    },
+  });
 
   return evalResult;
 }

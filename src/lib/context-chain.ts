@@ -186,6 +186,18 @@ export function injectDecomposeContext(
     });
   }
 
+  // Assumption evaluation pattern → guide orchestrate risk stance
+  const evaluated = allAssumptions.filter(a => typeof a !== 'string' && a.evaluation);
+  if (evaluated.length >= 2) {
+    const doubtful = evaluated.filter(a => typeof a !== 'string' && a.evaluation === 'doubtful');
+    const doubtfulRatio = doubtful.length / evaluated.length;
+    if (doubtfulRatio >= 0.5) {
+      sections.push('');
+      sections.push('### 사용자 리스크 인식');
+      sections.push('- 사용자가 전제의 절반 이상을 의심합니다. 보수적으로 설계하고, 검증 단계를 앞쪽에 배치하세요.');
+    }
+  }
+
   // Interview signals → guide the AI's approach
   if (ctx.interview_signals && Object.keys(ctx.interview_signals).length > 0) {
     const signals: string[] = [];

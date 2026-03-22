@@ -29,6 +29,7 @@ import { recordDecomposeEval, getBestStrategy } from '@/lib/eval-engine';
 import { applyPromptMutations } from '@/lib/prompt-mutation';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
+import { recordSignal } from '@/lib/signal-recorder';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -423,6 +424,22 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
     // Phase 1: Record binary evals for strategy learning
     recordDecomposeEval(current, currentStrategy);
+
+    if (current?.analysis?.hidden_assumptions) {
+      const assumptions = current.analysis.hidden_assumptions;
+      const evalCounts = { doubtful: 0, uncertain: 0, likely_true: 0, unevaluated: 0 };
+      for (const a of assumptions) {
+        const ev = typeof a === 'string' ? 'unevaluated' : (a.evaluation || 'unevaluated');
+        if (ev in evalCounts) evalCounts[ev as keyof typeof evalCounts]++;
+      }
+      const uniqueEvals = new Set(assumptions.map(a => typeof a === 'string' ? 'unevaluated' : (a.evaluation || 'unevaluated')));
+      recordSignal({
+        project_id: current?.project_id,
+        tool: 'decompose',
+        signal_type: 'assumption_diversity',
+        signal_data: { ...evalCounts, diversity: uniqueEvals.size, total: assumptions.length },
+      });
+    }
 
     if (settings.audio_enabled) {
       resumeAudioContext();

@@ -21,6 +21,7 @@ import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline'
 import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext } from '@/lib/context-chain';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { recordSignal } from '@/lib/signal-recorder';
 
 // ── Revision prompt ──
 const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다.
@@ -603,7 +604,7 @@ ${buildPersonaAccuracyContext(personaId)}
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -625,7 +626,7 @@ ${buildPersonaAccuracyContext(personaId)}
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => updateLoop(activeLoop.id, { status: convergence.converged ? 'converged' : 'stopped_by_user' })}>
+                <Button size="sm" onClick={() => { updateLoop(activeLoop.id, { status: convergence.converged ? 'converged' : 'stopped_by_user' }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); }}>
                   마무리
                 </Button>
               </div>

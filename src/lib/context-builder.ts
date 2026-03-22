@@ -1,5 +1,6 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project } from '@/stores/types';
+import { getSignalsByType } from '@/lib/signal-recorder';
+import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project, RefinementLoop } from '@/stores/types';
 
 /**
  * Builds an enhanced system prompt by injecting user patterns and project context.
@@ -34,6 +35,10 @@ export function buildEnhancedSystemPrompt(
     sections.push(codaInsights);
   }
 
+  // 4. Convergence patterns from past refinement loops
+  const convergenceCtx = buildConvergencePatterns();
+  if (convergenceCtx) sections.push(convergenceCtx);
+
   if (sections.length === 0) return basePrompt;
 
   // Append as a bounded context section
@@ -43,26 +48,38 @@ export function buildEnhancedSystemPrompt(
 }
 
 function analyzePatterns(judgments: JudgmentRecord[]): string | null {
-  if (judgments.length < 3) return null;
+  if (judgments.length < 2) return null;
 
   const lines: string[] = [];
 
   // Override rate
   const overrides = judgments.filter((j) => j.user_changed);
   const overrideRate = Math.round((overrides.length / judgments.length) * 100);
-  if (overrideRate > 30) {
+  if (overrideRate > 20) {
     lines.push(`- 이 사용자는 AI 제안의 ${overrideRate}%를 수정합니다. 더 보수적이거나 맥락을 고려한 제안을 하세요.`);
   }
 
   // Actor preference (from orchestrate phase)
   const actorOverrides = judgments.filter((j) => j.type === 'actor_override' && j.tool === 'orchestrate');
-  if (actorOverrides.length >= 3) {
+  if (actorOverrides.length >= 2) {
     const humanPrefs = actorOverrides.filter((j) => j.decision === 'human').length;
     const aiPrefs = actorOverrides.filter((j) => j.decision === 'ai').length;
     if (humanPrefs > aiPrefs * 1.5) {
       lines.push('- 이 사용자는 사람이 직접 하는 것을 선호합니다. AI 역할을 보수적으로 제안하세요.');
     } else if (aiPrefs > humanPrefs * 1.5) {
       lines.push('- 이 사용자는 AI에게 많이 위임하는 편입니다.');
+    }
+  }
+
+  // Override direction analysis
+  const overridesWithDirection = getSignalsByType('actor_override_direction');
+  if (overridesWithDirection.length >= 2) {
+    const aiToHuman = overridesWithDirection.filter(s => s.signal_data.from_actor === 'ai' && s.signal_data.to_actor === 'human').length;
+    const humanToAi = overridesWithDirection.filter(s => s.signal_data.from_actor === 'human' && s.signal_data.to_actor === 'ai').length;
+    if (aiToHuman > humanToAi * 2) {
+      lines.push('- 이 사용자는 AI 단독 실행을 사람 실행으로 변경하는 경향이 있습니다. AI 역할을 더 보수적으로 제안하세요.');
+    } else if (humanToAi > aiToHuman * 2) {
+      lines.push('- 이 사용자는 사람 실행을 AI에 위임하는 경향이 있습니다. AI 활용 범위를 넓게 제안하세요.');
     }
   }
 
@@ -238,6 +255,28 @@ export function buildPersonaAccuracyContext(personaId: string): string {
     lines.push('');
     lines.push('### 사용자 피드백 메모 (최근)');
     allNotes.forEach(n => lines.push(`- "${n}"`));
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Build convergence patterns from past refinement loops.
+ * Helps calibrate initial design precision for future projects.
+ */
+export function buildConvergencePatterns(): string | null {
+  const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+  const completed = loops.filter(l => l.status === 'converged' || l.status === 'stopped_by_user');
+  if (completed.length < 2) return null;
+
+  const avgIterations = completed.reduce((s, l) => s + l.iterations.length, 0) / completed.length;
+  const lines: string[] = ['### 이 사용자의 수렴 패턴'];
+  lines.push(`- 평균 수렴 반복 횟수: ${avgIterations.toFixed(1)}회`);
+
+  if (avgIterations > 3) {
+    lines.push('- 수렴에 시간이 걸리는 편입니다. 초기 설계에서 리스크를 더 강하게 반영하세요.');
+  } else if (avgIterations <= 2) {
+    lines.push('- 빠르게 수렴하는 편입니다. 현재 수준의 설계 정밀도를 유지하세요.');
   }
 
   return lines.join('\n');

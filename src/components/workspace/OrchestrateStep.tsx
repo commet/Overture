@@ -29,6 +29,7 @@ import { TeamReviewPanel } from './TeamReviewPanel';
 import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
+import { recordSignal } from '@/lib/signal-recorder';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -408,6 +409,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         project_id: current?.project_id,
         tool: 'orchestrate',
       });
+      recordSignal({
+        project_id: current?.project_id,
+        tool: 'orchestrate',
+        signal_type: 'actor_override_direction',
+        signal_data: { from_actor: step.actor, to_actor: newActor, step_task: step.task?.slice(0, 100) },
+      });
     }
     updateStep(currentId, stepIndex, { actor: newActor });
   };
@@ -569,12 +576,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             editable={current.status === 'review'}
             onUpdateActor={(idx, actor) => handleStepActorChange(idx, actor)}
             onToggleCheckpoint={(idx) => { if (currentId) updateStep(currentId, idx, { checkpoint: !steps[idx].checkpoint }); }}
-            onRemoveStep={(idx) => { if (currentId) removeStep(currentId, idx); }}
+            onRemoveStep={(idx) => { if (currentId) { const removedStep = steps[idx]; removeStep(currentId, idx); recordSignal({ project_id: current?.project_id, tool: 'orchestrate', signal_type: 'step_structural_change', signal_data: { action: 'delete', step_actor: removedStep?.actor, step_task: removedStep?.task?.slice(0, 100) } }); } }}
             onUpdateField={(idx, updates) => { if (currentId) updateStep(currentId, idx, updates); }}
           />
 
           {current.status === 'review' && (
-            <Button variant="ghost" onClick={() => { if (currentId) addStep(currentId); }}>
+            <Button variant="ghost" onClick={() => { if (currentId) { addStep(currentId); recordSignal({ project_id: current?.project_id, tool: 'orchestrate', signal_type: 'step_structural_change', signal_data: { action: 'add' } }); } }}>
               <Plus size={14} /> 단계 추가
             </Button>
           )}

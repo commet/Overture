@@ -421,6 +421,33 @@ export interface PersonaAccuracyRating {
   created_at: string;
 }
 
+// ─── Quality Signals (Concertmaster's Journal) ───
+
+export interface QualitySignal {
+  id: string;
+  project_id?: string;
+  tool: 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement';
+  signal_type: string;
+  signal_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface LearningHealth {
+  signal_count: number;
+  eval_coverage: number;
+  override_trend: 'improving' | 'stable' | 'not_enough_data';
+  convergence_trend: 'improving' | 'stable' | 'not_enough_data';
+  learning_tier: 1 | 2 | 3;
+  recommendations: string[];
+}
+
+export interface RetrospectiveQuestion {
+  id: string;
+  category: 'process' | 'judgment' | 'learning';
+  question: string;
+  data_basis: string;
+}
+
 // ─── Team Collaboration ───
 
 export interface Team {

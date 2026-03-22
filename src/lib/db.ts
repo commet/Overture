@@ -13,7 +13,8 @@ import { log } from './logger';
  */
 
 type TableName = 'projects' | 'personas' | 'decompose_items' | 'orchestrate_items'
-  | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refinement_loops';
+  | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refinement_loops'
+  | 'quality_signals';
 
 // ─── Merge Logic ───
 
@@ -199,7 +200,7 @@ export async function deleteAllUserData(): Promise<void> {
   if (!userId) return;
 
   const tables: TableName[] = [
-    'accuracy_ratings', 'feedback_records', 'judgment_records',
+    'quality_signals', 'accuracy_ratings', 'feedback_records', 'judgment_records',
     'refinement_loops', 'decompose_items', 'orchestrate_items',
     'personas', 'projects',
   ];

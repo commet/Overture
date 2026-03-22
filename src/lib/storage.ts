@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   JUDGMENTS:         'sot_judgments',
   REFINEMENT_LOOPS:  'sot_refinement_loops',
   ACCURACY_RATINGS:  'sot_accuracy_ratings',
+  QUALITY_SIGNALS:   'sot_quality_signals',
   SETTINGS: 'sot_settings',
 } as const;
 
