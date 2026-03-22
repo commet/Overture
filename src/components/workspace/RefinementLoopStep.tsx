@@ -13,7 +13,7 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { callLLMJson } from '@/lib/llm';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
-import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis } from '@/stores/types';
+import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefinementLoop } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
 import { buildPersonaAccuracyContext } from '@/lib/context-builder';
@@ -22,6 +22,8 @@ import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext 
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { recordSignal } from '@/lib/signal-recorder';
+import { generateRetrospectiveQuestions } from '@/lib/retrospective';
+import { Lightbulb } from 'lucide-react';
 
 // ── Revision prompt ──
 const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다.
@@ -635,26 +637,93 @@ ${buildPersonaAccuracyContext(personaId)}
 
           {/* Completed state */}
           {activeLoop.status !== 'active' && (
-            <Card className={activeLoop.status === 'converged' ? '!bg-[var(--collab)] !border-green-200' : ''}>
-              <div className="flex items-center gap-2 mb-2">
-                {activeLoop.status === 'converged' ? <Check size={16} className="text-[var(--success)]" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
-                <p className="text-[14px] font-semibold text-[var(--text-primary)]">
-                  {activeLoop.status === 'converged'
-                    ? `수렴 완료 — ${activeLoop.iterations.length}회 반복`
-                    : `중단 — ${activeLoop.iterations.length}회 반복`}
-                </p>
-              </div>
-              {latestIteration && (
-                <div className="mt-2">
-                  <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서</p>
-                  <CopyButton getText={() => latestIteration.revised_plan} label="최종 문서 복사" />
+            <>
+              <Card className={activeLoop.status === 'converged' ? '!bg-[var(--collab)] !border-green-200' : ''}>
+                <div className="flex items-center gap-2 mb-2">
+                  {activeLoop.status === 'converged' ? <Check size={16} className="text-[var(--success)]" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
+                  <p className="text-[14px] font-semibold text-[var(--text-primary)]">
+                    {activeLoop.status === 'converged'
+                      ? `수렴 완료 — ${activeLoop.iterations.length}회 반복`
+                      : `중단 — ${activeLoop.iterations.length}회 반복`}
+                  </p>
                 </div>
-              )}
-            </Card>
+                {latestIteration && (
+                  <div className="mt-2">
+                    <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서</p>
+                    <CopyButton getText={() => latestIteration.revised_plan} label="최종 문서 복사" />
+                  </div>
+                )}
+              </Card>
+
+              {/* Retrospective questions */}
+              <RetrospectiveCard loop={activeLoop} feedbackHistory={feedbackHistory} />
+            </>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Retrospective Card ──
+function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [saved, setSaved] = useState(false);
+  const questions = generateRetrospectiveQuestions(loop, feedbackHistory);
+
+  if (questions.length === 0) return null;
+
+  const handleSave = () => {
+    // Record answers as quality signals
+    for (const q of questions) {
+      if (answers[q.id]?.trim()) {
+        recordSignal({
+          project_id: loop.project_id,
+          tool: 'refinement',
+          signal_type: 'retrospective_answer',
+          signal_data: { question: q.question, answer: answers[q.id], category: q.category },
+        });
+      }
+    }
+    setSaved(true);
+  };
+
+  if (saved) {
+    return (
+      <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium py-2">
+        <Check size={14} /> 회고가 저장되었습니다
+      </div>
+    );
+  }
+
+  return (
+    <Card className="!bg-[var(--bg)] !border-dashed">
+      <div className="flex items-center gap-2 mb-3">
+        <Lightbulb size={14} className="text-[var(--accent)]" />
+        <p className="text-[13px] font-bold text-[var(--text-primary)]">이 프로젝트에서 배울 점</p>
+      </div>
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">데이터 기반으로 생성된 질문입니다. 답변하면 다음 프로젝트에 반영됩니다.</p>
+      <div className="space-y-4">
+        {questions.map((q) => (
+          <div key={q.id}>
+            <p className="text-[13px] font-semibold text-[var(--text-primary)] mb-1">{q.question}</p>
+            <p className="text-[10px] text-[var(--text-tertiary)] mb-1.5">{q.data_basis}</p>
+            <textarea
+              value={answers[q.id] || ''}
+              onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+              placeholder="선택 사항 — 건너뛰어도 됩니다"
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none"
+              rows={2}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end mt-3">
+        <Button size="sm" onClick={handleSave} disabled={Object.values(answers).every(a => !a.trim())}>
+          회고 저장
+        </Button>
+      </div>
+    </Card>
   );
 }
 

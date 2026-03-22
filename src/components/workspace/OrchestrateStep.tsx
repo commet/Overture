@@ -29,7 +29,7 @@ import { TeamReviewPanel } from './TeamReviewPanel';
 import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
-import { recordSignal } from '@/lib/signal-recorder';
+import { recordSignal, getSignals } from '@/lib/signal-recorder';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -444,6 +444,14 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             AI와 사람의 역할을 나누고, 실행 단계를 설계합니다.
           </p>
+          {(() => {
+            const signals = getSignals({ tool: 'orchestrate' });
+            return signals.length > 0 ? (
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
+                이전 {signals.length}건의 편곡 이력이 학습에 반영되고 있습니다
+              </p>
+            ) : null;
+          })()}
           <div className="mt-2">
             <ConcertmasterInline step="orchestrate" />
           </div>

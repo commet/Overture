@@ -52,34 +52,15 @@ function analyzePatterns(judgments: JudgmentRecord[]): string | null {
 
   const lines: string[] = [];
 
-  // Override rate
-  const overrides = judgments.filter((j) => j.user_changed);
-  const overrideRate = Math.round((overrides.length / judgments.length) * 100);
-  if (overrideRate > 20) {
-    lines.push(`- 이 사용자는 AI 제안의 ${overrideRate}%를 수정합니다. 더 보수적이거나 맥락을 고려한 제안을 하세요.`);
-  }
-
-  // Actor preference (from orchestrate phase)
-  const actorOverrides = judgments.filter((j) => j.type === 'actor_override' && j.tool === 'orchestrate');
-  if (actorOverrides.length >= 2) {
-    const humanPrefs = actorOverrides.filter((j) => j.decision === 'human').length;
-    const aiPrefs = actorOverrides.filter((j) => j.decision === 'ai').length;
-    if (humanPrefs > aiPrefs * 1.5) {
-      lines.push('- 이 사용자는 사람이 직접 하는 것을 선호합니다. AI 역할을 보수적으로 제안하세요.');
-    } else if (aiPrefs > humanPrefs * 1.5) {
-      lines.push('- 이 사용자는 AI에게 많이 위임하는 편입니다.');
-    }
-  }
-
-  // Override direction analysis
+  // Actor/override patterns — LIGHT reference only, content-based judgment is primary
   const overridesWithDirection = getSignalsByType('actor_override_direction');
-  if (overridesWithDirection.length >= 2) {
+  if (overridesWithDirection.length >= 3) {
     const aiToHuman = overridesWithDirection.filter(s => s.signal_data.from_actor === 'ai' && s.signal_data.to_actor === 'human').length;
     const humanToAi = overridesWithDirection.filter(s => s.signal_data.from_actor === 'human' && s.signal_data.to_actor === 'ai').length;
     if (aiToHuman > humanToAi * 2) {
-      lines.push('- 이 사용자는 AI 단독 실행을 사람 실행으로 변경하는 경향이 있습니다. AI 역할을 더 보수적으로 제안하세요.');
+      lines.push(`- 참고: 이 사용자는 과거에 AI→사람 변경 ${aiToHuman}건. 내용에 따라 판단하되, 판단·전략 성격의 작업은 사람 배정을 고려.`);
     } else if (humanToAi > aiToHuman * 2) {
-      lines.push('- 이 사용자는 사람 실행을 AI에 위임하는 경향이 있습니다. AI 활용 범위를 넓게 제안하세요.');
+      lines.push(`- 참고: 이 사용자는 과거에 사람→AI 위임 ${humanToAi}건. AI 활용에 적극적.`);
     }
   }
 

@@ -10,7 +10,8 @@ import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2 } from 'lucide-react';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain } from 'lucide-react';
+import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 
 const llmModes: { value: LLMMode; label: string; description: string; icon: React.ReactNode; available: boolean }[] = [
@@ -233,6 +234,9 @@ export default function SettingsPage() {
         </p>
       </Card>
 
+      {/* Learning Health */}
+      <LearningHealthCard />
+
       {/* Audio Settings */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
@@ -318,5 +322,61 @@ export default function SettingsPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+function LearningHealthCard() {
+  const [health, setHealth] = useState<ReturnType<typeof assessLearningHealth> | null>(null);
+
+  useEffect(() => {
+    setHealth(assessLearningHealth());
+  }, []);
+
+  if (!health) return null;
+
+  const tierLabels = { 1: '시작', 2: '학습 중', 3: '최적화' };
+  const tierColors = { 1: 'text-[var(--text-secondary)]', 2: 'text-[var(--accent)]', 3: 'text-[var(--success)]' };
+  const trendIcons = { improving: '↗', stable: '→', not_enough_data: '—' };
+  const trendLabels = { improving: '개선 중', stable: '안정', not_enough_data: '데이터 부족' };
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 mb-4">
+        <Brain size={16} className="text-[var(--accent)]" />
+        <h3 className="text-[15px] font-bold">학습 상태</h3>
+        <span className={`ml-auto text-[12px] font-bold ${tierColors[health.learning_tier]}`}>
+          Tier {health.learning_tier}: {tierLabels[health.learning_tier]}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="text-center p-2 rounded-lg bg-[var(--bg)]">
+          <p className="text-[18px] font-bold text-[var(--text-primary)]">{health.signal_count}</p>
+          <p className="text-[10px] text-[var(--text-secondary)]">수집된 신호</p>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-[var(--bg)]">
+          <p className="text-[18px] font-bold text-[var(--text-primary)]">{health.eval_coverage}%</p>
+          <p className="text-[10px] text-[var(--text-secondary)]">전략 평가율</p>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-[var(--bg)]">
+          <p className="text-[18px] font-bold text-[var(--text-primary)]">{trendIcons[health.override_trend]}</p>
+          <p className="text-[10px] text-[var(--text-secondary)]">오버라이드 {trendLabels[health.override_trend]}</p>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-[var(--bg)]">
+          <p className="text-[18px] font-bold text-[var(--text-primary)]">{trendIcons[health.convergence_trend]}</p>
+          <p className="text-[10px] text-[var(--text-secondary)]">수렴 속도 {trendLabels[health.convergence_trend]}</p>
+        </div>
+      </div>
+
+      {health.recommendations.length > 0 && (
+        <div className="space-y-1">
+          {health.recommendations.map((r, i) => (
+            <p key={i} className="text-[12px] text-[var(--text-secondary)] flex items-start gap-1.5">
+              <TrendingUp size={12} className="text-[var(--accent)] shrink-0 mt-0.5" /> {r}
+            </p>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
