@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const MAX_TOKENS_CAP = 4096;
 const DAILY_LIMIT = 5;
+const ANON_LIMIT = 3;
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
 const VALID_ROLES = new Set(['user', 'assistant']);
@@ -67,12 +68,28 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
   );
 }
 
-export async function POST(req: NextRequest) {
-  // 1. Authenticate
-  const auth = await verifyAuth(req);
-  if (!auth) {
-    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+/**
+ * Anonymous rate limiting via IP (in-memory, resets on deployment).
+ * Simple and sufficient for 1-use trial — no DB needed.
+ */
+const anonUsage = new Map<string, { count: number; resetAt: number }>();
+
+function checkAnonRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = anonUsage.get(ip);
+  // Reset daily
+  if (!entry || now > entry.resetAt) {
+    anonUsage.set(ip, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
+    return true;
   }
+  if (entry.count >= ANON_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+export async function POST(req: NextRequest) {
+  // 1. Authenticate (optional — anonymous trial allowed)
+  const auth = await verifyAuth(req);
 
   // 2. Check server API key
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -83,13 +100,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Atomic rate limit (Supabase RPC, no race condition)
-  const allowed = await checkRateLimit(auth.userId, auth.token);
-  if (!allowed) {
-    return NextResponse.json(
-      { error: '일일 무료 사용량을 초과했습니다. 설정에서 직접 API 키를 입력하면 제한 없이 사용할 수 있습니다.' },
-      { status: 429 }
-    );
+  // 3. Rate limiting — authenticated vs anonymous
+  if (auth) {
+    // Logged-in user: 5/day via Supabase RPC
+    const allowed = await checkRateLimit(auth.userId, auth.token);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '일일 무료 사용량을 초과했습니다. 설정에서 직접 API 키를 입력하면 제한 없이 사용할 수 있습니다.' },
+        { status: 429 }
+      );
+    }
+  } else {
+    // Anonymous: 1/day per IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('x-real-ip')
+      || 'unknown';
+    const allowed = checkAnonRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: '무료 체험 3회를 모두 사용했습니다. 구글 로그인하면 하루 5회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
+        { status: 429 }
+      );
+    }
   }
 
   // 4. Validate input

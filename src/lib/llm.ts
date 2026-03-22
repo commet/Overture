@@ -133,6 +133,9 @@ async function callProxy(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
+    if (err.needsLogin) {
+      throw new Error('LOGIN_REQUIRED:' + (err.error || '로그인이 필요합니다.'));
+    }
     throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
   }
 
@@ -189,6 +192,9 @@ export async function callLLMStream(
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      if (err.needsLogin) {
+        throw new Error('LOGIN_REQUIRED:' + (err.error || '로그인이 필요합니다.'));
+      }
       throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
     }
 

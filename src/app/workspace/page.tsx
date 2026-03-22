@@ -13,14 +13,17 @@ import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
-import { Menu } from 'lucide-react';
+import { Menu, Sparkles } from 'lucide-react';
 import { track } from '@/lib/analytics';
+import { useAuth } from '@/lib/auth';
+import Link from 'next/link';
 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
   const { activeStep, setActiveStep, sidebarOpen, toggleSidebar } = useWorkspaceStore();
   const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
   const { settings, loadSettings } = useSettingsStore();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadProjects();
@@ -79,6 +82,23 @@ function WorkspaceContent() {
 
         {/* Step content */}
         <div className="flex-1 overflow-y-auto">
+          {/* Anonymous trial banner */}
+          {!user && (
+            <div className="mx-4 md:mx-6 lg:mx-8 mt-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+              <div className="flex items-center gap-2 text-[13px]">
+                <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
+                <span className="text-[var(--text-primary)]">
+                  로그인 없이 <strong>3회 무료 체험</strong> 가능합니다. 로그인하면 하루 5회까지 사용할 수 있어요.
+                </span>
+              </div>
+              <Link
+                href="/login"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:opacity-90 transition-opacity"
+              >
+                로그인
+              </Link>
+            </div>
+          )}
           {/* No project — show creation */}
           {!currentProjectId && (
             <div className="flex items-center justify-center h-full">

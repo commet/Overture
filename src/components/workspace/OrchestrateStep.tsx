@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { track, trackError } from '@/lib/analytics';
+import Link from 'next/link';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -367,7 +368,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       setIsStreaming(false);
       setStreamingText('');
       trackError('orchestrate_analyze', err);
-      setError(err instanceof Error ? err.message : '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg.startsWith('LOGIN_REQUIRED:') ? 'LOGIN_REQUIRED' : (msg || '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.'));
       updateItem(id, { status: 'input' });
     }
   };
@@ -507,9 +509,19 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             }}
           />
           {error && (
-            <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
-              <AlertTriangle size={14} /> {error}
-            </div>
+            error === 'LOGIN_REQUIRED' ? (
+              <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4 mt-3">
+                <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험 3회를 모두 사용했어요</p>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-3">구글 로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
+                <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity">
+                  구글로 로그인하기
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
+                <AlertTriangle size={14} /> {error}
+              </div>
+            )
           )}
         </Card>
       )}
