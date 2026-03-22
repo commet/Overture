@@ -512,9 +512,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             error === 'LOGIN_REQUIRED' ? (
               <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4 mt-3">
                 <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험 3회를 모두 사용했어요</p>
-                <p className="text-[13px] text-[var(--text-secondary)] mb-3">구글 로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
                 <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity">
-                  구글로 로그인하기
+                  로그인 / 회원가입
                 </Link>
               </div>
             ) : (

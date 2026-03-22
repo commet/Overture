@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     const allowed = checkAnonRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
-        { error: '무료 체험 3회를 모두 사용했습니다. 구글 로그인하면 하루 5회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
+        { error: '무료 체험 3회를 모두 사용했습니다. 로그인하면 하루 5회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
         { status: 429 }
       );
     }
