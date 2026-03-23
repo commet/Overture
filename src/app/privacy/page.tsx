@@ -66,7 +66,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="text-[16px] font-bold mb-2">4. 개인정보의 제3자 제공</h2>
-          <p>회사는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다만, 다음의 경우에는 예외로 합니다.</p>
+          <p>SAYU(이하 &ldquo;회사&rdquo;)는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다만, 다음의 경우에는 예외로 합니다.</p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
             <li>법령에 의해 요구되는 경우</li>
             <li>수사 목적으로 법정 절차에 따라 요청되는 경우</li>
@@ -131,7 +131,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-[16px] font-bold mb-2">9. 개인정보 보호책임자</h2>
           <p>개인정보 관련 문의는 아래 연락처로 접수해주세요.</p>
-          <p className="mt-2 text-[var(--text-secondary)]">이메일: privacy@overture.app</p>
+          <p className="mt-2 text-[var(--text-secondary)]">회사명: SAYU</p>
+          <p className="text-[var(--text-secondary)]">이메일: sayu.curator@gmail.com</p>
         </section>
       </div>
     </div>

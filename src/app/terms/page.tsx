@@ -16,7 +16,7 @@ export default function TermsPage() {
       <div className="prose prose-sm max-w-none space-y-6 text-[14px] text-[var(--text-primary)] leading-relaxed">
         <section>
           <h2 className="text-[16px] font-bold mb-2">제1조 (목적)</h2>
-          <p>이 약관은 Overture(이하 &ldquo;서비스&rdquo;)를 제공하는 운영자(이하 &ldquo;회사&rdquo;)와 이를 이용하는 회원(이하 &ldquo;이용자&rdquo;) 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+          <p>이 약관은 SAYU(이하 &ldquo;회사&rdquo;)가 운영하는 Overture(이하 &ldquo;서비스&rdquo;)와 이를 이용하는 회원(이하 &ldquo;이용자&rdquo;) 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
         </section>
 
         <section>
@@ -69,7 +69,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-[16px] font-bold mb-2">제8조 (분쟁 해결)</h2>
-          <p>이 약관에 관한 분쟁은 대한민국 법률에 따르며, 관할 법원은 회사의 소재지를 관할하는 법원으로 합니다.</p>
+          <p>이 약관에 관한 분쟁은 대한민국 법률에 따르며, 민사소송법에 따른 관할 법원에서 해결합니다.</p>
         </section>
       </div>
     </div>
