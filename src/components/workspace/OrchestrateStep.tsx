@@ -818,18 +818,24 @@ function QuickRehearsalCard({
   const [autoPersonas, setAutoPersonas] = useState<AutoPersona[]>([]);
   const [loading, setLoading] = useState(false);
   const [extracted, setExtracted] = useState(false);
+  const [extractError, setExtractError] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const { createPersona } = usePersonaStore();
 
   const handleExtract = async () => {
     setLoading(true);
+    setExtractError(false);
     try {
       const personas = await extractPersonasFromContext(decompose, orchestrate);
-      setAutoPersonas(personas);
-      setSelected(new Set(personas.map((_, i) => i)));
-      setExtracted(true);
+      if (personas.length === 0) {
+        setExtractError(true);
+      } else {
+        setAutoPersonas(personas);
+        setSelected(new Set(personas.map((_, i) => i)));
+        setExtracted(true);
+      }
     } catch {
-      // silent
+      setExtractError(true);
     } finally {
       setLoading(false);
     }
@@ -866,13 +872,20 @@ function QuickRehearsalCard({
       </p>
 
       {!extracted ? (
-        <Button size="sm" onClick={handleExtract} disabled={loading}>
-          {loading ? (
-            <><Loader2 size={14} className="animate-spin" /> 이해관계자 분석 중...</>
-          ) : (
-            <><Users size={14} /> 이해관계자 자동 식별</>
+        <div className="space-y-2">
+          <Button size="sm" onClick={handleExtract} disabled={loading}>
+            {loading ? (
+              <><Loader2 size={14} className="animate-spin" /> 이해관계자 분석 중...</>
+            ) : (
+              <><Users size={14} /> 이해관계자 자동 식별</>
+            )}
+          </Button>
+          {extractError && (
+            <p className="text-[12px] text-amber-600">
+              자동 식별에 실패했습니다. 잠시 후 다시 시도하거나, 리허설 탭에서 직접 페르소나를 추가해주세요.
+            </p>
           )}
-        </Button>
+        </div>
       ) : (
         <div className="space-y-3">
           {autoPersonas.map((persona, i) => (
