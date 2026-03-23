@@ -52,7 +52,7 @@ interface RefinementLoopStepProps {
 
 export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence } = useRefinementStore();
-  const { projects, loadProjects } = useProjectStore();
+  const { projects, loadProjects, updateProject } = useProjectStore();
   const { personas, feedbackHistory, loadData: loadPersonaData, getPersona, addFeedbackRecord } = usePersonaStore();
 
   const [expandedIteration, setExpandedIteration] = useState<number | null>(null);
@@ -667,6 +667,7 @@ ${buildPersonaAccuracyContext(personaId)}
 
 // ── Retrospective Card ──
 function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+  const { updateProject } = useProjectStore();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const questions = generateRetrospectiveQuestions(loop, feedbackHistory);
@@ -675,6 +676,9 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; fe
 
   const handleSave = () => {
     // Record answers as quality signals
+    const processAnswers: Record<string, string> = {};
+    const judgmentAnswers: Record<string, string> = {};
+    const learningAnswers: Record<string, string> = {};
     for (const q of questions) {
       if (answers[q.id]?.trim()) {
         recordSignal({
@@ -682,6 +686,24 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; fe
           tool: 'refinement',
           signal_type: 'retrospective_answer',
           signal_data: { question: q.question, answer: answers[q.id], category: q.category },
+        });
+        if (q.category === 'process') processAnswers[q.question] = answers[q.id];
+        else if (q.category === 'judgment') judgmentAnswers[q.question] = answers[q.id];
+        else learningAnswers[q.question] = answers[q.id];
+      }
+    }
+
+    // Save to project meta_reflection
+    if (loop.project_id) {
+      const allAnswers = Object.values(answers).filter(a => a.trim());
+      if (allAnswers.length > 0) {
+        updateProject(loop.project_id, {
+          meta_reflection: {
+            understanding_change: Object.values(processAnswers)[0] || undefined,
+            surprising_discovery: Object.values(learningAnswers)[0] || undefined,
+            next_time_differently: Object.values(judgmentAnswers)[0] || undefined,
+            created_at: new Date().toISOString(),
+          },
         });
       }
     }
