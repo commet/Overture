@@ -264,7 +264,7 @@ export function WorkflowGraph({
                           {String(i + 1).padStart(2, '0')}
                         </span>
                         {step.checkpoint && (
-                          <span title="체크포인트: 사람이 반드시 확인"><Flag size={10} className="text-amber-600" /></span>
+                          <span title="이 단계는 반드시 사람이 확인해야 합니다"><Flag size={10} className="text-amber-600" /></span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -394,50 +394,47 @@ export function WorkflowGraph({
                         {/* Human judgment + decision */}
                         {editable && (step.actor === 'human' || step.actor === 'both') && (
                           <div>
-                            <p className="text-[11px] font-semibold text-[#8b6914] mb-1">사람의 판단</p>
+                            <p className="text-[11px] font-semibold text-[#8b6914] mb-1.5">여기서 결정할 것</p>
                             {step.judgment?.trim() && (
-                              <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed">
-                                {step.judgment}
+                              <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed bg-[var(--bg)] rounded-lg px-3 py-2">
+                                {step.judgment.replace(/[:：]\s*$/, '')}
                               </p>
                             )}
                             {options.length > 0 ? (
                               <div className="space-y-2">
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1.5">
                                   {options.map((opt, j) => (
                                     <button
                                       key={j}
                                       onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
-                                      className={`px-4 py-2 rounded-xl text-[13px] font-semibold border-2 cursor-pointer transition-all ${
+                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-all ${
                                         step.user_decision === opt
-                                          ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--bg)] shadow-sm'
-                                          : 'border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--checkpoint)]'
+                                          ? 'border-[#8b6914] bg-[#8b6914] text-white'
+                                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#8b6914] hover:text-[#8b6914]'
                                       }`}
                                     >
                                       {opt}
                                     </button>
                                   ))}
                                 </div>
-                                {/* Direct input — always available as alternative */}
                                 <input
                                   type="text"
                                   value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
                                   onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
                                   placeholder="또는 직접 입력..."
-                                  className="w-full text-[12px] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:bg-[var(--surface)] focus:outline-none"
+                                  className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
                                   onClick={(e) => e.stopPropagation()}
                                 />
                               </div>
                             ) : (
-                              <div className="space-y-2">
-                                <textarea
-                                  value={step.user_decision || ''}
-                                  onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                  placeholder="이 단계에서의 판단을 입력하세요..."
-                                  rows={2}
-                                  className="w-full text-[13px] px-3 py-2 rounded-lg border-2 border-[var(--accent-light)]/30 bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              </div>
+                              <textarea
+                                value={step.user_decision || ''}
+                                onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                placeholder="이 단계에서의 판단을 입력하세요..."
+                                rows={2}
+                                className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             )}
                           </div>
                         )}
@@ -457,11 +454,11 @@ export function WorkflowGraph({
                         )}
 
                         {/* Actor reasoning — readable */}
-                        {/* Checkpoint reason */}
+                        {/* Checkpoint reason — inline warning */}
                         {step.checkpoint && step.checkpoint_reason && (
-                          <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-lg px-3 py-2">
-                            <Flag size={11} className="text-amber-700 shrink-0 mt-0.5" />
-                            <p className="text-amber-800"><span className="font-semibold">이 단계를 넘기기 전:</span> {step.checkpoint_reason}</p>
+                          <div className="flex items-start gap-2 text-[11px] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            <Flag size={11} className="text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-amber-700"><span className="font-bold">넘어가기 전 확인:</span> {step.checkpoint_reason}</p>
                           </div>
                         )}
                       </div>
@@ -479,7 +476,7 @@ export function WorkflowGraph({
                             : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-amber-300'
                         }`}
                       >
-                        <Flag size={10} className="inline mr-1" /> 체크포인트 {step.checkpoint ? '해제' : '설정'}
+                        <Flag size={10} className="inline mr-1" /> {step.checkpoint ? '확인 필수 해제' : '확인 필수로 설정'}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onRemoveStep?.(i); }}
