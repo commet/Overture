@@ -1009,8 +1009,16 @@ function OutroSection() {
         <p className="text-[15px] text-[var(--text-primary)] leading-relaxed mb-1">
           이 모든 과정을 <strong>직접 해보세요.</strong>
         </p>
-        <p className="text-[13px] text-[var(--text-secondary)]">
+        <p className="text-[13px] text-[var(--text-secondary)] mb-5">
           당신의 과제로, 당신의 이해관계자로, 당신의 판단으로.
+        </p>
+        <Link href="/workspace">
+          <Button>
+            워크스페이스에서 시작하기 <ArrowRight size={14} />
+          </Button>
+        </Link>
+        <p className="text-[11px] text-[var(--text-tertiary)] mt-3">
+          로그인 없이 3회 무료 체험 가능
         </p>
       </Card>
     </div>
