@@ -113,6 +113,8 @@ export interface OrchestrateStep {
   user_ai_guide?: string;
   user_decision?: string;
   ai_direction_options?: string[];
+  ai_scope?: string;
+  human_scope?: string;
 }
 
 export interface KeyAssumption {

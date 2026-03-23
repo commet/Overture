@@ -302,6 +302,24 @@ export function WorkflowGraph({
                           </p>
                         )}
 
+                        {/* AI/Human scope for "both" steps */}
+                        {step.actor === 'both' && (step.ai_scope || step.human_scope) && (
+                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {step.ai_scope && (
+                              <div className="flex items-start gap-1.5 text-[11px] px-2 py-1.5 rounded-md bg-[#3b6dcc]/5">
+                                <span className="font-bold text-[#2d4a7c] shrink-0">AI:</span>
+                                <span className="text-[var(--text-secondary)]">{step.ai_scope}</span>
+                              </div>
+                            )}
+                            {step.human_scope && (
+                              <div className="flex items-start gap-1.5 text-[11px] px-2 py-1.5 rounded-md bg-[#8b6914]/5">
+                                <span className="font-bold text-[#8b6914] shrink-0">사람:</span>
+                                <span className="text-[var(--text-secondary)]">{step.human_scope}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Filled input indicators (collapsed view) */}
                         {!isExpanded && hasInput && (
                           <div className="flex gap-2 mt-2">
@@ -326,6 +344,13 @@ export function WorkflowGraph({
                     {/* ── Expanded: inputs + details ── */}
                     {isExpanded && (
                       <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] animate-fade-in space-y-3">
+                        {/* Actor reasoning */}
+                        {step.actor_reasoning && (
+                          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed italic">
+                            {step.actor_reasoning}
+                          </p>
+                        )}
+
                         {/* AI guide input */}
                         {editable && (step.actor === 'ai' || step.actor === 'both') && (
                           <div>
