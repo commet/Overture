@@ -20,6 +20,8 @@ function LoginContent() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
 
   // Handle error/redirect params from middleware or callback
   useEffect(() => {
@@ -115,6 +117,9 @@ function LoginContent() {
             </svg>
             Google로 시작하기
           </button>
+          <p className="text-[11px] text-[var(--text-tertiary)] text-center leading-relaxed">
+            시작하면 <a href="/terms" target="_blank" className="text-[var(--accent)] hover:underline">이용약관</a> 및 <a href="/privacy" target="_blank" className="text-[var(--accent)] hover:underline">개인정보처리방침</a>에 동의합니다
+          </p>
 
           {/* Divider */}
           <div className="flex items-center gap-3">
@@ -156,9 +161,39 @@ function LoginContent() {
               <p className="text-[12px] text-[var(--success)] bg-green-50 rounded-lg px-3 py-2">{message}</p>
             )}
 
+            {/* 회원가입 시 약관 동의 */}
+            {isSignUp && (
+              <div className="space-y-2 pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedTerms}
+                    onChange={(e) => setAgreedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
+                  />
+                  <span className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                    <span className="text-[var(--danger)]">[필수]</span>{' '}
+                    <a href="/terms" target="_blank" className="text-[var(--accent)] underline">서비스 이용약관</a>에 동의합니다
+                  </span>
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedPrivacy}
+                    onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
+                  />
+                  <span className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                    <span className="text-[var(--danger)]">[필수]</span>{' '}
+                    <a href="/privacy" target="_blank" className="text-[var(--accent)] underline">개인정보처리방침</a>에 동의합니다
+                  </span>
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || (isSignUp && (!agreedTerms || !agreedPrivacy))}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[14px] font-semibold hover:bg-[var(--primary-light)] disabled:opacity-50 transition-colors cursor-pointer"
             >
               {submitting ? '처리 중...' : isReset ? '재설정 링크 보내기' : isSignUp ? '회원가입' : '로그인'}
