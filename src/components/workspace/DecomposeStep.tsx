@@ -54,81 +54,84 @@ const ASSUMPTION_PROMPT = `당신은 전략기획 전문가입니다. 주어진 
 
 /* ── Stage 2: 리프레이밍 프롬프트 (전제 평가 패턴별 분기) ── */
 
-// 패턴 A: 전제 대부분 확인됨 → 실행 구체화 모드
-const REFRAMING_PROMPT_CONFIRMED = `당신은 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제를 대부분 확인했습니다.
+// ── 공통 사고 프레임 (모든 패턴에 내장) ──
+const STRATEGIC_THINKING_FRAME = `
+[재정의 전 내적 검토 — 다음을 순서대로 고려한 뒤 종합하세요]
+1. 전제 패턴: 확인/의심/불확실의 조합이 이 과제에 대해 무엇을 말해주는가?
+2. 진짜 목적: 이 과제를 시킨 사람이 정말 원하는 결과는? 표면 목표와 다를 수 있다.
+3. 시간축: 이걸 안 하면 6개월 후 무슨 일이 벌어지는가? 이것이 시사하는 우선순위는?
+4. 빠진 경계: 이 과제가 의도적으로 다루지 않는 영역 중, 핵심인 것이 있는가?
+5. 문제의 성격: 이것은 기술 문제인가, 조직 문제인가, 정치 문제인가, 타이밍 문제인가?
 
-[사고 방식: 전제가 확인되었으므로 질문을 더 날카롭고 실행 가능하게 구체화]
-- 전제가 맞다면, 원래 과제를 부정하지 마세요. 과제의 방향을 더 예리하게 만드세요.
-- "해야 하는가?"가 아니라 "어떻게 가장 효과적으로 할 것인가?"로 질문을 발전시키세요.
-- 확인된 전제를 레버리지 삼아 실행의 핵심 포인트를 찾으세요.
-- 원래 과제보다 범위가 좁아지면 안 됩니다. 범위는 유지하고 각도만 더 날카롭게 하세요.
+[범위 원칙]
+- 재정의된 질문의 범위는 원래 과제와 같거나 넓어야 합니다. 좁아지면 안 됩니다.
+- 전제 하나에 천착하지 말고, 위 5가지를 종합한 통찰을 담으세요.`;
+
+// 패턴 A: 전제 대부분 확인됨 → 실행 구체화 모드
+const REFRAMING_PROMPT_CONFIRMED = `당신은 20년 이상 경험한 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제를 대부분 확인했습니다.
+
+전제가 확인되었으므로 방향은 맞습니다. 질문을 부정하지 말고 더 날카롭게 만드세요.
+"해야 하는가?"가 아니라 "어떻게 가장 효과적으로 할 것인가?"로 발전시키세요.
+${STRATEGIC_THINKING_FRAME}
 
 아래 JSON 구조로 응답하세요.
-1. reframed_question: 원래 과제와 같은 범위에서, 실행을 위해 가장 먼저 답해야 할 핵심 질문 (범위 유지, 각도 구체화)
+1. reframed_question: 원래 과제와 같은 범위에서, 위 5가지 관점을 종합한 핵심 질문
 2. why_reframing_matters: 이렇게 구체화하면 실행에서 무엇이 달라지는지 1-2문장
 3. hidden_questions: 실행 시 고려해야 할 핵심 갈림길 2-3개. 각각:
    - question: 질문 텍스트 (짧고 판단 가능한 형태)
    - reasoning: 이 갈림길에서의 선택이 결과에 어떤 차이를 만드는지 (1문장)
-   - source_assumption: 어떤 확인된 전제에서 이 실행 포인트가 나왔는지
+   - source_assumption: 어떤 확인된 전제 또는 검토 관점에서 이 갈림길이 나왔는지
 4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
 
 반드시 JSON만 응답하세요.`;
 
-// 패턴 B: 일부 전제 의심/불확실 → 방향 유지 + 조건 통합 모드
-const REFRAMING_PROMPT_MIXED = `당신은 전략기획 전문가입니다. 사용자의 전제 평가를 바탕으로 질문을 재정의하세요.
+// 패턴 B: 일부 전제 의심/불확실 → 방향 유지 + 각도 전환 모드
+const REFRAMING_PROMPT_MIXED = `당신은 20년 이상 경험한 전략기획 전문가입니다. 사용자의 전제 평가를 바탕으로 질문을 재정의하세요.
 
 [핵심 원칙]
-1. 확인된 전제가 방향: "맞음" 전제는 과제의 방향을 지지합니다. 이 방향을 유지하세요.
-2. 의심된 전제가 조건: "의심됨" 전제는 방향을 뒤집는 근거가 아니라, 실행 시 해결할 조건입니다.
-3. 범위 유지: 재정의된 질문은 원래 과제를 "더 좁게" 만드는 것이 아니라 "다른 각도에서" 보는 것입니다.
+- "맞음" 전제는 과제의 방향을 지지합니다. 이 방향을 유지하세요.
+- "의심됨" 전제는 방향을 뒤집는 근거가 아니라, 실행 시 해결할 조건입니다.
+- "불확실" 전제는 검증이 필요한 변수입니다.
+${STRATEGIC_THINKING_FRAME}
 
 [절대 하지 말 것]
 - 확인된 전제를 무시하고 의심된 전제만으로 과제 전체를 뒤집지 마세요.
 - "~대신 ~부터 해야 하는가?" 형태로 원래 과제를 포기하는 방향을 제안하지 마세요.
-- 의심된 전제 하나에 천착하지 마세요. 전제들의 조합이 시사하는 바를 통합하세요.
-- 원래 과제보다 범위가 좁아지면 안 됩니다. 범위는 유지하고 관점만 전환하세요.
+- 의심된 전제 하나에 천착하지 마세요.
 
-[올바른 재정의 예시]
-- 원래 과제: "AI 업무 효율화"
-- 확인됨: "비효율성이 명확히 존재", "경영진이 실질 개선 원함"
-- 의심됨: "팀원 수용성"
-- 불확실: "효과 측정 가능성"
+[예시]
+원래 과제: "AI 업무 효율화"
+확인됨: "비효율 존재" + "경영진이 실질 개선 원함" / 의심됨: "팀원 수용성" / 불확실: "측정 가능성"
 
-잘못된 재정의 (방향 뒤집힘):
-  "AI 대신 업무 장벽 제거부터 해야 하는가?" ← 확인된 방향 무시
-
-잘못된 재정의 (지엽적 천착):
-  "팀원 수용성을 어떻게 확보할 것인가?" ← 한 전제에만 집중, 범위 축소
-
-올바른 재정의 (범위 유지 + 각도 전환):
-  "AI 효율화의 성공은 기술 선택이 아니라 조직 수용 설계에 달려 있다 — 기술과 변화관리를 어떻게 동시에 설계할 것인가?" ← 원래 범위 유지, 모든 전제 통합, 관점 전환
+잘못: "AI 대신 업무 장벽 제거부터?" ← 방향 뒤집힘
+잘못: "팀원 수용성을 어떻게?" ← 한 전제에 천착, 범위 축소
+올바름: "AI 효율화의 성패는 기술이 아니라 조직 설계에 달려 있다 — 기술 도입과 변화관리를 어떻게 동시에 설계할 것인가?" ← 범위 유지, 전제+목적+경계 종합
 
 아래 JSON 구조로 응답하세요.
-1. reframed_question: 원래 과제와 같은 범위를 유지하면서, 전제 평가가 시사하는 새로운 각도에서 본 핵심 질문
+1. reframed_question: 원래 과제와 같은 범위에서, 위 5가지 관점과 전제 평가를 종합한 핵심 질문
 2. why_reframing_matters: 이 각도 전환이 실행에서 무엇을 바꾸는지 1-2문장
 3. hidden_questions: 이 각도 안에서 추구할 수 있는 방향 2-3개. 각각:
-   - question: 질문 텍스트 (짧고 판단 가능한 형태. 원래 과제의 범위 안에서)
+   - question: 질문 텍스트 (짧고 판단 가능한 형태)
    - reasoning: 이 방향을 택하면 무엇이 달라지는지 (1문장)
-   - source_assumption: 어떤 전제 조합에서 이 질문이 도출되었는지
+   - source_assumption: 어떤 전제 또는 검토 관점에서 이 질문이 도출되었는지
 4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
 
 반드시 JSON만 응답하세요.`;
 
 // 패턴 C: 대부분 의심됨 → 과제 재고 모드
-const REFRAMING_PROMPT_CHALLENGED = `당신은 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제 대부분을 의심하고 있습니다.
+const REFRAMING_PROMPT_CHALLENGED = `당신은 20년 이상 경험한 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제 대부분을 의심하고 있습니다.
 
-[사고 방식: 과제의 존재 이유 자체를 재고]
-- 전제 대부분이 의심되므로, 이 과제를 그대로 진행하는 것이 맞는지부터 질문하세요.
-- "이 과제 대신 무엇을 해야 하는가?" 또는 "이 과제의 진짜 목적은 무엇인가?"를 탐색하세요.
-- 과제를 폐기하는 것도 유효한 방향입니다.
+전제 대부분이 의심되므로 이 과제를 그대로 진행하는 것이 맞는지부터 질문해야 합니다.
+과제를 폐기하거나 근본적으로 재정의하는 것도 유효한 방향입니다.
+${STRATEGIC_THINKING_FRAME}
 
 아래 JSON 구조로 응답하세요.
-1. reframed_question: 전제가 대부분 의심되는 상황에서, 정말 답해야 할 근본 질문
+1. reframed_question: 위 5가지 관점을 종합하여, 전제가 무너진 상황에서 정말 답해야 할 근본 질문
 2. why_reframing_matters: 왜 원래 질문을 그대로 추진하면 안 되는지 1-2문장
 3. hidden_questions: 대안적 방향 2-3개. 각각:
    - question: 질문 텍스트 (짧고 판단 가능한 형태)
    - reasoning: 이 방향이 원래 과제와 어떻게 다른지 (1문장)
-   - source_assumption: 어떤 의심된 전제에서 이 대안이 나왔는지
+   - source_assumption: 어떤 전제 또는 검토 관점에서 이 대안이 나왔는지
 4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
 
 반드시 JSON만 응답하세요.`;
@@ -582,7 +585,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.decompose.subtitle')}</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          주어진 과제 뒤에 숨은 진짜 질문을 찾아냅니다.
+          전략기획의 핵심 — 숨겨진 전제를 찾고, 진짜 질문을 재정의합니다.
         </p>
         {hasLearning && (
           <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] mt-2">
@@ -764,7 +767,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <div className="mb-3">
                     <p className="text-[14px] font-bold text-[var(--text-primary)]">이 과제가 성립하려면</p>
                     <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                      각 전제가 맞는지 판단해주세요. 당신의 평가가 질문 재정의의 방향을 결정합니다.
+                      모든 과제에는 &lsquo;이것이 맞아야 성립한다&rsquo;는 숨겨진 전제가 있습니다. 당신의 경험으로 판단해주세요.
                     </p>
                   </div>
                   <div className="space-y-2.5">
@@ -824,13 +827,18 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 )}
 
                 {!reframing && (
-                  <div className="flex items-center justify-between pt-2">
-                    <Button variant="secondary" onClick={handleReanalyze} size="sm">
-                      <RotateCcw size={14} /> 전제 재분석
-                    </Button>
-                    <Button onClick={handleReframe}>
-                      {t('decompose.reframe')} &rarr;
-                    </Button>
+                  <div className="pt-2 space-y-2">
+                    <p className="text-[11px] text-[var(--text-tertiary)] text-right">
+                      당신의 판단을 바탕으로 목적, 시간축, 범위를 종합하여 재정의합니다
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <Button variant="secondary" onClick={handleReanalyze} size="sm">
+                        <RotateCcw size={14} /> 전제 재분석
+                      </Button>
+                      <Button onClick={handleReframe}>
+                        {t('decompose.reframe')} &rarr;
+                      </Button>
+                    </div>
                   </div>
                 )}
               </>
@@ -888,7 +896,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     {/* 리프레이밍 근거 — 하단 */}
                     {analysis.why_reframing_matters && (
                       <div className="px-5 py-4 bg-[var(--surface)] border-t border-[var(--border-subtle)]">
-                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5">{rationaleLabel}</p>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">분석 근거</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mb-2">전제 패턴 · 과제의 진짜 목적 · 시간축 · 문제의 경계 · 문제의 성격을 종합</p>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
                           {analysis.why_reframing_matters}
                         </p>
