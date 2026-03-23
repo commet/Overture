@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { orchestrateToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
-import type { OrchestrateAnalysis, OrchestrateStep as OrchestrateStepType } from '@/stores/types';
+import type { OrchestrateAnalysis, OrchestrateStep as OrchestrateStepType, OrchestrateItem, DecomposeItem, Persona } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -30,6 +30,10 @@ import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-reac
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';
+import { extractPersonasFromContext, autoPersonaToFull } from '@/lib/auto-persona';
+import type { AutoPersona } from '@/lib/auto-persona';
+import { usePersonaStore } from '@/stores/usePersonaStore';
+import { Users } from 'lucide-react';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -765,6 +769,24 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               </>
             )}
           </div>
+          {current.status === 'done' && current.analysis && (
+            <QuickRehearsalCard
+              orchestrate={current}
+              decompose={relatedDecompose || null}
+              onStartRehearsal={(personas) => {
+                if (!current) return;
+                const content = orchestrateToMarkdown(current);
+                setHandoff({
+                  from: 'orchestrate',
+                  fromItemId: current.id,
+                  content,
+                  projectId: current.project_id,
+                  autoPersonaIds: personas.map(p => p.id),
+                });
+                onNavigate('persona-feedback');
+              }}
+            />
+          )}
           {current.status === 'done' && (
             <NextStepGuide
               currentTool="orchestrate"
@@ -780,5 +802,121 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Quick Rehearsal Card with Auto-Persona ──
+function QuickRehearsalCard({
+  orchestrate,
+  decompose,
+  onStartRehearsal,
+}: {
+  orchestrate: OrchestrateItem;
+  decompose: DecomposeItem | null;
+  onStartRehearsal: (personas: Persona[]) => void;
+}) {
+  const [autoPersonas, setAutoPersonas] = useState<AutoPersona[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [extracted, setExtracted] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { createPersona } = usePersonaStore();
+
+  const handleExtract = async () => {
+    setLoading(true);
+    try {
+      const personas = await extractPersonasFromContext(decompose, orchestrate);
+      setAutoPersonas(personas);
+      setSelected(new Set(personas.map((_, i) => i)));
+      setExtracted(true);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStart = () => {
+    const selectedPersonas = autoPersonas
+      .filter((_, i) => selected.has(i))
+      .map(auto => {
+        const full = autoPersonaToFull(auto);
+        createPersona(full);
+        return full;
+      });
+    if (selectedPersonas.length > 0) {
+      onStartRehearsal(selectedPersonas);
+    }
+  };
+
+  const influenceColors: Record<string, string> = {
+    high: 'bg-red-100 text-red-700',
+    medium: 'bg-amber-100 text-amber-700',
+    low: 'bg-gray-100 text-gray-600',
+  };
+  const influenceLabels: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' };
+
+  return (
+    <Card className="!bg-[var(--checkpoint)] !border-amber-200">
+      <div className="flex items-center gap-2 mb-2">
+        <Users size={16} className="text-amber-700" />
+        <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 누가 검증해야 할까요?</p>
+      </div>
+      <p className="text-[12px] text-[var(--text-secondary)] mb-3">
+        프로젝트 맥락에서 이해관계자를 자동으로 식별하고, 원클릭으로 리허설을 시작합니다.
+      </p>
+
+      {!extracted ? (
+        <Button size="sm" onClick={handleExtract} disabled={loading}>
+          {loading ? (
+            <><Loader2 size={14} className="animate-spin" /> 이해관계자 분석 중...</>
+          ) : (
+            <><Users size={14} /> 이해관계자 자동 식별</>
+          )}
+        </Button>
+      ) : (
+        <div className="space-y-3">
+          {autoPersonas.map((persona, i) => (
+            <label
+              key={i}
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                selected.has(i)
+                  ? 'border-[var(--accent)] bg-[var(--surface)] shadow-sm'
+                  : 'border-[var(--border-subtle)] bg-[var(--surface)]/50 opacity-60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(i)}
+                onChange={() => {
+                  setSelected(prev => {
+                    const next = new Set(prev);
+                    next.has(i) ? next.delete(i) : next.add(i);
+                    return next;
+                  });
+                }}
+                className="mt-1 w-4 h-4 accent-[var(--accent)] cursor-pointer"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[14px] font-bold text-[var(--text-primary)]">{persona.name}</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">{persona.role}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${influenceColors[persona.influence]}`}>
+                    {influenceLabels[persona.influence]}
+                  </span>
+                </div>
+                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{persona.why_relevant}</p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai)] text-[#2d4a7c] font-medium">{persona.priorities}</span>
+                </div>
+              </div>
+            </label>
+          ))}
+
+          <Button onClick={handleStart} disabled={selected.size === 0}>
+            <Users size={14} /> {selected.size}명에게 리허설 받기
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }

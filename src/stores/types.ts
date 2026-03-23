@@ -330,6 +330,7 @@ export interface Handoff {
   content: string;
   projectId?: string;
   contextData?: PhaseContext;
+  autoPersonaIds?: string[];
 }
 
 // ─── Judgment Record ───

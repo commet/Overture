@@ -52,21 +52,83 @@ const ASSUMPTION_PROMPT = `당신은 전략기획 전문가입니다. 주어진 
 
 반드시 JSON만 응답하세요.`;
 
-/* ── Stage 2: 리프레이밍 프롬프트 (사용자 평가 기반) ── */
-const REFRAMING_PROMPT = `당신은 전략기획 전문가입니다. 사용자의 전제 평가를 바탕으로 진짜 질문을 재정의하세요.
+/* ── Stage 2: 리프레이밍 프롬프트 (전제 평가 패턴별 분기) ── */
 
-[사고 방식: 리프레이밍 + 관점 전환]
-- 사용자가 "의심됨"으로 표시한 전제에서 핵심 리프레이밍을 도출하세요.
-- 사용자가 "불확실"로 표시한 전제에서 검증이 필요한 방향을 제안하세요.
-- 각 방향은 의심된 전제와 직접 연결되어야 합니다.
+// 패턴 A: 전제 대부분 확인됨 → 실행 구체화 모드
+const REFRAMING_PROMPT_CONFIRMED = `당신은 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제를 대부분 확인했습니다.
+
+[사고 방식: 전제가 확인되었으므로 질문을 더 날카롭고 실행 가능하게 구체화]
+- 전제가 맞다면, 원래 과제를 부정하지 마세요. 과제의 방향을 더 예리하게 만드세요.
+- "해야 하는가?"가 아니라 "어떻게 가장 효과적으로 할 것인가?"로 질문을 발전시키세요.
+- 확인된 전제를 레버리지 삼아 실행의 핵심 포인트를 찾으세요.
+- 원래 과제보다 범위가 좁아지면 안 됩니다. 범위는 유지하고 각도만 더 날카롭게 하세요.
 
 아래 JSON 구조로 응답하세요.
-1. reframed_question: 전제 평가를 바탕으로 재정의한 진짜 질문
-2. why_reframing_matters: 이 관점 전환을 받아들이면 의사결정이 어떻게 달라지는지 1-2문장
-3. hidden_questions: 추구할 수 있는 방향 2-3개. 각각:
-   - question: 질문 텍스트
-   - reasoning: 이 방향을 택하면 무엇이 달라지는지
-   - source_assumption: 어떤 전제의 의심/불확실에서 이 질문이 나왔는지 (전제 내용 요약)
+1. reframed_question: 원래 과제와 같은 범위에서, 실행을 위해 가장 먼저 답해야 할 핵심 질문 (범위 유지, 각도 구체화)
+2. why_reframing_matters: 이렇게 구체화하면 실행에서 무엇이 달라지는지 1-2문장
+3. hidden_questions: 실행 시 고려해야 할 핵심 갈림길 2-3개. 각각:
+   - question: 질문 텍스트 (짧고 판단 가능한 형태)
+   - reasoning: 이 갈림길에서의 선택이 결과에 어떤 차이를 만드는지 (1문장)
+   - source_assumption: 어떤 확인된 전제에서 이 실행 포인트가 나왔는지
+4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
+
+반드시 JSON만 응답하세요.`;
+
+// 패턴 B: 일부 전제 의심/불확실 → 방향 유지 + 조건 통합 모드
+const REFRAMING_PROMPT_MIXED = `당신은 전략기획 전문가입니다. 사용자의 전제 평가를 바탕으로 질문을 재정의하세요.
+
+[핵심 원칙]
+1. 확인된 전제가 방향: "맞음" 전제는 과제의 방향을 지지합니다. 이 방향을 유지하세요.
+2. 의심된 전제가 조건: "의심됨" 전제는 방향을 뒤집는 근거가 아니라, 실행 시 해결할 조건입니다.
+3. 범위 유지: 재정의된 질문은 원래 과제를 "더 좁게" 만드는 것이 아니라 "다른 각도에서" 보는 것입니다.
+
+[절대 하지 말 것]
+- 확인된 전제를 무시하고 의심된 전제만으로 과제 전체를 뒤집지 마세요.
+- "~대신 ~부터 해야 하는가?" 형태로 원래 과제를 포기하는 방향을 제안하지 마세요.
+- 의심된 전제 하나에 천착하지 마세요. 전제들의 조합이 시사하는 바를 통합하세요.
+- 원래 과제보다 범위가 좁아지면 안 됩니다. 범위는 유지하고 관점만 전환하세요.
+
+[올바른 재정의 예시]
+- 원래 과제: "AI 업무 효율화"
+- 확인됨: "비효율성이 명확히 존재", "경영진이 실질 개선 원함"
+- 의심됨: "팀원 수용성"
+- 불확실: "효과 측정 가능성"
+
+잘못된 재정의 (방향 뒤집힘):
+  "AI 대신 업무 장벽 제거부터 해야 하는가?" ← 확인된 방향 무시
+
+잘못된 재정의 (지엽적 천착):
+  "팀원 수용성을 어떻게 확보할 것인가?" ← 한 전제에만 집중, 범위 축소
+
+올바른 재정의 (범위 유지 + 각도 전환):
+  "AI 효율화의 성공은 기술 선택이 아니라 조직 수용 설계에 달려 있다 — 기술과 변화관리를 어떻게 동시에 설계할 것인가?" ← 원래 범위 유지, 모든 전제 통합, 관점 전환
+
+아래 JSON 구조로 응답하세요.
+1. reframed_question: 원래 과제와 같은 범위를 유지하면서, 전제 평가가 시사하는 새로운 각도에서 본 핵심 질문
+2. why_reframing_matters: 이 각도 전환이 실행에서 무엇을 바꾸는지 1-2문장
+3. hidden_questions: 이 각도 안에서 추구할 수 있는 방향 2-3개. 각각:
+   - question: 질문 텍스트 (짧고 판단 가능한 형태. 원래 과제의 범위 안에서)
+   - reasoning: 이 방향을 택하면 무엇이 달라지는지 (1문장)
+   - source_assumption: 어떤 전제 조합에서 이 질문이 도출되었는지
+4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
+
+반드시 JSON만 응답하세요.`;
+
+// 패턴 C: 대부분 의심됨 → 과제 재고 모드
+const REFRAMING_PROMPT_CHALLENGED = `당신은 전략기획 전문가입니다. 사용자가 이 과제의 핵심 전제 대부분을 의심하고 있습니다.
+
+[사고 방식: 과제의 존재 이유 자체를 재고]
+- 전제 대부분이 의심되므로, 이 과제를 그대로 진행하는 것이 맞는지부터 질문하세요.
+- "이 과제 대신 무엇을 해야 하는가?" 또는 "이 과제의 진짜 목적은 무엇인가?"를 탐색하세요.
+- 과제를 폐기하는 것도 유효한 방향입니다.
+
+아래 JSON 구조로 응답하세요.
+1. reframed_question: 전제가 대부분 의심되는 상황에서, 정말 답해야 할 근본 질문
+2. why_reframing_matters: 왜 원래 질문을 그대로 추진하면 안 되는지 1-2문장
+3. hidden_questions: 대안적 방향 2-3개. 각각:
+   - question: 질문 텍스트 (짧고 판단 가능한 형태)
+   - reasoning: 이 방향이 원래 과제와 어떻게 다른지 (1문장)
+   - source_assumption: 어떤 의심된 전제에서 이 대안이 나왔는지
 4. ai_limitations: AI가 이 과제에서 잘 못할 부분 1-2개
 
 반드시 JSON만 응답하세요.`;
@@ -337,15 +399,34 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         })
         .join('\n');
 
+      const confirmed = assumptions.filter((a: HiddenAssumption) => a.evaluation === 'likely_true');
       const doubtful = assumptions.filter((a: HiddenAssumption) => a.evaluation === 'doubtful');
       const uncertain = assumptions.filter((a: HiddenAssumption) => a.evaluation === 'uncertain');
 
-      let reframingPrompt = buildEnhancedSystemPrompt(REFRAMING_PROMPT);
+      // Select reframing prompt based on evaluation pattern
+      const total = assumptions.length;
+      let baseReframingPrompt: string;
+      let evalPattern: string;
+      if (doubtful.length >= total * 0.5) {
+        // 패턴 C: 전제 대부분 의심 → 과제 재고
+        baseReframingPrompt = REFRAMING_PROMPT_CHALLENGED;
+        evalPattern = `전제 ${total}건 중 ${doubtful.length}건 의심됨 — 과제의 전제 대부분이 흔들리고 있습니다.`;
+      } else if (doubtful.length === 0 && uncertain.length === 0) {
+        // 패턴 A: 전제 모두 확인 → 실행 구체화
+        baseReframingPrompt = REFRAMING_PROMPT_CONFIRMED;
+        evalPattern = `전제 ${total}건 모두 확인됨 — 과제의 방향은 맞습니다. 실행을 구체화해주세요.`;
+      } else {
+        // 패턴 B: 일부 의심/불확실 → 방향 유지 + 조건 통합
+        baseReframingPrompt = REFRAMING_PROMPT_MIXED;
+        evalPattern = `전제 ${total}건 중 ${confirmed.length}건 확인, ${doubtful.length}건 의심, ${uncertain.length}건 불확실. 확인된 전제가 방향을 잡고, 의심/불확실은 해결할 조건입니다.`;
+      }
+
+      let reframingPrompt = buildEnhancedSystemPrompt(baseReframingPrompt);
       if (currentStrategy) {
         reframingPrompt = applyReframingStrategy(reframingPrompt, currentStrategy);
       }
 
-      const userMessage = `[원래 과제]\n${current.analysis.surface_task}\n\n[사용자의 전제 평가]\n${evalSummary}\n\n${doubtful.length > 0 ? `의심된 전제 ${doubtful.length}건, ` : ''}${uncertain.length > 0 ? `불확실한 전제 ${uncertain.length}건` : ''}\n\n이 평가를 바탕으로 진짜 질문을 재정의해주세요.`;
+      const userMessage = `[원래 과제]\n${current.analysis.surface_task}\n\n[사용자의 전제 평가]\n${evalSummary}\n\n[평가 요약]\n${evalPattern}\n\n이 평가를 바탕으로 질문을 재정의해주세요.`;
 
       // Start streaming for preview
       setIsStreaming(true);
@@ -546,6 +627,24 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           STEP 1: Input
          ═══════════════════════════════════════ */}
       {(!current || current.status === 'input') && !currentId && (
+        <>
+        {/* Example tasks */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[12px] text-[var(--text-secondary)]">예시 과제로 체험:</span>
+          {[
+            { label: '경영진 보고', text: '팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.' },
+            { label: '신규 사업 제안', text: '사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.' },
+            { label: '위기 대응', text: '주요 경쟁사가 핵심 제품의 가격을 30% 인하했습니다. 영업팀에서 고객 이탈 조짐이 보고되고 있고, 2주 안에 대응 방안을 만들어야 합니다.' },
+          ].map((ex) => (
+            <button
+              key={ex.label}
+              onClick={() => handleAnalyze(`[맥락]\n이 과제는 어디서 시작되었나요: 위에서 내려온 지시\n지금 가장 불확실한 것은: 어떻게 해야 하는지\n\n[과제]\n${ex.text}`)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer transition-all"
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
         <Card>
           <StepEntry
             steps={[
@@ -613,6 +712,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             )
           )}
         </Card>
+        </>
       )}
 
       {/* ═══════════════════════════════════════
@@ -737,7 +837,14 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             )}
 
             {/* ═══ Stage 2: 질문 재정의 (사용자 평가 기반) ═══ */}
-            {reviewStage === 'reframe' && (
+            {reviewStage === 'reframe' && (() => {
+              const dCount = analysis.hidden_assumptions.filter(a => a.evaluation === 'doubtful').length;
+              const uCount = analysis.hidden_assumptions.filter(a => a.evaluation === 'uncertain').length;
+              const allConfirmed = dCount === 0 && uCount === 0;
+              const questionLabel = allConfirmed ? '구체화된 핵심 질문' : '재정의된 질문';
+              const rationaleLabel = allConfirmed ? '왜 이렇게 구체화했는가' : '왜 이렇게 재정의했는가';
+              const directionLabel = allConfirmed ? '실행의 핵심 갈림길' : t('decompose.direction');
+              return (
               <>
                 {/* 재정의된 질문 — 통합 카드 */}
                 {analysis.reframed_question && (
@@ -772,7 +879,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
                     {/* 재정의된 질문 — 메인 */}
                     <div className="bg-[var(--primary)] text-[var(--bg)] px-5 py-5 md:px-6 md:py-6">
-                      <p className="text-[11px] font-semibold text-white/50 mb-2">재정의된 질문</p>
+                      <p className="text-[11px] font-semibold text-white/50 mb-2">{questionLabel}</p>
                       <p className="text-[18px] md:text-[20px] font-bold leading-snug">
                         {analysis.reframed_question}
                       </p>
@@ -781,7 +888,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     {/* 리프레이밍 근거 — 하단 */}
                     {analysis.why_reframing_matters && (
                       <div className="px-5 py-4 bg-[var(--surface)] border-t border-[var(--border-subtle)]">
-                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5">왜 이렇게 재정의했는가</p>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5">{rationaleLabel}</p>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
                           {analysis.why_reframing_matters}
                         </p>
@@ -795,7 +902,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
-                      <p className="text-[13px] font-bold text-[var(--text-primary)]">{t('decompose.direction')}</p>
+                      <p className="text-[13px] font-bold text-[var(--text-primary)]">{directionLabel}</p>
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
                     </div>
                     <div className="space-y-2.5">
@@ -865,16 +972,17 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   </div>
                 )}
               </>
-            )}
+              );
+            })()}
 
             {/* ─── Error ─── */}
             {error && (
               error === 'LOGIN_REQUIRED' ? (
                 <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4">
                   <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험 3회를 모두 사용했어요</p>
-                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">구글 로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
+                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
                   <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity">
-                    구글로 로그인하기
+                    로그인 / 회원가입
                   </Link>
                 </div>
               ) : (
