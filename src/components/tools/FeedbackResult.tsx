@@ -295,7 +295,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
           </div>
 
           {/* ── 리스크 분석 (하나의 통합 카드) ── */}
-          {(selectedResult.failure_scenario || (selectedResult.untested_assumptions?.length ?? 0) > 0 || (selectedResult.classified_risks?.length ?? 0) > 0 || selectedResult.concerns.length > 0) && (
+          {(selectedResult.failure_scenario || (selectedResult.untested_assumptions?.length ?? 0) > 0 || (selectedResult.classified_risks?.length ?? 0) > 0 || (selectedResult.concerns || []).length > 0) && (
             <Card className="!border-l-4 !border-l-red-400 space-y-4">
               <div className="flex items-center gap-2">
                 <ShieldAlert size={14} className="text-red-500" />
@@ -350,7 +350,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               )}
 
               {/* 4. 우려/지적 */}
-              {selectedResult.concerns.length > 0 && (
+              {(selectedResult.concerns || []).length > 0 && (
                 <div>
                   <p className="text-[11px] font-bold text-amber-600 mb-1">우려/지적</p>
                   <ul className="space-y-1">
@@ -364,7 +364,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
           )}
 
           {/* ── 긍정 평가 ── */}
-          {selectedResult.praise.length > 0 && (
+          {(selectedResult.praise || []).length > 0 && (
             <Card className="!border-l-4 !border-l-[var(--success)]">
               <div className="flex items-center gap-2 mb-2">
                 <ThumbsUp size={14} className="text-[var(--success)]" />
@@ -386,7 +386,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             </div>
 
             {/* 질문 */}
-            {selectedResult.first_questions.length > 0 && (
+            {(selectedResult.first_questions || []).length > 0 && (
               <div>
                 <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">먼저 물어볼 질문</p>
                 <ul className="space-y-1.5">
@@ -601,8 +601,8 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
           <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 rounded-xl bg-[var(--bg)] text-[12px]">
             <span className="text-[var(--text-secondary)] font-medium">추출된 이슈</span>
             {riskCounts.critical > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-50 text-red-700 font-bold border border-red-200">차단 {riskCounts.critical}</span>}
-            {(() => { const c = record.results.reduce((s, r) => s + r.concerns.length, 0); return c > 0 ? <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200">우려 {c}</span> : null; })()}
-            {(() => { const w = record.results.reduce((s, r) => s + r.wants_more.length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">추가 요청 {w}</span> : null; })()}
+            {(() => { const c = record.results.reduce((s, r) => s + (r.concerns || []).length, 0); return c > 0 ? <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200">우려 {c}</span> : null; })()}
+            {(() => { const w = record.results.reduce((s, r) => s + (r.wants_more || []).length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">추가 요청 {w}</span> : null; })()}
           </div>
 
           {/* Two paths: debate (filter issues) or direct start */}

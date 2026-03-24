@@ -120,6 +120,18 @@ export function orchestrateToMarkdown(item: OrchestrateItem): string {
     md += '\n';
   }
 
+  // AI/Human scope for "both" steps
+  const bothSteps = steps.filter(s => s.actor === 'both' && (s.ai_scope || s.human_scope));
+  if (bothSteps.length > 0) {
+    md += `### 협업 분업\n`;
+    for (const step of bothSteps) {
+      md += `- **${step.task}**\n`;
+      if (step.ai_scope) md += `  - AI: ${step.ai_scope}\n`;
+      if (step.human_scope) md += `  - 사람: ${step.human_scope}\n`;
+    }
+    md += '\n';
+  }
+
   // Judgment points
   const judgmentSteps = steps.filter(s => s.checkpoint || (s.judgment && s.judgment.trim()));
   if (judgmentSteps.length > 0) {

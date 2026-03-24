@@ -301,18 +301,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       systemPrompt = injectDecomposeContext(systemPrompt, ctx);
     }
 
-    // Re-inject previous review findings when re-analyzing (so AI addresses criticism)
-    if (current?.analysis?.reviews && current.analysis.reviews.length > 0) {
-      const highFindings = current.analysis.reviews
-        .flatMap(r => r.findings.filter(f => f.severity === 'high'))
-        .slice(0, 5);
-      if (highFindings.length > 0) {
-        const reviewSection = [
-          '\n\n### 이전 검증에서 발견된 주요 문제 (이번 설계에서 반영하세요)',
-          ...highFindings.map(f => `- [${f.type}] ${f.text}`),
-        ].join('\n');
-        systemPrompt += reviewSection;
-      }
+    // Note: multi-lens review was removed — replaced by auto-persona + rehearsal
+    if (false) { // dead code path kept for reference
     }
 
     // Start streaming for preview
