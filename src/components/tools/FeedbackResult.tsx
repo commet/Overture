@@ -203,7 +203,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                 <span className="flex items-center gap-1 text-[#EF9F27]"><Shield size={12} /> 관리 가능 {riskCounts.manageable}</span>
               )}
               {riskCounts.unspoken > 0 && (
-                <span className="flex items-center gap-1 text-[#7F77DD]"><EyeOff size={12} /> 침묵 {riskCounts.unspoken}</span>
+                <span className="flex items-center gap-1 text-[#7F77DD]" title="모두 알지만 아무도 꺼내지 않는 리스크 (조직 정치, 역량 부족 등)"><EyeOff size={12} /> 침묵 {riskCounts.unspoken}</span>
               )}
             </div>
           )}
@@ -342,7 +342,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                   ))}
                   {selectedResult.classified_risks!.filter(r => r.category === 'unspoken').map((risk, i) => (
                     <div key={`u-${i}`} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">침묵</span>
+                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700" title="모두 알지만 아무도 꺼내지 않는 리스크">침묵</span>
                       <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
                     </div>
                   ))}

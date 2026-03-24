@@ -193,7 +193,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
       {/* ── 2. 이해관계자 선택 ── */}
       <div>
         <h3 className="text-[15px] font-bold text-[var(--text-primary)] mb-1">누구의 시점에서?</h3>
-        <p className="text-[12px] text-[var(--text-secondary)] mb-3">최대 3명 선택 ({selectedIds.length}/3)</p>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-3">최대 3명 선택 ({selectedIds.length}/3) <span className="text-[var(--text-tertiary)]">— 3명 이상이면 피드백 종합이 어려워집니다</span></p>
 
         {personas.length === 0 ? (
           <div className="text-center py-6 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)]">
@@ -277,7 +277,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
                     : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
                 }`}
               >
-                <span className="font-serif italic mr-1">{item.mark}</span> {item.value}
+                {item.value}
               </button>
             ))}
           </div>
