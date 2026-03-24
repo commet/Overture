@@ -32,8 +32,7 @@ export const ko = {
   'orchestrate.placeholder': '맥락을 선택하고 목표를 입력하세요',
   'orchestrate.analyzing': '편곡하고 있습니다...',
   'orchestrate.governingIdea': '핵심 방향',
-  'orchestrate.review': '3가지 관점에서 검증',
-  'orchestrate.reviewing': '3가지 관점에서 검증 중...',
+  // orchestrate.review removed (multi-lens review replaced by auto-persona + rehearsal)
 
   // Rehearsal
   'rehearsal.title': '리허설',

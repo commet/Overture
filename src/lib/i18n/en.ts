@@ -30,8 +30,7 @@ export const en: Record<TranslationKey, string> = {
   'orchestrate.placeholder': 'Select context and enter your goal',
   'orchestrate.analyzing': 'Arranging...',
   'orchestrate.governingIdea': 'Governing Idea',
-  'orchestrate.review': 'Review from 3 perspectives',
-  'orchestrate.reviewing': 'Reviewing from 3 perspectives...',
+  // orchestrate.review removed (multi-lens review replaced by auto-persona + rehearsal)
 
   'rehearsal.title': 'Rehearsal',
   'rehearsal.feedback': 'Get Feedback',

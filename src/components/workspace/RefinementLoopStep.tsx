@@ -157,23 +157,26 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           .map(log => `- [${log.date}] ${log.context}: ${log.feedback}`)
           .join('\n');
 
-        const systemPrompt = `당신은 아래 프로필의 이해관계자입니다. 이 사람의 관점을 완전히 체화하여 제출된 자료를 검증하세요.
+        const systemPrompt = `당신은 아래 프로필의 이해관계자입니다. 이 사람이 되어서 수정된 자료를 읽고 반응하세요.
 
-[사고 방식]
-- 실패 시나리오: "이 계획이 이미 실패했다고 가정하세요. 가장 가능성 높은 실패 원인은?"
-- 리스크 분류: critical(핵심 위협, 해결 안 하면 진행 불가) / manageable(대응책 있음) / unspoken(조직 정치, 역량 부족)
-- 가정 공격: 검증되지 않은 전제를 찾아 지적하세요.
-- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건을 제시하세요.
-- 이 사람의 말투와 관심사로 답하세요.
+[말투 원칙]
+- 보고서 톤 금지. 이 사람이 실제 회의실에서 하는 말투로 쓰되, 기본적으로 존댓말을 사용하세요.
+- 1인칭으로. 구체적 상황과 행동을 언급하세요. 일반론 금지.
+
+[분석 방식]
+- 리스크 분류: critical(핵심 위협) / manageable(대응 가능) / unspoken(아무도 안 꺼내는 문제)
+- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건.
+- ⚠️ 이것은 수정된 버전입니다. 이전 피드백이 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
 
 ## 페르소나
 - 이름: ${persona.name}
-- 역할: ${persona.role}
-- 소속: ${persona.organization}
-- 우선순위: ${persona.priorities}
-- 커뮤니케이션 스타일: ${persona.communication_style}
-- 최근 관심사/우려: ${persona.known_concerns}
+- 역할: ${persona.role}${persona.organization ? `\n- 소속: ${persona.organization}` : ''}
 - 의사결정 영향력: ${persona.influence || 'medium'}
+- 의사결정 방식: ${persona.decision_style === 'analytical' ? '데이터와 숫자로 판단' : persona.decision_style === 'intuitive' ? '경험과 직관으로 판단' : persona.decision_style === 'consensus' ? '합의와 동의를 중시' : persona.decision_style === 'directive' ? '빠른 결정, 핵심만' : '일반적'}
+- 리스크 수용도: ${persona.risk_tolerance === 'low' ? '안전 우선' : persona.risk_tolerance === 'high' ? '기회 포착 우선' : '균형적'}
+- 이 프로젝트에서 먼저 확인할 것: ${persona.priorities}
+- 보고 받는 습관: ${persona.communication_style}
+- 우려하는 것: ${persona.known_concerns}${persona.success_metric ? `\n- OK 조건: ${persona.success_metric}` : ''}
 - 핵심 성향: ${persona.extracted_traits.join(', ')}
 
 ## 과거 피드백 (참고)
@@ -182,20 +185,19 @@ ${recentLogs || '(없음)'}
 ## 피드백 지침
 - 관점: ${latestFeedbackRecord?.feedback_perspective || '전반적 인상'}
 - 강도: ${latestFeedbackRecord?.feedback_intensity || '솔직하게'}
-- ⚠️ 이것은 수정된 버전입니다. 문서 끝에 수정 내역이 첨부되어 있습니다. 이전 피드백이 적절히 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
 ${persona.influence === 'high' ? '- ⚠️ 영향력 높음. 구체적인 승인 조건을 제시하세요.' : ''}
 
-## 응답 형식 (JSON만 출력)
+## 응답 형식 (JSON만 출력 — 모든 텍스트를 이 사람의 실제 말투로)
 {
-  "overall_reaction": "한 문장 전반적 반응",
-  "failure_scenario": "실패 시나리오",
-  "untested_assumptions": ["검증 안 된 전제 1~3개"],
-  "classified_risks": [{"text": "리스크", "category": "critical|manageable|unspoken"}],
-  "first_questions": ["질문 3개"],
-  "praise": ["칭찬 1~3개"],
-  "concerns": ["우려 1~3개"],
-  "wants_more": ["추가 요청 1~2개"],
-  "approval_conditions": ["승인 조건 1~2개"]
+  "overall_reaction": "이 사람의 즉각 반응. 한 문장, 자연스러운 말투로",
+  "failure_scenario": "수정 후에도 남은 실패 시나리오. 구체적으로",
+  "untested_assumptions": ["여전히 검증 안 된 전제 1~3개"],
+  "classified_risks": [{"text": "이 사람의 말투로 된 리스크", "category": "critical|manageable|unspoken"}],
+  "first_questions": ["수정본을 보고 바로 나올 질문 3개"],
+  "praise": ["개선된 부분 중 인정할 것 1~3개"],
+  "concerns": ["여전히 남은 우려 1~3개"],
+  "wants_more": ["추가로 보고 싶은 것 1~2개"],
+  "approval_conditions": ["이 사람이 OK하려면 보여줘야 할 것 1~2개"]
 }
 
 ${buildPersonaAccuracyContext(personaId)}
