@@ -16,7 +16,7 @@ import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalCond
 import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefinementLoop } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
-import { buildPersonaAccuracyContext } from '@/lib/context-builder';
+import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext } from '@/lib/context-chain';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
@@ -151,58 +151,10 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         const persona = getPersona(personaId);
         if (!persona) continue;
 
-        // Build the same system prompt used in initial feedback
-        const recentLogs = (persona.feedback_logs || [])
-          .slice(-5)
-          .map(log => `- [${log.date}] ${log.context}: ${log.feedback}`)
-          .join('\n');
-
-        const systemPrompt = `당신은 아래 프로필의 이해관계자입니다. 이 사람이 되어서 수정된 자료를 읽고 반응하세요.
-
-[말투 원칙]
-- 보고서 톤 금지. 이 사람이 실제 회의실에서 하는 말투로 쓰되, 기본적으로 존댓말을 사용하세요.
-- 1인칭으로. 구체적 상황과 행동을 언급하세요. 일반론 금지.
-
-[분석 방식]
-- 리스크 분류: critical(핵심 위협) / manageable(대응 가능) / unspoken(아무도 안 꺼내는 문제)
-- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건.
-- ⚠️ 이것은 수정된 버전입니다. 이전 피드백이 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.
-
-## 페르소나
-- 이름: ${persona.name}
-- 역할: ${persona.role}${persona.organization ? `\n- 소속: ${persona.organization}` : ''}
-- 의사결정 영향력: ${persona.influence || 'medium'}
-- 의사결정 방식: ${persona.decision_style === 'analytical' ? '데이터와 숫자로 판단' : persona.decision_style === 'intuitive' ? '경험과 직관으로 판단' : persona.decision_style === 'consensus' ? '합의와 동의를 중시' : persona.decision_style === 'directive' ? '빠른 결정, 핵심만' : '일반적'}
-- 리스크 수용도: ${persona.risk_tolerance === 'low' ? '안전 우선' : persona.risk_tolerance === 'high' ? '기회 포착 우선' : '균형적'}
-- 이 프로젝트에서 먼저 확인할 것: ${persona.priorities}
-- 보고 받는 습관: ${persona.communication_style}
-- 우려하는 것: ${persona.known_concerns}${persona.success_metric ? `\n- OK 조건: ${persona.success_metric}` : ''}
-- 핵심 성향: ${(persona.extracted_traits || []).join(', ')}
-
-## 과거 피드백 (참고)
-${recentLogs || '(없음)'}
-
-## 피드백 지침
-- 관점: ${latestFeedbackRecord?.feedback_perspective || '전반적 인상'}
-- 강도: ${latestFeedbackRecord?.feedback_intensity || '솔직하게'}
-${persona.influence === 'high' ? '- ⚠️ 영향력 높음. 구체적인 승인 조건을 제시하세요.' : ''}
-
-## 응답 형식 (JSON만 출력 — 모든 텍스트를 이 사람의 실제 말투로)
-{
-  "overall_reaction": "이 사람의 즉각 반응. 한 문장, 자연스러운 말투로",
-  "failure_scenario": "수정 후에도 남은 실패 시나리오. 구체적으로",
-  "untested_assumptions": ["여전히 검증 안 된 전제 1~3개"],
-  "classified_risks": [{"text": "이 사람의 말투로 된 리스크", "category": "critical|manageable|unspoken"}],
-  "first_questions": ["수정본을 보고 바로 나올 질문 3개"],
-  "praise": ["개선된 부분 중 인정할 것 1~3개"],
-  "concerns": ["여전히 남은 우려 1~3개"],
-  "wants_more": ["추가로 보고 싶은 것 1~2개"],
-  "approval_conditions": ["이 사람이 OK하려면 보여줘야 할 것 1~2개"]
-}
-
-${buildPersonaAccuracyContext(personaId)}
-
-반드시 JSON만 응답하세요.`;
+        // Single source: persona-prompt.ts (same prompt as initial feedback)
+        const perspective = latestFeedbackRecord?.feedback_perspective || '전반적 인상';
+        const intensity = latestFeedbackRecord?.feedback_intensity || '솔직하게';
+        const systemPrompt = buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
 
         // Include diff context so persona can verify what changed
         const changesContext = (revision.changes || [])

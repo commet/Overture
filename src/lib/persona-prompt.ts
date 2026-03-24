@@ -1,0 +1,124 @@
+/**
+ * Persona Prompt Builder — Single Source of Truth
+ *
+ * Both PersonaFeedbackStep (initial rehearsal) and RefinementLoopStep (re-review)
+ * MUST use this function. Never copy-paste persona prompts.
+ */
+
+import type { Persona } from '@/stores/types';
+import { buildPersonaAccuracyContext } from './context-builder';
+
+const DECISION_STYLE_MAP: Record<string, string> = {
+  analytical: '데이터와 숫자로 판단. 근거 없는 주장은 무시',
+  intuitive: '경험과 직관으로 판단. 패턴과 사례를 중시',
+  consensus: '합의와 동의를 중시. 반대 의견에 민감',
+  directive: '빠른 결정. 핵심만 듣고 지시',
+};
+
+const RISK_TOLERANCE_MAP: Record<string, string> = {
+  low: '안전 우선. 실패 가능성에 예민',
+  high: '기회 포착 우선. 리스크를 감수할 의향',
+};
+
+/**
+ * Build the persona profile section for any feedback prompt.
+ */
+export function buildPersonaProfileBlock(persona: Persona): string {
+  const lines = [
+    `## 페르소나`,
+    `- 이름: ${persona.name}`,
+    `- 역할: ${persona.role}`,
+  ];
+  if (persona.organization) lines.push(`- 소속: ${persona.organization}`);
+  lines.push(`- 의사결정 영향력: ${persona.influence || 'medium'}`);
+  lines.push(`- 의사결정 방식: ${DECISION_STYLE_MAP[persona.decision_style || ''] || '일반적'}`);
+  lines.push(`- 리스크 수용도: ${RISK_TOLERANCE_MAP[persona.risk_tolerance || ''] || '균형적'}`);
+  lines.push(`- 이 프로젝트에서 먼저 확인할 것: ${persona.priorities}`);
+  lines.push(`- 보고 받는 습관: ${persona.communication_style}`);
+  lines.push(`- 우려하는 것: ${persona.known_concerns}`);
+  if (persona.success_metric) lines.push(`- OK 조건: ${persona.success_metric}`);
+  lines.push(`- 핵심 성향: ${(persona.extracted_traits || []).join(', ')}`);
+  return lines.join('\n');
+}
+
+/**
+ * Build the full feedback system prompt for a persona.
+ * Used by both initial rehearsal and re-review.
+ */
+export function buildFeedbackSystemPrompt(
+  persona: Persona,
+  perspective: string,
+  intensity: string,
+  options?: { isReReview?: boolean }
+): string {
+  const recentLogs = (persona.feedback_logs || [])
+    .slice(-5)
+    .map((log) => `- [${log.date}] ${log.context}: ${log.feedback}`)
+    .join('\n');
+
+  const perspectiveGuide: Record<string, string> = {
+    '전반적 인상': '전체적인 완성도, 논리 구조, 실행 가능성을 균형있게 평가하세요.',
+    '논리 구조': '주장의 논리적 연결, 인과관계의 비약, 근거 없는 결론에 집중하세요.',
+    '실행 가능성': '자원, 일정, 역량, 의존성 관점에서 실행할 수 있는지만 집중하세요.',
+    '리스크': '실패 확률과 임팩트를 중심으로 검토하세요.',
+    '숫자/데이터': '수치의 근거, 추정의 합리성, 빠진 데이터를 중점 검토하세요.',
+  };
+
+  const intensityGuide: Record<string, string> = {
+    '부드럽게': '건설적 톤. praise를 3개 이상. concerns는 "~하면 더 좋을 것 같아요" 형태로.',
+    '솔직하게': '좋은 점과 문제점을 균형있게. 빈말 없이 핵심만.',
+    '까다롭게': '비판적 관점. "왜 이것이 안 되는지"를 기본 태도로. praise는 0-1개.',
+  };
+
+  const reReviewNote = options?.isReReview
+    ? '\n- ⚠️ 이것은 수정된 버전입니다. 이전 피드백이 반영되었는지 확인하고, 여전히 남은 문제만 지적하세요.'
+    : '';
+
+  return `당신은 아래 프로필의 이해관계자입니다. 이 사람이 되어서 제출된 자료를 읽고 반응하세요.
+
+[말투 원칙 — 가장 중요]
+- 보고서 톤 금지. 이 사람이 실제 회의실에서 하는 말투로 쓰되, 기본적으로 존댓말(합쇼체/해요체)을 사용하세요.
+- 나쁜 예: "실행 가능성에 대한 우려가 있습니다" / "긍정적이나 보완이 필요합니다"
+- 좋은 예: "이게 2주 안에 가능해요? 재무팀 데이터 받는 데만 일주일 걸리는데요" / "방향은 좋은데, 제가 이 대표한테 전화해서 뭐라고 말해야 하는지가 빠져있어요"
+- 1인칭으로. 구체적 상황과 행동을 언급하세요. 일반론 금지.
+- 이 사람의 성격에 따라: 까칠하면 까칠하게, 신중하면 신중하게, 직설적이면 직설적으로. 단, 반말은 이 사람의 실제 관계상 반말이 자연스러운 경우에만.
+
+[분석 방식]
+- 실패 시나리오: "이 계획이 이미 실패했다고 가정. 가장 가능성 높은 원인은?"
+- 리스크 분류:
+  * "critical" — 핵심 위협. 이걸 해결 안 하면 진행 불가.
+  * "manageable" — 무서워 보이지만 대응 가능.
+  * "unspoken" — 모두 알지만 아무도 안 꺼내는 문제 (조직 정치, 역량 부족 등).
+- 승인 조건: "이것을 보여주면 OK하겠다"는 구체적 조건.
+
+${buildPersonaProfileBlock(persona)}
+
+## 과거 이 사람이 실제로 했던 피드백 (참고)
+${recentLogs || '(없음)'}
+
+## 피드백 지침
+- 관점: ${perspective}
+  ${perspectiveGuide[perspective] || '이 관점에서 자료를 검토하세요.'}
+- 강도: ${intensity}
+  ${intensityGuide[intensity] || ''}${reReviewNote}
+${persona.influence === 'high' ? '- ⚠️ 이 사람의 영향력이 높습니다. 구체적인 승인 조건을 제시하세요.' : persona.influence === 'low' ? '- 이 사람의 영향력은 제한적이지만 현장의 시각을 반영합니다.' : ''}
+
+## 응답 형식 (JSON만 출력 — 모든 텍스트를 이 사람의 실제 말투로)
+{
+  "overall_reaction": "이 사람이 자료를 처음 봤을 때의 즉각 반응. 한 문장, 자연스러운 말투로",
+  "failure_scenario": "이 계획이 실패하는 구체적 시나리오. 이 사람이 직접 겪을 상황으로",
+  "untested_assumptions": ["이 자료가 당연히 참이라고 깔고 있는 가정 1~3개"],
+  "classified_risks": [
+    {"text": "이 사람의 말투로 된 리스크 설명. 구체적 상황 포함.", "category": "critical 또는 manageable 또는 unspoken"}
+  ],
+  "first_questions": ["이 사람이 자료를 보자마자 입에서 나올 질문. 구어체로. 3개"],
+  "praise": ["이 사람이 실제로 인정할 부분. 빈말 아닌 진짜 칭찬 1~3개"],
+  "concerns": ["이 사람이 실제로 지적할 것. 구어체로, 구체적으로. 1~3개"],
+  "wants_more": ["이 사람이 '이것도 보여줘'라고 할 것 1~2개"],
+  "approval_conditions": ["이 사람이 '이거 보여주면 OK할게'라고 할 구체적 조건 1~2개"]
+}
+
+${buildPersonaAccuracyContext(persona.id)}
+
+반드시 JSON만 응답하세요.`;
+}

@@ -196,6 +196,9 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
     known_concerns: persona?.known_concerns || '',
     relationship_notes: persona?.relationship_notes || '',
     extracted_traits: persona?.extracted_traits || [] as string[],
+    decision_style: persona?.decision_style as Persona['decision_style'],
+    risk_tolerance: persona?.risk_tolerance as Persona['risk_tolerance'],
+    success_metric: persona?.success_metric || '',
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -232,6 +235,9 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       known_concerns: allConcerns.join('. '),
       relationship_notes: '',
       extracted_traits: selectedTraits.length > 0 ? selectedTraits : selectedPreset.traitDefaults.traits.slice(0, 3),
+      decision_style: undefined,
+      risk_tolerance: undefined,
+      success_metric: '',
     });
     setStep('review');
   };
@@ -256,6 +262,9 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         known_concerns: (result.known_concerns as string) || '',
         relationship_notes: (result.relationship_notes as string) || '',
         extracted_traits: (result.extracted_traits as string[]) || [],
+        decision_style: undefined,
+        risk_tolerance: undefined,
+        success_metric: '',
       });
       setStep('review');
     } catch (err) {
@@ -288,6 +297,9 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         known_concerns: (result.known_concerns as string) || '',
         relationship_notes: (result.relationship_notes as string) || '',
         extracted_traits: (result.extracted_traits as string[]) || [],
+        decision_style: undefined,
+        risk_tolerance: undefined,
+        success_metric: '',
       });
       setStep('review');
     } catch (err) {
@@ -551,6 +563,43 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             value={form.known_concerns} onChange={(e) => handleFieldChange('known_concerns', e.target.value)} />
           <Field label="관계 메모" placeholder="나와의 관계, 보고 빈도 등"
             value={form.relationship_notes} onChange={(e) => handleFieldChange('relationship_notes', e.target.value)} />
+
+          {/* Structured persona fields */}
+          <div className="pt-2 border-t border-[var(--border-subtle)]">
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">의사결정 성향 (선택)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3">
+              {[
+                { value: 'analytical', label: '데이터 중심' },
+                { value: 'intuitive', label: '직관/경험' },
+                { value: 'consensus', label: '합의 중시' },
+                { value: 'directive', label: '빠른 결정' },
+              ].map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(f => ({ ...f, decision_style: (f.decision_style === opt.value ? undefined : opt.value) as Persona['decision_style'] }))}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium border cursor-pointer transition-all ${
+                    form.decision_style === opt.value ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                  }`}
+                >{opt.label}</button>
+              ))}
+            </div>
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">리스크 수용도</p>
+            <div className="grid grid-cols-3 gap-1.5 mb-3">
+              {[
+                { value: 'low', label: '안전 우선' },
+                { value: 'medium', label: '균형' },
+                { value: 'high', label: '도전적' },
+              ].map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(f => ({ ...f, risk_tolerance: (f.risk_tolerance === opt.value ? undefined : opt.value) as Persona['risk_tolerance'] }))}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium border cursor-pointer transition-all ${
+                    form.risk_tolerance === opt.value ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'
+                  }`}
+                >{opt.label}</button>
+              ))}
+            </div>
+            <Field label="OK 조건" placeholder="이 사람이 승인하려면 보여줘야 할 것 (예: ROI 데이터)"
+              value={form.success_metric} onChange={(e) => handleFieldChange('success_metric', e.target.value)} />
+          </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onCancel}>취소</Button>
