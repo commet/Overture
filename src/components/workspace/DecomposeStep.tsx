@@ -632,8 +632,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {(!current || current.status === 'input') && !currentId && (
         <>
         {/* Example tasks */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[12px] text-[var(--text-secondary)]">예시 과제로 체험:</span>
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="text-[12px] text-[var(--text-secondary)] shrink-0">예시 과제로 체험:</span>
           {[
             { label: '경영진 보고', text: '팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.' },
             { label: '신규 사업 제안', text: '사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.' },

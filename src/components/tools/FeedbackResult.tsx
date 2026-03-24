@@ -305,7 +305,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               {/* 1. 실패 시나리오 */}
               {selectedResult.failure_scenario && (
                 <div>
-                  <p className="text-[11px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
+                  <p className="text-[12px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
                   <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
                 </div>
               )}
@@ -313,7 +313,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
               {/* 2. 그 이유: 검증 안 된 전제 */}
               {(selectedResult.untested_assumptions?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-[11px] font-bold text-amber-600 mb-1">왜? 이 전제들이 검증되지 않았기 때문</p>
+                  <p className="text-[12px] font-bold text-amber-600 mb-1">왜? 이 전제들이 검증되지 않았기 때문</p>
                   <ul className="space-y-1">
                     {selectedResult.untested_assumptions!.map((a, i) => (
                       <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-1.5">
@@ -326,24 +326,24 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
 
               {/* 3. 리스크 분류 — 심각도별 */}
               {(selectedResult.classified_risks?.length ?? 0) > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-0.5">리스크 분류</p>
+                <div className="space-y-2.5">
+                  <p className="text-[12px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
                   {selectedResult.classified_risks!.filter(r => r.category === 'critical').map((risk, i) => (
-                    <div key={`c-${i}`} className="flex items-start gap-2 text-[13px]">
-                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700">위협</span>
-                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    <div key={`c-${i}`} className="flex items-start gap-2.5 text-[13px]">
+                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">위협</span>
+                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
                     </div>
                   ))}
                   {selectedResult.classified_risks!.filter(r => r.category === 'manageable').map((risk, i) => (
-                    <div key={`m-${i}`} className="flex items-start gap-2 text-[13px]">
-                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700">관리</span>
-                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    <div key={`m-${i}`} className="flex items-start gap-2.5 text-[13px]">
+                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">관리</span>
+                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
                     </div>
                   ))}
                   {selectedResult.classified_risks!.filter(r => r.category === 'unspoken').map((risk, i) => (
-                    <div key={`u-${i}`} className="flex items-start gap-2 text-[13px]">
-                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700">침묵</span>
-                      <span className="text-[var(--text-primary)]">{risk.text}</span>
+                    <div key={`u-${i}`} className="flex items-start gap-2.5 text-[13px]">
+                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">침묵</span>
+                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
                     </div>
                   ))}
                 </div>

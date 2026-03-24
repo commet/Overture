@@ -729,7 +729,7 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; fe
         {questions.map((q) => (
           <div key={q.id}>
             <p className="text-[13px] font-semibold text-[var(--text-primary)] mb-1">{q.question}</p>
-            <p className="text-[10px] text-[var(--text-tertiary)] mb-1.5">{q.data_basis}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mb-1.5">{q.data_basis}</p>
             <textarea
               value={answers[q.id] || ''}
               onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}

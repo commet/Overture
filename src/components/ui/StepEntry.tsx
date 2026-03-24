@@ -212,7 +212,11 @@ export function StepEntry({
             rows={3}
           />
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            {!text.trim() && Object.keys(selections).length > 0 && (
+              <p className="text-[11px] text-[var(--text-tertiary)]">위 선택만으로도 시작할 수 있습니다</p>
+            )}
+            {(text.trim() || Object.keys(selections).length === 0) && <div />}
             <Button onClick={handleSubmit} disabled={(!text.trim() && Object.keys(selections).length === 0) || disabled}>
               <Sparkles size={14} /> {submitLabel}
             </Button>
