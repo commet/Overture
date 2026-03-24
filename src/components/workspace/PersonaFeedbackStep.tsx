@@ -119,6 +119,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   const [handoffContent, setHandoffContent] = useState<string>('');
   const [handoffTitle, setHandoffTitle] = useState<string>('');
   const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
+  const [autoPersonaIds, setAutoPersonaIds] = useState<string[]>([]);
   const [showPersonaForm, setShowPersonaForm] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [managingPersonas, setManagingPersonas] = useState(false);
@@ -143,6 +144,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       setHandoffContent(handoff.content);
       setHandoffTitle(`${handoff.from === 'decompose' ? '악보 해석' : handoff.from === 'orchestrate' ? '편곡' : '리허설'} 결과물`);
       setPendingProjectId(handoff.projectId);
+      if (handoff.autoPersonaIds && handoff.autoPersonaIds.length > 0) {
+        setAutoPersonaIds(handoff.autoPersonaIds);
+      }
       setPhase('setup');
       clearHandoff();
     }
@@ -467,6 +471,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
             loading={feedbackLoading}
             initialContent={handoffContent}
             initialTitle={handoffTitle}
+            initialPersonaIds={autoPersonaIds}
           />
         </div>
       )}

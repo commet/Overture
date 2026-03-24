@@ -21,6 +21,7 @@ interface FeedbackRequestProps {
   loading?: boolean;
   initialContent?: string;
   initialTitle?: string;
+  initialPersonaIds?: string[];
 }
 
 const perspectives = [
@@ -43,14 +44,14 @@ const INFLUENCE_STYLES = {
   low: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', label: '낮음' },
 };
 
-export function FeedbackRequest({ personas, onSubmit, loading, initialContent, initialTitle }: FeedbackRequestProps) {
+export function FeedbackRequest({ personas, onSubmit, loading, initialContent, initialTitle, initialPersonaIds }: FeedbackRequestProps) {
   const { items: orchestrateItems } = useOrchestrateStore();
   const { items: decomposeItems } = useDecomposeStore();
   const { currentProjectId } = useProjectStore();
 
   const [documentText, setDocumentText] = useState(initialContent || '');
   const [documentTitle, setDocumentTitle] = useState(initialTitle || '');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialPersonaIds || []);
   const [perspective, setPerspective] = useState('솔직하게');
   const [intensity, setIntensity] = useState('솔직하게');
   const [showFullDoc, setShowFullDoc] = useState(false);
