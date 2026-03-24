@@ -6,7 +6,7 @@
  */
 
 import { callLLMJson } from './llm';
-import type { DecomposeItem, OrchestrateItem, Persona } from '@/stores/types';
+import type { DecomposeItem, OrchestrateItem, Persona, SuggestedReviewer } from '@/stores/types';
 import { generateId } from './uuid';
 
 export interface AutoPersona {
@@ -95,7 +95,7 @@ JSON 배열로만 응답하세요.`;
 /**
  * Convert AutoPersona to a full Persona object for the store.
  */
-export function autoPersonaToFull(auto: AutoPersona): Persona {
+export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Persona {
   return {
     id: generateId(),
     name: auto.name,

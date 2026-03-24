@@ -153,9 +153,20 @@ export interface OrchestrateAnalysis {
   ai_ratio: number;
   human_ratio: number;
   design_rationale?: string;
+  suggested_reviewers?: SuggestedReviewer[];
   reviews?: WorkflowReview[];
   previous_reviews?: WorkflowReview[];
   ai_limitation_warnings?: string[];
+}
+
+export interface SuggestedReviewer {
+  name: string;
+  role: string;
+  influence: 'high' | 'medium' | 'low';
+  priorities: string;
+  communication_style: string;
+  known_concerns: string;
+  why_relevant: string;
 }
 
 export interface OrchestrateItem {

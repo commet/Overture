@@ -30,8 +30,7 @@ import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-reac
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';
-import { extractPersonasFromContext, autoPersonaToFull } from '@/lib/auto-persona';
-import type { AutoPersona } from '@/lib/auto-persona';
+import { autoPersonaToFull } from '@/lib/auto-persona';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Users } from 'lucide-react';
 
@@ -90,6 +89,18 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
 8. ai_ratio: AI 담당 비율 (0~100 정수)
 9. human_ratio: 사람 담당 비율 (0~100 정수)
 10. design_rationale: 이 워크플로우 순서와 역할 배정의 근거를 2-3문장으로 설명. 왜 이 순서인지, 왜 이 역할 배정인지.
+11. suggested_reviewers: 이 계획을 실행 전에 검증해야 할 이해관계자 2-3명. 다음을 고려:
+    - 이 결과물을 받아볼 사람 (보고 대상, 의사결정자)
+    - 이 계획의 자원·권한에 영향을 미치는 사람
+    - 이 계획의 현실성을 검증할 현장 전문가
+    각 이해관계자에 대해:
+    - name: 한국식 성+직함 (예: "김 본부장", "이 팀장")
+    - role: 구체적 역할 (예: "영업본부장", "재무팀장")
+    - influence: "high" (반대하면 무산) | "medium" (의견 중요) | "low" (참고)
+    - priorities: 이 사람이 가장 중요하게 여기는 것 1-2개
+    - communication_style: 보고 받을 때 성향 (예: "숫자 먼저, 결론부터")
+    - known_concerns: 이 프로젝트에서 우려할 점
+    - why_relevant: 검증이 필요한 이유 한 문장
 
 반드시 JSON만 응답하세요.`;
 
@@ -707,47 +718,26 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   );
 }
 
-// ── Quick Rehearsal Card with Auto-Persona ──
+// ── Quick Rehearsal Card — reads from analysis.suggested_reviewers (no extra LLM call) ──
 function QuickRehearsalCard({
   orchestrate,
-  decompose,
   onStartRehearsal,
 }: {
   orchestrate: OrchestrateItem;
   decompose: DecomposeItem | null;
   onStartRehearsal: (personas: Persona[]) => void;
 }) {
-  const [autoPersonas, setAutoPersonas] = useState<AutoPersona[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [extracted, setExtracted] = useState(false);
-  const [extractError, setExtractError] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const reviewers = orchestrate.analysis?.suggested_reviewers || [];
+  const [selected, setSelected] = useState<Set<number>>(new Set(reviewers.map((_, i) => i)));
   const { createPersona } = usePersonaStore();
 
-  const handleExtract = async () => {
-    setLoading(true);
-    setExtractError(false);
-    try {
-      const personas = await extractPersonasFromContext(decompose, orchestrate);
-      if (personas.length === 0) {
-        setExtractError(true);
-      } else {
-        setAutoPersonas(personas);
-        setSelected(new Set(personas.map((_, i) => i)));
-        setExtracted(true);
-      }
-    } catch {
-      setExtractError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (reviewers.length === 0) return null;
 
   const handleStart = () => {
-    const selectedPersonas = autoPersonas
+    const selectedPersonas = reviewers
       .filter((_, i) => selected.has(i))
-      .map(auto => {
-        const full = autoPersonaToFull(auto);
+      .map(r => {
+        const full = autoPersonaToFull(r);
         createPersona(full);
         return full;
       });
@@ -767,71 +757,52 @@ function QuickRehearsalCard({
     <Card className="!bg-[var(--checkpoint)] !border-amber-200">
       <div className="flex items-center gap-2 mb-2">
         <Users size={16} className="text-amber-700" />
-        <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 누가 검증해야 할까요?</p>
+        <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 검증할 이해관계자</p>
       </div>
       <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-        프로젝트 맥락에서 이해관계자를 자동으로 식별하고, 원클릭으로 리허설을 시작합니다.
+        프로젝트 맥락에서 자동으로 식별했습니다. 선택 후 바로 리허설을 시작하세요.
       </p>
 
-      {!extracted ? (
-        <div className="space-y-2">
-          <Button size="sm" onClick={handleExtract} disabled={loading}>
-            {loading ? (
-              <><Loader2 size={14} className="animate-spin" /> 이해관계자 분석 중...</>
-            ) : (
-              <><Users size={14} /> 이해관계자 자동 식별</>
-            )}
-          </Button>
-          {extractError && (
-            <p className="text-[12px] text-amber-600">
-              자동 식별에 실패했습니다. 잠시 후 다시 시도하거나, 리허설 탭에서 직접 페르소나를 추가해주세요.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {autoPersonas.map((persona, i) => (
-            <label
-              key={i}
-              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                selected.has(i)
-                  ? 'border-[var(--accent)] bg-[var(--surface)] shadow-sm'
-                  : 'border-[var(--border-subtle)] bg-[var(--surface)]/50 opacity-60'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(i)}
-                onChange={() => {
-                  setSelected(prev => {
-                    const next = new Set(prev);
-                    next.has(i) ? next.delete(i) : next.add(i);
-                    return next;
-                  });
-                }}
-                className="mt-1 w-4 h-4 accent-[var(--accent)] cursor-pointer"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[14px] font-bold text-[var(--text-primary)]">{persona.name}</span>
-                  <span className="text-[12px] text-[var(--text-secondary)]">{persona.role}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${influenceColors[persona.influence]}`}>
-                    {influenceLabels[persona.influence]}
-                  </span>
-                </div>
-                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{persona.why_relevant}</p>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai)] text-[#2d4a7c] font-medium">{persona.priorities}</span>
-                </div>
+      <div className="space-y-2.5">
+        {reviewers.map((reviewer, i) => (
+          <label
+            key={i}
+            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+              selected.has(i)
+                ? 'border-[var(--accent)] bg-[var(--surface)] shadow-sm'
+                : 'border-[var(--border-subtle)] bg-[var(--surface)]/50 opacity-60'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected.has(i)}
+              onChange={() => {
+                setSelected(prev => {
+                  const next = new Set(prev);
+                  next.has(i) ? next.delete(i) : next.add(i);
+                  return next;
+                });
+              }}
+              className="mt-1 w-4 h-4 accent-[var(--accent)] cursor-pointer"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-[14px] font-bold text-[var(--text-primary)]">{reviewer.name}</span>
+                <span className="text-[12px] text-[var(--text-secondary)]">{reviewer.role}</span>
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${influenceColors[reviewer.influence]}`}>
+                  {influenceLabels[reviewer.influence]}
+                </span>
               </div>
-            </label>
-          ))}
+              <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1">{reviewer.why_relevant}</p>
+              <p className="text-[11px] text-[var(--text-tertiary)]">우려: {reviewer.known_concerns}</p>
+            </div>
+          </label>
+        ))}
 
-          <Button onClick={handleStart} disabled={selected.size === 0}>
-            <Users size={14} /> {selected.size}명에게 리허설 받기
-          </Button>
-        </div>
-      )}
+        <Button onClick={handleStart} disabled={selected.size === 0}>
+          <Users size={14} /> {selected.size}명에게 리허설 받기
+        </Button>
+      </div>
     </Card>
   );
 }
