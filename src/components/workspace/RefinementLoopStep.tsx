@@ -448,6 +448,17 @@ ${buildPersonaAccuracyContext(personaId)}
           {/* Issue trend chart */}
           <ConvergenceChart iterations={activeLoop.iterations} initialIssueCount={initialIssueCount} />
 
+          {/* ═══ Convergence Banner ═══ */}
+          {convergence.converged && activeLoop.status === 'active' && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--collab)] border border-green-200">
+              <Check size={18} className="text-[var(--success)]" />
+              <div>
+                <p className="text-[14px] font-bold text-[var(--success)]">수렴 완료</p>
+                <p className="text-[12px] text-[var(--text-secondary)]">모든 핵심 위협이 해결되었습니다. 산출물을 생성할 수 있습니다.</p>
+              </div>
+            </div>
+          )}
+
           {/* ═══ Iteration Timeline ═══ */}
           {activeLoop.iterations.length > 0 && (
             <div className="space-y-3">
@@ -595,8 +606,13 @@ ${buildPersonaAccuracyContext(personaId)}
               )}
 
               {error && (
-                <div className="flex items-center gap-2 text-[var(--danger)] text-[13px] bg-[var(--danger)]/10 rounded-lg px-3 py-2 mb-3">
-                  <AlertTriangle size={14} /> {error}
+                <div className="flex items-center justify-between gap-2 text-[var(--danger)] text-[13px] bg-[var(--danger)]/10 rounded-lg px-3 py-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} /> <span>{error}</span>
+                  </div>
+                  <button onClick={() => { setError(''); handleRunIteration(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-[var(--danger)] hover:bg-red-100 cursor-pointer transition-colors">
+                    다시 시도
+                  </button>
                 </div>
               )}
 

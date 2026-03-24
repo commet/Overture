@@ -16,7 +16,7 @@ import type { Persona, FeedbackRecord, PersonaFeedbackResult, HiddenAssumption, 
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw, Check, AlertTriangle } from 'lucide-react';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -129,6 +129,8 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   const [showPersonaForm, setShowPersonaForm] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [managingPersonas, setManagingPersonas] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
+  const [lastFeedbackData, setLastFeedbackData] = useState<{ documentTitle: string; documentText: string; personaIds: string[]; perspective: string; intensity: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -179,6 +181,8 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   }) => {
     setPhase('running');
     setFeedbackLoading(true);
+    setFeedbackError('');
+    setLastFeedbackData(data);
     try {
       const results: PersonaFeedbackResult[] = [];
       for (const personaId of data.personaIds) {
@@ -297,7 +301,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       }
     } catch (err) {
       trackError('feedback_generate', err);
-      alert('리허설을 진행할 수 없었습니다. 다시 시도하거나, 자료를 더 구체적으로 작성해보세요. ' + (err instanceof Error ? err.message : ''));
+      setFeedbackError('리허설을 진행할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
       setPhase('setup');
     } finally {
       setFeedbackLoading(false);
@@ -409,6 +413,13 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       {/* ══════════════ SETUP PHASE ══════════════ */}
       {phase === 'setup' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Handoff context confirmation */}
+          {handoffContent && (
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)]">
+              <Check size={12} /> {handoffTitle || '이전 단계'} 맥락이 연결되어 있습니다
+            </div>
+          )}
+
           {/* Persona management bar — hide when auto-personas are pre-selected */}
           {autoPersonaIds.length === 0 && (
             <div className="flex items-center justify-between">
@@ -475,6 +486,18 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ─── Error ─── */}
+          {feedbackError && (
+            <div className="flex items-center justify-between gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} /> <span>{feedbackError}</span>
+              </div>
+              <button onClick={() => { setFeedbackError(''); if (lastFeedbackData) handleFeedbackSubmit(lastFeedbackData); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
+                다시 시도
+              </button>
             </div>
           )}
 

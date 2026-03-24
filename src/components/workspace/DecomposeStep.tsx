@@ -709,8 +709,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 </Link>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-xl px-3 py-2 mt-3">
-                <AlertTriangle size={14} /> {error}
+              <div className="flex items-center justify-between gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2 mt-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={14} /> <span>{error}</span>
+                </div>
+                <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
+                  다시 시도
+                </button>
               </div>
             )
           )}
@@ -995,8 +1000,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   </Link>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-red-600 text-[13px] bg-red-50 rounded-xl px-3 py-2">
-                  <AlertTriangle size={14} /> {error}
+                <div className="flex items-center justify-between gap-2 text-red-600 text-[13px] bg-red-50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} /> <span>{error}</span>
+                  </div>
+                  <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
+                    다시 시도
+                  </button>
                 </div>
               )
             )}
