@@ -657,8 +657,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 ? { ...LOCKED_STEP, locked: false }
                 : LOCKED_STEP,
             ]}
-            textLabel="과제를 구체적으로 설명해주세요"
-            textPlaceholder="동남아 시장 진출 전략을 2주 안에 보고해야 함"
+            textLabel="뭘 해야 하나요? (짧게도 OK)"
+            textPlaceholder="예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안"
             textHint="위에서 선택한 맥락이 반영됩니다. 구체적일수록 정확합니다."
             onSubmit={(selections, text) => {
               const allSteps = [...DECOMPOSE_ENTRY_STEPS, LOCKED_STEP];
