@@ -516,6 +516,67 @@ export interface TeamReviewInput {
   user_name?: string;
 }
 
+// ─── Outcome Tracking (Phase 1) ───
+
+export interface MaterializedRisk {
+  risk_text: string;
+  persona_id: string;
+  category: 'critical' | 'manageable' | 'unspoken';
+  actually_happened: boolean;
+  impact_description?: string;
+}
+
+export interface ApprovalOutcome {
+  condition: string;
+  persona_id: string;
+  met_in_reality: boolean;
+  notes?: string;
+}
+
+export interface OutcomeRecord {
+  id: string;
+  project_id: string;
+  hypothesis_result: 'confirmed' | 'partially_confirmed' | 'refuted' | 'not_testable';
+  hypothesis_notes: string;
+  materialized_risks: MaterializedRisk[];
+  approval_outcomes: ApprovalOutcome[];
+  overall_success: 'exceeded' | 'met' | 'partial' | 'failed';
+  key_learnings: string;
+  what_would_change: string;
+  created_at: string;
+}
+
+// ─── Retrospective Answers (Phase 2) ───
+
+export interface RetrospectiveAnswer {
+  id: string;
+  project_id: string;
+  question_id: string;
+  question_text: string;
+  category: 'process' | 'judgment' | 'learning';
+  answer: string;
+  data_basis: string;
+  created_at: string;
+}
+
+// ─── Decision Quality Score (Phase 3) ───
+
+export interface DecisionQualityScore {
+  id: string;
+  project_id: string;
+  appropriate_frame: number;
+  creative_alternatives: number;
+  relevant_information: number;
+  clear_values: number;
+  sound_reasoning: number;
+  commitment_to_action: number;
+  initial_framing_challenged: boolean;
+  blind_spots_surfaced: number;
+  user_changed_mind: boolean;
+  overall_dq: number;
+  created_at: string;
+}
+
 // ─── Settings ───
 
 export type LLMMode = 'proxy' | 'direct' | 'local';

@@ -48,6 +48,9 @@ export function UseCaseFlow() {
               <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
                 과제 뒤에 숨은 전제를 찾아내고, 진짜 물어야 할 질문을 발견합니다.
               </p>
+              <p className="mt-3 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                CIA 정보분석에서 쓰이는 전제 점검 기법을 AI에 적용. 숨은 가정을 발견하면 확증편향이 감소합니다.
+              </p>
             </div>
           </RevealCardX>
 
@@ -80,6 +83,9 @@ export function UseCaseFlow() {
               <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
                 주요 이해관계자의 관점에서 반응과 리스크를 미리 시뮬레이션합니다.
               </p>
+              <p className="mt-3 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                다관점 AI 토론은 단일 AI 대비 추론 정확도를 8%p 향상시킵니다. <span className="opacity-60">— MIT, ICML 2024</span>
+              </p>
             </div>
           </RevealCardX>
 
@@ -109,6 +115,9 @@ export function UseCaseFlow() {
               </h3>
               <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
                 매 반복마다 맥락이 누적되고, 충분히 수렴하면 실행에 옮깁니다.
+              </p>
+              <p className="mt-3 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                60년간 검증된 델파이 기법의 디지털 구현. 반복 수렴은 비구조적 토론보다 정확합니다. <span className="opacity-60">— RAND Corporation</span>
               </p>
             </div>
           </RevealCardX>

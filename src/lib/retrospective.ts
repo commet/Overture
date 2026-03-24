@@ -6,13 +6,16 @@
  * User answers become learning data; unanswered is fine (implicit signals suffice).
  */
 
-import { getSignals } from './signal-recorder';
+import { getSignals, recordSignal } from './signal-recorder';
 import type {
   RefinementLoop,
   FeedbackRecord,
   RetrospectiveQuestion,
+  RetrospectiveAnswer,
   QualitySignal,
 } from '@/stores/types';
+import { getStorage, setStorage, STORAGE_KEYS } from './storage';
+import { insertToSupabase } from './db';
 import { generateId } from './uuid';
 
 /**
@@ -129,4 +132,32 @@ function deduplicateByCategory(questions: RetrospectiveQuestion[]): Retrospectiv
     }
   }
   return result;
+}
+
+/* ── Retrospective Answer Storage (Phase 2) ── */
+
+export function saveRetrospectiveAnswer(answer: Omit<RetrospectiveAnswer, 'id' | 'created_at'>): RetrospectiveAnswer {
+  const full: RetrospectiveAnswer = { ...answer, id: generateId(), created_at: new Date().toISOString() };
+  const existing = getStorage<RetrospectiveAnswer[]>(STORAGE_KEYS.RETROSPECTIVE_ANSWERS, []);
+  existing.push(full);
+  if (existing.length > 200) existing.splice(0, existing.length - 200);
+  setStorage(STORAGE_KEYS.RETROSPECTIVE_ANSWERS, existing);
+  insertToSupabase('retrospective_answers', full);
+  recordSignal({ tool: 'refinement', signal_type: 'retrospective_answered', signal_data: { question_id: full.question_id, category: full.category, answer_length: full.answer.length }, project_id: full.project_id });
+  return full;
+}
+
+export function getRetrospectiveAnswers(projectId?: string): RetrospectiveAnswer[] {
+  const all = getStorage<RetrospectiveAnswer[]>(STORAGE_KEYS.RETROSPECTIVE_ANSWERS, []);
+  return projectId ? all.filter(a => a.project_id === projectId) : all;
+}
+
+export function getActionableInsights(excludeProjectId?: string): string[] {
+  return getStorage<RetrospectiveAnswer[]>(STORAGE_KEYS.RETROSPECTIVE_ANSWERS, [])
+    .filter(a => a.project_id !== excludeProjectId)
+    .filter(a => a.category === 'process' || a.category === 'learning')
+    .filter(a => a.answer.length > 10)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 5)
+    .map(a => a.answer);
 }

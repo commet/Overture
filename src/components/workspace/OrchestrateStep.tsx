@@ -28,6 +28,7 @@ import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline'
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';
 import { autoPersonaToFull } from '@/lib/auto-persona';
+import { recordOrchestrateEval } from '@/lib/eval-engine';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Users } from 'lucide-react';
 
@@ -399,6 +400,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       has_reviews: !!(current?.analysis?.reviews?.length),
       ai_limitation_warnings: current?.analysis?.ai_limitation_warnings?.length || 0,
     });
+    if (current) { const oc = useJudgmentStore.getState().judgments.filter(j => j.type === 'actor_override' && j.project_id === current.project_id).length; recordOrchestrateEval(current, oc); }
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);
@@ -452,7 +454,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">{t('tool.orchestrate')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.orchestrate.subtitle')}</span></h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.orchestrate')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.orchestrate.subtitle')}</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             AI와 사람의 역할을 나누고, 실행 단계를 설계합니다.
           </p>
@@ -588,9 +590,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               )}
 
               {/* 핵심 방향 */}
-              <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4">
+              <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
                 <p className="text-[11px] font-medium text-white/50 mb-1">{t('orchestrate.governingIdea')}</p>
-                <p className="text-[16px] font-bold leading-snug">
+                <p className="text-[16px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
                   {current.analysis.governing_idea}
                 </p>
               </div>
@@ -687,6 +689,32 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               </>
             )}
           </div>
+          {/* ── Reward: 실행 설계 요약 ── */}
+          {current.status === 'done' && current.analysis && (() => {
+            const a = current.analysis;
+            const checkpoints = steps.filter(s => s.checkpoint).length;
+            const humanDecisions = steps.filter(s => s.actor === 'human' || s.actor === 'both').length;
+            const aiAuto = steps.filter(s => s.actor === 'ai').length;
+            const keyAssumptions = a.key_assumptions?.length || 0;
+            return (
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4">
+                <p className="text-[12px] font-bold text-[var(--text-primary)] mb-1">
+                  {steps.length}단계 중 {humanDecisions > 0 ? `${humanDecisions}곳에서 당신의 판단이 필요합니다` : 'AI가 전체를 실행합니다'}
+                </p>
+                {aiAuto > 0 && (
+                  <p className="text-[11px] text-[var(--text-secondary)] mb-2.5">
+                    나머지 {aiAuto}단계는 AI가 실행합니다{checkpoints > 0 ? ` · 체크포인트 ${checkpoints}곳` : ''}
+                  </p>
+                )}
+                {keyAssumptions > 0 && (
+                  <p className="text-[11px] text-[var(--accent)]">
+                    핵심 가정 {keyAssumptions}건 — 리허설에서 이해관계자들이 검증합니다
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
           {current.status === 'done' && current.analysis && (
             <QuickRehearsalCard
               orchestrate={current}

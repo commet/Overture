@@ -10,6 +10,8 @@ const steps = [
     title: '문제 재정의',
     metaphor: '악보 해석',
     desc: '숨겨진 전제를 찾고, 진짜 질문을 재정의합니다',
+    research: '구조화된 분석이 자유 대화 대비 12% 더 나은 결과',
+    source: 'Harvard/BCG, 758명 실험',
     href: '/workspace?step=decompose',
     icon: Layers,
     color: '#2d4a7c',
@@ -19,6 +21,8 @@ const steps = [
     title: '실행 설계',
     metaphor: '편곡',
     desc: 'AI와 사람의 역할을 나누고 워크플로우를 설계합니다',
+    research: 'AI 능력 밖 영역에서 체크포인트 없이 맡기면 오히려 품질 하락',
+    source: 'Dell\'Acqua et al., Harvard',
     href: '/workspace?step=orchestrate',
     icon: Map,
     color: '#8b6914',
@@ -28,6 +32,8 @@ const steps = [
     title: '사전 검증',
     metaphor: '리허설',
     desc: '이해관계자의 반응을 미리 시뮬레이션합니다',
+    research: 'AI는 58%의 상황에서 당신에게 동의합니다. 의도적 반론이 필요합니다',
+    source: 'Stanford SycEval, 2025',
     href: '/workspace?step=persona-feedback',
     icon: Users,
     color: '#6b4c9a',
@@ -37,6 +43,8 @@ const steps = [
     title: '피드백 반영',
     metaphor: '합주 연습',
     desc: '피드백을 반영하며 반복, 수렴하면 실행합니다',
+    research: '"이미 실패했다고 가정하면" 위험 식별이 30% 향상됩니다',
+    source: 'Klein, Harvard Business Review',
     href: '/workspace?step=refinement-loop',
     icon: RefreshCw,
     color: '#2d6b2d',
@@ -77,6 +85,15 @@ function StepRow({ step, delay, isLast }: { step: typeof steps[number]; delay: n
           <p className="text-[13px] md:text-[14px] text-[var(--text-secondary)] leading-relaxed">
             {step.desc}
           </p>
+          {step.research && (
+            <p className="mt-2 text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+              <span className="inline-block w-3 h-3 mr-1 align-[-2px] opacity-50">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 3v9h6V9H4V6h3V3H1zm8 0v9h6V9h-3V6h3V3H9z"/></svg>
+              </span>
+              {step.research}
+              <span className="ml-1 opacity-60">— {step.source}</span>
+            </p>
+          )}
         </div>
       </Link>
     </div>

@@ -24,6 +24,7 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildDecomposeContext, buildOrchestrateContext, injectOrchestrateContext } from '@/lib/context-chain';
+import { recordRehearsalEval } from '@/lib/eval-engine';
 
 // Single source of truth: persona-prompt.ts
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) =>
@@ -220,6 +221,8 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         total_concerns: results.flatMap(r => r.concerns || []).length,
         total_approval_conditions: results.flatMap(r => r.approval_conditions || []).length,
       });
+      // Phase 0: Record rehearsal eval
+      if (record) { recordRehearsalEval(record, usePersonaStore.getState().personas, useAccuracyStore.getState().ratings); }
       const { settings } = useSettingsStore.getState();
       if (settings.audio_enabled) {
         resumeAudioContext();
@@ -486,6 +489,52 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               ? `악보 해석에서 발견한 핵심 질문: ${decompose.selected_question || decompose.analysis.surface_task}`
               : `편곡의 핵심 가정 ${orchestrate?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
             return <ContextChainBlock summary={summary} items={items} />;
+          })()}
+
+          {/* ── Reward: 리허설 발견 요약 ── */}
+          {(() => {
+            const results = latestFeedback.results || [];
+            const allRisks = results.flatMap(r => r.classified_risks || []);
+            const critical = allRisks.filter(r => r.category === 'critical').length;
+            const manageable = allRisks.filter(r => r.category === 'manageable').length;
+            const unspoken = allRisks.filter(r => r.category === 'unspoken').length;
+            const approvalCount = results.reduce((s, r) => s + (r.approval_conditions?.length || 0), 0);
+            const personaCount = results.length;
+            if (personaCount === 0) return null;
+
+            // 가장 날카로운 지적: 첫 번째 failure_scenario 또는 critical risk
+            const sharpestPersona = results.find(r => r.failure_scenario);
+            const sharpestQuote = sharpestPersona?.failure_scenario;
+            const sharpestName = sharpestPersona ? personas.find(p => p.id === sharpestPersona.persona_id)?.name : null;
+
+            return (
+              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--ai)] p-4">
+                <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">{personaCount}명의 이해관계자가 검토했습니다</p>
+
+                {/* 가장 날카로운 한마디 */}
+                {sharpestQuote && (
+                  <div className="mb-3 pl-3 border-l-2 border-[var(--accent)]/40">
+                    <p className="text-[12px] text-[var(--text-primary)] leading-relaxed italic">&ldquo;{sharpestQuote}&rdquo;</p>
+                    {sharpestName && <p className="text-[11px] text-[var(--accent)] font-medium mt-1">— {sharpestName}</p>}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {critical > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 font-semibold">핵심 리스크 {critical}건</span>}
+                  {manageable > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">관리 가능 {manageable}건</span>}
+                  {unspoken > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-600 font-semibold">침묵의 리스크 {unspoken}건</span>}
+                  {approvalCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 font-medium">승인 조건 {approvalCount}건</span>}
+                </div>
+                {(critical > 0 || unspoken > 0) && (
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-1">
+                    AI에게 직접 물었다면 동의만 했을 겁니다. 이 반론들이 실행 전에 방향을 바로잡습니다.
+                  </p>
+                )}
+                {critical === 0 && unspoken === 0 && (
+                  <p className="text-[11px] text-[var(--success)] font-medium">큰 위협 없이 통과했습니다. 실행 준비가 되었습니다.</p>
+                )}
+              </div>
+            );
           })()}
 
           <FeedbackResult

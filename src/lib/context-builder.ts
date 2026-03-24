@@ -1,6 +1,7 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getSignalsByType } from '@/lib/signal-recorder';
-import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project, RefinementLoop } from '@/stores/types';
+import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project, RefinementLoop, OutcomeRecord } from '@/stores/types';
+import { getActionableInsights } from '@/lib/retrospective';
 
 /**
  * Builds an enhanced system prompt by injecting user patterns and project context.
@@ -38,6 +39,23 @@ export function buildEnhancedSystemPrompt(
   // 4. Convergence patterns from past refinement loops
   const convergenceCtx = buildConvergencePatterns();
   if (convergenceCtx) sections.push(convergenceCtx);
+
+  // 5. Outcome-based insights (Phase 1)
+  const outcomes = getStorage<OutcomeRecord[]>(STORAGE_KEYS.OUTCOME_RECORDS, []).filter(o => o.project_id !== projectId);
+  if (outcomes.length >= 2) {
+    const successCount = outcomes.filter(o => o.overall_success === 'exceeded' || o.overall_success === 'met').length;
+    const unspoken = outcomes.flatMap(o => o.materialized_risks).filter(r => r.category === 'unspoken');
+    const unspokenHit = unspoken.filter(r => r.actually_happened);
+    const lines = [`## 과거 프로젝트 결과 학습`, `- 성공률: ${Math.round(successCount / outcomes.length * 100)}%`];
+    if (unspoken.length >= 2 && unspokenHit.length / unspoken.length > 0.5) lines.push('- ⚠️ 침묵의 리스크가 자주 실현됩니다. unspoken 리스크에 더 주의하세요.');
+    sections.push(lines.join('\n'));
+  }
+
+  // 6. Retrospective actionable insights (Phase 2)
+  const retroInsights = getActionableInsights(projectId);
+  if (retroInsights.length > 0) {
+    sections.push('## 이전 프로젝트 성찰 교훈\n' + retroInsights.map(i => `- "${i}"`).join('\n'));
+  }
 
   if (sections.length === 0) return basePrompt;
 

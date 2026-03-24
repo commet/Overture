@@ -9,6 +9,11 @@ export const STORAGE_KEYS = {
   REFINEMENT_LOOPS:  'sot_refinement_loops',
   ACCURACY_RATINGS:  'sot_accuracy_ratings',
   QUALITY_SIGNALS:   'sot_quality_signals',
+  EVAL_ORCHESTRATE:  'overture_eval_orchestrate',
+  EVAL_REHEARSAL:    'overture_eval_rehearsal',
+  EVAL_REFINEMENT:   'overture_eval_refinement',
+  OUTCOME_RECORDS:   'sot_outcome_records',
+  RETROSPECTIVE_ANSWERS: 'sot_retrospective_answers',
   SETTINGS: 'sot_settings',
 } as const;
 

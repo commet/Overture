@@ -14,7 +14,7 @@ import { log } from './logger';
 
 type TableName = 'projects' | 'personas' | 'decompose_items' | 'orchestrate_items'
   | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refinement_loops'
-  | 'quality_signals';
+  | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores';
 
 // ─── Merge Logic ───
 

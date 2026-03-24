@@ -111,7 +111,7 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
               <div className="min-w-0">
                 <p className={`text-[12px] font-semibold truncate ${
                   isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
-                }`}>
+                }`} style={{ fontFamily: 'var(--font-display)' }}>
                   {step.label}
                 </p>
               </div>

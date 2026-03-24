@@ -3,91 +3,59 @@
  *
  * Eval 결과 패턴을 분석하여 시스템 프롬프트에
  * 자동 보정 지시를 추가한다.
- *
- * autoresearch 원칙:
- * - eval이 실패하면 프롬프트를 고친다
- * - 프롬프트 수정은 additive (기존 삭제 X)
- * - 각 mutation은 하나의 eval 실패에 대응
  */
 
 import { getStorage } from '@/lib/storage';
-import type { EvalResult } from '@/lib/eval-engine';
+import type { EvalResult, EvalTool } from '@/lib/eval-engine';
 
-const EVAL_STORAGE_KEY = 'overture_eval_results';
+const EVAL_STORAGE_KEYS: Record<EvalTool, string> = {
+  decompose: 'overture_eval_results',
+  orchestrate: 'overture_eval_orchestrate',
+  'persona-feedback': 'overture_eval_rehearsal',
+  refinement: 'overture_eval_refinement',
+};
+
 const MIN_SAMPLES = 5;
-const FAILURE_THRESHOLD = 0.4; // 40% 미만이면 문제
+const FAILURE_THRESHOLD = 0.4;
 
-interface PromptMutation {
-  evalId: string;
-  instruction: string;
-  passRate: number;
-}
+interface PromptMutation { evalId: string; instruction: string; passRate: number }
 
-/**
- * Analyze recent eval results and identify underperforming evals.
- * Returns the worst-performing evals that fall below the threshold.
- */
-export function getWorstPerformingEvals(): PromptMutation[] {
-  const history = getStorage<EvalResult[]>(EVAL_STORAGE_KEY, []);
+export function getWorstPerformingEvals(tool: EvalTool = 'decompose'): PromptMutation[] {
+  const history = getStorage<EvalResult[]>(EVAL_STORAGE_KEYS[tool], []);
   if (history.length < MIN_SAMPLES) return [];
-
-  const recent = history.slice(-20); // Last 20 sessions
-
-  // Calculate per-eval pass rates
+  const recent = history.slice(-20);
   const evalStats: Record<string, { pass: number; total: number }> = {};
-  for (const result of recent) {
-    for (const [evalId, passed] of Object.entries(result.evals)) {
-      if (!evalStats[evalId]) evalStats[evalId] = { pass: 0, total: 0 };
-      evalStats[evalId].total++;
-      if (passed) evalStats[evalId].pass++;
-    }
-  }
-
+  for (const result of recent) { for (const [evalId, passed] of Object.entries(result.evals)) { if (!evalStats[evalId]) evalStats[evalId] = { pass: 0, total: 0 }; evalStats[evalId].total++; if (passed) evalStats[evalId].pass++; } }
   const mutations: PromptMutation[] = [];
-
-  for (const [evalId, stats] of Object.entries(evalStats)) {
-    const passRate = stats.pass / stats.total;
-    if (passRate >= FAILURE_THRESHOLD) continue;
-
-    const instruction = MUTATION_MAP[evalId];
-    if (instruction) {
-      mutations.push({ evalId, instruction, passRate });
-    }
-  }
-
-  // Sort by worst first
+  for (const [evalId, stats] of Object.entries(evalStats)) { const passRate = stats.pass / stats.total; if (passRate >= FAILURE_THRESHOLD) continue; const instruction = MUTATION_MAP[evalId]; if (instruction) mutations.push({ evalId, instruction, passRate }); }
   return mutations.sort((a, b) => a.passRate - b.passRate);
 }
 
-/**
- * Apply prompt mutations to a base system prompt.
- * Adds corrective instructions based on underperforming evals.
- */
-export function applyPromptMutations(basePrompt: string): string {
-  const mutations = getWorstPerformingEvals();
+export function applyPromptMutations(basePrompt: string, tool: EvalTool = 'decompose'): string {
+  const mutations = getWorstPerformingEvals(tool);
   if (mutations.length === 0) return basePrompt;
-
-  const additions = mutations
-    .slice(0, 2) // Max 2 mutations at a time
-    .map(m => m.instruction)
-    .join('\n');
-
-  return `${basePrompt}\n\n[자동 보정 — eval 기반]\n${additions}`;
+  return `${basePrompt}\n\n[자동 보정 — eval 기반]\n${mutations.slice(0, 2).map(m => m.instruction).join('\n')}`;
 }
 
-/**
- * Mapping from eval IDs to corrective prompt instructions.
- */
 const MUTATION_MAP: Record<string, string> = {
-  question_accepted:
-    '- hidden_questions를 더 실용적이고 구체적으로 만드세요. 사용자가 바로 채택할 수 있는 질문이어야 합니다. 너무 추상적이거나 학술적인 질문은 피하세요.',
-
-  assumptions_engaged:
-    '- hidden_assumptions를 사용자의 실제 업무 맥락과 연결하세요. "~라고 가정하고 있습니다"보다 "만약 ~가 아니라면, 전략이 바뀝니다"처럼 판단에 직접 연결되는 전제를 찾으세요.',
-
-  no_immediate_reanalyze:
-    '- 첫 분석에서 충분한 깊이를 제공하세요. 사용자가 바로 재분석을 요청한다면 초기 분석이 피상적이었다는 뜻입니다. surface_task를 더 정확하게 파악하고, reasoning_narrative에서 "왜 이렇게 재정의했는지"를 설득력 있게 설명하세요.',
-
-  has_useful_assumptions:
-    '- 미확인 전제를 더 적극적으로 찾으세요. 모든 전제가 이미 확인됨 상태라면 AI가 충분히 깊게 탐색하지 않은 것입니다. "당연하다고 생각하지만 실제로 검증하지 않은 것"을 찾아내세요.',
+  // Decompose
+  question_accepted: '- hidden_questions를 더 실용적이고 구체적으로 만드세요. 사용자가 바로 채택할 수 있는 질문이어야 합니다.',
+  assumptions_engaged: '- hidden_assumptions를 실제 업무 맥락과 연결하세요. "만약 ~가 아니라면, 전략이 바뀝니다"처럼 판단에 직접 연결되는 전제를 찾으세요.',
+  no_immediate_reanalyze: '- 첫 분석에서 충분한 깊이를 제공하세요. 사용자가 바로 재분석을 요청하면 초기 분석이 피상적인 것입니다.',
+  has_useful_assumptions: '- 미확인 전제를 더 적극적으로 찾으세요. "당연하다고 생각하지만 실제로 검증하지 않은 것"을 찾아내세요.',
+  // Orchestrate
+  steps_accepted: '- 워크플로우 단계를 수정 없이 바로 활용할 수 있도록 설계하세요. 3-7개 단계가 적절합니다.',
+  actor_overrides_low: '- actor 배정을 더 신중하게 하세요. 4가지 판단 기준을 엄격히 적용하세요.',
+  has_key_assumptions: '- 이 계획이 성립하려면 참이어야 할 핵심 가정을 반드시 2개 이상 명시하세요.',
+  has_design_rationale: '- 왜 이 순서인지, 왜 이 역할 배정인지 설계 근거를 반드시 설명하세요.',
+  // Rehearsal
+  critical_risks_found: '- 핵심(critical) 리스크를 반드시 식별하세요. "해결 안 하면 진행 불가"인 리스크가 없다면 너무 낙관적입니다.',
+  unspoken_risks_surfaced: '- 모두 알지만 아무도 안 꺼내는 문제(unspoken)를 반드시 1개 이상 찾으세요.',
+  persona_views_diverse: '- 다른 페르소나와 차별화된 관점을 제시하세요. 같은 리스크만 지적하면 다관점 검증의 의미가 없습니다.',
+  approval_conditions_clear: '- 구체적이고 검증 가능한 승인 조건을 제시하세요. "ROI 30% 이상 시뮬레이션" 같은 측정 가능한 조건이어야 합니다.',
+  // Refinement
+  converged_efficiently: '- 초기 수정에서 핵심 이슈를 정확히 타격하세요. 3회 이상 반복 필요시 근본 원인을 다루고 있지 않을 수 있습니다.',
+  issues_trending_down: '- 수정 시 새로운 이슈를 만들지 마세요. 파급 효과를 고려하세요.',
+  critical_resolved: '- 핵심(critical) 리스크 해소를 최우선으로 하세요.',
+  approval_conditions_met: '- 고영향력 이해관계자의 승인 조건에 직접 대응하는 수정을 하세요.',
 };

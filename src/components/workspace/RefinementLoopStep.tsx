@@ -22,7 +22,13 @@ import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext 
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { recordSignal } from '@/lib/signal-recorder';
-import { generateRetrospectiveQuestions } from '@/lib/retrospective';
+import { generateRetrospectiveQuestions, saveRetrospectiveAnswer } from '@/lib/retrospective';
+import { recordRefinementEval } from '@/lib/eval-engine';
+import { computeDecisionQuality, type DQInput } from '@/lib/decision-quality';
+import type { DecisionQualityScore } from '@/stores/types';
+import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { saveOutcomeRecord, buildRiskChecklist, getOutcomeRecords } from '@/lib/outcome-tracker';
+import type { MaterializedRisk } from '@/stores/types';
 import { Lightbulb } from 'lucide-react';
 
 // ── Revision prompt ──
@@ -346,7 +352,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               {/* Critical risks */}
               <div className={`rounded-lg p-3 text-center border ${convergence.critical_remaining === 0 ? 'bg-[var(--collab)] border-[var(--success)]/20' : 'bg-[var(--danger)]/10 border-[var(--danger)]/20'}`}>
-                <p className={`text-[18px] font-bold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
+                <p className={`text-[18px] font-bold transition-all duration-500 ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
                   {convergence.critical_remaining < 0 ? '-' : convergence.critical_remaining}
                 </p>
                 <p className={`text-[10px] font-semibold ${convergence.critical_remaining === 0 ? 'text-[var(--success)]' : 'text-[#E24B4A]'}`}>
@@ -356,7 +362,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
               {/* Approval conditions */}
               <div className={`rounded-lg p-3 text-center border ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'bg-[var(--collab)] border-[var(--success)]/20' : 'bg-[var(--checkpoint)] border-[var(--risk-manageable)]/20'}`}>
-                <p className={`text-[18px] font-bold ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'text-[var(--success)]' : 'text-amber-700'}`}>
+                <p className={`text-[18px] font-bold transition-all duration-500 ${convergence.approval_met >= convergence.approval_total * 0.8 ? 'text-[var(--success)]' : 'text-amber-700'}`}>
                   {convergence.approval_met}/{convergence.approval_total}
                 </p>
                 <p className="text-[10px] font-semibold text-amber-700">승인 조건</p>
@@ -364,7 +370,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
               {/* Total issues */}
               <div className="rounded-lg p-3 text-center border bg-[var(--ai)] border-blue-200">
-                <p className="text-[18px] font-bold text-[var(--accent)]">{convergence.total_issues}</p>
+                <p className="text-[18px] font-bold text-[var(--accent)] transition-all duration-500">{convergence.total_issues}</p>
                 <p className="text-[10px] font-semibold text-[var(--accent)]">총 이슈</p>
               </div>
             </div>
@@ -583,7 +589,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: 'converged' }); if (activeLoop.project_id) { const d = useDecomposeStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; const o = useOrchestrateStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; computeDecisionQuality({ decompose: d, orchestrate: o, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === activeLoop.project_id), refinementLoop: { ...activeLoop, status: 'converged' }, judgments: useJudgmentStore.getState().judgments.filter(j => j.project_id === activeLoop.project_id), personas: usePersonaStore.getState().personas, projectId: activeLoop.project_id }); } }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -605,7 +611,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => { updateLoop(activeLoop.id, { status: convergence.converged ? 'converged' : 'stopped_by_user' }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); }}>
+                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: fs }); if (activeLoop.project_id) { const d = useDecomposeStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; const o = useOrchestrateStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; computeDecisionQuality({ decompose: d, orchestrate: o, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === activeLoop.project_id), refinementLoop: { ...activeLoop, status: fs }, judgments: useJudgmentStore.getState().judgments.filter(j => j.project_id === activeLoop.project_id), personas: usePersonaStore.getState().personas, projectId: activeLoop.project_id }); } }}>
                   마무리
                 </Button>
               </div>
@@ -632,8 +638,14 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                 )}
               </Card>
 
+              {/* DQ Score Card */}
+              <DQScoreCard loop={activeLoop} feedbackHistory={feedbackHistory} />
+
               {/* Retrospective questions */}
               <RetrospectiveCard loop={activeLoop} feedbackHistory={feedbackHistory} />
+
+              {/* Outcome recording (Phase 1) */}
+              <OutcomeRecordingCard loop={activeLoop} feedbackHistory={feedbackHistory} />
             </>
           )}
         </div>
@@ -664,6 +676,7 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; fe
           signal_type: 'retrospective_answer',
           signal_data: { question: q.question, answer: answers[q.id], category: q.category },
         });
+        saveRetrospectiveAnswer({ project_id: loop.project_id, question_id: q.id, question_text: q.question, category: q.category, answer: answers[q.id], data_basis: q.data_basis });
         if (q.category === 'process') processAnswers[q.question] = answers[q.id];
         else if (q.category === 'judgment') judgmentAnswers[q.question] = answers[q.id];
         else learningAnswers[q.question] = answers[q.id];
@@ -749,5 +762,208 @@ function IssueCheckbox({ issue, selected, onToggle, variant }: {
         <p className="text-[12px] text-[var(--text-primary)] mt-0.5">{issue.text}</p>
       </div>
     </label>
+  );
+}
+
+// ── DQ Score Card ──
+function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+  const [score, setScore] = useState<DecisionQualityScore | null>(null);
+
+  useEffect(() => {
+    if (!loop.project_id || loop.status === 'active') return;
+    const decompose = useDecomposeStore.getState().items.find(d => d.project_id === loop.project_id && d.status === 'done') || null;
+    const orchestrate = useOrchestrateStore.getState().items.find(o => o.project_id === loop.project_id && o.status === 'done') || null;
+    const judgments = useJudgmentStore.getState().judgments.filter(j => j.project_id === loop.project_id);
+    const personas = usePersonaStore.getState().personas;
+    const result = computeDecisionQuality({ decompose, orchestrate, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === loop.project_id), refinementLoop: loop, judgments, personas, projectId: loop.project_id });
+    setScore(result);
+  }, [loop.project_id, loop.status]);
+
+  if (!score) return null;
+
+  const elements = [
+    { key: '프레이밍', value: score.appropriate_frame, max: 5, desc: '문제를 재정의했는가' },
+    { key: '대안 탐색', value: score.creative_alternatives, max: 5, desc: '여러 가능성을 검토했는가' },
+    { key: '정보 수집', value: score.relevant_information, max: 5, desc: '핵심 가정을 검증했는가' },
+    { key: '이해관계자', value: score.clear_values, max: 5, desc: '다양한 관점을 반영했는가' },
+    { key: '추론 건전성', value: score.sound_reasoning, max: 5, desc: '논리적으로 수렴했는가' },
+    { key: '실행 구체성', value: score.commitment_to_action, max: 5, desc: '구체적 계획이 있는가' },
+  ];
+
+  const dqColor = score.overall_dq >= 70 ? 'var(--success)' : score.overall_dq >= 40 ? 'var(--accent)' : 'var(--danger)';
+
+  return (
+    <Card className="!bg-[var(--bg)]">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <ShieldAlert size={14} className="text-[var(--accent)]" />
+          <p className="text-[13px] font-bold text-[var(--text-primary)]">판단 품질 스코어</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[24px] font-extrabold" style={{ color: dqColor }}>{score.overall_dq}</span>
+          <span className="text-[11px] text-[var(--text-tertiary)]">/ 100</span>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div className="space-y-2 mb-4">
+        {elements.map(el => (
+          <div key={el.key} className="flex items-center gap-2">
+            <span className="text-[11px] text-[var(--text-secondary)] w-[72px] shrink-0 text-right">{el.key}</span>
+            <div className="flex-1 h-[6px] bg-[var(--surface)] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${(el.value / el.max) * 100}%`, backgroundColor: el.value >= 4 ? 'var(--success)' : el.value >= 2 ? 'var(--accent)' : 'var(--danger)' }}
+              />
+            </div>
+            <span className="text-[10px] text-[var(--text-tertiary)] w-[20px] shrink-0">{el.value}/{el.max}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Anti-sycophancy insights */}
+      <div className="pt-3 border-t border-[var(--border-subtle)] space-y-1.5">
+        <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1">반론 효과</p>
+        <div className="flex flex-wrap gap-2">
+          {score.initial_framing_challenged && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai)] text-[var(--accent)] font-medium">초기 프레이밍 도전됨</span>
+          )}
+          {score.blind_spots_surfaced > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">사각지대 {score.blind_spots_surfaced}건 발견</span>
+          )}
+          {score.user_changed_mind && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">리허설 후 판단 수정</span>
+          )}
+          {!score.initial_framing_challenged && score.blind_spots_surfaced === 0 && !score.user_changed_mind && (
+            <span className="text-[10px] text-[var(--text-tertiary)]">반론 효과 없음 — 다음엔 더 까다로운 페르소나를 시도하세요</span>
+          )}
+        </div>
+      </div>
+
+      <p className="mt-3 text-[10px] text-[var(--text-tertiary)]">
+        DQ 스코어는 결과와 독립적으로 의사결정 프로세스의 품질을 측정합니다. — Spetzler (2016) Decision Quality 프레임워크
+      </p>
+    </Card>
+  );
+}
+
+// ── Outcome Recording Card (Phase 1) ──
+function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+  const existing = getOutcomeRecords(loop.project_id);
+  const [saved, setSaved] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const initialRisks = buildRiskChecklist(feedbackHistory.filter(fr => fr.project_id === loop.project_id));
+  const [risks, setRisks] = useState<MaterializedRisk[]>(initialRisks);
+  const [hypothesisResult, setHypothesisResult] = useState<'confirmed' | 'partially_confirmed' | 'refuted' | 'not_testable'>('not_testable');
+  const [hypothesisNotes, setHypothesisNotes] = useState('');
+  const [overallSuccess, setOverallSuccess] = useState<'exceeded' | 'met' | 'partial' | 'failed'>('met');
+  const [keyLearnings, setKeyLearnings] = useState('');
+
+  if (existing.length > 0 || saved) {
+    return (
+      <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium py-2">
+        <Check size={14} /> 실행 결과가 기록되었습니다
+      </div>
+    );
+  }
+
+  const handleSave = () => {
+    saveOutcomeRecord({
+      project_id: loop.project_id,
+      hypothesis_result: hypothesisResult,
+      hypothesis_notes: hypothesisNotes,
+      materialized_risks: risks,
+      approval_outcomes: [],
+      overall_success: overallSuccess,
+      key_learnings: keyLearnings,
+      what_would_change: '',
+    });
+    setSaved(true);
+  };
+
+  const toggleRisk = (idx: number) => {
+    setRisks(prev => prev.map((r, i) => i === idx ? { ...r, actually_happened: !r.actually_happened } : r));
+  };
+
+  if (!expanded) {
+    return (
+      <Card className="!bg-[var(--bg)] !border-dashed">
+        <button onClick={() => setExpanded(true)} className="w-full flex items-center justify-between text-left">
+          <div className="flex items-center gap-2">
+            <FileText size={14} className="text-[var(--accent)]" />
+            <p className="text-[13px] font-bold text-[var(--text-primary)]">실행 결과 기록</p>
+          </div>
+          <ChevronDown size={14} className="text-[var(--text-secondary)]" />
+        </button>
+        <p className="text-[11px] text-[var(--text-secondary)] mt-1">실행 후 결과를 기록하면 페르소나 예측 정확도와 의사결정 품질을 추적할 수 있습니다.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="!bg-[var(--bg)] !border-dashed">
+      <div className="flex items-center gap-2 mb-3">
+        <FileText size={14} className="text-[var(--accent)]" />
+        <p className="text-[13px] font-bold text-[var(--text-primary)]">실행 결과 기록</p>
+      </div>
+
+      {/* Overall success */}
+      <div className="mb-4">
+        <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">전반적 결과</p>
+        <div className="flex gap-2 flex-wrap">
+          {([['exceeded', '기대 이상'], ['met', '목표 달성'], ['partial', '부분 달성'], ['failed', '실패']] as const).map(([val, label]) => (
+            <button key={val} onClick={() => setOverallSuccess(val)}
+              className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors ${overallSuccess === val ? 'bg-[var(--ai)] border-[var(--accent)] text-[var(--accent)] font-semibold' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Hypothesis result */}
+      <div className="mb-4">
+        <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">가설 검증</p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          {([['confirmed', '확인됨'], ['partially_confirmed', '부분 확인'], ['refuted', '반증됨'], ['not_testable', '검증 불가']] as const).map(([val, label]) => (
+            <button key={val} onClick={() => setHypothesisResult(val)}
+              className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors ${hypothesisResult === val ? 'bg-[var(--ai)] border-[var(--accent)] text-[var(--accent)] font-semibold' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <textarea value={hypothesisNotes} onChange={e => setHypothesisNotes(e.target.value)} placeholder="가설에 대한 메모 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} />
+      </div>
+
+      {/* Risk materialization checklist */}
+      {risks.length > 0 && (
+        <div className="mb-4">
+          <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">예측된 리스크 — 실제로 일어났나요?</p>
+          <div className="space-y-1.5">
+            {risks.map((risk, idx) => (
+              <label key={idx} className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${risk.actually_happened ? 'border-[var(--danger)]/40 bg-[var(--danger)]/5' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}>
+                <input type="checkbox" checked={risk.actually_happened} onChange={() => toggleRisk(idx)} className="mt-0.5 accent-[var(--danger)]" />
+                <div className="flex-1">
+                  <span className={`text-[10px] font-bold uppercase ${risk.category === 'critical' ? 'text-[var(--danger)]' : risk.category === 'unspoken' ? 'text-purple-600' : 'text-amber-600'}`}>{risk.category}</span>
+                  <p className="text-[12px] text-[var(--text-primary)]">{risk.risk_text}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Key learnings */}
+      <div className="mb-4">
+        <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">핵심 배운 점</p>
+        <textarea value={keyLearnings} onChange={e => setKeyLearnings(e.target.value)} placeholder="이 프로젝트에서 가장 중요하게 배운 것 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} />
+      </div>
+
+      <div className="flex justify-end">
+        <Button size="sm" onClick={handleSave}>
+          <Check size={12} /> 결과 기록
+        </Button>
+      </div>
+    </Card>
   );
 }

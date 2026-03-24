@@ -17,13 +17,15 @@ export function Hero() {
             >
               AI에게 시키기 전에,
               <br />
-              <span className="text-[var(--accent)]">뭘 시킬지부터.</span>
+              <span className="text-[var(--accent)]">생각을 뾰족하게.</span>
             </h1>
 
             <p className="mt-5 text-[15px] md:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-md">
-              질문이 틀리면 아무리 좋은 답도 쓸모없습니다.
+              질문이 뭉툭하면 AI도 뭉툭하게 답합니다.
               <br />
-              숨겨진 전제를 찾고, 진짜 질문을 재정의하세요.
+              숨겨진 전제를 찾고, 여러 관점의 반론을 듣고,
+              <br />
+              확신이 생기면 실행하세요.
             </p>
 
             <div className="mt-8">
@@ -36,6 +38,11 @@ export function Hero() {
                   <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
+
+              <p className="mt-4 text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
+                40편의 인지과학·AI 학술 논문에 기반한 의사결정 프레임워크
+              </p>
             </div>
           </div>
 

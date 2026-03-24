@@ -580,7 +580,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {/* ─── Header ─── */}
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">{t('tool.decompose')}</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.decompose')}</h1>
           <span className="text-[13px] text-[var(--text-tertiary)]">|</span>
           <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.decompose.subtitle')}</span>
         </div>
@@ -893,7 +893,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     {/* 재정의된 질문 — 메인 */}
                     <div className="bg-[var(--primary)] text-[var(--bg)] px-5 py-5 md:px-6 md:py-6">
                       <p className="text-[11px] font-semibold text-white/50 mb-2">{questionLabel}</p>
-                      <p className="text-[18px] md:text-[20px] font-bold leading-snug">
+                      <p className="text-[18px] md:text-[20px] font-bold leading-snug animate-crescendo" style={{ fontFamily: 'var(--font-display)' }}>
                         {analysis.reframed_question}
                       </p>
                     </div>
@@ -1056,6 +1056,33 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <p className="text-[13px] text-[var(--text-secondary)] mt-3 leading-relaxed">
                     {analysis.why_reframing_matters}
                   </p>
+                )}
+
+                {/* ── Reward: 질문의 변화 ── */}
+                {analysis.surface_task && (current.selected_question || analysis.reframed_question) !== analysis.surface_task && (
+                  <div className="mt-5 pt-4 border-t border-[var(--success)]/20">
+                    <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-2.5">당신의 질문이 바뀌었습니다</p>
+                    <div className="space-y-2">
+                      <p className="text-[13px] text-[var(--text-tertiary)] line-through decoration-[var(--text-tertiary)]/30">
+                        {analysis.surface_task}
+                      </p>
+                      <p className="text-[13px] font-semibold text-[var(--accent)]">
+                        {current.selected_question || analysis.reframed_question}
+                      </p>
+                    </div>
+                    {(() => {
+                      const assumptions = analysis.hidden_assumptions || [];
+                      const doubtful = assumptions.filter(a => a.evaluation === 'doubtful').length;
+                      const uncertain = assumptions.filter(a => a.evaluation === 'uncertain').length;
+                      const risky = doubtful + uncertain;
+                      if (risky === 0) return null;
+                      return (
+                        <p className="mt-2.5 text-[11px] text-[var(--accent)]">
+                          숨겨진 전제 {assumptions.length}건 중 {risky}건이 불확실 — 다음 단계에서 검증됩니다
+                        </p>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
             </div>

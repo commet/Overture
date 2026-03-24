@@ -11,13 +11,25 @@
  * - "게임할 수 있는" eval 금지
  */
 
-import type { DecomposeItem } from '@/stores/types';
+import type {
+  DecomposeItem,
+  OrchestrateItem,
+  FeedbackRecord,
+  RefinementLoop,
+  Persona,
+  PersonaAccuracyRating,
+} from '@/stores/types';
 import type { ReframingStrategy, InterviewSignals } from '@/lib/reframing-strategy';
 import { getStorage, setStorage } from '@/lib/storage';
 import { extractInterviewSignals as extractSignals } from '@/lib/context-chain';
 import { recordSignal } from '@/lib/signal-recorder';
 
 const EVAL_STORAGE_KEY = 'overture_eval_results';
+const ORCHESTRATE_EVAL_KEY = 'overture_eval_orchestrate';
+const REHEARSAL_EVAL_KEY = 'overture_eval_rehearsal';
+const REFINEMENT_EVAL_KEY = 'overture_eval_refinement';
+
+export type EvalTool = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement';
 
 /* ────────────────────────────────────
    Binary Eval Definitions
@@ -79,6 +91,7 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
 export interface EvalResult {
   id: string;
   item_id: string;
+  tool?: EvalTool;
   strategy: ReframingStrategy | null;
   interview_signals: InterviewSignals | null;
   evals: Record<string, boolean>;
@@ -137,6 +150,95 @@ export function recordDecomposeEval(
 
   return evalResult;
 }
+
+/* ────────────────────────────────────
+   Orchestrate Evals (편곡 품질 측정)
+   ──────────────────────────────────── */
+
+export interface OrchestrateEvalInput {
+  item: OrchestrateItem;
+  actorOverrideCount: number;
+}
+
+export const ORCHESTRATE_EVALS: Array<{ id: string; question: string; measure: (input: OrchestrateEvalInput) => boolean }> = [
+  { id: 'steps_accepted', question: 'AI의 워크플로우 구조를 대체로 유지했는가?', measure: ({ item }) => { if (!item.analysis) return false; return Math.abs(item.analysis.steps.length - item.steps.length) <= 2; } },
+  { id: 'actor_overrides_low', question: '역할 배정을 대부분 수용했는가?', measure: ({ item, actorOverrideCount }) => { if (!item.analysis) return true; const t = item.analysis.steps.length; return t === 0 || actorOverrideCount / t < 0.3; } },
+  { id: 'has_key_assumptions', question: 'AI가 핵심 가정을 2개 이상 도출했는가?', measure: ({ item }) => (item.analysis?.key_assumptions?.length || 0) >= 2 },
+  { id: 'has_design_rationale', question: 'AI가 설계 근거를 제시했는가?', measure: ({ item }) => !!item.analysis?.design_rationale && item.analysis.design_rationale.length > 20 },
+];
+
+export function recordOrchestrateEval(item: OrchestrateItem, actorOverrideCount: number): EvalResult {
+  const evals: Record<string, boolean> = {};
+  let passed = 0;
+  for (const e of ORCHESTRATE_EVALS) { const r = e.measure({ item, actorOverrideCount }); evals[e.id] = r; if (r) passed++; }
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: item.id, tool: 'orchestrate', strategy: null, interview_signals: null, evals, pass_rate: passed / ORCHESTRATE_EVALS.length, recorded_at: new Date().toISOString() };
+  const history = getStorage<EvalResult[]>(ORCHESTRATE_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(ORCHESTRATE_EVAL_KEY, history);
+  recordSignal({ tool: 'orchestrate', signal_type: 'eval_result', signal_data: { item_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate }, project_id: item.project_id });
+  return evalResult;
+}
+
+/* ────────────────────────────────────
+   Rehearsal Evals (리허설 품질 측정)
+   ──────────────────────────────────── */
+
+export interface RehearsalEvalInput { record: FeedbackRecord; personas: Persona[]; accuracyRatings: PersonaAccuracyRating[] }
+
+export const REHEARSAL_EVALS: Array<{ id: string; question: string; measure: (input: RehearsalEvalInput) => boolean }> = [
+  { id: 'critical_risks_found', question: '핵심 리스크가 1개 이상 식별됐는가?', measure: ({ record }) => record.results.some(r => (r.classified_risks || []).some(risk => risk.category === 'critical')) },
+  { id: 'unspoken_risks_surfaced', question: '미언급 리스크가 1개 이상 발견됐는가?', measure: ({ record }) => record.results.some(r => (r.classified_risks || []).some(risk => risk.category === 'unspoken')) },
+  { id: 'persona_views_diverse', question: '페르소나들이 다양한 관점을 제시했는가?', measure: ({ record }) => { if (record.results.length < 2) return true; const all = record.results.flatMap(r => (r.classified_risks || []).map(risk => risk.text.toLowerCase().trim())); if (all.length === 0) return true; return new Set(all).size / all.length > 0.6; } },
+  { id: 'approval_conditions_clear', question: '승인 조건이 2개 이상 도출됐는가?', measure: ({ record }) => record.results.reduce((s, r) => s + (r.approval_conditions?.length || 0), 0) >= 2 },
+];
+
+export function recordRehearsalEval(record: FeedbackRecord, personas: Persona[], accuracyRatings: PersonaAccuracyRating[] = []): EvalResult {
+  const evals: Record<string, boolean> = {};
+  let passed = 0;
+  for (const e of REHEARSAL_EVALS) { const r = e.measure({ record, personas, accuracyRatings }); evals[e.id] = r; if (r) passed++; }
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: record.id, tool: 'persona-feedback', strategy: null, interview_signals: null, evals, pass_rate: passed / REHEARSAL_EVALS.length, recorded_at: new Date().toISOString() };
+  const history = getStorage<EvalResult[]>(REHEARSAL_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REHEARSAL_EVAL_KEY, history);
+  recordSignal({ tool: 'persona-feedback', signal_type: 'eval_result', signal_data: { record_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, persona_count: record.results.length }, project_id: record.project_id });
+  return evalResult;
+}
+
+/* ────────────────────────────────────
+   Refinement Evals (합주 연습 품질 측정)
+   ──────────────────────────────────── */
+
+export const REFINEMENT_EVALS: Array<{ id: string; question: string; measure: (loop: RefinementLoop) => boolean }> = [
+  { id: 'converged_efficiently', question: '3회 이내에 수렴했는가?', measure: (loop) => loop.status === 'converged' && loop.iterations.length <= 3 },
+  { id: 'issues_trending_down', question: '이슈 수가 반복마다 감소했는가?', measure: (loop) => { if (loop.iterations.length < 2) return true; const t = loop.iterations.map(it => it.convergence.total_issues); for (let i = 1; i < t.length; i++) { if (t[i] > t[i - 1]) return false; } return true; } },
+  { id: 'critical_resolved', question: '모든 핵심 리스크가 해소됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; return loop.iterations[loop.iterations.length - 1].convergence.critical_risks === 0; } },
+  { id: 'approval_conditions_met', question: '고영향력 승인 조건 80% 이상 충족됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; const hi = loop.iterations[loop.iterations.length - 1].convergence.approval_conditions.filter(ac => ac.influence === 'high'); if (hi.length === 0) return true; return hi.filter(ac => ac.met).length >= hi.length * 0.8; } },
+];
+
+export function recordRefinementEval(loop: RefinementLoop): EvalResult {
+  const evals: Record<string, boolean> = {};
+  let passed = 0;
+  for (const e of REFINEMENT_EVALS) { const r = e.measure(loop); evals[e.id] = r; if (r) passed++; }
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: loop.id, tool: 'refinement', strategy: null, interview_signals: null, evals, pass_rate: passed / REFINEMENT_EVALS.length, recorded_at: new Date().toISOString() };
+  const history = getStorage<EvalResult[]>(REFINEMENT_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REFINEMENT_EVAL_KEY, history);
+  recordSignal({ tool: 'refinement', signal_type: 'eval_result', signal_data: { loop_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, iteration_count: loop.iterations.length, final_status: loop.status }, project_id: loop.project_id });
+  return evalResult;
+}
+
+/* ────────────────────────────────────
+   Cross-Stage Eval Summary
+   ──────────────────────────────────── */
+
+export function getStageEvalSummary(tool: EvalTool): { tool: EvalTool; total_sessions: number; avg_pass_rate: number; worst_eval: string | null; per_eval_rates: Record<string, number> } {
+  const keyMap: Record<EvalTool, string> = { decompose: EVAL_STORAGE_KEY, orchestrate: ORCHESTRATE_EVAL_KEY, 'persona-feedback': REHEARSAL_EVAL_KEY, refinement: REFINEMENT_EVAL_KEY };
+  const history = getStorage<EvalResult[]>(keyMap[tool], []);
+  if (history.length === 0) return { tool, total_sessions: 0, avg_pass_rate: 0, worst_eval: null, per_eval_rates: {} };
+  const avgPassRate = history.reduce((s, r) => s + r.pass_rate, 0) / history.length;
+  const evalPassRates: Record<string, number[]> = {};
+  for (const result of history) { for (const [evalId, passed] of Object.entries(result.evals)) { if (!evalPassRates[evalId]) evalPassRates[evalId] = []; evalPassRates[evalId].push(passed ? 1 : 0); } }
+  const perEvalRates: Record<string, number> = {};
+  let worstEval: string | null = null; let worstRate = 1;
+  for (const [id, rates] of Object.entries(evalPassRates)) { const avg = rates.reduce((a, b) => a + b, 0) / rates.length; perEvalRates[id] = avg; if (avg < worstRate) { worstRate = avg; worstEval = id; } }
+  return { tool, total_sessions: history.length, avg_pass_rate: avgPassRate, worst_eval: worstEval, per_eval_rates: perEvalRates };
+}
+
+export function getAllStagesSummary() { return (['decompose', 'orchestrate', 'persona-feedback', 'refinement'] as EvalTool[]).map(getStageEvalSummary).filter(s => s.total_sessions > 0); }
 
 /* ────────────────────────────────────
    Strategy Performance Analysis

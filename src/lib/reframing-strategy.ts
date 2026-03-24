@@ -24,24 +24,32 @@ export interface InterviewSignals {
    Strategy Selection Matrix
    ──────────────────────────────────── */
 
+import { getBestStrategy } from '@/lib/eval-engine';
+
+/**
+ * Phase 2: 데이터 기반 전략 선택 → 규칙 기반 fallback.
+ * eval 성과 데이터가 충분하면 과거에 효과적이었던 전략 선택.
+ */
 export function selectReframingStrategy(signals: InterviewSignals): ReframingStrategy {
+  const dataDriven = getBestStrategy(signals);
+  if (dataDriven) return dataDriven;
+  return selectReframingStrategyRuleBased(signals);
+}
+
+/** 규칙 기반 fallback (원본 보존) */
+function selectReframingStrategyRuleBased(signals: InterviewSignals): ReframingStrategy {
   const { origin, uncertainty, success } = signals;
 
-  // 가장 강한 시그널: 왜 해야 하는지 모름 + 성공 기준 불명확
-  // → 과제 존재 자체를 의심해야 함
   if (uncertainty === 'why' && success === 'unclear') return 'challenge_existence';
   if (uncertainty === 'why' && origin === 'top-down') return 'challenge_existence';
 
-  // 갑자기 터진 문제 → 근본 원인 진단
   if (origin === 'fire') return 'diagnose_root';
   if (uncertainty === 'what' && success === 'risk') return 'diagnose_root';
 
-  // 어떻게 해야 하는지 모름 + 성과가 측정 가능 → 범위를 좁히면 됨
   if (uncertainty === 'how') return 'narrow_scope';
   if (uncertainty === 'none') return 'narrow_scope';
   if (origin === 'self' && success === 'measurable') return 'narrow_scope';
 
-  // 그 외: 다른 각도에서 보기
   return 'redirect_angle';
 }
 
