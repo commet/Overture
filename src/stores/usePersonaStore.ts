@@ -75,7 +75,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
   createPersona: (data) => {
     const now = new Date().toISOString();
     const newPersona: Persona = {
-      id: generateId(),
+      id: data.id || generateId(),
       name: data.name || '',
       role: data.role || '',
       organization: data.organization || '',

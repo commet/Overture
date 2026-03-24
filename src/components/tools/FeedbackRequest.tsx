@@ -52,7 +52,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   const [documentText, setDocumentText] = useState(initialContent || '');
   const [documentTitle, setDocumentTitle] = useState(initialTitle || '');
   const [selectedIds, setSelectedIds] = useState<string[]>(initialPersonaIds || []);
-  const [perspective, setPerspective] = useState('솔직하게');
+  const [perspective, setPerspective] = useState('전반적 인상');
   const [intensity, setIntensity] = useState('솔직하게');
   const [showFullDoc, setShowFullDoc] = useState(false);
   const [useCustomDoc, setUseCustomDoc] = useState(false);
@@ -68,13 +68,15 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0]
     : null;
 
+  const relatedOrchestrateId = relatedOrchestrate?.id;
   useEffect(() => {
     if (relatedOrchestrate && !initialContent && !useCustomDoc) {
       const md = orchestrateToMarkdown(relatedOrchestrate);
       setDocumentText(md);
       setDocumentTitle('편곡 결과물');
     }
-  }, [relatedOrchestrate, initialContent, useCustomDoc]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relatedOrchestrateId, initialContent, useCustomDoc]);
 
   const togglePersona = (id: string) => {
     setSelectedIds(prev =>

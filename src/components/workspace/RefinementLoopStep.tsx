@@ -88,6 +88,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
   const criticalIssues = currentIssues.filter(i => i.severity === 'critical');
   const concernIssues = currentIssues.filter(i => i.severity === 'concern');
   const questionIssues = currentIssues.filter(i => i.severity === 'question');
+  const wantsMoreIssues = currentIssues.filter(i => i.severity === 'wants_more');
 
   const toggleIssue = (text: string) => {
     setSelectedIssues(prev => {
@@ -584,6 +585,12 @@ ${buildPersonaAccuracyContext(personaId)}
                     )}
                     {questionIssues.map((issue, i) => (
                       <IssueCheckbox key={`q-${i}`} issue={issue} selected={selectedIssues.has(issue.text)} onToggle={() => toggleIssue(issue.text)} variant="question" />
+                    ))}
+                    {wantsMoreIssues.length > 0 && (
+                      <p className="text-[11px] font-semibold text-[var(--text-secondary)] mt-3 mb-1">추가 요청</p>
+                    )}
+                    {wantsMoreIssues.map((issue, i) => (
+                      <IssueCheckbox key={`w-${i}`} issue={issue} selected={selectedIssues.has(issue.text)} onToggle={() => toggleIssue(issue.text)} variant="question" />
                     ))}
                   </div>
 

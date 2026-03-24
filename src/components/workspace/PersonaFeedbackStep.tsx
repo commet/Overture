@@ -189,11 +189,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
         const persona = getPersona(personaId);
         if (!persona) continue;
         let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
-
-        const accuracyCtx = buildPersonaAccuracyContext(personaId);
-        if (accuracyCtx) {
-          systemPrompt = `${systemPrompt}\n\n${accuracyCtx}`;
-        }
+        // Note: buildPersonaAccuracyContext is already called inside FEEDBACK_SYSTEM
 
         const projectId = pendingProjectId;
         if (projectId) {
@@ -495,7 +491,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
               <div className="flex items-center gap-2">
                 <AlertTriangle size={14} /> <span>{feedbackError}</span>
               </div>
-              <button onClick={() => { setFeedbackError(''); if (lastFeedbackData) handleFeedbackSubmit(lastFeedbackData); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
+              <button onClick={() => { if (feedbackLoading) return; setFeedbackError(''); if (lastFeedbackData) handleFeedbackSubmit(lastFeedbackData); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
                 다시 시도
               </button>
             </div>
