@@ -54,6 +54,7 @@ interface PersonaState {
   addFeedbackLog: (personaId: string, log: Omit<FeedbackLog, 'id' | 'created_at'>) => void;
   deleteFeedbackLog: (personaId: string, logId: string) => void;
   addFeedbackRecord: (record: Omit<FeedbackRecord, 'id' | 'created_at'>) => string;
+  updateFeedbackRecord: (id: string, data: Partial<FeedbackRecord>) => void;
   getPersona: (id: string) => Persona | undefined;
   seedDefaultPersonas: () => void;
 }
@@ -148,6 +149,16 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     setStorage(STORAGE_KEYS.FEEDBACK_HISTORY, feedbackHistory);
     insertToSupabase('feedback_records', newRecord);
     return id;
+  },
+
+  updateFeedbackRecord: (id, data) => {
+    const feedbackHistory = get().feedbackHistory.map(r =>
+      r.id === id ? { ...r, ...data } : r
+    );
+    set({ feedbackHistory });
+    setStorage(STORAGE_KEYS.FEEDBACK_HISTORY, feedbackHistory);
+    const updated = feedbackHistory.find(r => r.id === id);
+    if (updated) upsertToSupabase('feedback_records', updated);
   },
 
   getPersona: (id) => get().personas.find((p) => p.id === id),

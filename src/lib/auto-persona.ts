@@ -110,7 +110,7 @@ export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Person
     decision_style: isSuggested ? (auto as SuggestedReviewer).decision_style : undefined,
     risk_tolerance: isSuggested ? (auto as SuggestedReviewer).risk_tolerance : undefined,
     success_metric: isSuggested ? (auto as SuggestedReviewer).success_metric : undefined,
-    extracted_traits: [auto.priorities.split(',')[0]?.trim() || ''].filter(Boolean),
+    extracted_traits: auto.priorities.split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 3),
     feedback_logs: [],
     is_example: false,
     created_at: new Date().toISOString(),

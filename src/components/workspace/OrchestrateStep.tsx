@@ -24,9 +24,7 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { buildDecomposeContext, injectDecomposeContext, mergeAssumptionsIntoKeyAssumptions } from '@/lib/context-chain';
 import type { DecomposeContext, WorkflowReview } from '@/stores/types';
-// workflow-review removed — replaced by auto-persona + rehearsal
-import { TeamReviewPanel } from './TeamReviewPanel';
-import { Shield, Zap, Globe, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';

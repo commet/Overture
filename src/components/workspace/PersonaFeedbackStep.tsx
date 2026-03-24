@@ -111,7 +111,7 @@ interface PersonaFeedbackStepProps {
 }
 
 export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
-  const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackRecord, getPersona, seedDefaultPersonas } = usePersonaStore();
+  const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackRecord, updateFeedbackRecord, getPersona, seedDefaultPersonas } = usePersonaStore();
   const { loadSettings } = useSettingsStore();
   const { loadRatings } = useAccuracyStore();
   const { handoff, clearHandoff } = useHandoffStore();
@@ -355,9 +355,13 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const updatedRecord: FeedbackRecord = {
         ...latestFeedback,
         discussion: discussionResult.messages,
+        discussion_takeaway: discussionResult.key_takeaway,
       };
-      updatedRecord.discussion_takeaway = discussionResult.key_takeaway;
       setLatestFeedback(updatedRecord);
+      updateFeedbackRecord(latestFeedback.id, {
+        discussion: discussionResult.messages,
+        discussion_takeaway: discussionResult.key_takeaway,
+      });
       track('discussion_complete', { message_count: discussionResult.messages.length });
     } catch (err) {
       alert('토론을 생성할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
