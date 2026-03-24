@@ -97,9 +97,12 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
     - name: 한국식 성+직함 (예: "김 본부장", "이 팀장")
     - role: 구체적 역할 (예: "영업본부장", "재무팀장")
     - influence: "high" (반대하면 무산) | "medium" (의견 중요) | "low" (참고)
-    - priorities: 이 사람이 가장 중요하게 여기는 것 1-2개
-    - communication_style: 보고 받을 때 성향 (예: "숫자 먼저, 결론부터")
-    - known_concerns: 이 프로젝트에서 우려할 점
+    - decision_style: "analytical" (데이터와 숫자로 판단) | "intuitive" (경험과 직관) | "consensus" (합의와 동의 중시) | "directive" (빠른 결정, 지시형)
+    - risk_tolerance: "low" (안전 우선, 실패 회피) | "medium" (균형) | "high" (기회 포착 우선)
+    - priorities: 이 프로젝트에서 이 사람이 가장 먼저 확인할 것 (일반적 역할 설명이 아닌 이 맥락의 구체적 관심사)
+    - communication_style: 보고 받을 때 구체적 습관 (예: "3분 안에 결론", "데이터 없으면 논의 거부", "비유와 사례로 설명해야 수긍")
+    - known_concerns: 이 프로젝트에서 우려할 구체적 사항 (과거 경험이나 현재 상황 기반)
+    - success_metric: 이 사람이 OK하려면 보여줘야 할 것 (예: "ROI 3년 시뮬레이션", "경쟁사 대비 차별점 3개")
     - why_relevant: 검증이 필요한 이유 한 문장
 
 반드시 JSON만 응답하세요.`;
@@ -793,8 +796,24 @@ function QuickRehearsalCard({
                   {influenceLabels[reviewer.influence]}
                 </span>
               </div>
-              <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1">{reviewer.why_relevant}</p>
-              <p className="text-[11px] text-[var(--text-tertiary)]">우려: {reviewer.known_concerns}</p>
+              <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1.5">{reviewer.why_relevant}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {reviewer.decision_style && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ai)] text-[#2d4a7c] font-medium">
+                    {{ analytical: '데이터 중심', intuitive: '직관 중심', consensus: '합의 중시', directive: '빠른 결정' }[reviewer.decision_style]}
+                  </span>
+                )}
+                {reviewer.risk_tolerance && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg)] text-[var(--text-secondary)] font-medium">
+                    리스크 {{ low: '회피', medium: '균형', high: '수용' }[reviewer.risk_tolerance]}
+                  </span>
+                )}
+                {reviewer.success_metric && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--collab)] text-[#2d6b2d] font-medium">
+                    OK: {reviewer.success_metric.slice(0, 30)}{reviewer.success_metric.length > 30 ? '...' : ''}
+                  </span>
+                )}
+              </div>
             </div>
           </label>
         ))}

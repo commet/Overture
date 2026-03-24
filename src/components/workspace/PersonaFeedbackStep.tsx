@@ -45,12 +45,13 @@ const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: strin
 
 ## 페르소나
 - 이름: ${persona.name}
-- 역할: ${persona.role}
-- 소속: ${persona.organization}
-- 우선순위: ${persona.priorities}
-- 커뮤니케이션 스타일: ${persona.communication_style}
-- 최근 관심사/우려: ${persona.known_concerns}
+- 역할: ${persona.role}${persona.organization ? `\n- 소속: ${persona.organization}` : ''}
 - 의사결정 영향력: ${persona.influence || 'medium'}
+- 의사결정 방식: ${persona.decision_style === 'analytical' ? '데이터와 숫자로 판단. 근거 없는 주장은 무시' : persona.decision_style === 'intuitive' ? '경험과 직관으로 판단. 패턴과 사례를 중시' : persona.decision_style === 'consensus' ? '합의와 동의를 중시. 반대 의견에 민감' : persona.decision_style === 'directive' ? '빠른 결정. 핵심만 듣고 지시' : '일반적'}
+- 리스크 수용도: ${persona.risk_tolerance === 'low' ? '안전 우선. 실패 가능성에 예민' : persona.risk_tolerance === 'high' ? '기회 포착 우선. 리스크를 감수할 의향' : '균형적'}
+- 이 프로젝트에서 먼저 확인할 것: ${persona.priorities}
+- 보고 받는 습관: ${persona.communication_style}
+- 우려하는 것: ${persona.known_concerns}${persona.success_metric ? `\n- OK 조건: ${persona.success_metric}` : ''}
 - 핵심 성향: ${persona.extracted_traits.join(', ')}
 
 ## 과거 이 사람이 실제로 했던 피드백 (참고)

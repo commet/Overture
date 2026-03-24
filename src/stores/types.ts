@@ -163,9 +163,12 @@ export interface SuggestedReviewer {
   name: string;
   role: string;
   influence: 'high' | 'medium' | 'low';
+  decision_style: 'analytical' | 'intuitive' | 'consensus' | 'directive';
+  risk_tolerance: 'low' | 'medium' | 'high';
   priorities: string;
   communication_style: string;
   known_concerns: string;
+  success_metric: string;
   why_relevant: string;
 }
 
@@ -202,6 +205,9 @@ export interface Persona {
   known_concerns: string;
   relationship_notes: string;
   influence: 'high' | 'medium' | 'low';
+  decision_style?: 'analytical' | 'intuitive' | 'consensus' | 'directive';
+  risk_tolerance?: 'low' | 'medium' | 'high';
+  success_metric?: string;
   extracted_traits: string[];
   feedback_logs: FeedbackLog[];
   is_example?: boolean;

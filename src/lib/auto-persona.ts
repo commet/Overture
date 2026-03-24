@@ -96,6 +96,7 @@ JSON 배열로만 응답하세요.`;
  * Convert AutoPersona to a full Persona object for the store.
  */
 export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Persona {
+  const isSuggested = 'decision_style' in auto;
   return {
     id: generateId(),
     name: auto.name,
@@ -106,6 +107,9 @@ export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Person
     known_concerns: auto.known_concerns,
     relationship_notes: auto.why_relevant,
     influence: auto.influence,
+    decision_style: isSuggested ? (auto as SuggestedReviewer).decision_style : undefined,
+    risk_tolerance: isSuggested ? (auto as SuggestedReviewer).risk_tolerance : undefined,
+    success_metric: isSuggested ? (auto as SuggestedReviewer).success_metric : undefined,
     extracted_traits: [auto.priorities.split(',')[0]?.trim() || ''].filter(Boolean),
     feedback_logs: [],
     is_example: false,
