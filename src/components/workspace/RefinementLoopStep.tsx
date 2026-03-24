@@ -152,7 +152,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         if (!persona) continue;
 
         // Build the same system prompt used in initial feedback
-        const recentLogs = persona.feedback_logs
+        const recentLogs = (persona.feedback_logs || [])
           .slice(-5)
           .map(log => `- [${log.date}] ${log.context}: ${log.feedback}`)
           .join('\n');
@@ -177,7 +177,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 - 이 프로젝트에서 먼저 확인할 것: ${persona.priorities}
 - 보고 받는 습관: ${persona.communication_style}
 - 우려하는 것: ${persona.known_concerns}${persona.success_metric ? `\n- OK 조건: ${persona.success_metric}` : ''}
-- 핵심 성향: ${persona.extracted_traits.join(', ')}
+- 핵심 성향: ${(persona.extracted_traits || []).join(', ')}
 
 ## 과거 피드백 (참고)
 ${recentLogs || '(없음)'}

@@ -114,9 +114,9 @@ export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Person
       ? [
           { analytical: '데이터 중심', intuitive: '직관적', consensus: '합의 중시', directive: '결단력' }[(auto as SuggestedReviewer).decision_style] || '',
           { low: '리스크 회피', medium: '균형적', high: '도전적' }[(auto as SuggestedReviewer).risk_tolerance] || '',
-          ...auto.priorities.split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 1),
+          ...(auto.priorities || '').split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 1),
         ].filter(Boolean)
-      : auto.priorities.split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 3),
+      : (auto.priorities || '').split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 3),
     feedback_logs: [],
     is_example: false,
     created_at: new Date().toISOString(),
