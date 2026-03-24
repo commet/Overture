@@ -745,17 +745,24 @@ function QuickRehearsalCard({
 }) {
   const reviewers = orchestrate.analysis?.suggested_reviewers || [];
   const [selected, setSelected] = useState<Set<number>>(new Set(reviewers.map((_, i) => i)));
-  const { createPersona } = usePersonaStore();
+  const [started, setStarted] = useState(false);
+  const { createPersona, personas } = usePersonaStore();
 
   if (reviewers.length === 0) return null;
 
   const handleStart = () => {
+    if (started) return; // prevent duplicate persona creation
+    setStarted(true);
     const selectedPersonas = reviewers
       .filter((_, i) => selected.has(i))
       .map(r => {
         const full = autoPersonaToFull(r);
-        createPersona(full);
-        return full;
+        // Check if persona with same name+role already exists (dedup)
+        const existing = personas.find(p => p.name === full.name && p.role === full.role);
+        if (!existing) {
+          createPersona(full);
+        }
+        return existing || full;
       });
     if (selectedPersonas.length > 0) {
       onStartRehearsal(selectedPersonas);

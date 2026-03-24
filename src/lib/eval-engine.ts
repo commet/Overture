@@ -44,11 +44,11 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
   },
   {
     id: 'assumptions_engaged',
-    question: '사용자가 전제에 관여했는가? (1개 이상 확인됨 마킹)',
+    question: '사용자가 전제에 관여했는가? (1개 이상 평가함)',
     measure: (item) => {
       if (!item.analysis) return false;
       return item.analysis.hidden_assumptions.some(
-        a => a.verified === true
+        a => typeof a !== 'string' && (a.evaluation === 'likely_true' || a.evaluation === 'doubtful' || a.evaluation === 'uncertain')
       );
     },
   },

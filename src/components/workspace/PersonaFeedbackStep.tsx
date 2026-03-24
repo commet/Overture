@@ -312,7 +312,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       const personaProfiles = latestFeedback.results.map(r => {
         const p = getPersona(r.persona_id);
         return `## ${p?.name} (ID: ${r.persona_id}, ${p?.role}, 영향력: ${p?.influence || 'medium'})
-성향: ${p?.extracted_traits.join(', ')}
+성향: ${p?.extracted_traits?.join(', ') || ''}
 전반적 반응: ${r.overall_reaction}
 주요 우려: ${r.concerns.join('; ')}
 질문: ${r.first_questions.join('; ')}
