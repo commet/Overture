@@ -167,10 +167,10 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                       <p className="text-[11px] text-[var(--text-secondary)] truncate">{persona.role}</p>
                     </div>
                     {persona.influence && (
-                      <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        persona.influence === 'high' ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
-                        : persona.influence === 'medium' ? 'bg-[var(--checkpoint)] text-[var(--risk-manageable)]'
-                        : 'bg-[var(--bg)] text-[var(--text-secondary)]'
+                      <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        persona.influence === 'high' ? 'bg-red-100 text-red-700'
+                        : persona.influence === 'medium' ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-600'
                       }`}>
                         {persona.influence === 'high' ? '높음' : persona.influence === 'medium' ? '중간' : '낮음'}
                       </span>

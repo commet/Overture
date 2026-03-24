@@ -227,7 +227,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">{p.name}</p>
-                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${inf.bg} ${inf.text}`}>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${inf.bg} ${inf.text}`}>
                         {inf.label}
                       </span>
                     </div>

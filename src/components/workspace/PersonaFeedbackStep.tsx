@@ -16,7 +16,7 @@ import type { Persona, FeedbackRecord, PersonaFeedbackResult, HiddenAssumption, 
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
-import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw, Check } from 'lucide-react';
 import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -409,31 +409,39 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       {/* ══════════════ SETUP PHASE ══════════════ */}
       {phase === 'setup' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Persona management bar */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-[var(--text-secondary)]" />
-              <span className="text-[13px] font-semibold text-[var(--text-primary)]">{personas.length}명의 이해관계자</span>
-              {personas.some(p => p.is_example) && (
-                <span className="text-[10px] text-[var(--text-tertiary)]">예시 포함</span>
-              )}
+          {/* Persona management bar — hide when auto-personas are pre-selected */}
+          {autoPersonaIds.length === 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users size={14} className="text-[var(--text-secondary)]" />
+                <span className="text-[13px] font-semibold text-[var(--text-primary)]">{personas.length}명의 이해관계자</span>
+                {personas.some(p => p.is_example) && (
+                  <span className="text-[10px] text-[var(--text-tertiary)]">예시 포함</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setManagingPersonas(!managingPersonas)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer transition-colors"
+                >
+                  <Pencil size={10} className="inline mr-1" />
+                  {managingPersonas ? '접기' : '편집'}
+                </button>
+                <button
+                  onClick={() => { setEditingPersona(null); setShowPersonaForm(true); setManagingPersonas(true); }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--ai)] cursor-pointer transition-colors"
+                >
+                  <Plus size={10} className="inline mr-1" /> 새 페르소나
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setManagingPersonas(!managingPersonas)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer transition-colors"
-              >
-                <Pencil size={10} className="inline mr-1" />
-                {managingPersonas ? '접기' : '편집'}
-              </button>
-              <button
-                onClick={() => { setEditingPersona(null); setShowPersonaForm(true); setManagingPersonas(true); }}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--ai)] cursor-pointer transition-colors"
-              >
-                <Plus size={10} className="inline mr-1" /> 새 페르소나
-              </button>
+          )}
+          {autoPersonaIds.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--ai)]">
+              <Check size={14} className="text-[var(--accent)]" />
+              <span className="text-[12px] font-medium text-[#2d4a7c]">편곡에서 식별된 이해관계자 {autoPersonaIds.length}명이 선택되었습니다</span>
             </div>
-          </div>
+          )}
 
           {/* Inline persona form */}
           {showPersonaForm && managingPersonas && (
