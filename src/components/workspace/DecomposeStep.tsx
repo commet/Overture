@@ -635,13 +635,13 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="text-[12px] text-[var(--text-secondary)] shrink-0">예시 과제로 체험:</span>
           {[
-            { label: '경영진 보고', text: '팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.' },
-            { label: '신규 사업 제안', text: '사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.' },
-            { label: '위기 대응', text: '주요 경쟁사가 핵심 제품의 가격을 30% 인하했습니다. 영업팀에서 고객 이탈 조짐이 보고되고 있고, 2주 안에 대응 방안을 만들어야 합니다.' },
+            { label: '경영진 보고', origin: '위에서 내려온 지시', uncertainty: '어떻게 해야 하는지', text: '팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.' },
+            { label: '신규 사업 제안', origin: '스스로 발견한 기회', uncertainty: '무엇을 해야 하는지', text: '사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.' },
+            { label: '위기 대응', origin: '갑자기 터진 문제', uncertainty: '어떻게 해야 하는지', text: '주요 경쟁사가 핵심 제품의 가격을 30% 인하했습니다. 영업팀에서 고객 이탈 조짐이 보고되고 있고, 2주 안에 대응 방안을 만들어야 합니다.' },
           ].map((ex) => (
             <button
               key={ex.label}
-              onClick={() => handleAnalyze(`[맥락]\n이 과제는 어디서 시작되었나요: 위에서 내려온 지시\n지금 가장 불확실한 것은: 어떻게 해야 하는지\n\n[과제]\n${ex.text}`)}
+              onClick={() => handleAnalyze(`[맥락]\n이 과제는 어디서 시작되었나요: ${ex.origin}\n지금 가장 불확실한 것은: ${ex.uncertainty}\n\n[과제]\n${ex.text}`)}
               className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer transition-all"
             >
               {ex.label}

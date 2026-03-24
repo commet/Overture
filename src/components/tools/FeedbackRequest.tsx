@@ -52,6 +52,11 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   const [documentText, setDocumentText] = useState(initialContent || '');
   const [documentTitle, setDocumentTitle] = useState(initialTitle || '');
   const [selectedIds, setSelectedIds] = useState<string[]>(initialPersonaIds || []);
+  useEffect(() => {
+    if (initialPersonaIds && initialPersonaIds.length > 0) {
+      setSelectedIds(initialPersonaIds);
+    }
+  }, [initialPersonaIds]);
   const [perspective, setPerspective] = useState('전반적 인상');
   const [intensity, setIntensity] = useState('솔직하게');
   const [showFullDoc, setShowFullDoc] = useState(false);
