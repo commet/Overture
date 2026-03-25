@@ -26,15 +26,20 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-[var(--primary)]/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[var(--surface)] rounded-[20px] shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-auto animate-fade-in">
+      <div
+        className="absolute inset-0 backdrop-blur-md"
+        style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.50) 100%)' }}
+        onClick={onClose}
+      />
+      <div className="relative bg-[var(--surface)] rounded-[20px] shadow-[var(--shadow-xl)] border border-[var(--border-subtle)] w-full max-w-lg mx-4 max-h-[85vh] overflow-hidden animate-fade-in">
+        <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
           <h2 className="text-[16px] font-bold text-[var(--text-primary)]">{title}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer">
             <X size={16} strokeWidth={1.5} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[calc(85vh-60px)]">{children}</div>
       </div>
     </div>
   );

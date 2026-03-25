@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   EVAL_REFINEMENT:   'overture_eval_refinement',
   OUTCOME_RECORDS:   'sot_outcome_records',
   RETROSPECTIVE_ANSWERS: 'sot_retrospective_answers',
+  DQ_SCORES: 'sot_dq_scores',
   SETTINGS: 'sot_settings',
 } as const;
 

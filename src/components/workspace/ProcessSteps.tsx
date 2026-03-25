@@ -6,6 +6,7 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useRefinementStore } from '@/stores/useRefinementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { Layers, Map, Users, RefreshCw, Check } from 'lucide-react';
+import { DynamicMark, BarLine } from '@/components/ui/MusicalElements';
 import { useEffect } from 'react';
 import type { StepId } from '@/stores/useWorkspaceStore';
 
@@ -85,10 +86,10 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
 
         return (
           <div key={step.id}>
-            {/* Connector line */}
+            {/* Connector — musical bar line */}
             {i > 0 && (
-              <div className="flex justify-center">
-                <div className={`w-0.5 h-2 ${status !== 'not-started' || getStatus(steps[i-1].id) !== 'not-started' ? 'bg-[var(--accent)]/30' : 'bg-[var(--border)]'}`} />
+              <div className="flex justify-center py-0.5">
+                <BarLine type="single" height={8} />
               </div>
             )}
             <button
@@ -99,21 +100,25 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
                   : 'hover:bg-[var(--surface)]/60'
               }`}
             >
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${
                 status === 'done'
                   ? 'bg-[var(--collab)] text-[var(--success)]'
                   : isActive
-                  ? `${step.bgColor} ${step.color}`
+                  ? `${step.bgColor} ${step.color} shadow-[var(--glow-accent)]`
                   : 'bg-[var(--bg)] text-[var(--text-secondary)]'
               }`}>
                 {status === 'done' ? <Check size={14} /> : step.icon}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-center gap-1.5">
                 <p className={`text-[12px] font-semibold truncate ${
                   isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`} style={{ fontFamily: 'var(--font-display)' }}>
                   {step.label}
                 </p>
+                <DynamicMark
+                  level={status === 'done' ? 'ff' : status === 'in-progress' ? 'mf' : 'pp'}
+                  className="text-[9px] shrink-0"
+                />
               </div>
             </button>
           </div>

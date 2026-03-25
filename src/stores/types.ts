@@ -13,6 +13,8 @@ export interface HiddenAssumption {
   risk_if_false: string;
   verified?: boolean;
   evaluation?: 'likely_true' | 'uncertain' | 'doubtful';
+  evaluation_reason?: string;
+  axis?: 'customer_value' | 'feasibility' | 'business' | 'org_capacity';
 }
 
 /** @deprecated Kept for backward compatibility with old localStorage data */
@@ -37,9 +39,19 @@ export interface DecomposeAnalysis {
 }
 
 export interface InterviewSignals {
+  // v1 fields (legacy, backward compat)
   origin?: 'top-down' | 'external' | 'self' | 'fire';
   uncertainty?: 'why' | 'what' | 'how' | 'none';
   success?: 'measurable' | 'risk' | 'opportunity' | 'unclear';
+  // v2 fields (Cynefin/Thompson-Tuden based)
+  version?: 1 | 2;
+  nature?: 'known_path' | 'needs_analysis' | 'no_answer' | 'on_fire';
+  goal?: 'clear_goal' | 'direction_only' | 'competing' | 'unclear';
+  stakes?: 'irreversible' | 'important' | 'experiment' | 'unknown_stakes';
+  // v2 adaptive fields (conditional on core answers)
+  history?: 'failed' | 'partial' | 'first' | 'unknown';
+  stakeholder?: 'executive' | 'team' | 'client' | 'self';
+  concern?: 'wrong_direction' | 'wasted_resources' | 'relationship' | 'timing';
 }
 
 export interface DecomposeItem {
@@ -310,11 +322,7 @@ export interface DecomposeContext {
   unverified_assumptions: HiddenAssumption[];
   verified_assumptions: HiddenAssumption[];
   ai_limitations: string[];
-  interview_signals?: {
-    origin?: string;
-    uncertainty?: string;
-    success?: string;
-  };
+  interview_signals?: InterviewSignals;
 }
 
 export interface OrchestrateContext {

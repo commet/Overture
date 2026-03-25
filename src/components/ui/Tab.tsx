@@ -16,25 +16,25 @@ interface TabProps {
 
 export function Tab({ tabs, activeKey, onChange }: TabProps) {
   return (
-    <div className="flex gap-0.5 bg-[var(--bg)]/60 p-1 rounded-xl overflow-x-auto relative">
+    <div className="flex gap-0.5 bg-[var(--bg)]/80 backdrop-blur-sm p-1 rounded-xl overflow-x-auto relative border border-[var(--border-subtle)] shadow-[var(--shadow-xs)]">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
           className={`
-            relative px-4 py-2 text-[13px] font-medium whitespace-nowrap rounded-lg
+            relative px-4 py-2 text-[13px] whitespace-nowrap rounded-lg
             transition-colors duration-200 cursor-pointer z-10
             ${
               activeKey === tab.key
-                ? 'text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ? 'text-[var(--text-primary)] font-semibold'
+                : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
             }
           `}
         >
           {activeKey === tab.key && (
             <motion.div
               layoutId="tab-indicator"
-              className="absolute inset-0 bg-[var(--surface)] rounded-lg shadow-sm"
+              className="absolute inset-0 bg-[var(--surface)] rounded-lg shadow-[var(--shadow-sm)] border-b-2 border-b-[var(--accent)]"
               style={{ zIndex: -1 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             />

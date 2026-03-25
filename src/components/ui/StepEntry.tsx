@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 
@@ -11,12 +11,13 @@ interface EntryOption {
   description?: string;
 }
 
-interface EntryStep {
+export interface EntryStep {
   key: string;
   question: string;
   options: EntryOption[];
   locked?: boolean;
   unlockMessage?: string;
+  adaptive?: boolean;
 }
 
 interface StepEntryProps {
@@ -26,6 +27,8 @@ interface StepEntryProps {
   textHint?: string;
   submitLabel?: string;
   onSubmit: (selections: Record<string, string>, text: string) => void;
+  onSelectionChange?: (selections: Record<string, string>) => void;
+  dynamicPlaceholderFn?: (selections: Record<string, string>) => string;
   disabled?: boolean;
   initialText?: string;
   contextPanel?: React.ReactNode;
@@ -38,6 +41,8 @@ export function StepEntry({
   textHint,
   submitLabel = 'AI 분석 시작',
   onSubmit,
+  onSelectionChange,
+  dynamicPlaceholderFn,
   disabled,
   initialText,
   contextPanel,
@@ -46,11 +51,20 @@ export function StepEntry({
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [text, setText] = useState(initialText || '');
 
+  // Clamp currentStep when steps array shrinks (adaptive branching)
+  useEffect(() => {
+    if (currentStep > steps.length) {
+      setCurrentStep(steps.length);
+    }
+  }, [steps.length, currentStep]);
+
   const isLastStep = currentStep >= steps.length;
   const currentEntryStep = steps[currentStep];
 
   const handleSelect = (stepKey: string, value: string) => {
-    setSelections((prev) => ({ ...prev, [stepKey]: value }));
+    const newSelections = { ...selections, [stepKey]: value };
+    setSelections(newSelections);
+    onSelectionChange?.(newSelections);
     // Auto-advance to next step
     setTimeout(() => setCurrentStep((prev) => prev + 1), 200);
   };
@@ -67,22 +81,9 @@ export function StepEntry({
     onSubmit(selections, text);
   };
 
-  // Build dynamic placeholder with concrete examples
-  const dynamicPlaceholder = () => {
-    const examples = [
-      textPlaceholder,
-      '예: 2주 안에 경영진에게 보고해야 하는 시장 분석',
-      '예: 고객사가 요청한 AI 도입 제안서 준비',
-      '예: 팀 내 반복되는 프로세스 비효율을 해결하고 싶음',
-    ];
-    // Pick a relevant example based on selection
-    const origin = selections['origin'];
-    if (origin === 'top-down') return '예: 동남아 시장 진출 전략을 2주 안에 수립하여 보고 / AI 기반 고객 서비스 자동화 방안 검토 지시 / 내년도 사업계획서 초안 작성';
-    if (origin === 'external') return '예: 고객사 AI 챗봇 도입 제안서 요청 / 파트너사 공동 마케팅 캠페인 기획 / 외부 투자자 대상 사업 설명 자료 준비';
-    if (origin === 'self') return '예: 팀 내 온보딩 프로세스 개선 / 반복 업무 자동화 도입 검토 / 신규 서비스 MVP 방향성 정리';
-    if (origin === 'fire') return '예: 주요 고객 이탈 조짐에 대한 긴급 대응 / 경쟁사 신제품 출시에 따른 전략 재검토 / 서비스 장애 후 재발 방지 대책 수립';
-    return examples[0];
-  };
+  const finalPlaceholder = dynamicPlaceholderFn
+    ? dynamicPlaceholderFn(selections)
+    : textPlaceholder;
 
   return (
     <div className="space-y-4">
@@ -101,11 +102,18 @@ export function StepEntry({
 
       {/* Card selection steps */}
       {!isLastStep && currentEntryStep && (
-        <div className="animate-fade-in" key={currentStep}>
+        <div className="animate-fade-in" key={`${currentStep}-${currentEntryStep.key}`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">
-              {currentEntryStep.question}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[15px] font-bold text-[var(--text-primary)]">
+                {currentEntryStep.question}
+              </h3>
+              {currentEntryStep.adaptive && (
+                <span className="text-[10px] text-[var(--accent)] bg-[var(--ai)] px-2 py-0.5 rounded-full font-medium animate-fade-in">
+                  맞춤 질문
+                </span>
+              )}
+            </div>
             {currentStep > 0 && (
               <button onClick={handleBack} className="flex items-center gap-1 text-[12px] text-[var(--accent)] cursor-pointer hover:underline">
                 <ChevronLeft size={12} /> 이전
@@ -209,8 +217,8 @@ export function StepEntry({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSubmit(); }}
-            placeholder={dynamicPlaceholder()}
-            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[15px] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)]"
+            placeholder={finalPlaceholder}
+            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[15px] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)]"
           />
 
           <div className="flex items-center justify-between">

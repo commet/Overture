@@ -200,6 +200,7 @@ export async function deleteAllUserData(): Promise<void> {
   if (!userId) return;
 
   const tables: TableName[] = [
+    'outcome_records', 'retrospective_answers', 'decision_quality_scores',
     'quality_signals', 'accuracy_ratings', 'feedback_records', 'judgment_records',
     'refinement_loops', 'decompose_items', 'orchestrate_items',
     'personas', 'projects',

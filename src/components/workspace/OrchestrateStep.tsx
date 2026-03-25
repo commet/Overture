@@ -547,7 +547,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
               <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4 mt-3">
                 <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험 3회를 모두 사용했어요</p>
                 <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 5회까지 무료로 계속 사용할 수 있습니다.</p>
-                <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity">
+                <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all">
                   로그인 / 회원가입
                 </Link>
               </div>
@@ -697,7 +697,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             const aiAuto = steps.filter(s => s.actor === 'ai').length;
             const keyAssumptions = a.key_assumptions?.length || 0;
             return (
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 reward-entrance">
                 <p className="text-[12px] font-bold text-[var(--text-primary)] mb-1">
                   {steps.length}단계 중 {humanDecisions > 0 ? `${humanDecisions}곳에서 당신의 판단이 필요합니다` : 'AI가 전체를 실행합니다'}
                 </p>

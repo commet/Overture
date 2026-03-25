@@ -65,15 +65,15 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-[10px] bg-[var(--accent)] flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300">
-              <span className="text-[var(--bg)] text-[13px] font-black tracking-tight">O</span>
+            <div className="w-8 h-8 rounded-[10px] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--glow-gold)] transition-all duration-300" style={{ background: 'var(--gradient-gold)' }}>
+              <span className="text-white text-[13px] font-black tracking-tight">O</span>
             </div>
             <span className="text-[var(--primary)] font-extrabold text-[18px] tracking-tight">Overture</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-3">
             {/* Desktop nav */}
-            <nav className="flex items-center gap-0.5 bg-[var(--surface)]/60 backdrop-blur-sm rounded-full px-1.5 py-1 border border-[var(--border-subtle)]">
+            <nav className="flex items-center gap-0.5 bg-[var(--surface)]/60 backdrop-blur-sm rounded-full px-1.5 py-1 border border-[var(--border-subtle)] shadow-[var(--shadow-xs)]">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -132,8 +132,9 @@ export function Header() {
                   </button>
 
                   {userMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--shadow-lg)] py-1 animate-fade-in">
-                      <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
+                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden animate-fade-in">
+                      <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
+                      <div className="px-3 py-2 border-b border-[var(--border-subtle)] mt-0">
                         <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">{displayName}</p>
                         <p className="text-[11px] text-[var(--text-tertiary)] truncate">{user.email}</p>
                       </div>

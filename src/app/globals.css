@@ -26,18 +26,32 @@
   --risk-manageable: #EF9F27;
   --risk-unspoken: #7F77DD;
 
-  /* Shadows — warm tint */
-  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.04);
-  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.05);
-  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.06), 0 1px 3px rgba(26, 26, 26, 0.04);
-  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.08), 0 2px 6px rgba(26, 26, 26, 0.03);
-  --shadow-xl: 0 16px 48px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(26, 26, 26, 0.04);
+  /* Shadows — warm tint, actually visible */
+  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.06), 0 0 1px rgba(26, 26, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.08), 0 0 1px rgba(26, 26, 26, 0.04);
+  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.10), 0 2px 4px rgba(26, 26, 26, 0.06);
+  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.12), 0 4px 8px rgba(26, 26, 26, 0.06);
+  --shadow-xl: 0 20px 48px rgba(26, 26, 26, 0.16), 0 8px 16px rgba(26, 26, 26, 0.08);
 
   /* Concert hall accents */
   --gold: #b8963e;
   --gold-light: #d4b968;
   --gold-muted: rgba(184, 150, 62, 0.10);
-  --staff-line: rgba(181, 166, 140, 0.10);
+  --staff-line: rgba(181, 166, 140, 0.15);
+
+  /* Gradients — Concert Hall Palette */
+  --gradient-gold: linear-gradient(135deg, #b8963e 0%, #d4b968 50%, #96782e 100%);
+  --gradient-gold-subtle: linear-gradient(135deg, rgba(184, 150, 62, 0.12) 0%, rgba(212, 185, 104, 0.06) 100%);
+  --gradient-gold-text: linear-gradient(135deg, #d4b968 0%, #96782e 100%);
+  --gradient-concert-hall: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(184, 150, 62, 0.08) 0%, transparent 70%);
+  --gradient-stage-light: radial-gradient(ellipse 60% 80% at 50% -10%, rgba(212, 185, 104, 0.06) 0%, transparent 50%);
+  --gradient-warm-vignette: radial-gradient(ellipse at center, transparent 40%, rgba(26, 26, 26, 0.03) 100%);
+  --gradient-surface: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+
+  /* Glow effects */
+  --glow-gold: 0 0 20px rgba(184, 150, 62, 0.15), 0 0 60px rgba(184, 150, 62, 0.05);
+  --glow-gold-intense: 0 0 20px rgba(184, 150, 62, 0.25), 0 0 40px rgba(184, 150, 62, 0.10);
+  --glow-accent: 0 0 16px rgba(184, 150, 62, 0.12);
 
   /* Typography */
   --font-display: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
@@ -81,16 +95,28 @@
   --risk-manageable: #fbbf24;
   --risk-unspoken: #a78bfa;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24), 0 0 1px rgba(0, 0, 0, 0.16);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.16);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40), 0 2px 4px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.48), 0 4px 8px rgba(0, 0, 0, 0.24);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.56), 0 8px 16px rgba(0, 0, 0, 0.32);
 
   --gold: #d4b968;
   --gold-light: #e8d48b;
   --gold-muted: rgba(212, 185, 104, 0.08);
-  --staff-line: rgba(212, 185, 104, 0.06);
+  --staff-line: rgba(212, 185, 104, 0.10);
+
+  --gradient-gold: linear-gradient(135deg, #d4b968 0%, #e8d48b 50%, #b8963e 100%);
+  --gradient-gold-subtle: linear-gradient(135deg, rgba(212, 185, 104, 0.10) 0%, rgba(232, 212, 139, 0.04) 100%);
+  --gradient-gold-text: linear-gradient(135deg, #e8d48b 0%, #d4b968 100%);
+  --gradient-concert-hall: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212, 185, 104, 0.06) 0%, transparent 70%);
+  --gradient-stage-light: radial-gradient(ellipse 60% 80% at 50% -10%, rgba(212, 185, 104, 0.04) 0%, transparent 50%);
+  --gradient-warm-vignette: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.06) 100%);
+  --gradient-surface: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+
+  --glow-gold: 0 0 20px rgba(212, 185, 104, 0.12), 0 0 60px rgba(212, 185, 104, 0.04);
+  --glow-gold-intense: 0 0 20px rgba(212, 185, 104, 0.20), 0 0 40px rgba(212, 185, 104, 0.08);
+  --glow-accent: 0 0 16px rgba(212, 185, 104, 0.10);
 }
 
 [data-theme="dark"] body {
@@ -105,11 +131,11 @@
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text-primary);
-  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.04);
-  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.05);
-  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.06), 0 1px 3px rgba(26, 26, 26, 0.04);
-  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.08), 0 2px 6px rgba(26, 26, 26, 0.03);
-  --shadow-xl: 0 16px 48px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(26, 26, 26, 0.04);
+  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.06), 0 0 1px rgba(26, 26, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.08), 0 0 1px rgba(26, 26, 26, 0.04);
+  --shadow-md: 0 4px 16px rgba(26, 26, 26, 0.10), 0 2px 4px rgba(26, 26, 26, 0.06);
+  --shadow-lg: 0 8px 32px rgba(26, 26, 26, 0.12), 0 4px 8px rgba(26, 26, 26, 0.06);
+  --shadow-xl: 0 20px 48px rgba(26, 26, 26, 0.16), 0 8px 16px rgba(26, 26, 26, 0.08);
 }
 
 html {
@@ -137,6 +163,44 @@ body {
 ::selection {
   background: var(--accent);
   color: white;
+}
+
+/* ── Premium typography scale ── */
+.text-display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.text-display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.5vw, 40px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+.text-display-md {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2.5vw, 28px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.text-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── Gold gradient text utility ── */
+.text-gold-gradient {
+  background: var(--gradient-gold-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ── Animations ── */
@@ -185,6 +249,54 @@ body {
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+/* ── Gold shimmer for premium CTAs ── */
+@keyframes gold-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-gold-shimmer {
+  background-size: 200% auto;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* ── Border glow pulse for active/focus states ── */
+@keyframes border-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 150, 62, 0); }
+  50% { box-shadow: 0 0 12px 2px rgba(184, 150, 62, 0.15); }
+}
+.animate-border-glow {
+  animation: border-glow 2s ease-in-out infinite;
+}
+
+/* ── Conductor baton wave for loading ── */
+@keyframes baton-wave {
+  0% { transform: rotate(-15deg) translateY(0); }
+  25% { transform: rotate(5deg) translateY(-4px); }
+  50% { transform: rotate(-5deg) translateY(0); }
+  75% { transform: rotate(10deg) translateY(-2px); }
+  100% { transform: rotate(-15deg) translateY(0); }
+}
+.animate-baton {
+  animation: baton-wave 2s var(--ease-musical) infinite;
+  transform-origin: bottom center;
+}
+
+/* ── Sound wave ripple for SoundWave component ── */
+@keyframes wave-ripple {
+  0% { transform: scaleY(0.95); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0.95); opacity: 0.5; }
+}
+
+/* ── Note float for ambient decoration ── */
+@keyframes note-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+  50% { transform: translateY(-8px) rotate(5deg); opacity: 0.6; }
+}
+.animate-note-float {
+  animation: note-float 4s ease-in-out infinite;
 }
 
 /* ── Scrollbar ── */
@@ -255,22 +367,15 @@ body {
   animation: subtle-pulse 2s ease-in-out infinite;
 }
 
-/* ── Manuscript paper micro-texture ── */
+/* ── Manuscript paper — 5-line staff pattern ── */
 .manuscript-bg {
   background-image:
     repeating-linear-gradient(
       0deg,
-      rgba(0, 0, 0, 0.012),
-      rgba(0, 0, 0, 0.012) 1px,
+      var(--staff-line),
+      var(--staff-line) 1px,
       transparent 1px,
-      transparent 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.008),
-      rgba(0, 0, 0, 0.008) 1px,
-      transparent 1px,
-      transparent 3px
+      transparent 24px
     );
 }
 
@@ -294,6 +399,39 @@ body {
   transition: opacity 0.6s var(--ease-musical), transform 0.6s var(--ease-musical);
 }
 
+/* ── Reward card stagger entrance ── */
+@keyframes reward-reveal {
+  0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.reward-entrance > * {
+  opacity: 0;
+  animation: reward-reveal 0.5s var(--ease-musical) forwards;
+}
+.reward-entrance > *:nth-child(1) { animation-delay: 0ms; }
+.reward-entrance > *:nth-child(2) { animation-delay: 120ms; }
+.reward-entrance > *:nth-child(3) { animation-delay: 220ms; }
+.reward-entrance > *:nth-child(4) { animation-delay: 300ms; }
+
+/* ── Bar chart grow ── */
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+}
+.animate-bar-grow {
+  transform-origin: left;
+  animation: bar-grow 0.8s var(--ease-spring) forwards;
+}
+
+/* ── Score pop-in ── */
+@keyframes score-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-score-pop {
+  animation: score-pop 0.6s var(--ease-spring) forwards;
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .scroll-hidden, .scroll-hidden-x {
@@ -311,8 +449,18 @@ body {
   .animate-slide-down,
   .animate-slide-in-right,
   .animate-slide-in-left,
-  .animate-crescendo {
+  .animate-crescendo,
+  .animate-bar-grow,
+  .animate-score-pop,
+  .animate-gold-shimmer,
+  .animate-border-glow,
+  .animate-baton,
+  .animate-note-float {
     animation: none;
+  }
+  .reward-entrance > * {
+    animation: none;
+    opacity: 1;
   }
 }
 

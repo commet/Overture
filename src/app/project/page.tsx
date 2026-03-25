@@ -133,7 +133,7 @@ export default function ProjectPage() {
                 워크스페이스에서 프로젝트를 만들면, 4단계 프로세스의 진행 상황을 여기서 한눈에 확인할 수 있습니다.
               </p>
               <Link href="/workspace">
-                <button className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+                <button className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
                   워크스페이스에서 시작하기 <ArrowRight size={14} />
                 </button>
               </Link>

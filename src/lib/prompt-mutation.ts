@@ -43,6 +43,7 @@ const MUTATION_MAP: Record<string, string> = {
   assumptions_engaged: '- hidden_assumptions를 실제 업무 맥락과 연결하세요. "만약 ~가 아니라면, 전략이 바뀝니다"처럼 판단에 직접 연결되는 전제를 찾으세요.',
   no_immediate_reanalyze: '- 첫 분석에서 충분한 깊이를 제공하세요. 사용자가 바로 재분석을 요청하면 초기 분석이 피상적인 것입니다.',
   has_useful_assumptions: '- 미확인 전제를 더 적극적으로 찾으세요. "당연하다고 생각하지만 실제로 검증하지 않은 것"을 찾아내세요.',
+  assumptions_diverse: '- 전제들이 같은 축에 편중되어 있습니다. 고객 가치, 실행 가능성, 사업성, 조직 역량 중 서로 다른 축에서 전제를 찾으세요.',
   // Orchestrate
   steps_accepted: '- 워크플로우 단계를 수정 없이 바로 활용할 수 있도록 설계하세요. 3-7개 단계가 적절합니다.',
   actor_overrides_low: '- actor 배정을 더 신중하게 하세요. 4가지 판단 기준을 엄격히 적용하세요.',

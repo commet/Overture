@@ -87,12 +87,20 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[400px]">
+    <div className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* Piano background — concert hall pre-show atmosphere */}
+      <div
+        className="absolute inset-0 bg-cover bg-center blur-[2px] scale-105"
+        style={{ backgroundImage: 'url(/images/piano-warm.jpg)' }}
+      />
+      <div className="absolute inset-0 bg-[var(--bg)]/80" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-warm-vignette)' }} />
+
+      <div className="relative w-full max-w-[400px]">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 bg-[var(--primary)] rounded-[10px] flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shadow-[var(--shadow-sm)]" style={{ background: 'var(--gradient-gold)' }}>
               <span className="text-white font-black text-[15px]">O</span>
             </div>
             <span className="text-[22px] font-extrabold text-[var(--text-primary)] tracking-tight">Overture</span>
@@ -103,11 +111,13 @@ function LoginContent() {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-[var(--shadow-md)] p-6 space-y-5">
+        <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden">
+          <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
+          <div className="p-6 space-y-5">
           {/* Google OAuth */}
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--ai)]/30 transition-all cursor-pointer text-[14px] font-semibold text-[var(--text-primary)]"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)] hover:border-[var(--accent)] hover:bg-[var(--ai)]/30 transition-all cursor-pointer text-[14px] font-semibold text-[var(--text-primary)]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -137,7 +147,7 @@ function LoginContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="이메일"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)] transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)] transition-all"
               />
             </div>
             {!isReset && (
@@ -149,7 +159,7 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="비밀번호 (6자 이상)"
-                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,109,204,0.08)] transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)] transition-all"
                 />
               </div>
             )}
@@ -220,6 +230,7 @@ function LoginContent() {
               {isReset ? '로그인' : isSignUp ? '로그인' : '회원가입'}
             </button>
           </p>
+          </div>
         </div>
       </div>
     </div>

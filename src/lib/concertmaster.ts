@@ -14,7 +14,7 @@ import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance } from '
 import type { StrategyPerformance } from '@/lib/eval-engine';
 import { getWorstPerformingEvals } from '@/lib/prompt-mutation';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { JudgmentRecord, Project, PersonaAccuracyRating } from '@/stores/types';
+import type { JudgmentRecord, Project, PersonaAccuracyRating, DecomposeItem, OrchestrateItem, DecisionQualityScore } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
 /* ────────────────────────────────────
@@ -331,10 +331,38 @@ function getOrchestrateCoaching(profile: ConcertmasterProfile): StepCoaching | n
     }
   }
 
+  // Cross-stage: check decompose for unverified assumptions
+  const decomposeItems = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
+  const latestDecompose = decomposeItems.filter(d => d.status === 'done').pop();
+  if (latestDecompose?.analysis) {
+    const uncertain = latestDecompose.analysis.hidden_assumptions.filter(
+      a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
+    );
+    if (uncertain.length > 0) {
+      return {
+        message: `악보 해석에서 불확실 전제 ${uncertain.length}건 — 실행 설계에 검증 단계를 포함하세요.`,
+        detail: uncertain.slice(0, 2).map(a => a.assumption).join(' / '),
+      };
+    }
+  }
+
   return null;
 }
 
 function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching | null {
+  // Cross-stage: check orchestrate for key assumptions to test
+  const orchestrateItems = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
+  const latestOrch = orchestrateItems.filter(o => o.status === 'done').pop();
+  if (latestOrch?.analysis?.key_assumptions) {
+    const highImportance = latestOrch.analysis.key_assumptions.filter(ka => ka.importance === 'high');
+    if (highImportance.length > 0) {
+      return {
+        message: `편곡에서 중요도 높은 가정 ${highImportance.length}건 — 페르소나에게 검증 요청하세요.`,
+        detail: highImportance.slice(0, 2).map(ka => ka.assumption).join(' / '),
+      };
+    }
+  }
+
   const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
   if (ratings.length === 0) return null;
 
@@ -385,6 +413,23 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
 }
 
 function getRefinementLoopCoaching(_profile: ConcertmasterProfile): StepCoaching | null {
+  // Cross-stage: DQ trend from previous projects
+  const dqScores = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
+  if (dqScores.length >= 2) {
+    const sorted = [...dqScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const prev = sorted[sorted.length - 2];
+    const last = sorted[sorted.length - 1];
+    if (last.overall_dq > prev.overall_dq) {
+      return {
+        message: `판단 품질이 개선되고 있습니다 (${prev.overall_dq} → ${last.overall_dq}).`,
+      };
+    } else if (last.overall_dq < prev.overall_dq * 0.85) {
+      return {
+        message: `판단 품질이 하락했습니다 (${prev.overall_dq} → ${last.overall_dq}). 이번엔 전제 검토를 더 꼼꼼히 해보세요.`,
+      };
+    }
+  }
+
   // Check if there are active refinement loops
   const loops = getStorage<{ iterations?: unknown[] }[]>('sot_refinement_loops', []);
   if (loops.length === 0) return null;

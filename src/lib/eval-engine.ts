@@ -82,6 +82,19 @@ export const DECOMPOSE_EVALS: BinaryEval[] = [
       );
     },
   },
+  {
+    id: 'assumptions_diverse',
+    question: '전제들이 서로 다른 축(고객/실행/사업/조직)에서 나왔는가?',
+    measure: (item) => {
+      if (!item.analysis) return false;
+      const axes = item.analysis.hidden_assumptions
+        .map(a => typeof a !== 'string' ? a.axis : undefined)
+        .filter(Boolean);
+      if (axes.length < 2) return true; // too few to judge
+      const unique = new Set(axes);
+      return unique.size >= Math.min(axes.length, 3); // at least 3 different axes for 3-4 assumptions
+    },
+  },
 ];
 
 /* ────────────────────────────────────
@@ -268,7 +281,12 @@ export function analyzeStrategyPerformance(
         const fullKey = makeSignalKey(r.interview_signals);
         // Exact match first
         if (fullKey === signalKey) return true;
-        // Partial match: if signalKey is uncertainty-only (e.g., "_why_"), match uncertainty field
+        // v2 partial match: nature-only (e.g., "v2_no_answer__")
+        if (signalKey.startsWith('v2_') && signalKey.endsWith('__')) {
+          const nature = signalKey.slice(3, -2);
+          return r.interview_signals.nature === nature;
+        }
+        // v1 partial match: uncertainty-only (e.g., "_why_")
         if (signalKey.startsWith('_') && signalKey.endsWith('_')) {
           const uncertainty = signalKey.slice(1, -1);
           return r.interview_signals.uncertainty === uncertainty;
@@ -310,7 +328,17 @@ export function analyzeStrategyPerformance(
  * → 부족하면 null (rule-based fallback은 호출자가 처리)
  */
 export function getBestStrategy(signals: InterviewSignals): ReframingStrategy | null {
-  // 1차: uncertainty 단독으로 매칭 (가장 빠르게 데이터 축적)
+  // v2: nature as primary micro-key
+  if (signals.nature) {
+    const microKey = `v2_${signals.nature}__`;
+    const microPerf = analyzeStrategyPerformance(microKey);
+    const viable = microPerf.filter(p => p.sample_count >= 3);
+    if (viable.length > 0) {
+      return viable.sort((a, b) => b.avg_pass_rate - a.avg_pass_rate)[0].strategy;
+    }
+  }
+
+  // v1: uncertainty 단독으로 매칭 (가장 빠르게 데이터 축적)
   if (signals.uncertainty) {
     const microKey = `_${signals.uncertainty}_`;
     const microPerf = analyzeStrategyPerformance(microKey);
@@ -320,7 +348,7 @@ export function getBestStrategy(signals: InterviewSignals): ReframingStrategy | 
     }
   }
 
-  // 2차: 전체 신호 조합 (더 정밀하지만 데이터 더 필요)
+  // Full key (v1 or v2)
   const fullKey = makeSignalKey(signals);
   const fullPerf = analyzeStrategyPerformance(fullKey);
   const fullViable = fullPerf.filter(p => p.sample_count >= 3);
@@ -402,6 +430,9 @@ const STRATEGY_DISPLAY: Record<ReframingStrategy, string> = {
    ──────────────────────────────────── */
 
 function makeSignalKey(signals: InterviewSignals): string {
+  if (signals.version === 2 || signals.nature) {
+    return `v2_${signals.nature || '_'}_${signals.goal || '_'}_${signals.stakes || '_'}`;
+  }
   return `${signals.origin || '_'}_${signals.uncertainty || '_'}_${signals.success || '_'}`;
 }
 

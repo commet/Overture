@@ -14,7 +14,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { callLLMJson } from '@/lib/llm';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
 import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefinementLoop } from '@/stores/types';
-import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert } from 'lucide-react';
+import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
 import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
@@ -24,10 +24,11 @@ import { useDecomposeStore } from '@/stores/useDecomposeStore';
 import { recordSignal } from '@/lib/signal-recorder';
 import { generateRetrospectiveQuestions, saveRetrospectiveAnswer } from '@/lib/retrospective';
 import { recordRefinementEval } from '@/lib/eval-engine';
-import { computeDecisionQuality, type DQInput } from '@/lib/decision-quality';
+import { computeDecisionQuality, getDQScores, correlateDQWithOutcomes } from '@/lib/decision-quality';
 import type { DecisionQualityScore } from '@/stores/types';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
-import { saveOutcomeRecord, buildRiskChecklist, getOutcomeRecords } from '@/lib/outcome-tracker';
+import { saveOutcomeRecord, buildRiskChecklist, getOutcomeRecords, analyzePersonaPredictionAccuracy } from '@/lib/outcome-tracker';
+import { useCountUp } from '@/lib/use-count-up';
 import type { MaterializedRisk } from '@/stores/types';
 import { Lightbulb } from 'lucide-react';
 
@@ -301,7 +302,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
               <p className="text-[var(--text-secondary)] text-[12px] mt-1 max-w-xs mx-auto">
                 리허설에서 피드백을 받은 뒤, &ldquo;합주 연습 시작&rdquo;을 눌러 반복 개선을 시작하세요.
               </p>
-              <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+              <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
                 리허설 먼저 진행하기 <ArrowRight size={14} />
               </button>
             </Card>
@@ -589,7 +590,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: 'converged' }); if (activeLoop.project_id) { const d = useDecomposeStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; const o = useOrchestrateStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; computeDecisionQuality({ decompose: d, orchestrate: o, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === activeLoop.project_id), refinementLoop: { ...activeLoop, status: 'converged' }, judgments: useJudgmentStore.getState().judgments.filter(j => j.project_id === activeLoop.project_id), personas: usePersonaStore.getState().personas, projectId: activeLoop.project_id }); } }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: 'converged' }); }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -611,7 +612,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: fs }); if (activeLoop.project_id) { const d = useDecomposeStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; const o = useOrchestrateStore.getState().items.find(x => x.project_id === activeLoop.project_id && x.status === 'done') || null; computeDecisionQuality({ decompose: d, orchestrate: o, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === activeLoop.project_id), refinementLoop: { ...activeLoop, status: fs }, judgments: useJudgmentStore.getState().judgments.filter(j => j.project_id === activeLoop.project_id), personas: usePersonaStore.getState().personas, projectId: activeLoop.project_id }); } }}>
+                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: fs }); }}>
                   마무리
                 </Button>
               </div>
@@ -640,6 +641,9 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
               {/* DQ Score Card */}
               <DQScoreCard loop={activeLoop} feedbackHistory={feedbackHistory} />
+
+              {/* Cross-project: persona accuracy (only if outcome data exists) */}
+              <PersonaAccuracyCard />
 
               {/* Retrospective questions */}
               <RetrospectiveCard loop={activeLoop} feedbackHistory={feedbackHistory} />
@@ -768,6 +772,7 @@ function IssueCheckbox({ issue, selected, onToggle, variant }: {
 // ── DQ Score Card ──
 function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
   const [score, setScore] = useState<DecisionQualityScore | null>(null);
+  const animatedDq = useCountUp(score?.overall_dq ?? 0);
 
   useEffect(() => {
     if (!loop.project_id || loop.status === 'active') return;
@@ -777,7 +782,7 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedback
     const personas = usePersonaStore.getState().personas;
     const result = computeDecisionQuality({ decompose, orchestrate, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === loop.project_id), refinementLoop: loop, judgments, personas, projectId: loop.project_id });
     setScore(result);
-  }, [loop.project_id, loop.status]);
+  }, [loop.project_id, loop.status, feedbackHistory]);
 
   if (!score) return null;
 
@@ -793,14 +798,14 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedback
   const dqColor = score.overall_dq >= 70 ? 'var(--success)' : score.overall_dq >= 40 ? 'var(--accent)' : 'var(--danger)';
 
   return (
-    <Card className="!bg-[var(--bg)]">
+    <Card className="!bg-[var(--bg)] reward-entrance">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <ShieldAlert size={14} className="text-[var(--accent)]" />
           <p className="text-[13px] font-bold text-[var(--text-primary)]">판단 품질 스코어</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[24px] font-extrabold" style={{ color: dqColor }}>{score.overall_dq}</span>
+          <span className="text-[24px] font-extrabold animate-score-pop" style={{ color: dqColor }}>{animatedDq}</span>
           <span className="text-[11px] text-[var(--text-tertiary)]">/ 100</span>
         </div>
       </div>
@@ -812,7 +817,7 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedback
             <span className="text-[11px] text-[var(--text-secondary)] w-[72px] shrink-0 text-right">{el.key}</span>
             <div className="flex-1 h-[6px] bg-[var(--surface)] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all duration-500"
+                className="h-full rounded-full animate-bar-grow"
                 style={{ width: `${(el.value / el.max) * 100}%`, backgroundColor: el.value >= 4 ? 'var(--success)' : el.value >= 2 ? 'var(--accent)' : 'var(--danger)' }}
               />
             </div>
@@ -840,8 +845,68 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedback
         </div>
       </div>
 
+      {/* Inline trend — one line, only with 2+ projects */}
+      {(() => {
+        const allScores = getDQScores();
+        if (allScores.length < 2) return null;
+        const sorted = [...allScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const prev = sorted[sorted.length - 2];
+        const diff = score.overall_dq - prev.overall_dq;
+        if (diff === 0) return null;
+        const arrow = diff > 0 ? '↑' : '↓';
+        const color = diff > 0 ? 'var(--success)' : 'var(--danger)';
+        return (
+          <p className="mt-3 text-[11px] font-medium" style={{ color }}>
+            {arrow} 이전 프로젝트 대비 {diff > 0 ? '+' : ''}{diff}p
+          </p>
+        );
+      })()}
+
+      <p className="mt-2 text-[10px] text-[var(--text-tertiary)]">
+        DQ 스코어는 결과와 독립적으로 의사결정 프로세스의 품질을 측정합니다. — Spetzler (2016)
+      </p>
+    </Card>
+  );
+}
+
+// ── Persona Accuracy Card (cross-project) ──
+function PersonaAccuracyCard() {
+  const outcomes = getOutcomeRecords();
+  const personas = usePersonaStore.getState().personas;
+  if (outcomes.length === 0) return null;
+
+  const accuracy = analyzePersonaPredictionAccuracy(outcomes, personas);
+  if (accuracy.length === 0) return null;
+
+  return (
+    <Card className="!bg-[var(--surface)]">
+      <div className="flex items-center gap-2 mb-3">
+        <Target size={14} className="text-[var(--accent)]" />
+        <p className="text-[13px] font-bold text-[var(--text-primary)]">페르소나 예측 정확도</p>
+        <span className="text-[11px] text-[var(--text-tertiary)] ml-auto">{outcomes.length}개 프로젝트</span>
+      </div>
+
+      <div className="space-y-2">
+        {accuracy.slice(0, 5).map(pa => {
+          const pct = Math.round(pa.accuracy_rate * 100);
+          const color = pct >= 60 ? 'var(--success)' : pct >= 30 ? 'var(--accent)' : 'var(--text-tertiary)';
+          return (
+            <div key={pa.persona_id} className="flex items-center gap-2">
+              <span className="text-[11px] text-[var(--text-secondary)] w-[80px] shrink-0 truncate text-right">{pa.persona_name}</span>
+              <div className="flex-1 h-[6px] bg-[var(--surface)] rounded-full overflow-hidden border border-[var(--border-subtle)]">
+                <div
+                  className="h-full rounded-full animate-bar-grow"
+                  style={{ width: `${pct}%`, backgroundColor: color }}
+                />
+              </div>
+              <span className="text-[10px] text-[var(--text-tertiary)] w-[36px] shrink-0">{pa.risks_materialized}/{pa.total_risks_predicted}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <p className="mt-3 text-[10px] text-[var(--text-tertiary)]">
-        DQ 스코어는 결과와 독립적으로 의사결정 프로세스의 품질을 측정합니다. — Spetzler (2016) Decision Quality 프레임워크
+        예측한 리스크 중 실제 발생 비율. 높을수록 페르소나가 현실을 잘 반영합니다.
       </p>
     </Card>
   );
@@ -861,9 +926,20 @@ function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefinementLoop;
   const [keyLearnings, setKeyLearnings] = useState('');
 
   if (existing.length > 0 || saved) {
+    const allOutcomes = getOutcomeRecords();
+    const allDq = getDQScores();
+    const correlation = allOutcomes.length >= 2 && allDq.length >= 2
+      ? correlateDQWithOutcomes(allDq, allOutcomes)
+      : null;
+
     return (
-      <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium py-2">
-        <Check size={14} /> 실행 결과가 기록되었습니다
+      <div className="py-2 space-y-1.5">
+        <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium">
+          <Check size={14} /> 실행 결과가 기록되었습니다
+        </div>
+        {correlation && correlation.sample_size >= 4 && (
+          <p className="text-[11px] text-[var(--text-secondary)] pl-6">{correlation.insight}</p>
+        )}
       </div>
     );
   }

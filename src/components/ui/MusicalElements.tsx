@@ -183,3 +183,161 @@ export function DynamicMark({
     </span>
   );
 }
+
+/* ────────────────────────────────────
+   TrebleClef — 높은음자리표 워터마크
+   Decorative SVG for card/section
+   backgrounds. Use with low opacity.
+   ──────────────────────────────────── */
+
+export function TrebleClef({
+  size = 120,
+  color = 'var(--accent)',
+  opacity = 0.04,
+  className = '',
+}: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size * 1.6}
+      viewBox="0 0 100 160"
+      fill="none"
+      className={`pointer-events-none select-none ${className}`}
+      style={{ opacity }}
+      aria-hidden="true"
+    >
+      <path
+        d="M52 148c-16 0-28-8-28-22 0-10 6-18 16-20l2 6c-6 2-10 8-10 14 0 10 8 16 20 16 14 0 22-10 22-24 0-20-14-36-22-50L48 58c-8-14-14-28-14-44C34 6 40 0 50 0c8 0 14 6 14 14 0 6-4 10-8 10-4 0-6-2-6-6 0-3 2-5 4-6-1-2-3-4-6-4-6 0-10 6-10 14 0 12 6 24 14 40l4 8c10 18 24 34 24 56 0 18-10 26-24 26z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+/* ────────────────────────────────────
+   SoundWave — 수평 파형
+   Animated waveform bars for loading
+   states or decorative use.
+   ──────────────────────────────────── */
+
+export function SoundWave({
+  bars = 5,
+  height = 24,
+  color = 'var(--accent)',
+  animated = true,
+  className = '',
+}: {
+  bars?: number;
+  height?: number;
+  color?: string;
+  animated?: boolean;
+  className?: string;
+}) {
+  const barWidth = 3;
+  const gap = 3;
+  const totalWidth = bars * barWidth + (bars - 1) * gap;
+  const heights = [0.4, 0.7, 1, 0.7, 0.4, 0.6, 0.9];
+
+  return (
+    <svg
+      width={totalWidth}
+      height={height}
+      viewBox={`0 0 ${totalWidth} ${height}`}
+      className={className}
+      aria-hidden="true"
+    >
+      {Array.from({ length: bars }).map((_, i) => {
+        const h = height * (heights[i % heights.length] || 0.5);
+        const y = (height - h) / 2;
+        return (
+          <rect
+            key={i}
+            x={i * (barWidth + gap)}
+            y={y}
+            width={barWidth}
+            height={h}
+            rx={1.5}
+            fill={color}
+            opacity={0.8}
+            style={animated ? {
+              animation: `wave-ripple ${1.2 + i * 0.15}s ease-in-out infinite`,
+              animationDelay: `${i * 0.1}s`,
+            } : undefined}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ────────────────────────────────────
+   MusicalDivider — 음악적 구분선
+   Replaces generic border-t / <hr>.
+   Combines bar line + optional dynamic mark.
+   ──────────────────────────────────── */
+
+export function MusicalDivider({
+  mark,
+  className = '',
+}: {
+  mark?: 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff';
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center gap-3 my-4 ${className}`} role="separator" aria-hidden="true">
+      <div className="flex-1 h-px bg-[var(--border)]" />
+      <BarLine type="single" height={16} />
+      {mark && <DynamicMark level={mark} className="text-[11px]" />}
+      <div className="flex-1 h-px bg-[var(--border)]" />
+    </div>
+  );
+}
+
+/* ────────────────────────────────────
+   ConductorBaton — 지휘봉 로딩 아이콘
+   Animated baton using CSS class
+   `animate-baton` from globals.css.
+   ──────────────────────────────────── */
+
+export function ConductorBaton({
+  size = 24,
+  color = 'var(--accent)',
+  animated = true,
+  className = '',
+}: {
+  size?: number;
+  color?: string;
+  animated?: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={`${animated ? 'animate-baton' : ''} ${className}`}
+      aria-hidden="true"
+    >
+      {/* Baton shaft */}
+      <line
+        x1="12"
+        y1="4"
+        x2="12"
+        y2="20"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* Handle / grip */}
+      <circle cx="12" cy="20" r="2.5" fill={color} />
+      {/* Tip */}
+      <circle cx="12" cy="4" r="1.5" fill={color} opacity="0.6" />
+    </svg>
+  );
+}

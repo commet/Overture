@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Layers, Map, Users, RefreshCw } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { BarLine, CrescendoHairpin } from '@/components/ui/MusicalElements';
 
 const steps = [
   {
@@ -58,16 +59,18 @@ function StepRow({ step, delay, isLast }: { step: typeof steps[number]; delay: n
   return (
     <div ref={ref} className={isVisible ? 'scroll-visible' : 'scroll-hidden'}>
       <Link href={step.href} className="group flex items-start gap-4 md:gap-5">
-        {/* Number + line */}
+        {/* Number + connector */}
         <div className="flex flex-col items-center shrink-0">
           <div
-            className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-[14px] md:text-[16px] font-extrabold transition-colors group-hover:shadow-md"
+            className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-[14px] md:text-[16px] font-extrabold transition-all duration-300 shadow-[var(--shadow-sm)] group-hover:shadow-[var(--glow-gold)]"
             style={{ backgroundColor: `${step.color}12`, color: step.color }}
           >
             {step.number}
           </div>
           {!isLast && (
-            <div className="w-px flex-1 min-h-[32px] mt-2" style={{ backgroundColor: `${step.color}20` }} />
+            <div className="flex flex-col items-center mt-2 min-h-[32px]">
+              <CrescendoHairpin width={16} height={24} color={`${step.color}40`} className="rotate-90" />
+            </div>
           )}
         </div>
 
@@ -105,10 +108,7 @@ export function ProcessFlow() {
     <section>
       <div className="max-w-2xl mx-auto px-5 md:px-6 py-12 md:py-16">
         <div className="text-center mb-8 md:mb-10">
-          <h2
-            className="text-[24px] md:text-[36px] font-bold text-[var(--text-primary)] tracking-tight"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
+          <h2 className="text-display-lg text-[var(--text-primary)]">
             네 단계로 작동합니다
           </h2>
           <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)]">
@@ -120,6 +120,10 @@ export function ProcessFlow() {
           {steps.map((step, i) => (
             <StepRow key={step.number} step={step} delay={i * 100} isLast={i === steps.length - 1} />
           ))}
+          {/* Final bar line */}
+          <div className="flex justify-start pl-[18px] md:pl-[22px] -mt-2">
+            <BarLine type="final" height={20} />
+          </div>
         </div>
       </div>
     </section>

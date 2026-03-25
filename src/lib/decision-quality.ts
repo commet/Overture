@@ -52,6 +52,11 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
     judgments, personas, projectId,
   } = input;
 
+  // Idempotency: return cached score if already computed for this project
+  const cachedScores = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
+  const cached = cachedScores.find(s => s.project_id === projectId);
+  if (cached) return cached;
+
   // ── DQ Element 1: Appropriate Frame (적절한 프레이밍) ──
   // Did the reframing produce a meaningfully different question?
   let appropriateFrame = 0;
@@ -195,7 +200,12 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
     created_at: new Date().toISOString(),
   };
 
-  // Persist
+  // Persist to localStorage
+  cachedScores.push(score);
+  if (cachedScores.length > 100) cachedScores.splice(0, cachedScores.length - 100);
+  setStorage(STORAGE_KEYS.DQ_SCORES, cachedScores);
+
+  // Persist to Supabase
   insertToSupabase('decision_quality_scores', score);
 
   recordSignal({
@@ -221,6 +231,15 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   });
 
   return score;
+}
+
+/**
+ * Get DQ scores from localStorage, optionally for a specific project.
+ */
+export function getDQScores(projectId?: string): DecisionQualityScore[] {
+  const all = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
+  if (!projectId) return all;
+  return all.filter(s => s.project_id === projectId);
 }
 
 /* ────────────────────────────────────

@@ -152,6 +152,7 @@ export function injectDecomposeContext(
     sections.push('### 의심된 전제 (key_assumptions 최우선 — 검증 단계 필수)');
     doubtful.forEach((a, i) => {
       sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 의심됨)`);
+      if (a.evaluation_reason) sections.push(`   의심 이유: ${a.evaluation_reason}`);
       if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
     });
   }
@@ -161,6 +162,7 @@ export function injectDecomposeContext(
     sections.push('### 불확실한 전제 (key_assumptions에 포함 — 검증 방법 제시)');
     uncertain.forEach((a, i) => {
       sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 불확실)`);
+      if (a.evaluation_reason) sections.push(`   불확실 이유: ${a.evaluation_reason}`);
       if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
     });
   }
@@ -201,23 +203,57 @@ export function injectDecomposeContext(
   // Interview signals → guide the AI's approach
   if (ctx.interview_signals && Object.keys(ctx.interview_signals).length > 0) {
     const signals: string[] = [];
-    if (ctx.interview_signals.uncertainty) {
-      const uncertaintyMap: Record<string, string> = {
-        why: '사용자가 "왜 해야 하는지" 불확실해합니다. 목적과 가치를 명확히 해주세요.',
-        what: '사용자가 "무엇을 해야 하는지" 불확실해합니다. 범위를 구체적으로 정의해주세요.',
-        how: '사용자가 "어떻게 해야 하는지" 불확실해합니다. 실행 방법론에 집중해주세요.',
-        none: '사용자는 정리가 필요한 상태입니다. 구조화에 집중해주세요.',
+    const s = ctx.interview_signals;
+
+    // v2 signal handling
+    if (s.nature) {
+      const natureMap: Record<string, string> = {
+        known_path: '이 과제는 검증된 방법이 있습니다. 실행의 구체성에 집중하세요.',
+        needs_analysis: '분석이 필요한 과제입니다. 데이터와 전문성 기반으로 접근하세요.',
+        no_answer: '탐색적 과제입니다. 작은 실험과 학습 루프를 설계하세요.',
+        on_fire: '긴급 상황입니다. 즉각 대응과 근본 해결을 구분하세요.',
       };
-      const hint = uncertaintyMap[ctx.interview_signals.uncertainty];
+      const hint = natureMap[s.nature];
       if (hint) signals.push(hint);
     }
-    if (ctx.interview_signals.success === 'unclear') {
-      signals.push('성공 기준이 불명확합니다. goal_summary를 특히 구체적으로 작성해주세요.');
+    if (s.goal) {
+      const goalMap: Record<string, string> = {
+        clear_goal: '목표가 명확합니다. 달성 경로에 집중하세요.',
+        direction_only: '방향만 있고 구체적 목표가 없습니다. 목표를 구체화하는 단계를 포함하세요.',
+        competing: '목표가 충돌합니다. 이해관계자별 우선순위 정렬이 필요합니다.',
+        unclear: '목표가 불분명합니다. goal_summary를 특히 구체적으로 작성해주세요.',
+      };
+      const hint = goalMap[s.goal];
+      if (hint) signals.push(hint);
     }
+    if (s.stakes === 'irreversible') {
+      signals.push('되돌리기 어려운 결정입니다. 검증 단계를 실행 전에 배치하세요.');
+    }
+    if (s.history === 'failed') {
+      signals.push('과거에 비슷한 시도가 실패했습니다. "이번에는 다른 점"을 명확히 하세요.');
+    }
+
+    // v1 fallback (for legacy data without nature field)
+    if (!s.nature) {
+      if (s.uncertainty) {
+        const uncertaintyMap: Record<string, string> = {
+          why: '사용자가 "왜 해야 하는지" 불확실해합니다. 목적과 가치를 명확히 해주세요.',
+          what: '사용자가 "무엇을 해야 하는지" 불확실해합니다. 범위를 구체적으로 정의해주세요.',
+          how: '사용자가 "어떻게 해야 하는지" 불확실해합니다. 실행 방법론에 집중해주세요.',
+          none: '사용자는 정리가 필요한 상태입니다. 구조화에 집중해주세요.',
+        };
+        const hint = uncertaintyMap[s.uncertainty];
+        if (hint) signals.push(hint);
+      }
+      if (s.success === 'unclear') {
+        signals.push('성공 기준이 불명확합니다. goal_summary를 특히 구체적으로 작성해주세요.');
+      }
+    }
+
     if (signals.length > 0) {
       sections.push('');
       sections.push('### 사용자 맥락 신호');
-      signals.forEach(s => sections.push(`- ${s}`));
+      signals.forEach(sig => sections.push(`- ${sig}`));
     }
   }
 

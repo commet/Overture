@@ -14,17 +14,15 @@ export type ReframingStrategy =
   | 'diagnose_root'        // 근본 원인 진단 먼저
   | 'redirect_angle';      // 완전히 다른 각도에서 보기
 
-export interface InterviewSignals {
-  origin?: 'top-down' | 'external' | 'self' | 'fire';
-  uncertainty?: 'why' | 'what' | 'how' | 'none';
-  success?: 'measurable' | 'risk' | 'opportunity' | 'unclear';
-}
+// Re-export from types for backward compat
+export type { InterviewSignals } from '@/stores/types';
 
 /* ────────────────────────────────────
    Strategy Selection Matrix
    ──────────────────────────────────── */
 
 import { getBestStrategy } from '@/lib/eval-engine';
+import type { InterviewSignals } from '@/stores/types';
 
 /**
  * Phase 2: 데이터 기반 전략 선택 → 규칙 기반 fallback.
@@ -33,7 +31,49 @@ import { getBestStrategy } from '@/lib/eval-engine';
 export function selectReframingStrategy(signals: InterviewSignals): ReframingStrategy {
   const dataDriven = getBestStrategy(signals);
   if (dataDriven) return dataDriven;
+
+  // v2 signals: Cynefin/Thompson-Tuden based selection
+  if (signals.version === 2 || signals.nature) {
+    return selectReframingStrategyV2(signals);
+  }
+
   return selectReframingStrategyRuleBased(signals);
+}
+
+/** v2: Cynefin/Thompson-Tuden 기반 전략 선택 */
+function selectReframingStrategyV2(signals: InterviewSignals): ReframingStrategy {
+  const { nature, goal, stakes } = signals;
+
+  // Complex + unclear/competing goal → challenge existence
+  if (nature === 'no_answer' && (goal === 'unclear' || goal === 'competing')) {
+    return 'challenge_existence';
+  }
+
+  // Complex + clear goal → narrow scope (목표는 있으니 가장 작은 실험부터)
+  if (nature === 'no_answer' && goal === 'clear_goal') {
+    return 'narrow_scope';
+  }
+
+  // Chaotic → diagnose root cause before acting
+  if (nature === 'on_fire') return 'diagnose_root';
+
+  // Clear/Complicated + clear goal → narrow scope for execution
+  if ((nature === 'known_path' || nature === 'needs_analysis') && goal === 'clear_goal') {
+    return 'narrow_scope';
+  }
+
+  // Irreversible + analysis needed → redirect angle (careful multi-perspective)
+  if (stakes === 'irreversible' && nature === 'needs_analysis') {
+    return 'redirect_angle';
+  }
+
+  // Competing goals → redirect angle (multiple stakeholder perspectives)
+  if (goal === 'competing') return 'redirect_angle';
+
+  // Direction only → narrow scope to find actionable first step
+  if (goal === 'direction_only') return 'narrow_scope';
+
+  return 'redirect_angle';
 }
 
 /** 규칙 기반 fallback (원본 보존) */

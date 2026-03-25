@@ -38,14 +38,15 @@ export function ConcertmasterStrip() {
     return (
       <button
         onClick={toggleConcertmaster}
-        className={`hidden lg:flex shrink-0 w-12 flex-col items-center justify-start pt-4 gap-2 border-l border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:bg-[var(--ai)] transition-colors ${
+        className={`hidden lg:flex shrink-0 w-12 flex-col items-center justify-start pt-4 gap-2 border-l border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:bg-[var(--ai)] transition-colors relative ${
           hasNewInsights ? 'animate-subtle-pulse' : ''
         }`}
         title="악장 열기"
       >
+        <div className="absolute inset-y-0 left-0 w-[2px]" style={{ background: 'var(--gradient-gold)' }} />
         <Music2 size={18} className="text-[var(--gold)]" />
         {hasNewInsights && (
-          <span className="w-2 h-2 rounded-full bg-[var(--gold)]" />
+          <span className="w-2 h-2 rounded-full bg-[var(--gold)] shadow-[var(--glow-gold)]" />
         )}
       </button>
     );
@@ -54,6 +55,8 @@ export function ConcertmasterStrip() {
   // Expanded state (300px)
   return (
     <div className="hidden lg:flex shrink-0 w-[300px] flex-col border-l border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+      {/* Gold gradient top accent */}
+      <div className="h-[2px] w-full shrink-0" style={{ background: 'var(--gradient-gold)' }} />
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">

@@ -42,7 +42,8 @@ export function Sidebar() {
     : null;
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[var(--border-subtle)] shrink-0 overflow-y-auto">
+    <aside className="hidden lg:flex flex-col w-56 bg-[var(--surface)]/60 backdrop-blur-sm border-r border-[var(--border-subtle)] shrink-0 overflow-y-auto relative">
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-surface)' }} />
       {/* Current project */}
       {currentProject && (
         <div className="px-3 pt-4 pb-2">

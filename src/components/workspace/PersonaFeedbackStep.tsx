@@ -508,7 +508,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
             const sharpestName = sharpestPersona ? personas.find(p => p.id === sharpestPersona.persona_id)?.name : null;
 
             return (
-              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--ai)] p-4">
+              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--ai)] p-4 reward-entrance">
                 <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">{personaCount}명의 이해관계자가 검토했습니다</p>
 
                 {/* 가장 날카로운 한마디 */}

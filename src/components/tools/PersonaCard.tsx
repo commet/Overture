@@ -25,19 +25,22 @@ export function PersonaCard({ persona, onClick, selected, selectable, onSelect }
     <div
       onClick={selectable ? () => onSelect?.(!selected) : onClick}
       className={`
-        relative rounded-xl border p-4 cursor-pointer transition-all duration-200
+        relative rounded-xl border p-4 cursor-pointer transition-all duration-300
         ${selected
-          ? 'border-[var(--accent)] bg-[var(--ai)] shadow-sm -translate-y-0.5'
-          : 'border-[var(--border-subtle)] hover:border-[var(--border)] bg-[var(--surface)]'
+          ? 'border-[var(--accent)] bg-[var(--ai)] shadow-[var(--shadow-md)] -translate-y-1'
+          : 'border-[var(--border-subtle)] hover:border-[var(--border)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 bg-[var(--surface)] shadow-[var(--shadow-sm)]'
         }
       `}
     >
       <div className="flex items-start gap-3">
         {/* Avatar with influence ring */}
-        <div className={`
-          w-11 h-11 rounded-xl flex items-center justify-center text-[18px] font-bold shrink-0
-          ${selected ? 'bg-[var(--accent)] text-[var(--bg)]' : `${inf.bg} ${inf.text}`}
-        `}>
+        <div
+          className={`
+            w-11 h-11 rounded-xl flex items-center justify-center text-[18px] font-bold shrink-0 transition-all duration-200
+            ${selected ? 'text-white shadow-[var(--glow-gold)]' : `${inf.bg} ${inf.text}`}
+          `}
+          style={selected ? { background: 'var(--gradient-gold)' } : undefined}
+        >
           {persona.name.charAt(0).toUpperCase()}
         </div>
 

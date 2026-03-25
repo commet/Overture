@@ -108,6 +108,24 @@ export async function GET(req: Request) {
     pageCounts[path] = (pageCounts[path] || 0) + 1;
   }
 
+  // 7. Stale projects needing outcome recording
+  const { data: staleProjects } = await supabase
+    .from('refinement_loops')
+    .select('project_id, user_id, updated_at')
+    .in('status', ['converged', 'stopped_by_user'])
+    .lt('updated_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString());
+
+  let staleWithoutOutcome = 0;
+  if (staleProjects && staleProjects.length > 0) {
+    const projectIds = staleProjects.map(p => p.project_id);
+    const { data: existingOutcomes } = await supabase
+      .from('outcome_records')
+      .select('project_id')
+      .in('project_id', projectIds);
+    const outcomeProjectIds = new Set((existingOutcomes || []).map(o => o.project_id));
+    staleWithoutOutcome = staleProjects.filter(p => !outcomeProjectIds.has(p.project_id)).length;
+  }
+
   // ── Build HTML Report ──
 
   const kstDate = yesterday;
@@ -196,6 +214,14 @@ export async function GET(req: Request) {
         </tr>`).join('')}
     </table>
   </div>
+
+  <!-- Stale projects -->
+  ${staleWithoutOutcome > 0 ? `
+  <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+    <h2 style="font-size: 14px; color: #d97706; margin: 0 0 8px;">Outcome 미기록 ${staleWithoutOutcome}건</h2>
+    <p style="font-size: 12px; color: #78716c; margin: 0;">2주 이상 지난 완료 프로젝트 중 실행 결과가 기록되지 않은 건수입니다.</p>
+  </div>
+  ` : ''}
 
   <!-- Errors -->
   ${eventCounts['error'] ? `

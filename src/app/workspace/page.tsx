@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -13,7 +13,9 @@ import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu, Sparkles, Clock, X } from 'lucide-react';
+import { getStorage, STORAGE_KEYS } from '@/lib/storage';
+import type { RefinementLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
@@ -81,7 +83,9 @@ function WorkspaceContent() {
         </div>
 
         {/* Step content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto relative">
+          {/* Stage light ambient glow */}
+          <div className="absolute inset-x-0 top-0 h-48 pointer-events-none" style={{ background: 'var(--gradient-stage-light)' }} />
           {/* Anonymous trial banner */}
           {!user && (
             <div className="mx-4 md:mx-6 lg:mx-8 mt-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20">
@@ -93,12 +97,15 @@ function WorkspaceContent() {
               </div>
               <Link
                 href="/login"
-                className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:opacity-90 transition-opacity"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all"
               >
                 로그인
               </Link>
             </div>
           )}
+          {/* Outcome recording nudge */}
+          <OutcomeNudge onNavigate={handleNavigate} />
+
           {/* No project — show creation */}
           {!currentProjectId && (
             <div className="flex items-center justify-center h-full">
@@ -123,7 +130,8 @@ function WorkspaceContent() {
                         track('project_created');
                       }
                     }}
-                    className="w-full px-4 py-3 rounded-lg bg-[var(--accent)] text-[var(--bg)] font-medium text-[14px] hover:opacity-90 transition-opacity cursor-pointer"
+                    className="w-full px-4 py-3 rounded-lg text-white font-medium text-[14px] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)]"
+                    style={{ background: 'var(--gradient-gold)' }}
                   >
                     프로젝트 시작
                   </button>
@@ -169,10 +177,10 @@ function WorkspaceContent() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-1 py-2 z-40">
         {(['decompose', 'orchestrate', 'persona-feedback', 'refinement-loop'] as StepId[]).map((step) => {
           const icons: Record<string, React.ReactNode> = {
-            'decompose': <span className="text-[18px]">🎼</span>,
-            'orchestrate': <span className="text-[18px]">🎹</span>,
-            'persona-feedback': <span className="text-[18px]">🎭</span>,
-            'refinement-loop': <span className="text-[18px]">🔄</span>,
+            'decompose': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,
+            'orchestrate': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="22" r="0" fill="currentColor"/><path d="M8 6l4-4 4 4"/></svg>,
+            'persona-feedback': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><circle cx="12" cy="16" r="3"/></svg>,
+            'refinement-loop': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>,
           };
           const labels: Record<string, string> = {
             'decompose': '해석',
@@ -196,6 +204,42 @@ function WorkspaceContent() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
+  const [staleCount, setStaleCount] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+    const outcomes = getStorage<OutcomeRecord[]>(STORAGE_KEYS.OUTCOME_RECORDS, []);
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    const stale = loops.filter(l =>
+      l.status !== 'active' &&
+      new Date(l.updated_at) < twoWeeksAgo &&
+      !outcomes.some(o => o.project_id === l.project_id)
+    );
+    setStaleCount(stale.length);
+  }, []);
+
+  if (staleCount === 0 || dismissed) return null;
+
+  return (
+    <div className="mx-4 md:mx-6 lg:mx-8 mt-3 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--checkpoint)] border border-[var(--risk-manageable)]/20">
+      <div className="flex items-center gap-2 text-[13px]">
+        <Clock size={14} className="text-[var(--risk-manageable)] shrink-0" />
+        <span className="text-[var(--text-primary)]">
+          {staleCount}개 프로젝트의 실행 결과를 기록할 수 있습니다.{' '}
+          <button onClick={() => onNavigate('refinement-loop')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button>
+        </span>
+      </div>
+      <button onClick={() => setDismissed(true)} className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer">
+        <X size={14} />
+      </button>
     </div>
   );
 }

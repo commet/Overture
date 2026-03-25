@@ -124,7 +124,7 @@ function ReviewItemCard({
                 setSubmitted(true);
               }
             }}
-            className="px-2.5 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[11px] font-medium hover:opacity-90 transition-opacity cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[11px] font-medium hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer"
           >
             <Check size={12} />
           </button>
