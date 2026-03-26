@@ -209,6 +209,65 @@ Anti-sycophancy check:
 
 **Warning:** If score ≥ 80 but anti-sycophancy checks are all empty, flag it: "High score but no pushback detected. The analysis may be validating existing thinking rather than challenging it."
 
+### Your Score — The Transformation Card
+
+**This is Overture's signature.** After every full pipeline, end with this compact card. It must be copy-pasteable into Slack/Twitter as-is.
+
+```
+  ╭─────────────── Your Score ─────────────╮
+  │                                         │
+  │  "[original question, shortened]"       │
+  │          ↓                              │
+  │  "[reframed question, shortened]"       │
+  │                                         │
+  │  DQ [N] · [four notes]                  │
+  │                                         │
+  │  "[sharpest critique quote]"            │
+  │   — [persona name]                      │
+  │                                         │
+  ╰─────────────────────────────────────────╯
+```
+
+**The Four Notes** — each symbol encodes how much that stage changed the user's thinking:
+
+```
+░ = slight shift    (the stage confirmed existing thinking)
+▒ = moderate shift  (real restructuring happened)
+▓ = major shift     (significant rethinking required)
+█ = breakthrough    ("I never thought of it that way")
+```
+
+Four positions = four stages: reframe, orchestrate, rehearse, refine.
+Example: `░▓█▒` = slight reframe, big restructure, breakthrough in rehearsal, moderate refinement.
+
+**How to calculate each note:**
+- Reframe: How different is the reframed question from the original? Same direction = ░, different angle = ▒, different premise = ▓, "wait, THAT's the real question?" = █
+- Orchestrate: How much did the plan challenge the user's assumed approach? Organized what they had = ░, changed sequence/actors = ▒, different strategy = ▓, fundamentally different plan = █
+- Rehearse: How harsh was the feedback? All manageable = ░, some critical = ▒, plan-changing critiques = ▓, "this might not work at all" = █
+- Refine: How much did the plan change after feedback? Minor edits = ░, structural changes = ▒, major revision = ▓, back-to-drawing-board = █
+
+**The "Sharpest Critique"** is the single most provocative, uncomfortable line from any persona or the Devil's Advocate. Pick the one that would make the user pause. This is Overture's fortune cookie — personalized, contextual, uncomfortable, memorable.
+
+### Blind Spot Profile (when journal has 5+ entries)
+
+If the journal has 5 or more previous runs, show the user's cognitive pattern after the Score Card:
+
+```
+  ■ Your Thinking Pattern (last [N] sessions)
+
+    [date] ░▒▓▒  DQ 77
+    [date] ▒▒█▒  DQ 82
+    [date] ░░▓█  DQ 71
+    [date] ▒▓▓▒  DQ 79
+    [date] ░▒█▒  DQ 84  ← latest
+
+  You keep missing: [most common blind spot category]
+  You're strong at: [least common blind spot category]
+  Trend: [improving/stable/declining] ↑
+```
+
+This is the "Spotify Wrapped" for thinking quality. Over time, users see their patterns and growth.
+
 ## Final check
 
 Before delivering, ask yourself:
@@ -221,13 +280,14 @@ If any answer is "no," strengthen that section.
 ## Learning journal
 
 Append to `.overture/journal.md` in the project root (the directory containing `.git`, or the current working directory):
+
 ```
 ## [date] /overture — full pipeline
 - Problem: "[original]"
 - Reframed: "[new question]"
-- Steps: [N] | AI [M]% / Human [K]%
+- Score: DQ [N] · [four notes, e.g. ░▓█▒]
 - Rehearsal: [N] personas, [M] critical, [K] unspoken
 - Convergence: [N] rounds | [converged/not]
-- DQ: [N]/100
-- Sharpest critique: "[quote]"
+- Sharpest critique: "[quote]" — [persona]
+- Blind spots: [which assumption dimensions were missed]
 ```

@@ -284,11 +284,31 @@ The **reframed question** should be equal or broader in scope than the original.
     · [specific limitation]
 ```
 
-After the output:
+### The Score Card
+
+At the very end, always show this compact card. This is Overture's signature — the "before → after" transformation in a shareable format:
 
 ```
-  ──────────────────────────────────────────
+  ╭─────────────── Your Score ─────────────╮
+  │                                         │
+  │  "[original question, shortened]"       │
+  │          ↓                              │
+  │  "[reframed question, shortened]"       │
+  │                                         │
+  │  DQ [N]                                 │
+  │  "[sharpest hidden question]"           │
+  │                                         │
+  ╰─────────────────────────────────────────╯
+```
 
+**This card must:**
+- Show the transformation (vague → sharp) — this IS the value
+- Be copy-pasteable into Slack/Twitter as-is
+- Include the most provocative hidden question as a "fortune cookie" — this is what makes people talk about it
+
+After the card:
+
+```
   Next: /orchestrate to design an execution plan
         /rehearse to stress-test with stakeholders
 ```
