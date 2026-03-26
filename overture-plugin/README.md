@@ -63,15 +63,17 @@ Plus a Decision Quality scorecard (0-100) measuring your thinking process.
 
 ## Installation
 
-```
-/plugin install overture
+**One-line install (global — works in any project):**
+```bash
+git clone https://github.com/commet/Overture.git /tmp/overture-tmp && cp -r /tmp/overture-tmp/overture-plugin/skills/* ~/.claude/skills/ && cp -r /tmp/overture-tmp/overture-plugin/agents/* ~/.claude/agents/ && rm -rf /tmp/overture-tmp && echo "✓ Overture installed. Restart Claude Code and try /reframe"
 ```
 
-Or from source:
+**Project-only install:**
+```bash
+git clone https://github.com/commet/Overture.git /tmp/overture-tmp && mkdir -p .claude/skills .claude/agents && cp -r /tmp/overture-tmp/overture-plugin/skills/* .claude/skills/ && cp -r /tmp/overture-tmp/overture-plugin/agents/* .claude/agents/ && rm -rf /tmp/overture-tmp && echo "✓ Overture installed for this project."
 ```
-/plugin marketplace add commet/Overture
-/plugin install overture@Overture
-```
+
+**Manual:** Copy `overture-plugin/skills/*` to `~/.claude/skills/` and `overture-plugin/agents/*` to `~/.claude/agents/`
 
 ## What makes this different
 
