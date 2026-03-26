@@ -40,7 +40,9 @@ Every visual section you show to the user → wrap it in a code block. Plain tex
 
 The reframe process has 3 phases. Show the overview first, then walk through each phase one question at a time.
 
-### Overview (show once at the start)
+### Overview + First question (combined in ONE code block)
+
+The overview and the first question go in a SINGLE code block. A separator line divides them visually. This avoids the gap/separation issue between consecutive blocks.
 
 ```
   ╭──────────────────────────────────────────╮
@@ -48,27 +50,11 @@ The reframe process has 3 phases. Show the overview first, then walk through eac
   │  ● Interview  ○ Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  3 phases — just pick numbers, I'll do the rest.
+  ① Interview (3)  ② Assumptions (3-4)  ③ Reframe
 
-  ① Interview (3 questions)
-  ② Assumption check (3-4 items)
-  ③ Reframed question + Sharpened Prompt
-```
+  ──────────────────────────────────────────
 
-Then say "시작합니다!" (or "Let's start!") as a brief text transition, followed by the first interview question as a SEPARATE code block. **The overview and each question must be visually separated — never combine them into one continuous block.**
-
-### Phase 1: Interview
-
-Present each question ONE AT A TIME as its own separate code block. Between questions, use a brief text line (e.g., confirming the user's choice) to create visual separation. Never output two code blocks back-to-back without text between them.
-
-**Question 1:**
-```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ○ Assumptions  ○ Reframe   │
-  ╰──────────────────────────────────────────╯
-
-  ■ Interview                          1 of 3
+  ■ Interview                          1 / 3
 
   Where did this task come from?
 
@@ -80,8 +66,17 @@ Present each question ONE AT A TIME as its own separate code block. Between ques
   ▸
 ```
 
-(Korean version:)
+(Korean version — same structure:)
 ```
+  ╭──────────────────────────────────────────╮
+  │  Overture · Reframe                      │
+  │  ● Interview  ○ Assumptions  ○ Reframe   │
+  ╰──────────────────────────────────────────╯
+
+  ① 인터뷰 (3개)  ② 전제 평가 (3-4개)  ③ 리프레이밍
+
+  ──────────────────────────────────────────
+
   ■ 인터뷰                             1 / 3
 
   이 과제는 어디서 나왔나요?
@@ -93,6 +88,10 @@ Present each question ONE AT A TIME as its own separate code block. Between ques
 
   ▸
 ```
+
+### Phase 1: Interview
+
+After the user answers Q1, show Q2 in its own code block. Between each question, add a brief text confirmation (e.g., "✓ 위에서 지시") to create visual separation. Never output two code blocks back-to-back without text between them.
 
 Wait for user input (a number). Then show Question 2:
 
