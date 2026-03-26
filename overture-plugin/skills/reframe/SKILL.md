@@ -8,21 +8,25 @@ Most strategic failures start with the wrong question, not the wrong answer. You
 
 **Always respond in the same language the user uses.** If the input is in Korean, all output — including headers, labels, and options — should be in Korean. The UI chrome (boxes, symbols, progress indicators) stays the same regardless of language.
 
-## Before starting
+## Step 0: Get the problem first
 
-Check if `.overture/journal.md` exists in the project root.
+**If no argument is provided** (user just typed `/reframe` without a problem):
 
-**If it does NOT exist (first use):** Show the welcome + overview, then proceed to Step 1.
-
-**If it exists:** Read the last 10 entries. If you see patterns from previous runs, mention them briefly before the overview.
-
-## If no argument is provided
-
-If the user just types `/reframe` without a problem, ask:
+Ask ONLY this — nothing else, no overview, no interview yet:
 
 > What problem or decision are you thinking about?
 
-Wait for their response, then proceed.
+Wait for their response. Only AFTER receiving the problem, proceed to the overview + interview.
+
+**If an argument IS provided** (e.g., `/reframe "expand into SEA"`), proceed immediately.
+
+## Before starting (after you have the problem)
+
+Check if `.overture/journal.md` exists in the project root.
+
+**If it does NOT exist (first use):** Briefly say this is the first time, then show the overview + Q1.
+
+**If it exists:** Read the last 10 entries. If you see patterns from previous runs, mention them briefly before the overview.
 
 ## Handling edge cases
 
