@@ -54,7 +54,7 @@ The overview and Q1 go in a SINGLE code block. The box header (`Overture · Refr
 
   ① [Interview] (3)  ② [Assumptions] (3-4)  ③ [Reframe]
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ■ [Interview]                        1 / 3
 
