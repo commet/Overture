@@ -53,13 +53,11 @@ Show the pipeline header at the start:
 
 ## Stage 1 of 4: Reframe (~2 min)
 
-Follow the `/reframe` process in fast mode:
-- Find 3-4 hidden assumptions
-- If the user's input contains confidence signals ("we've validated X", "I'm sure about Y"), reflect those. Otherwise treat as "uncertain."
-- Select reframing strategy based on the inferred confidence pattern
-- Generate the reframed question + 3-5 hidden questions
+Run `/reframe` in fast mode — use its full process, its design system, and its output format. The only difference:
+- Skip the interactive interview. Infer signals from the user's input instead.
+- If the user's input contains confidence signals ("we've validated X"), reflect those. Otherwise treat all assumptions as "uncertain."
 
-Show the reframed question with a breadcrumb:
+After the reframe output, show the breadcrumb:
 
 ```
   reframe ● → orchestrate ○ → rehearse ○ → refine ○
@@ -69,13 +67,12 @@ Ask: **"Does this capture the real question? Correct me if not — otherwise I'l
 
 ## Stage 2 of 4: Orchestrate (~2 min)
 
-Follow the `/orchestrate` process:
+Run `/orchestrate` — use its full process, design system, and output format.
 - Use the reframed question from Stage 1 as the goal
 - Incorporate uncertain assumptions as validation steps
 - Generate 3 stakeholder personas for review
-- Design 3-5 execution steps with clear AI/human separation
 
-Show the execution design with breadcrumb:
+After the orchestrate output, show breadcrumb:
 ```
   reframe ● → orchestrate ● → rehearse ○ → refine ○
 ```
@@ -83,13 +80,10 @@ Then move on.
 
 ## Stage 3 of 4: Rehearse (~3 min)
 
-Follow the `/rehearse` process:
+Run `/rehearse` — use its full process, design system, and output format.
 - Use the stakeholders from Stage 2 as personas
-- Run independent reviews for each persona
-- Run Devil's Advocate (3 lenses)
-- Synthesize findings
 
-Show the rehearsal results with breadcrumb:
+After the rehearse output, show breadcrumb:
 ```
   reframe ● → orchestrate ● → rehearse ● → refine ○
 ```
@@ -97,10 +91,9 @@ Then move on.
 
 ## Stage 4 of 4: Refine (~2-5 min)
 
-Follow the `/refine` process:
+Run `/refine` — use its full process, design system, and output format.
 - Auto-address all critical issues (no user confirmation needed)
-- Maximum 2 refinement rounds (reduced from refine's default 3 to keep total time under 10 minutes)
-- Check convergence
+- Maximum 2 refinement rounds (reduced from default 3 to keep total time under 10 minutes)
 
 ## Stage 5: Score and deliver
 
@@ -108,7 +101,7 @@ Evaluate the entire pipeline and produce 3 deliverables. **Lead with the most ac
 
 Also save the 3 deliverables (Sharpened Prompt, Thinking Summary, Agent Harness) plus the DQ scorecard to `.overture/last-run.md` in the project root (directory containing `.git`, or current working directory). This lets users reference the results later without scrolling through conversation history.
 
-### Deliverable 1: Sharpened Prompt
+### ■ Deliverable 1: Sharpened Prompt
 
 A ready-to-use prompt the user can paste into any AI conversation. It should incorporate:
 - The reframed question
@@ -124,7 +117,7 @@ Paste this into your next AI conversation:
 > Include what AI should focus on and what it should flag for human review.]
 ```
 
-### Deliverable 2: Thinking Summary
+### ■ Deliverable 2: Thinking Summary
 
 A team-shareable summary. Written like an email you'd send to your team — not a consulting document. Keep it under 3000 characters (Slack-friendly).
 
@@ -152,7 +145,7 @@ A team-shareable summary. Written like an email you'd send to your team — not 
 Decision Quality: [N]/100
 ```
 
-### Deliverable 3: Agent Harness
+### ■ Deliverable 3: Agent Harness
 
 A structured instruction document for AI agents — ready to paste into a CLAUDE.md, project brief, or any agent configuration tool. This gives an AI agent everything it needs to execute the plan with the right constraints and checkpoints.
 
@@ -188,7 +181,7 @@ A structured instruction document for AI agents — ready to paste into a CLAUDE
 - [Name]: will block if [specific concern] isn't addressed
 ```
 
-### Decision Quality Scorecard
+### ■ Decision Quality Scorecard
 
 Score the thinking process (not the outcome — outcomes aren't known yet).
 
