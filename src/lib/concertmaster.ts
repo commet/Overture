@@ -60,9 +60,9 @@ const STRATEGY_DISPLAY: Record<ReframingStrategy, string> = {
 
 const EVAL_DISPLAY: Record<string, string> = {
   question_accepted: '질문 채택률',
-  assumptions_engaged: '전제 검토율',
+  assumptions_engaged: '가정 검토율',
   no_immediate_reanalyze: '1회 분석 충분율',
-  has_useful_assumptions: '미확인 전제 발견율',
+  has_useful_assumptions: '미확인 가정 발견율',
 };
 
 /* ────────────────────────────────────
@@ -263,7 +263,7 @@ function getDecomposeCoaching(profile: ConcertmasterProfile): StepCoaching | nul
   // Tier 1: Welcome
   if (profile.sessionCount === 0) {
     return {
-      message: '첫 분석입니다. 과제를 입력하면 숨겨진 전제를 찾아드립니다.',
+      message: '첫 분석입니다. 과제를 입력하면 숨은 가정을 찾아드립니다.',
     };
   }
 
@@ -285,8 +285,8 @@ function getDecomposeCoaching(profile: ConcertmasterProfile): StepCoaching | nul
     const assumptionFail = worstEvals.find((m) => m.evalId === 'assumptions_engaged');
     if (assumptionFail) {
       return {
-        message: '전제 평가를 더 적극적으로 해보세요.',
-        detail: '전제에 "확인됨" 마킹을 하면 분석 품질이 올라갑니다.',
+        message: '가정 평가를 더 적극적으로 해보세요.',
+        detail: '가정에 "확인됨" 마킹을 하면 분석 품질이 올라갑니다.',
       };
     }
   }
@@ -340,7 +340,7 @@ function getOrchestrateCoaching(profile: ConcertmasterProfile): StepCoaching | n
     );
     if (uncertain.length > 0) {
       return {
-        message: `악보 해석에서 불확실 전제 ${uncertain.length}건 — 실행 설계에 검증 단계를 포함하세요.`,
+        message: `악보 해석에서 불확실한 가정 ${uncertain.length}건 — 실행 설계에 검증 단계를 포함하세요.`,
         detail: uncertain.slice(0, 2).map(a => a.assumption).join(' / '),
       };
     }
@@ -425,7 +425,7 @@ function getRefinementLoopCoaching(_profile: ConcertmasterProfile): StepCoaching
       };
     } else if (last.overall_dq < prev.overall_dq * 0.85) {
       return {
-        message: `판단 품질이 하락했습니다 (${prev.overall_dq} → ${last.overall_dq}). 이번엔 전제 검토를 더 꼼꼼히 해보세요.`,
+        message: `판단 품질이 하락했습니다 (${prev.overall_dq} → ${last.overall_dq}). 이번엔 가정 검토를 더 꼼꼼히 해보세요.`,
       };
     }
   }

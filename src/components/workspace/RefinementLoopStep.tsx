@@ -285,7 +285,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>합주 연습 <span className="text-[16px] font-normal text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-display)' }}>| 피드백 반영</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          기획안을 수정하고 이해관계자에게 재리뷰를 받습니다. 핵심 위협이 해소될 때까지.
+          핵심 위협이 해소될 때까지 기획안을 수정하고 재리뷰를 받습니다.
         </p>
         <div className="mt-2">
           <ConcertmasterInline step="refinement-loop" />
@@ -389,7 +389,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
             if (highConditions.length === 0) return null;
             return (
               <Card className="!p-4">
-                <h4 className="text-[12px] font-bold text-[var(--text-secondary)] mb-2">고영향력 승인 조건</h4>
+                <h4 className="text-[12px] font-bold text-[var(--text-secondary)] mb-2">꼭 지켜야 할 승인 조건</h4>
                 <div className="space-y-1.5">
                   {highConditions.map((ac, i) => (
                     <div key={i} className="flex items-start gap-2 text-[12px]">
@@ -562,7 +562,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                       <textarea
                         value={userDirective}
                         onChange={e => setUserDirective(e.target.value)}
-                        placeholder="특정 이슈에 대한 접근 방향이나 맥락을 자유롭게 입력하세요"
+                        placeholder="이슈 해결 방향이나 추가 맥락을 입력하세요"
                         className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
                         rows={2}
                       />
@@ -597,7 +597,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                 </div>
                 {selectedIssues.size > 0 && !isRefining && (
                   <Button size="sm" onClick={handleRunIteration}>
-                    <RefreshCw size={12} /> {selectedIssues.size}건 반영 &rarr; 수정 &rarr; 재리뷰
+                    <RefreshCw size={12} /> {selectedIssues.size}건 반영하고 재리뷰
                   </Button>
                 )}
               </div>

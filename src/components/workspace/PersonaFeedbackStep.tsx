@@ -308,7 +308,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>리허설 <span className="text-[16px] font-normal text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-display)' }}>| 사전 검증</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          보고서를 보낼 사람의 시점에서 미리 피드백을 받습니다. 보내기 전에.
+          보내기 전에, 보고 대상의 시점에서 미리 피드백을 받습니다.
         </p>
         <div className="mt-2">
           <ConcertmasterInline step="persona-feedback" />
@@ -383,7 +383,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           {autoPersonaIds.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--ai)]">
               <Check size={14} className="text-[var(--accent)]" />
-              <span className="text-[12px] font-medium text-[#2d4a7c]">편곡에서 식별된 이해관계자 {autoPersonaIds.length}명이 선택되었습니다</span>
+              <span className="text-[12px] font-medium text-[#2d4a7c]">편곡에서 찾은 이해관계자 {autoPersonaIds.length}명이 선택되었습니다</span>
             </div>
           )}
 
@@ -412,7 +412,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
                       className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
                       <Pencil size={11} />
                     </button>
-                    <button onClick={() => { if (confirm('삭제하시겠습니까?')) deletePersona(p.id); }}
+                    <button onClick={() => { if (confirm('정말 삭제할까요?')) deletePersona(p.id); }}
                       className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
                       <Trash2 size={11} />
                     </button>
@@ -470,7 +470,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
             const items = [];
             if (decompose?.analysis?.hidden_assumptions && decompose.analysis.hidden_assumptions.length > 0) {
               items.push({
-                label: '검증되지 않은 전제',
+                label: '검증되지 않은 가정',
                 count: decompose.analysis.hidden_assumptions.length,
                 details: decompose.analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
                   typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
@@ -527,7 +527,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
                 </div>
                 {(critical > 0 || unspoken > 0) && (
                   <p className="text-[11px] text-[var(--text-secondary)] mt-1">
-                    AI에게 직접 물었다면 동의만 했을 겁니다. 이 반론들이 실행 전에 방향을 바로잡습니다.
+                    AI는 동의만 하지만, 이 반론이 실행 전에 방향을 바로잡습니다.
                   </p>
                 )}
                 {critical === 0 && unspoken === 0 && (

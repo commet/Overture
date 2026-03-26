@@ -183,6 +183,17 @@ const CORE_STEPS: EntryStep[] = [
 ];
 
 const ADAPTIVE_STEPS: Record<string, EntryStep> = {
+  trigger: {
+    key: 'trigger',
+    question: '이 과제가 지금 중요해진 이유는?',
+    adaptive: true,
+    options: [
+      { value: 'external_pressure', emoji: '🌊', label: '외부 압력', description: '경쟁사, 시장 변화, 규제 등' },
+      { value: 'internal_request', emoji: '👔', label: '내부 요청', description: '상사, 경영진, 다른 팀의 요청' },
+      { value: 'opportunity', emoji: '💡', label: '기회 발견', description: '새로운 가능성을 발견했다' },
+      { value: 'recurring', emoji: '🔄', label: '반복되는 문제', description: '계속 나타나는 문제를 이번에 해결하려 한다' },
+    ],
+  },
   history: {
     key: 'history',
     question: '이전에 비슷한 시도가 있었나요?',
@@ -213,9 +224,13 @@ function computeInterviewSteps(selections: Record<string, string>): EntryStep[] 
   const nature = selections['nature'];
   const goal = selections['goal'];
 
-  if (nature === 'no_answer' || nature === 'on_fire') {
+  // Mutually exclusive: trigger (for structured problems) vs history (for uncharted/crisis)
+  if (nature === 'needs_analysis' || nature === 'known_path') {
+    steps.push(ADAPTIVE_STEPS.trigger);
+  } else if (nature === 'no_answer' || nature === 'on_fire') {
     steps.push(ADAPTIVE_STEPS.history);
   }
+
   if (goal === 'competing' || goal === 'unclear') {
     steps.push(ADAPTIVE_STEPS.stakeholder);
   }
@@ -260,7 +275,18 @@ function getPremiseExtractionGuidance(signals: InterviewSignals): string | null 
     parts.push('- 작은 시도입니다. "이 실험이 의미 있는 데이터를 준다", "이 범위가 검증하기에 충분하다" 같은 실험 설계 전제를 찾으세요.');
   }
 
-  // Adaptive signal guidance
+  // Adaptive signal guidance — trigger
+  if (signals.trigger === 'external_pressure') {
+    parts.push('- 외부 압력이 계기입니다. "이 외부 변화가 우리에게 실제로 영향을 준다", "지금 대응하지 않으면 뒤처진다" 같은 긴급성 전제를 찾으세요.');
+  }
+  if (signals.trigger === 'recurring') {
+    parts.push('- 반복되는 문제입니다. "이전에 해결이 안 된 근본 원인이 있다", "이번 접근이 구조적으로 다르다" 같은 근본 원인 전제를 찾으세요.');
+  }
+  if (signals.trigger === 'internal_request') {
+    parts.push('- 내부 요청이 계기입니다. "요청자가 진짜 원하는 것"과 "표면적 요청" 사이의 차이에 대한 전제를 찾으세요.');
+  }
+
+  // Adaptive signal guidance — history
   if (signals.history === 'failed') {
     parts.push('- 과거에 비슷한 시도가 실패했습니다. "이번에는 다르다"의 근거가 되는 전제를 반드시 포함하세요.');
   }
@@ -268,13 +294,55 @@ function getPremiseExtractionGuidance(signals: InterviewSignals): string | null 
   return parts.length > 0 ? `\n[인터뷰 기반 전제 탐색 지침]\n${parts.join('\n')}` : null;
 }
 
-/** Dynamic placeholder based on nature selection */
+/** Dynamic placeholder — nature × trigger/history 조합으로 구체적인 예시 제공 */
 function getInterviewPlaceholder(selections: Record<string, string>): string {
   const nature = selections['nature'];
-  if (nature === 'known_path') return '예: 분기별 보고서 작성 / 프로젝트 킥오프 준비 / 공급업체 평가';
-  if (nature === 'needs_analysis') return '예: 시장 진출 전략 수립 / AI 도입 ROI 분석 / 고객 이탈 원인 분석';
-  if (nature === 'no_answer') return '예: 신사업 방향 탐색 / 조직 혁신 방안 / 제품 피벗 검토';
-  if (nature === 'on_fire') return '예: 주요 고객 이탈 대응 / 경쟁사 가격 인하 대응 / 서비스 장애 재발 방지';
+  const trigger = selections['trigger'];
+  const history = selections['history'];
+
+  // nature + trigger 조합 (needs_analysis / known_path 경로)
+  if (nature === 'needs_analysis' && trigger === 'internal_request') {
+    return '예: 대표가 AI 활용 계획을 다음 달까지 만들라고 지시. 팀원 50명 중 실무 경험자 2명, 예산은 미정.';
+  }
+  if (nature === 'needs_analysis' && trigger === 'external_pressure') {
+    return '예: 경쟁사가 AI 도입으로 보고서 시간 50% 줄였다는 뉴스. 우리도 대응 전략을 2주 내 수립해야 함.';
+  }
+  if (nature === 'needs_analysis' && trigger === 'recurring') {
+    return '예: 매 분기 반복되는 고객 이탈 문제. 지금까지 할인 위주 대응이었지만 근본 원인을 분석하고 싶음.';
+  }
+  if (nature === 'needs_analysis' && trigger === 'opportunity') {
+    return '예: 기존 고객 데이터를 활용한 구독형 부가 서비스 가능성 발견. 사업성을 검증하고 싶음.';
+  }
+  if (nature === 'known_path' && trigger === 'internal_request') {
+    return '예: 경영진에게 분기 실적 보고. 데이터는 있는데 스토리와 프레이밍을 잡아야 함.';
+  }
+  if (nature === 'known_path' && trigger === 'external_pressure') {
+    return '예: 규제 변경에 맞춰 기존 프로세스 업데이트 필요. 기한은 다음 달, 범위 확인 중.';
+  }
+  if (nature === 'known_path') {
+    return '예: 분기별 보고서 작성 / 프로젝트 킥오프 체크리스트 / 공급업체 평가 진행';
+  }
+  if (nature === 'needs_analysis') {
+    return '예: 시장 진출 전략 수립 / AI 도입 ROI 분석 / 고객 이탈 원인 분석';
+  }
+
+  // nature + history 조합 (no_answer / on_fire 경로)
+  if (nature === 'no_answer' && history === 'failed') {
+    return '예: 작년에 신사업 제안했지만 탈락. 이번엔 다른 접근으로 재도전하려 함. 기존 실패 원인은 시장 검증 부족.';
+  }
+  if (nature === 'no_answer' && history === 'first') {
+    return '예: 조직 내 처음으로 AI 기반 서비스 방향을 탐색. 어디서 시작할지부터 잡아야 함.';
+  }
+  if (nature === 'no_answer') {
+    return '예: 신사업 방향 탐색 / 조직 혁신 방안 / 제품 피벗 검토. 배경과 제약 조건을 써주세요.';
+  }
+  if (nature === 'on_fire' && history === 'failed') {
+    return '예: 주요 고객이 또 이탈 조짐. 지난번 대응(할인)이 효과 없었음. 2주 내 근본 대책 필요.';
+  }
+  if (nature === 'on_fire') {
+    return '예: 경쟁사 가격 30% 인하로 영업팀 긴급 보고. 2주 내 대응 방안 필요. 현재 파악된 상황은...';
+  }
+
   return '예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안';
 }
 
@@ -710,7 +778,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
           <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.decompose.subtitle')}</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          전략기획의 핵심 — 숨겨진 전제를 찾고, 진짜 질문을 재정의합니다.
+          전략기획의 핵심 — 숨은 가정을 찾고, 진짜 질문을 재정의합니다.
         </p>
         {hasLearning && (
           <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] mt-2">
@@ -803,6 +871,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 nature: selections.nature as InterviewSignals['nature'],
                 goal: selections.goal as InterviewSignals['goal'],
                 stakes: selections.stakes as InterviewSignals['stakes'],
+                ...(selections.trigger && { trigger: selections.trigger as InterviewSignals['trigger'] }),
                 ...(selections.history && { history: selections.history as InterviewSignals['history'] }),
                 ...(selections.stakeholder && { stakeholder: selections.stakeholder as InterviewSignals['stakeholder'] }),
               };
@@ -876,8 +945,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {current?.status === 'analyzing' && (
         <Card>
           <LoadingSteps steps={[
-            '과제의 전제를 점검하고 있습니다',
-            '숨겨진 질문을 찾고 있습니다',
+            '과제의 가정을 점검하고 있습니다',
+            '숨은 질문을 찾고 있습니다',
             '진짜 주제를 읽어내고 있습니다',
           ]} />
         </Card>
@@ -897,7 +966,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {/* 과제 요약 */}
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide">STEP 1 — 전제 점검</p>
+                    <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide">STEP 1 — 가정 점검</p>
                     {currentStrategy && (
                       <span className="text-[10px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
                         {STRATEGY_LABELS[currentStrategy].label}
@@ -917,9 +986,9 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {/* 전제 평가 */}
                 <div>
                   <div className="mb-3">
-                    <p className="text-[14px] font-bold text-[var(--text-primary)]">이 과제가 성립하려면</p>
+                    <p className="text-[14px] font-bold text-[var(--text-primary)]">이 과제의 숨은 가정</p>
                     <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                      모든 과제에는 &lsquo;이것이 맞아야 성립한다&rsquo;는 숨겨진 전제가 있습니다. 당신의 경험으로 판단해주세요.
+                      이것이 맞아야 과제가 성립합니다. 당신의 경험으로 판단해주세요.
                     </p>
                   </div>
                   <div className="space-y-2.5">
@@ -981,8 +1050,8 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {reframing && (
                   <Card>
                     <LoadingSteps steps={[
-                      '당신의 전제 평가를 분석하고 있습니다',
-                      '의심된 전제를 기반으로 질문을 재구성합니다',
+                      '당신의 가정 평가를 분석하고 있습니다',
+                      '의심된 가정을 기반으로 질문을 재구성합니다',
                       '새로운 방향을 도출하고 있습니다',
                     ]} />
                   </Card>
@@ -991,11 +1060,11 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {!reframing && (
                   <div className="pt-2 space-y-2">
                     <p className="text-[11px] text-[var(--text-tertiary)] text-right">
-                      당신의 판단을 바탕으로 목적, 시간축, 범위를 종합하여 재정의합니다
+                      당신의 평가를 바탕으로 질문을 재정의합니다
                     </p>
                     <div className="flex items-center justify-between">
                       <Button variant="secondary" onClick={handleReanalyze} size="sm">
-                        <RotateCcw size={14} /> 전제 재분석
+                        <RotateCcw size={14} /> 가정 재분석
                       </Button>
                       <Button onClick={handleReframe}>
                         {t('decompose.reframe')} &rarr;
@@ -1021,7 +1090,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <div className="rounded-[20px] overflow-hidden border border-[var(--border-subtle)]">
                     {/* 전제 평가 요약 — 상단 */}
                     <div className="px-5 py-3 bg-[var(--bg)] border-b border-[var(--border-subtle)]">
-                      <p className="text-[12px] font-medium text-[var(--text-secondary)] mb-2">당신의 전제 평가 결과</p>
+                      <p className="text-[12px] font-medium text-[var(--text-secondary)] mb-2">당신의 가정 평가 결과</p>
                       <div className="space-y-1">
                         {analysis.hidden_assumptions.map((a, i) => {
                           const ev = a.evaluation || 'uncertain';
@@ -1059,7 +1128,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     {analysis.why_reframing_matters && (
                       <div className="px-5 py-4 bg-[var(--surface)] border-t border-[var(--border-subtle)]">
                         <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">분석 근거</p>
-                        <p className="text-[10px] text-[var(--text-tertiary)] mb-2">전제 패턴 · 과제의 진짜 목적 · 시간축 · 문제의 경계 · 문제의 성격을 종합</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mb-2">가정 · 목적 · 시간 · 범위 · 문제 성격을 종합</p>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
                           {analysis.why_reframing_matters}
                         </p>
@@ -1172,7 +1241,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             {reviewStage === 'reframe' && (
               <div className="flex items-center justify-between pt-1">
                 <Button variant="secondary" onClick={() => setReviewStage('evaluate')} size="sm">
-                  <RotateCcw size={14} /> 전제 다시 평가
+                  <RotateCcw size={14} /> 가정 다시 평가
                 </Button>
                 <div className="flex gap-2">
                   <CopyButton getText={() => decomposeToMarkdown(current)} />
@@ -1200,7 +1269,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <Check size={14} />
                   <span>악보 해석 완료</span>
                   <BarLine type="final" height={16} className="ml-2" />
-                  <span className="text-[var(--text-tertiary)] font-normal ml-1">주제가 잡혔습니다</span>
+                  <span className="text-[var(--text-tertiary)] font-normal ml-1">핵심 질문이 정의되었습니다</span>
                 </div>
 
                 <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">
@@ -1235,7 +1304,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                       if (risky === 0) return null;
                       return (
                         <p className="mt-2.5 text-[11px] text-[var(--accent)]">
-                          숨겨진 전제 {assumptions.length}건 중 {risky}건이 불확실 — 다음 단계에서 검증됩니다
+                          숨은 가정 {assumptions.length}건 중 {risky}건이 불확실 — 다음 단계에서 검증됩니다
                         </p>
                       );
                     })()}

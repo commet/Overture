@@ -630,7 +630,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-[12px] font-semibold text-amber-800 mb-1.5">
                 <AlertTriangle size={12} className="inline mr-1 -mt-0.5" />
-                AI 한계 충돌 가능성
+                AI 한계 주의
               </p>
               {current.analysis.ai_limitation_warnings.map((w, i) => (
                 <p key={i} className="text-[12px] text-amber-700 leading-relaxed">- {w}</p>
@@ -800,7 +800,7 @@ function QuickRehearsalCard({
         <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 검증할 이해관계자</p>
       </div>
       <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-        프로젝트 맥락에서 자동으로 식별했습니다. 선택 후 바로 리허설을 시작하세요.
+        프로젝트 맥락에서 자동으로 찾았습니다. 선택 후 바로 리허설을 시작하세요.
       </p>
 
       <div className="space-y-2.5">
