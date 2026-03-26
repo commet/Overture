@@ -52,7 +52,9 @@ The overview and Q1 go in a SINGLE code block. The box header (`Overture · Refr
   │  ● Interview  ○ Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  [Pick numbers, I'll do the rest.]
+  ① [Interview] (3)  ② [Assumptions] (3-4)  ③ [Reframe]
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ■ [Interview]                        1 / 3
 
