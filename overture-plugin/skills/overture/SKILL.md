@@ -30,6 +30,14 @@ Then proceed.
 
 **If it exists:** Read the last 10 entries. Look for patterns — recurring weak areas, repeated assumption types. Mention anything relevant before starting.
 
+## If no argument is provided
+
+If the user just types `/overture` without a problem, ask:
+
+> What important decision or problem should we think through?
+
+Wait for their response, then proceed with the full pipeline.
+
 ## Context constraints
 
 If running in a long conversation or constrained context, adapt: reduce to 2 personas (instead of 3), limit to 1 refinement round, but always produce all 3 deliverables.

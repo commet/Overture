@@ -10,6 +10,12 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 **Always respond in the same language the user uses.**
 
+## If no argument is provided
+
+If the user just types `/orchestrate` without a goal, and there's no `/reframe` result in the conversation, ask:
+
+> What's the goal or project you want to plan? (Tip: try /reframe first for a sharper starting point)
+
 ## Before starting
 
 Check if `.overture/journal.md` exists. If it has previous `/orchestrate` entries, note any patterns (e.g., "user tends to over-assign to AI" or "always needs more checkpoints").

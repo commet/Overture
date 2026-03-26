@@ -20,6 +20,14 @@ Then proceed normally.
 
 **If it exists:** Read the last 10 entries. If you see patterns from previous runs (e.g., "user often has capacity assumptions"), mention it briefly.
 
+## If no argument is provided
+
+If the user just types `/reframe` without a problem, ask:
+
+> What problem or decision are you thinking about?
+
+Wait for their response, then proceed.
+
 ## What you do
 
 1. Take the user's problem as stated

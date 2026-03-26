@@ -10,6 +10,12 @@ Rehearsal creates simulated stakeholders who react to your plan the way real peo
 
 **Always respond in the same language the user uses.**
 
+## If no argument is provided
+
+If the user just types `/rehearse` without a plan, and there's no previous `/orchestrate` or `/reframe` result in the conversation, ask:
+
+> What plan or strategy do you want to stress-test? (Paste it here, or run /orchestrate first)
+
 ## Before starting
 
 Check if `.overture/journal.md` exists. If previous rehearsals show patterns (e.g., "unspoken risks always related to org politics"), keep those in mind.
