@@ -24,7 +24,10 @@ cat << 'WELCOME'
  ██    ██  ██  ██  ██      ██   ██    ██    ██    ██ ██   ██ ██
   ██████    ████   ███████ ██   ██    ██     ██████  ██   ██ ███████
 
-                  Decision Harness for AI
+  Decision Harness for AI
+
+  Generic questions get generic answers.
+  Overture sharpens your thinking before you ask.
 
  ─────────────────────────────────────────────────────────────────────
 
