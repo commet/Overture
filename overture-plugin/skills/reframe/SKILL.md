@@ -284,29 +284,33 @@ The **reframed question** should be equal or broader in scope than the original.
     · [specific limitation]
 ```
 
-### The Score Card
+### "What you didn't see" — Overture's signature
 
-At the very end, always show this compact card. This is Overture's signature — the "before → after" transformation in a shareable format:
+At the very end of the output, add one line that captures the GAP between what the user was thinking and what they should have been thinking. This is Overture's most distinctive element.
 
 ```
-  ╭─────────────── Your Score ─────────────╮
-  │                                         │
-  │  "[original question, shortened]"       │
-  │          ↓                              │
-  │  "[reframed question, shortened]"       │
-  │                                         │
-  │  DQ [N]                                 │
-  │  "[sharpest hidden question]"           │
-  │                                         │
-  ╰─────────────────────────────────────────╯
+  ▸ What you didn't see ──────────────────
+    [One sentence: the core blind spot. What the user was
+     optimizing for vs what actually matters.]
 ```
 
-**This card must:**
-- Show the transformation (vague → sharp) — this IS the value
-- Be copy-pasteable into Slack/Twitter as-is
-- Include the most provocative hidden question as a "fortune cookie" — this is what makes people talk about it
+**Rules for this line:**
+- It must be specific to THIS problem, not generic
+- It must be uncomfortable — if the user nods and says "yeah I knew that," you failed
+- It captures the DELTA: "You were thinking about X, but the real issue is Y"
+- It should be the kind of thing a smart mentor would say after listening carefully
 
-After the card:
+**Good examples:**
+- "You were solving a technology problem, but this is a people problem."
+- "You're optimizing for the stakeholder who'll say yes, not the one who'll block you."
+- "The question isn't whether to do this — it's whether now is the right time."
+
+**Bad examples:**
+- "There are risks to consider." (too vague)
+- "This is a complex problem." (says nothing)
+- "You should think more carefully." (patronizing)
+
+Then:
 
 ```
   Next: /orchestrate to design an execution plan

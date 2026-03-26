@@ -59,24 +59,7 @@ Hidden assumptions:
 2. **Thinking Summary** — a Slack-ready summary to share with your team
 3. **Agent Harness** — an instruction document for AI agents to execute against (CLAUDE.md-compatible)
 
-Plus a Decision Quality scorecard and **Your Score** — a compact transformation card you can share:
-
-```
-  ╭─────────────── Your Score ─────────────╮
-  │                                         │
-  │  "We need to expand into SEA"           │
-  │          ↓                              │
-  │  "Which market lets us validate         │
-  │   international PMF in 90 days?"        │
-  │                                         │
-  │  DQ 77 · ░▓█▒                           │
-  │                                         │
-  │  "You're solving a market problem       │
-  │   with a market-entry budget."          │
-  │   — VP Operations                       │
-  │                                         │
-  ╰─────────────────────────────────────────╯
-```
+Plus a Decision Quality scorecard (0-100) measuring your thinking process.
 
 ## Installation
 
@@ -96,9 +79,7 @@ Restart Claude Code, then try `/reframe "your problem here"`.
 
 **Decision Quality scoring.** Based on Spetzler's (2016) Decision Quality framework. Measures framing, alternatives, information, perspectives, reasoning, and actionability — the process, not the outcome.
 
-**Your Score.** Every run produces a compact "transformation card" — your question before and after, a 4-symbol pattern showing how each stage shifted your thinking (`░▒▓█`), and the sharpest critique quote. Copy-paste it into Slack. It's your Wordle grid for decision quality.
-
-**Blind Spot Profile.** After 5+ runs, Overture shows your cognitive pattern — where you consistently miss assumptions and where you're strong. Your personal Spotify Wrapped for thinking quality.
+**Learning journal.** Each run appends to `.overture/journal.md`. Over time, Overture learns your patterns and surfaces recurring blind spots.
 
 ## Works in any language
 

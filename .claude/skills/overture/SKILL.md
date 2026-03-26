@@ -42,6 +42,15 @@ Wait for their response, then proceed with the full pipeline.
 
 If running in a long conversation or constrained context, adapt: reduce to 2 personas (instead of 3), limit to 1 refinement round, but always produce all 3 deliverables.
 
+Show the pipeline header at the start:
+
+```
+  ╭──────────────────────────────────────────╮
+  │  Overture · Full Pipeline                │
+  │  reframe → orchestrate → rehearse → refine│
+  ╰──────────────────────────────────────────╯
+```
+
 ## Stage 1 of 4: Reframe (~2 min)
 
 Follow the `/reframe` process in fast mode:
@@ -50,7 +59,13 @@ Follow the `/reframe` process in fast mode:
 - Select reframing strategy based on the inferred confidence pattern
 - Generate the reframed question + 3-5 hidden questions
 
-Show the reframed question and ask: **"Does this capture the real question? Correct me if not — otherwise I'll continue to execution design."** Wait for a response. If the user says nothing or confirms, proceed. If they correct, use the correction.
+Show the reframed question with a breadcrumb:
+
+```
+  reframe ● → orchestrate ○ → rehearse ○ → refine ○
+```
+
+Ask: **"Does this capture the real question? Correct me if not — otherwise I'll continue."** Wait for a response. If the user confirms or says nothing, proceed. If they correct, use the correction.
 
 ## Stage 2 of 4: Orchestrate (~2 min)
 
@@ -60,7 +75,11 @@ Follow the `/orchestrate` process:
 - Generate 3 stakeholder personas for review
 - Design 3-5 execution steps with clear AI/human separation
 
-Show the execution design, then move on.
+Show the execution design with breadcrumb:
+```
+  reframe ● → orchestrate ● → rehearse ○ → refine ○
+```
+Then move on.
 
 ## Stage 3 of 4: Rehearse (~3 min)
 
@@ -70,7 +89,11 @@ Follow the `/rehearse` process:
 - Run Devil's Advocate (3 lenses)
 - Synthesize findings
 
-Show the rehearsal results, then move on.
+Show the rehearsal results with breadcrumb:
+```
+  reframe ● → orchestrate ● → rehearse ● → refine ○
+```
+Then move on.
 
 ## Stage 4 of 4: Refine (~2-5 min)
 
@@ -209,64 +232,6 @@ Anti-sycophancy check:
 
 **Warning:** If score ≥ 80 but anti-sycophancy checks are all empty, flag it: "High score but no pushback detected. The analysis may be validating existing thinking rather than challenging it."
 
-### Your Score — The Transformation Card
-
-**This is Overture's signature.** After every full pipeline, end with this compact card. It must be copy-pasteable into Slack/Twitter as-is.
-
-```
-  ╭─────────────── Your Score ─────────────╮
-  │                                         │
-  │  "[original question, shortened]"       │
-  │          ↓                              │
-  │  "[reframed question, shortened]"       │
-  │                                         │
-  │  DQ [N] · [four notes]                  │
-  │                                         │
-  │  "[sharpest critique quote]"            │
-  │   — [persona name]                      │
-  │                                         │
-  ╰─────────────────────────────────────────╯
-```
-
-**The Four Notes** — each symbol encodes how much that stage changed the user's thinking:
-
-```
-░ = slight shift    (the stage confirmed existing thinking)
-▒ = moderate shift  (real restructuring happened)
-▓ = major shift     (significant rethinking required)
-█ = breakthrough    ("I never thought of it that way")
-```
-
-Four positions = four stages: reframe, orchestrate, rehearse, refine.
-Example: `░▓█▒` = slight reframe, big restructure, breakthrough in rehearsal, moderate refinement.
-
-**How to calculate each note:**
-- Reframe: How different is the reframed question from the original? Same direction = ░, different angle = ▒, different premise = ▓, "wait, THAT's the real question?" = █
-- Orchestrate: How much did the plan challenge the user's assumed approach? Organized what they had = ░, changed sequence/actors = ▒, different strategy = ▓, fundamentally different plan = █
-- Rehearse: How harsh was the feedback? All manageable = ░, some critical = ▒, plan-changing critiques = ▓, "this might not work at all" = █
-- Refine: How much did the plan change after feedback? Minor edits = ░, structural changes = ▒, major revision = ▓, back-to-drawing-board = █
-
-**The "Sharpest Critique"** is the single most provocative, uncomfortable line from any persona or the Devil's Advocate. Pick the one that would make the user pause. This is Overture's fortune cookie — personalized, contextual, uncomfortable, memorable.
-
-### Blind Spot Profile (when journal has 5+ entries)
-
-If the journal has 5 or more previous runs, show the user's cognitive pattern after the Score Card:
-
-```
-  ■ Your Thinking Pattern (last [N] sessions)
-
-    [date] ░▒▓▒  DQ 77
-    [date] ▒▒█▒  DQ 82
-    [date] ░░▓█  DQ 71
-    [date] ▒▓▓▒  DQ 79
-    [date] ░▒█▒  DQ 84  ← latest
-
-  You keep missing: [most common blind spot category]
-  You're strong at: [least common blind spot category]
-  Trend: [improving/stable/declining] ↑
-```
-
-This is the "Spotify Wrapped" for thinking quality. Over time, users see their patterns and growth.
 
 ## Final check
 
@@ -276,6 +241,21 @@ Before delivering, ask yourself:
 - Would a smart, skeptical colleague find this analysis rigorous?
 
 If any answer is "no," strengthen that section.
+
+### "What you didn't see" — Overture's signature
+
+At the very end, after all deliverables and the DQ scorecard, add one line:
+
+```
+  ▸ What you didn't see ──────────────────
+    [One sentence capturing the core blind spot.
+     The gap between what the user was thinking
+     and what actually matters.]
+```
+
+This must be specific, uncomfortable, and insightful. See `/reframe` SKILL.md for examples and rules.
+
+This is the last thing the user reads. Make it count.
 
 ## Learning journal
 

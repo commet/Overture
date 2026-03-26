@@ -18,7 +18,16 @@ If the user just types `/orchestrate` without a goal, and there's no `/reframe` 
 
 ## Before starting
 
-Check if `.overture/journal.md` exists. If it has previous `/orchestrate` entries, note any patterns (e.g., "user tends to over-assign to AI" or "always needs more checkpoints").
+Check if `.overture/journal.md` exists. If it has previous `/orchestrate` entries, note any patterns.
+
+Show the header:
+
+```
+  ╭──────────────────────────────────────────╮
+  │  Overture · Orchestrate                  │
+  │  Execution design with AI/human roles    │
+  ╰──────────────────────────────────────────╯
+```
 
 ## Context from previous steps
 
@@ -41,11 +50,6 @@ Why this approach? Structure it as:
 - **Complication:** The tension — what makes this hard
 - **Resolution:** Our approach and why
 
-**Example:**
-- Situation: "Our product has strong domestic PMF with 40% MoM growth"
-- Complication: "But domestic TAM caps at $50M and three funded competitors are entering. Growth requires new markets, but international expansion has a 70% failure rate for our stage."
-- Resolution: "Run a focused 90-day experiment in one market to validate international unit economics before committing resources"
-
 ## Step 3: Execution steps (3-5 steps)
 
 For each step, define:
@@ -58,83 +62,105 @@ For each step, define:
   3. Is the cost of getting it wrong high and irreversible? → Human or Both
   4. Does someone specific need to be accountable? → Human
   If none apply → AI can handle it.
-- **Deliverable**: What this step produces (be specific — not "market research" but "TAM analysis with 3 scenario models")
+- **Deliverable**: Specific output (not "market research" but "TAM analysis with 3 scenario models")
 - **Checkpoint**: Does a human need to approve before the next step? Why?
 
-When the owner is `Both`, always specify:
-- AI does: [concrete scope]
-- Human does: [concrete scope]
+When the owner is `Both`, always specify AI scope and Human scope separately.
 
-**Example step:**
-```
-### Step 2: Competitive landscape analysis — Both
-AI does: Map all competitors in target market, pricing, features, funding, growth signals
-Human does: Interpret competitive positioning, identify our defensible angle, decide go/no-go
-Deliverable: 1-page competitive map + strategic positioning recommendation
-Checkpoint: Yes — go/no-go decision determines if we proceed to Step 3
-```
+See `references/execution-design.md` for detailed guidance.
 
 ## Step 4: Key assumptions
 
-What must be TRUE for this plan to work? List 2-4 assumptions with:
-- The assumption
-- How important it is (high/medium/low)
-- How confident you are (high/medium/low)
-- What happens if it's wrong
+What must be TRUE for this plan to work? 2-4 assumptions with importance, confidence, and what happens if wrong.
 
 ## Step 5: Stakeholders
 
-Identify 2-4 people who should review this plan before execution. Aim for 3, but use judgment:
-1. The decision-maker (can kill or approve this)
-2. The resource controller (budget, team, timeline authority)
-3. The reality checker (closest to the ground truth)
+Identify 2-4 people who should review this plan. These become personas for `/rehearse`.
 
 For each: name/title, role, what they care about most, what would make them say no, what they need to see to say yes.
-
-These become personas for `/rehearse`.
 
 ## Rules
 
 - If the execution plan mirrors exactly what the user described, you haven't added value. Challenge the approach, the sequence, or the actor assignments.
-- At least one step must have a human checkpoint. If every step is AI-only, the plan lacks judgment gates.
-- Never start with "This is a great plan." Go straight to the governing idea.
+- At least one step must have a human checkpoint.
 - The governing idea must be falsifiable — something someone could disagree with.
 
-**Self-check before outputting:** Would this plan make the user rethink anything, or did you just organize what they already had in mind?
+**Self-check:** Would this plan make the user rethink anything, or did you just organize what they already had in mind?
 
 ## Output
 
+Format the output inside a code block for consistent rendering:
+
 ```
-## Execution Design
+  ╭──────────────────────────────────────────╮
+  │  Overture · Orchestrate                  │
+  │  Execution design with AI/human roles    │
+  ╰──────────────────────────────────────────╯
 
-**Governing idea:** [one sentence]
 
-**Storyline:**
-- Situation: [agreed facts]
-- Complication: [the tension]
-- Resolution: [our approach]
+  ■ Governing Idea
 
-### Step 1: [task] — [Owner]
-- Why this owner: [reasoning]
-- Deliverable: [specific output]
-- Checkpoint: [yes/no + reason]
+  ▸ [one sentence]
 
-### Step 2: [task] — [Owner]
-...
 
-**Key assumptions:**
-1. [assumption] — Importance: [H/M/L] | Confidence: [H/M/L]
-   If wrong: [impact]
+  ■ Storyline
 
-**Stakeholders to review:**
-1. [Name/Title] — cares about: [priority] | needs to see: [success metric]
-2. ...
-3. ...
+    Situation:    [agreed facts]
+    Complication: [the tension]
+    Resolution:   [our approach]
 
-**Design rationale:** [2-3 sentences: why this sequence, why these owners]
+
+  ■ Execution Steps
+
+  ┌─ Step 1 ─────────────────────── Human ──┐
+  │  [task]                                  │
+  │  Why: [reasoning]                        │
+  │  Deliverable: [output]                   │
+  │  Checkpoint: [yes/no + reason]           │
+  └──────────────────────────────────────────┘
+
+  ┌─ Step 2 ──────────────────────── Both ──┐
+  │  [task]                                  │
+  │  AI does: [scope]                        │
+  │  Human does: [scope]                     │
+  │  Deliverable: [output]                   │
+  └──────────────────────────────────────────┘
+
+  ┌─ Step 3 ───────────────────────── AI ───┐
+  │  [task]                                  │
+  │  Deliverable: [output]                   │
+  └──────────────────────────────────────────┘
+
+
+  ■ Key Assumptions
+
+    1  [assumption]
+       Importance: [H/M/L] · Confidence: [H/M/L]
+       If wrong: [impact]
+
+    2  [assumption]
+       ...
+
+
+  ■ Stakeholders
+
+    1 · [Name/Title]
+        Cares about: [priority]
+        Will block if: [concern]
+        Needs to see: [success metric]
+
+    2 · [Name/Title]
+        ...
+
+
+  ■ Design Rationale
+
+    [2-3 sentences: why this sequence, why these owners]
+
+  ──────────────────────────────────────────
+
+  Next: /rehearse to stress-test with stakeholders
 ```
-
-After the output, suggest: *"Ready for stakeholder stress-test? Run /rehearse. Or run /overture for the full pipeline."*
 
 ## Learning journal
 

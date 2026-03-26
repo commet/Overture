@@ -10,7 +10,18 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 ## Before starting
 
-Check if `.overture/journal.md` exists. If previous refinements show patterns (e.g., "convergence usually takes 2 rounds", "stakeholder X is always the blocker"), note them.
+**If no `/rehearse` results exist in the conversation**, tell the user: "I need stakeholder feedback to refine against. Run `/rehearse` first, or paste the feedback you've received and I'll work with that."
+
+Check if `.overture/journal.md` exists. Note any patterns from previous refinements.
+
+Show the header:
+
+```
+  ╭──────────────────────────────────────────╮
+  │  Overture · Refine                       │
+  │  Converge until solid                    │
+  ╰──────────────────────────────────────────╯
+```
 
 ## How it works
 
@@ -21,8 +32,6 @@ Check if `.overture/journal.md` exists. If previous refinements show patterns (e
 5. Check if issues are converging. If not, repeat. Max 3 rounds.
 
 ## Step 1: Extract and prioritize issues
-
-**If no `/rehearse` results exist in the conversation**, tell the user: "I need stakeholder feedback to refine against. Run `/rehearse` first, or paste the feedback you've received and I'll work with that."
 
 From the rehearsal results:
 
@@ -35,70 +44,78 @@ From the rehearsal results:
 
 ## Step 2: Confirm direction with user
 
-> I found [N] issues from the rehearsal. Here they are by priority:
+> I found [N] issues from the rehearsal:
 > 1. [critical issue] — must fix
 > 2. [critical issue] — must fix
 > 3. [manageable issue] — optional
 >
-> Address all of them, or would you like to pick?
+> Address all, or pick?
 
-If the user skips this, auto-fix all critical issues.
+If the user skips, auto-fix all critical issues.
 
 ## Step 3: Revise the plan
 
 - Keep the original structure. Change only what's broken.
-- For each change, state what you changed, why, and which stakeholder's feedback it addresses.
+- For each change, state what, why, and which feedback it addresses.
 - If you chose NOT to address something, explain why.
-- Output the COMPLETE revised plan, not just the changes.
-- Refinement means the plan CHANGES, not that the language softens. If you mark a critical issue as "resolved," the plan must contain a concrete structural change — not just acknowledgment.
-- Never declare an issue resolved by adding a disclaimer like "we'll monitor this." That's not resolution, that's avoidance.
-- If after 3 rounds the plan still has critical issues, it may be a sign the premise is wrong. Suggest going back to `/reframe`.
+- Output the COMPLETE revised plan.
+- Refinement means the plan CHANGES, not that the language softens.
+- Never declare an issue resolved by adding "we'll monitor this."
+- If after 3 rounds still critical, suggest going back to `/reframe`.
 
-**Self-check:** Did the revised plan actually change in substance, or did you just reword the concerns as "considerations"?
+**Self-check:** Did the revised plan actually change in substance, or did you just reword concerns as "considerations"?
 
 ## Step 4: Re-test
 
-Reproduce the exact same persona profiles from the previous rehearsal and run them through the revised plan. This time, instruct them:
-- Check if their previous concerns were addressed
-- Flag any NEW issues caused by the changes
-- Mark previously-critical issues as resolved if they are
-
-Run Devil's Advocate again too.
+Reproduce the exact same persona profiles and run them through the revised plan. Also run Devil's Advocate again.
 
 ## Step 5: Convergence check
 
 | Metric | Converged | Not yet |
 |--------|-----------|---------|
 | Critical issues | 0 | 1+ remaining |
-| Total issues | Decreased from previous round | Same or increased |
-| Approval conditions | Key ones met | Key ones still unmet |
+| Total issues | Decreased | Same or increased |
+| Approval conditions | Key ones met | Key ones unmet |
 
-**Converged:** Done. Output the final plan.
-**Not converged:** Go back to Step 2. Maximum 3 rounds (2 rounds when running inside `/overture`).
-
-After 3 rounds without convergence:
-> "3 rounds of refinement, but [N] issues remain: [list]. These may need to be accepted as known constraints. Proceed?"
+Max 3 rounds (2 when inside `/overture`).
 
 ## Output
 
 ```
-## Refinement — Round [N]
+  ╭──────────────────────────────────────────╮
+  │  Overture · Refine                       │
+  │  Converge until solid                    │
+  ╰──────────────────────────────────────────╯
 
-**Changes made:**
-1. [what changed] — because [which feedback] said [what]
-2. ...
 
-**Not addressed:**
-- [issue] — Reason: [why not addressed this round]
+  ■ Round [N]
 
-**Re-test results:**
-- Critical issues: [N] (was [M])
-- Approval conditions met: [N/M]
+    Changes made:
+    1 · [what changed] — [which feedback]
+    2 · [what changed] — [which feedback]
 
-**Status:** [Converged / Iterating / Max rounds reached]
+    Not addressed:
+    · [issue] — Reason: [why]
 
-## Final Plan
-[complete revised plan]
+
+  ■ Re-test Results
+
+    Critical:   [N] → [M]   [✓ resolved / ✗ remaining]
+    Manageable: [N]
+    Conditions: [N/M] met
+
+    Status: [Converged ✓ / Iterating ○ / Max reached ✗]
+
+
+  ■ Final Plan
+
+    [complete revised plan]
+
+  ──────────────────────────────────────────
+
+  [If converged:]
+  ✓ Converged after [N] rounds.
+  Next: Your plan is ready for execution.
 ```
 
 ## Learning journal
