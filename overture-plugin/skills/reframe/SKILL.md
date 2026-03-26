@@ -49,11 +49,11 @@ The reframe process has 3 phases. Show the overview first, then walk through eac
   ③ Reframed question + Sharpened Prompt
 ```
 
-Then immediately show the first interview question.
+Then say "시작합니다!" (or "Let's start!") as a brief text transition, followed by the first interview question as a SEPARATE code block. **The overview and each question must be visually separated — never combine them into one continuous block.**
 
 ### Phase 1: Interview
 
-Present each question ONE AT A TIME. Each question = one number from the user. Show progress in the header.
+Present each question ONE AT A TIME as its own separate code block. Between questions, use a brief text line (e.g., confirming the user's choice) to create visual separation. Never output two code blocks back-to-back without text between them.
 
 **Question 1:**
 ```
