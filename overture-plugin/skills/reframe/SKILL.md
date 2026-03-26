@@ -71,9 +71,16 @@ Assumptions found:
 
 After delivering the initial reframe, offer:
 
-> Want to sharpen this further? Rate each assumption (confident / uncertain / doubtful) and I'll re-reframe based on your input.
+> Want to sharpen this further? All assumptions default to "uncertain." Just tell me the exceptions:
+> e.g., "1 confident, 3 doubtful" — one line is enough.
 
-If the user engages, their reasoning is the most valuable input — it comes from real-world experience AI doesn't have. Use it to select a more precise reframing strategy (see `references/reframing-strategies.md`).
+**This must be minimal friction.** The user only types the exceptions. Everything not mentioned stays "uncertain." Accept any format:
+- "1 확신, 3 의심"
+- "1 confident, 3 doubtful"
+- "1은 맞고 3은 아닌거 같아"
+- "1 yes 3 no"
+
+If the user gives reasoning (e.g., "3번은 의심 — 작년에 비슷하게 했다가 실패"), that context is the most valuable input. Use it to select a more precise reframing strategy (see `references/reframing-strategies.md`).
 
 If the user provides confidence signals in their original input (e.g., "we've already validated X", "I'm pretty sure Y"), factor those into assumption confidence levels automatically.
 
@@ -129,7 +136,9 @@ Refer to `references/reframing-strategies.md` for detailed strategy guides.
 - [specific limitation — e.g., "no access to your internal team dynamics or budget constraints"]
 ```
 
-After the output, offer: *"Want to evaluate the assumptions yourself for a sharper reframe? Or continue to /orchestrate?"*
+After the output, offer: *"전제를 평가해서 더 날카롭게 다듬어볼까요? 확신/의심하는 번호만 알려주세요 (예: '1 확신, 3 의심'). 아니면 /orchestrate로 실행 설계로 넘어갈 수 있어요."*
+
+(In English: *"Want to sharpen this? Just tell me which assumptions you're confident or doubtful about (e.g., '1 confident, 3 doubtful'). Or continue to /orchestrate."*)
 
 ## Rules
 
