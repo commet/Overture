@@ -11,6 +11,8 @@ You will run 4 stages autonomously, then score the quality of the thinking proce
 
 **Always respond in the same language the user uses. All three deliverables must be in the user's language.**
 
+**ALL designed output (boxes, section headers, option lists, results, scorecard) MUST be inside fenced code blocks** so Claude Code preserves monospace formatting. Plain text commentary between sections stays outside code blocks.
+
 ## Before starting
 
 Check if `.overture/journal.md` exists.

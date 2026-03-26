@@ -10,6 +10,8 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 **Always respond in the same language the user uses.**
 
+**ALL designed output (boxes, section headers, option lists, results) MUST be inside fenced code blocks** so Claude Code preserves monospace formatting. Plain text commentary between sections stays outside code blocks.
+
 ## If no argument is provided
 
 If the user just types `/orchestrate` without a goal, and there's no `/reframe` result in the conversation, ask:

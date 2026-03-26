@@ -10,6 +10,8 @@ Rehearsal creates simulated stakeholders who react to your plan the way real peo
 
 **Always respond in the same language the user uses.**
 
+**ALL designed output (boxes, section headers, option lists, results) MUST be inside fenced code blocks** so Claude Code preserves monospace formatting. Plain text commentary between sections stays outside code blocks.
+
 ## If no argument is provided
 
 If the user just types `/rehearse` without a plan, and there's no previous `/orchestrate` or `/reframe` result in the conversation, ask:

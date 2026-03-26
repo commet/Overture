@@ -8,6 +8,8 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 **Always respond in the same language the user uses.**
 
+**ALL designed output (boxes, section headers, option lists, results) MUST be inside fenced code blocks** so Claude Code preserves monospace formatting. Plain text commentary between sections stays outside code blocks.
+
 ## Before starting
 
 **If no `/rehearse` results exist in the conversation**, tell the user: "I need stakeholder feedback to refine against. Run `/rehearse` first, or paste the feedback you've received and I'll work with that."

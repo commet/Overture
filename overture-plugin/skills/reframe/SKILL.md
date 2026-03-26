@@ -30,6 +30,12 @@ Wait for their response, then proceed.
 - **Personal decisions** (e.g., "should I go to grad school"): Adapt interview options and assumption dimensions to personal context (see Step 1 notes).
 - **Trivial decisions**: Mention it's a quick call, offer to proceed anyway or skip.
 
+## Critical rendering rule
+
+**ALL designed output (boxes, section headers, option lists, results) MUST be inside fenced code blocks (``` ```) so Claude Code preserves monospace formatting and alignment.** Without code blocks, the terminal renders proportional text and all alignment breaks.
+
+Every visual section you show to the user → wrap it in a code block. Plain text commentary between sections (like "시작합니다!" or confirming a choice) should be outside code blocks as normal markdown.
+
 ## The flow
 
 The reframe process has 3 phases. Show the overview first, then walk through each phase one question at a time.
