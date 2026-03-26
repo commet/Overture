@@ -69,34 +69,32 @@ Assumptions found:
 
 ## User evaluation (default-and-override)
 
-After the initial reframe, **pre-fill your own assessment** of each assumption based on context clues from the user's input. Use these symbols:
+After the initial reframe, **pre-fill your own assessment** of each assumption and present it for quick correction:
 
-- ✓ = likely true (confident)
-- ? = unclear (uncertain)
-- ✗ = likely wrong (doubtful)
+```
+내 판단:                             My read:
+1. ✓ [assumption]                    ✓ = likely true
+2. ? [assumption]                    ? = uncertain
+3. ? [assumption]                    ✗ = likely wrong
+4. ✗ [assumption]
 
-Present it like this:
+고치려면 번호만: "2✗ 4✓"             Fix: "2✗ 4✓"
+맞으면 엔터                          Enter if correct
+```
 
-> My read on the assumptions — correct what I got wrong:
->
-> 1. ✓ [assumption]
-> 2. ? [assumption]
-> 3. ? [assumption]
-> 4. ✗ [assumption]
->
-> (Enter if this looks right)
+**How to pre-fill well:** Look for signals in the user's input.
+- "We need to..." (directive) → ✓ on direction, ? on execution
+- "I'm not sure if..." → ?
+- "We've already validated..." → ✓
+- Minimal context → ? for all (but still pre-fill, don't leave blank)
 
-**The user's options:**
-- **Enter** → Accept your assessment as-is. Zero friction. Re-reframe using these confidence levels.
-- **Correct naturally** → "2 is actually solid, we tested it last year" or "1번은 사실 아닌 것 같아" → Update and re-reframe.
+**Correction format — accept ANYTHING:**
+- `2✗ 4✓` → changes 2 to doubtful, 4 to confident
+- `2x 4y` → same (x=doubtful, y=confident)
+- "2번은 아닌 것 같고 4번은 확실해" → same
+- `Enter` → accept all as-is
 
-**This is the code-review pattern: approve unless you comment.** Claude does the heavy lifting (assessment), the human provides judgment only where Claude is wrong.
-
-**How to pre-fill well:** Look for signals in the user's original input.
-- "We need to..." (directive tone) → likely confident on direction, uncertain on execution
-- "I'm not sure if..." → explicit uncertainty
-- "We've already validated..." → confident
-- No context at all → default to ? (uncertain)
+**After the user confirms or corrects → immediately re-reframe.** The evaluation changes the reframing strategy, so the reframed question and sharpened prompt MUST update. Show the updated result, then offer next steps.
 
 ## Reframing strategy
 
@@ -150,9 +148,16 @@ Refer to `references/reframing-strategies.md` for detailed strategy guides.
 - [specific limitation — e.g., "no access to your internal team dynamics or budget constraints"]
 ```
 
-After the output, present the pre-filled assumption assessment and ask: *"틀린 게 있으면 고쳐주세요. 맞으면 엔터. (또는 /orchestrate로 넘어갑니다)"*
+After the output, present the pre-filled assumption assessment for correction. Then:
 
-(In English: *"Correct what I got wrong, or Enter if this looks right. (Or /orchestrate to move on)"*)
+1. **User confirms or corrects** → Re-select reframing strategy based on updated confidence levels
+2. **Re-reframe** → Generate a NEW reframed question and sharpened prompt reflecting the user's input
+3. **Show the updated result**
+4. **Then offer**: *"이 방향으로 실행 설계를 해볼까요? (/orchestrate)"*
+
+(In English: *"Want to design an execution plan for this? (/orchestrate)"*)
+
+**The evaluation is NOT the last step — the re-reframe is.** The user should always see how their input changed the analysis.
 
 ## Rules
 
