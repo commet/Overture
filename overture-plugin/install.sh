@@ -18,28 +18,25 @@ rm -rf "$TEMP_DIR"
 # Welcome
 cat << 'WELCOME'
 
-  ╭──────────────────────────────────────────╮
-  │                                          │
-  │           O V E R T U R E                │
-  │                                          │
-  │       Decision Harness for AI            │
-  │                                          │
-  │  AI gives generic answers when you ask   │
-  │  generic questions. Overture sharpens    │
-  │  your thinking before you ask.           │
-  │                                          │
-  ╰──────────────────────────────────────────╯
+    ___   _  _  ___  ___  _____  _   _  ___  ___
+   / _ \ | || || __|| _ \|_   _|| | | || _ \| __|
+  | (_) || __ || _| |   /  | |  | |_| ||   /| _|
+   \___/ |_||_||___||_|_\  |_|   \___/ |_|_\|___|
 
-  ✓ Installed
+            Decision Harness for AI
 
-  Restart Claude Code, then try:
+  ─────────────────────────────────────────────
+
+  AI gives generic answers when you ask generic
+  questions. Overture sharpens your thinking
+  before you ask.
+
+  ✓ Installed to ~/.claude/skills/
+
+  Restart Claude Code, then:
 
     /reframe "your problem here"
-
-  Or run the full pipeline:
-
     /overture "important decision"
-
-  Type /overture-help for all commands.
+    /overture-help for all commands
 
 WELCOME
