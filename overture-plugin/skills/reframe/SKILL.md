@@ -42,7 +42,9 @@ The reframe process has 3 phases. Show the overview first, then walk through eac
 
 ### Overview + First question (combined in ONE code block)
 
-The overview and the first question go in a SINGLE code block. A separator line divides them visually. This avoids the gap/separation issue between consecutive blocks.
+The overview and Q1 go in a SINGLE code block. The box header (`Overture · Reframe`) and progress dots ALWAYS stay in English. All other text (phase labels, question text, options) is in the user's language.
+
+**Template — translate text content to the user's language, keep UI chrome identical:**
 
 ```
   ╭──────────────────────────────────────────╮
@@ -50,105 +52,59 @@ The overview and the first question go in a SINGLE code block. A separator line 
   │  ● Interview  ○ Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  ① Interview (3)  ② Assumptions (3-4)  ③ Reframe
+  ① [Interview] (3)  ② [Assumptions] (3-4)  ③ [Reframe]
 
   ──────────────────────────────────────────
 
-  ■ Interview                          1 / 3
+  ■ [Interview]                        1 / 3
 
-  Where did this task come from?
+  [Where did this task come from?]
 
-    1 · Top-down directive
-    2 · External request
-    3 · Self-initiated
-    4 · Urgent / fire-fighting
+    1 · [Top-down directive]
+    2 · [External request]
+    3 · [Self-initiated]
+    4 · [Urgent / fire-fighting]
 
   ▸
 ```
 
-(Korean version — same structure:)
-```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ○ Assumptions  ○ Reframe   │
-  ╰──────────────────────────────────────────╯
+`[brackets]` = translate to user's language. Everything else (╭╮, ●○, ■, ▸, numbers, separators) stays exactly the same.
 
-  ① 인터뷰 (3개)  ② 전제 평가 (3-4개)  ③ 리프레이밍
-
-  ──────────────────────────────────────────
-
-  ■ 인터뷰                             1 / 3
-
-  이 과제는 어디서 나왔나요?
-
-    1 · 위에서 지시
-    2 · 외부 요청
-    3 · 내가 시작
-    4 · 긴급 대응
-
-  ▸
-```
+**Example in Korean:**
+- `[Interview]` → `인터뷰`
+- `[Where did this task come from?]` → `이 과제는 어디서 나왔나요?`
+- `[Top-down directive]` → `위에서 지시`
 
 ### Phase 1: Interview
 
-After the user answers Q1, show Q2 in its own code block. Between each question, add a brief text confirmation (e.g., "✓ 위에서 지시") to create visual separation. Never output two code blocks back-to-back without text between them.
+After Q1, show a brief text confirmation (e.g., "✓ Top-down directive" / "✓ 위에서 지시") outside the code block, then Q2 in a new code block. This creates visual separation.
 
-Wait for user input (a number). Then show Question 2:
-
-**Question 2:**
+**Q2 template:**
 ```
-  ■ Interview                          2 of 3
+  ■ [Interview]                        2 / 3
 
-  What's most uncertain about this?
+  [What's most uncertain about this?]
 
-    1 · Why we should do it
-    2 · What exactly to do
-    3 · How to execute
-    4 · Nothing — it's clear
+    1 · [Why we should do it]
+    2 · [What exactly to do]
+    3 · [How to execute]
+    4 · [Nothing — it's clear]
 
   ▸
 ```
 
-(Korean:)
+After Q2 confirmation, Q3:
+
+**Q3 template:**
 ```
-  ■ 인터뷰                             2 / 3
+  ■ [Interview]                        3 / 3
 
-  가장 불확실한 부분은?
+  [What does success look like?]
 
-    1 · 왜 해야 하는지
-    2 · 뭘 해야 하는지
-    3 · 어떻게 해야 하는지
-    4 · 불확실한 건 없음
-
-  ▸
-```
-
-Wait for input. Then Question 3:
-
-**Question 3:**
-```
-  ■ Interview                          3 of 3
-
-  What does success look like?
-
-    1 · Measurable metrics
-    2 · Risk managed
-    3 · Opportunity captured
-    4 · Unclear
-
-  ▸
-```
-
-(Korean:)
-```
-  ■ 인터뷰                             3 / 3
-
-  성공은 어떤 모습인가요?
-
-    1 · 측정 가능한 지표
-    2 · 리스크 관리
-    3 · 기회 포착
-    4 · 불명확
+    1 · [Measurable metrics]
+    2 · [Risk managed]
+    3 · [Opportunity captured]
+    4 · [Unclear]
 
   ▸
 ```
@@ -176,7 +132,9 @@ After the interview, analyze the problem using interview signals to find 3-4 hid
 
 For personal decisions, adapt: Personal growth / Financial impact / Opportunity cost / Readiness.
 
-Then present each assumption ONE AT A TIME for evaluation:
+Then present each assumption ONE AT A TIME for evaluation. Same template rules: UI chrome in English, content in user's language.
+
+**First assumption includes the updated progress header. Subsequent ones omit the box header.**
 
 ```
   ╭──────────────────────────────────────────╮
@@ -184,29 +142,18 @@ Then present each assumption ONE AT A TIME for evaluation:
   │  ● Interview  ● Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  ■ Assumptions                        1 of 4
+  ■ [Assumptions]                      1 / 4
 
-  "AI can meaningfully improve our team's efficiency"
+  "[assumption text in user's language]"
 
-    1 · Confident ✓
-    2 · Uncertain ?
-    3 · Doubtful ✗
-
-  ▸
-```
-
-(Korean:)
-```
-  ■ 전제 평가                           1 / 4
-
-  "AI가 우리 팀의 업무를 의미있게 효율화할 수 있다"
-
-    1 · 맞다 ✓
-    2 · 불확실 ?
-    3 · 아니다 ✗
+    1 · [Confident] ✓
+    2 · [Uncertain] ?
+    3 · [Doubtful] ✗
 
   ▸
 ```
+
+For assumptions 2-4, omit the box header — just the section header + assumption + options.
 
 Repeat for each assumption (3-4 total). Each is one number.
 
@@ -233,7 +180,7 @@ Before reframing, mentally check:
 
 The **reframed question** should be equal or broader in scope than the original. The **hidden questions** CAN point to focused experiments or first steps.
 
-**Output — lead with the sharpened prompt:**
+**Output — lead with the sharpened prompt. Translate ALL section labels and content to user's language. UI chrome stays the same.**
 
 ```
   ╭──────────────────────────────────────────╮
@@ -246,48 +193,50 @@ The **reframed question** should be equal or broader in scope than the original.
   │  ✦ Sharpened Prompt                      │
   ╰──────────────────────────────────────────╯
 
-  Paste this into your next AI conversation:
+  [Paste this into your next AI conversation:]
 
-  ▸ "[reframed question with key constraints
-     and context baked in]"
+  ▸ "[reframed question with constraints]"
 
   ──────────────────────────────────────────
 
-  ■ Analysis
+  ■ [Analysis]
 
-  You asked:
+  [You asked:]
     "[original problem]"
 
-  The real question:
-  ▸ [reframed question — 1-2 sentences]
+  [The real question:]
+  ▸ [reframed question]
 
-  Why this is sharper:
-    [1-2 sentences explaining the shift]
-
-  ──────────────────────────────────────────
-
-  ■ Hidden Assumptions
-
-    1  ✓  [assumption — confident]
-    2  ✗  [assumption — doubtful]
-    3  ?  [assumption — uncertain]
-    4  ✗  [assumption — doubtful]
+  [Why this is sharper:]
+    [1-2 sentences]
 
   ──────────────────────────────────────────
 
-  ■ Questions to Answer First
+  ■ [Hidden Assumptions]
 
-    1 · [question] — [why this changes direction]
+    1  ✓  [assumption]
+    2  ✗  [assumption]
+    3  ?  [assumption]
+    4  ✗  [assumption]
+
+  ──────────────────────────────────────────
+
+  ■ [Questions to Answer First]
+
+    1 · [question] — [why]
     2 · [question] — [why]
     3 · [question] — [why]
 
   ──────────────────────────────────────────
 
-  ■ What AI Can't Help With
+  ■ [What AI Can't Help With]
 
     · [specific limitation]
     · [specific limitation]
 ```
+
+**Keep these in English always:** `Overture · Reframe`, `Sharpened Prompt`, progress dots (● ○), all symbols (■ ▸ ✓ ✗ ? ·).
+**Translate to user's language:** section labels (Analysis, Hidden Assumptions, etc.), all content, option text.
 
 ### "What you didn't see" — Overture's signature
 
