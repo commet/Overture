@@ -123,7 +123,25 @@ Use these signals to select the reframing strategy (see `references/reframing-st
 
 ### Phase 2: Assumption discovery + evaluation
 
-After the interview, analyze the problem using interview signals to find 3-4 hidden assumptions. Check across these dimensions (at least one from each):
+**CRITICAL: Assumptions MUST be shaped by the interview signals, not generic.** The interview exists so you can find BETTER assumptions than you would without it. If your assumptions would be the same regardless of interview answers, you've failed.
+
+**How interview signals shape assumptions:**
+
+| Signal | What assumptions to look for |
+|--------|------------------------------|
+| origin=top-down | "The person who assigned this has a clear, valid reason" / "The real goal matches the stated goal" / "This isn't just optics" |
+| origin=fire | "This is actually urgent, not just noisy" / "The root cause is identified, not just the symptom" |
+| origin=self | "I'm solving a real problem, not just scratching an itch" / "Now is the right time" |
+| uncertainty=why | "There IS a good reason to do this" / "The underlying problem is real" — probe the PURPOSE |
+| uncertainty=what | "We know enough to define scope" / "The boundaries are clear" — probe the DEFINITION |
+| uncertainty=how | "The approach is feasible" / "We have the capability" — probe the EXECUTION |
+| success=measurable | "We can actually measure this" / "The metric captures real value" |
+| success=opportunity | "This opportunity is real and time-bound" / "We're the right ones to capture it" |
+| success=unclear | "We'll know success when we see it" — probe whether this is even well-defined |
+
+**Combine signals:** If origin=top-down AND uncertainty=why, the FIRST assumption must be about the directive-giver's real motivation, not about the surface problem. Example: "경영진이 AI 도입을 지시한 진짜 이유가 업무 효율화인가, 아니면 다른 의도(혁신 이미지, 비용 절감, 트렌드)가 있는가"
+
+**Also check across these dimensions** (at least one from each, but shaped by the signals above):
 
 - **Value**: Is this actually valuable to someone?
 - **Feasibility**: Can this realistically be done?
@@ -131,6 +149,8 @@ After the interview, analyze the problem using interview signals to find 3-4 hid
 - **Capacity**: Can the team/org actually handle this?
 
 For personal decisions, adapt: Personal growth / Financial impact / Opportunity cost / Readiness.
+
+**Self-check before presenting assumptions:** Would these assumptions be DIFFERENT if the interview answers had been different? If not, you ignored the interview. Redo them.
 
 Then present each assumption ONE AT A TIME for evaluation. Same template rules: UI chrome in English, content in user's language.
 
