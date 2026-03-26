@@ -49,9 +49,9 @@ export interface InterviewSignals {
   goal?: 'clear_goal' | 'direction_only' | 'competing' | 'unclear';
   stakes?: 'irreversible' | 'important' | 'experiment' | 'unknown_stakes';
   // v2 adaptive fields (conditional on core answers)
+  trigger?: 'external_pressure' | 'internal_request' | 'opportunity' | 'recurring';
   history?: 'failed' | 'partial' | 'first' | 'unknown';
   stakeholder?: 'executive' | 'team' | 'client' | 'self';
-  concern?: 'wrong_direction' | 'wasted_resources' | 'relationship' | 'timing';
 }
 
 export interface DecomposeItem {
