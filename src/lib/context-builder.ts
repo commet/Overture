@@ -1,6 +1,6 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getSignalsByType } from '@/lib/signal-recorder';
-import type { JudgmentRecord, DecomposeItem, OrchestrateItem, SynthesizeItem, PersonaAccuracyRating, Project, RefinementLoop, OutcomeRecord } from '@/stores/types';
+import type { JudgmentRecord, ReframeItem, RecastItem, SynthesizeItem, PersonaAccuracyRating, Project, RefineLoop, OutcomeRecord } from '@/stores/types';
 import { getActionableInsights } from '@/lib/retrospective';
 
 /**
@@ -36,7 +36,7 @@ export function buildEnhancedSystemPrompt(
     sections.push(codaInsights);
   }
 
-  // 4. Convergence patterns from past refinement loops
+  // 4. Convergence patterns from past refine loops
   const convergenceCtx = buildConvergencePatterns();
   if (convergenceCtx) sections.push(convergenceCtx);
 
@@ -142,9 +142,9 @@ function buildCodaInsights(excludeProjectId?: string): string | null {
  * Build a rich context string from related project items for cross-tool awareness.
  */
 export function buildProjectItemsContext(projectId: string): string {
-  const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
+  const decompositions = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, [])
     .filter((d) => d.project_id === projectId && d.status === 'done');
-  const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
+  const recasts = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, [])
     .filter((o) => o.project_id === projectId && o.status === 'done');
   const syntheses = getStorage<SynthesizeItem[]>(STORAGE_KEYS.SYNTHESIZE_LIST, [])
     .filter((s) => s.project_id === projectId && s.status === 'done');
@@ -158,8 +158,8 @@ export function buildProjectItemsContext(projectId: string): string {
     }
   }
 
-  if (orchestrations.length > 0) {
-    const latest = orchestrations[orchestrations.length - 1];
+  if (recasts.length > 0) {
+    const latest = recasts[recasts.length - 1];
     if (latest.analysis) {
       parts.push(`[편곡] ${latest.steps.length}단계, AI ${latest.analysis.ai_ratio}% / 사람 ${latest.analysis.human_ratio}%`);
     }
@@ -260,11 +260,11 @@ export function buildPersonaAccuracyContext(personaId: string): string {
 }
 
 /**
- * Build convergence patterns from past refinement loops.
+ * Build convergence patterns from past refine loops.
  * Helps calibrate initial design precision for future projects.
  */
 export function buildConvergencePatterns(): string | null {
-  const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
   const completed = loops.filter(l => l.status === 'converged' || l.status === 'stopped_by_user');
   if (completed.length < 2) return null;
 

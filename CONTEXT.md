@@ -7,7 +7,7 @@
 
 ## 1. 프로젝트 정체성
 
-**Overture** — "Think before you orchestrate"
+**Overture** — "Think before you recast"
 
 오케스트라에서 서곡(Overture)은 본 공연 전에 전체 음악의 주제를 미리 제시하는 곡.
 AI 에이전트가 실행하기 전에, 무엇을 왜 어떤 순서로 할지를 설계하는 도구.
@@ -27,7 +27,7 @@ AI 에이전트가 실행하기 전에, 무엇을 왜 어떤 순서로 할지를
 | 단계 | 오케스트라 비유 | 업무명 | 기능 | 코드 |
 |------|-------------|--------|------|------|
 | 1 | **악보 해석** | 문제 재정의 | 과제의 진짜 질문 찾기, 가설 수립, 전제 점검 | DecomposeStep.tsx |
-| 2 | **편곡** | 실행 설계 | Governing idea + SCR 스토리라인 + 워크플로우 + 판단 포인트 + 핵심 가정 | OrchestrateStep.tsx |
+| 2 | **편곡** | 실행 설계 | Governing idea + SCR 스토리라인 + 워크플로우 + 판단 포인트 + 핵심 가정 | RecastStep.tsx |
 | 3 | **리허설** | 사전 검증 | 페르소나 기반 프리모템 + 리스크 3분류 + 가정 공격 + 승인 조건 | PersonaFeedbackStep.tsx |
 | 4 | **합주 연습** | 피드백 반영 | 리허설 피드백 반영 → 재검증 → 하모니 수렴 | RefinementLoopStep.tsx |
 | → | **공연** | 산출물 | 4종 Output 생성 | OutputSelector.tsx |
@@ -218,7 +218,7 @@ src/
 │   │   └── OutputSelector.tsx    # 공연 — 4종 산출물
 │   └── workspace/
 │       ├── DecomposeStep.tsx     # 악보 해석
-│       ├── OrchestrateStep.tsx   # 편곡
+│       ├── RecastStep.tsx   # 편곡
 │       ├── PersonaFeedbackStep.tsx # 리허설
 │       ├── RefinementLoopStep.tsx  # 합주 연습
 │       ├── SynthesizeStep.tsx    # 조율 (메인 플로우 외)
@@ -235,7 +235,7 @@ src/
 └── stores/
     ├── types.ts                  # 전체 타입 정의
     ├── useDecomposeStore.ts
-    ├── useOrchestrateStore.ts
+    ├── useRecastStore.ts
     ├── usePersonaStore.ts
     ├── useRefinementStore.ts
     └── useProjectStore.ts

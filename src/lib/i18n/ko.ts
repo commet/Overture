@@ -10,29 +10,29 @@ export const ko = {
   'common.newStart': '새로 시작',
 
   // Tools
-  'tool.decompose': '악보 해석',
-  'tool.decompose.subtitle': '문제 재정의',
-  'tool.orchestrate': '편곡',
-  'tool.orchestrate.subtitle': '실행 설계',
+  'tool.reframe': '악보 해석',
+  'tool.reframe.subtitle': '문제 재정의',
+  'tool.recast': '편곡',
+  'tool.recast.subtitle': '실행 설계',
   'tool.rehearsal': '리허설',
   'tool.rehearsal.subtitle': '페르소나 피드백',
   'tool.ensemble': '합주',
   'tool.ensemble.subtitle': '수렴 연습',
 
-  // Decompose
-  'decompose.placeholder': '해결하고 싶은 과제를 입력하세요',
-  'decompose.analyzing': '악보를 읽고 있습니다...',
-  'decompose.direction': '어떤 방향으로 접근하시겠습니까?',
-  'decompose.reframe': '질문 재정의',
-  'decompose.reframing': '질문을 재정의하고 있습니다...',
-  'decompose.assumptions': '검증 필요한 전제',
-  'decompose.aiLimitations': 'AI 한계',
+  // Reframe
+  'reframe.placeholder': '해결하고 싶은 과제를 입력하세요',
+  'reframe.analyzing': '악보를 읽고 있습니다...',
+  'reframe.direction': '어떤 방향으로 접근하시겠습니까?',
+  'reframe.reframe': '질문 재정의',
+  'reframe.reframing': '질문을 재정의하고 있습니다...',
+  'reframe.assumptions': '검증 필요한 전제',
+  'reframe.aiLimitations': 'AI 한계',
 
-  // Orchestrate
-  'orchestrate.placeholder': '맥락을 선택하고 목표를 입력하세요',
-  'orchestrate.analyzing': '편곡하고 있습니다...',
-  'orchestrate.governingIdea': '핵심 방향',
-  // orchestrate.review removed (multi-lens review replaced by auto-persona + rehearsal)
+  // Recast
+  'recast.placeholder': '맥락을 선택하고 목표를 입력하세요',
+  'recast.analyzing': '편곡하고 있습니다...',
+  'recast.governingIdea': '핵심 방향',
+  // recast.review removed (multi-lens review replaced by auto-persona + rehearsal)
 
   // Rehearsal
   'rehearsal.title': '리허설',

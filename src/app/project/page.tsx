@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRefineStore } from '@/stores/useRefineStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +15,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { generateProjectBrief } from '@/lib/project-brief';
 import { OutputSelector } from '@/components/ui/OutputSelector';
 import { ExecutionReadiness } from '@/components/ui/ExecutionReadiness';
-import type { Project, DecomposeItem, OrchestrateItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
+import type { Project, ReframeItem, RecastItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
 import Link from 'next/link';
 import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download } from 'lucide-react';
 
@@ -32,75 +32,75 @@ interface StepStatus {
 
 export default function ProjectPage() {
   const { projects, currentProjectId, loadProjects, setCurrentProjectId } = useProjectStore();
-  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
-  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+  const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
+  const { items: recastItems, loadItems: loadRecast } = useRecastStore();
   const { items: synthesizeItems, loadItems: loadSynthesize } = useSynthesizeStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
-  const { loops, loadLoops } = useRefinementStore();
+  const { loops, loadLoops } = useRefineStore();
   const { judgments, loadJudgments, getUserPatterns } = useJudgmentStore();
 
   useEffect(() => {
     loadProjects();
-    loadDecompose();
-    loadOrchestrate();
+    loadReframe();
+    loadRecast();
     loadSynthesize();
     loadPersona();
     loadLoops();
     loadJudgments();
-  }, [loadProjects, loadDecompose, loadOrchestrate, loadSynthesize, loadPersona, loadLoops, loadJudgments]);
+  }, [loadProjects, loadReframe, loadRecast, loadSynthesize, loadPersona, loadLoops, loadJudgments]);
 
   const currentProject = currentProjectId ? projects.find((p) => p.id === currentProjectId) : null;
 
   // Get items for current project
-  const projectDecompositions = decomposeItems.filter((d) => d.project_id === currentProjectId);
-  const projectOrchestrations = orchestrateItems.filter((o) => o.project_id === currentProjectId);
+  const projectReframes = reframeItems.filter((d) => d.project_id === currentProjectId);
+  const projectRecasts = recastItems.filter((o) => o.project_id === currentProjectId);
   const projectSyntheses = synthesizeItems.filter((s) => s.project_id === currentProjectId);
   const projectFeedbacks = feedbackHistory.filter((f) => f.project_id === currentProjectId);
   const projectLoops = loops.filter((l) => l.project_id === currentProjectId);
 
   const getSteps = (): StepStatus[] => {
-    const latestDecompose = projectDecompositions[projectDecompositions.length - 1];
-    const latestOrchestrate = projectOrchestrations[projectOrchestrations.length - 1];
+    const latestReframe = projectReframes[projectReframes.length - 1];
+    const latestRecast = projectRecasts[projectRecasts.length - 1];
     const latestFeedback = projectFeedbacks[projectFeedbacks.length - 1];
 
     const latestLoop = projectLoops[projectLoops.length - 1];
 
     return [
       {
-        tool: 'decompose',
+        tool: 'reframe',
         label: '악보 해석',
         icon: <Layers size={18} />,
-        href: '/workspace?step=decompose',
-        status: latestDecompose?.status === 'done' ? 'done' : latestDecompose ? 'in-progress' : 'not-started',
-        summary: latestDecompose?.selected_question || latestDecompose?.analysis?.surface_task,
+        href: '/workspace?step=reframe',
+        status: latestReframe?.status === 'done' ? 'done' : latestReframe ? 'in-progress' : 'not-started',
+        summary: latestReframe?.selected_question || latestReframe?.analysis?.surface_task,
         color: 'text-[#2d4a7c]',
         bgColor: 'bg-[var(--ai)]',
       },
       {
-        tool: 'orchestrate',
+        tool: 'recast',
         label: '편곡',
         icon: <Map size={18} />,
-        href: '/workspace?step=orchestrate',
-        status: latestOrchestrate?.status === 'done' ? 'done' : latestOrchestrate ? 'in-progress' : 'not-started',
-        summary: latestOrchestrate?.analysis ? `${latestOrchestrate.steps.length}단계 워크플로우` : undefined,
+        href: '/workspace?step=recast',
+        status: latestRecast?.status === 'done' ? 'done' : latestRecast ? 'in-progress' : 'not-started',
+        summary: latestRecast?.analysis ? `${latestRecast.steps.length}단계 워크플로우` : undefined,
         color: 'text-[#8b6914]',
         bgColor: 'bg-[var(--human)]',
       },
       {
-        tool: 'persona-feedback',
+        tool: 'rehearse',
         label: '리허설',
         icon: <Users size={18} />,
-        href: '/workspace?step=persona-feedback',
+        href: '/workspace?step=rehearse',
         status: latestFeedback ? 'done' : 'not-started',
         summary: latestFeedback ? `${latestFeedback.results.length}명 피드백 완료` : undefined,
         color: 'text-purple-700',
         bgColor: 'bg-purple-50',
       },
       {
-        tool: 'refinement-loop',
+        tool: 'refine',
         label: '합주 연습',
         icon: <RefreshCw size={18} />,
-        href: '/workspace?step=refinement-loop',
+        href: '/workspace?step=refine',
         status: latestLoop?.status === 'converged' ? 'done' : latestLoop?.status === 'active' ? 'in-progress' : 'not-started',
         summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 위협 ${latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence?.critical_risks ?? '?'}건` : undefined,
         color: 'text-[#2d6b2d]',
@@ -286,7 +286,7 @@ export default function ProjectPage() {
           {currentProject && (() => {
             const otherProjects = projects.filter(p => p.id !== currentProject.id && p.refs.length >= 2);
             if (otherProjects.length === 0) return null;
-            const latestD = projectDecompositions[projectDecompositions.length - 1];
+            const latestD = projectReframes[projectReframes.length - 1];
             if (!latestD?.analysis?.surface_task) return null;
             return (
               <div className="text-[12px] text-[var(--text-secondary)]">
@@ -313,10 +313,10 @@ export default function ProjectPage() {
                 <div className="flex-1">
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">다음 단계: {nextStep.label}</p>
                   <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                    {nextStep.tool === 'decompose' && '과제의 진짜 질문을 찾아보세요.'}
-                    {nextStep.tool === 'orchestrate' && '발견한 질문을 해결할 워크플로우를 설계하세요.'}
-                    {nextStep.tool === 'persona-feedback' && '이해관계자 시점에서 결과물을 검증하세요.'}
-                    {nextStep.tool === 'refinement-loop' && '피드백을 반영하여 수렴할 때까지 반복하세요.'}
+                    {nextStep.tool === 'reframe' && '과제의 진짜 질문을 찾아보세요.'}
+                    {nextStep.tool === 'recast' && '발견한 질문을 해결할 워크플로우를 설계하세요.'}
+                    {nextStep.tool === 'rehearse' && '이해관계자 시점에서 결과물을 검증하세요.'}
+                    {nextStep.tool === 'refine' && '피드백을 반영하여 수렴할 때까지 반복하세요.'}
                   </p>
                   <Link href={nextStep.href}>
                     <Button size="sm" className="mt-2">

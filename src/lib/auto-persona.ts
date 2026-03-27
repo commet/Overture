@@ -6,7 +6,7 @@
  */
 
 import { callLLMJson } from './llm';
-import type { DecomposeItem, OrchestrateItem, Persona, SuggestedReviewer } from '@/stores/types';
+import type { ReframeItem, RecastItem, Persona, SuggestedReviewer } from '@/stores/types';
 import { generateId } from './uuid';
 
 export interface AutoPersona {
@@ -21,27 +21,27 @@ export interface AutoPersona {
 
 /**
  * Extract 2-3 relevant personas from accumulated project context.
- * Uses LLM to analyze decompose + orchestrate data.
+ * Uses LLM to analyze decompose + recast data.
  */
 export async function extractPersonasFromContext(
-  decompose: DecomposeItem | null,
-  orchestrate: OrchestrateItem,
+  reframe: ReframeItem | null,
+  recast: RecastItem,
 ): Promise<AutoPersona[]> {
-  const analysis = orchestrate.analysis;
+  const analysis = recast.analysis;
   if (!analysis) return [];
 
   // Build rich context from all available data
   const contextParts: string[] = [];
 
-  // From decompose
-  if (decompose) {
-    contextParts.push(`[원래 과제]\n${decompose.input_text}`);
-    if (decompose.analysis) {
-      contextParts.push(`[재정의된 질문]\n${decompose.analysis.reframed_question || decompose.analysis.surface_task}`);
+  // From reframe
+  if (reframe) {
+    contextParts.push(`[원래 과제]\n${reframe.input_text}`);
+    if (reframe.analysis) {
+      contextParts.push(`[재정의된 질문]\n${reframe.analysis.reframed_question || reframe.analysis.surface_task}`);
     }
   }
 
-  // From orchestrate
+  // From recast
   contextParts.push(`[핵심 방향]\n${analysis.governing_idea}`);
   contextParts.push(`[최종 목표]\n${analysis.goal_summary}`);
 
@@ -59,7 +59,7 @@ export async function extractPersonasFromContext(
     contextParts.push(`[핵심 가정]\n${assumptions}`);
   }
 
-  contextParts.push(`[편곡 입력 맥락]\n${orchestrate.input_text}`);
+  contextParts.push(`[편곡 입력 맥락]\n${recast.input_text}`);
 
   const context = contextParts.join('\n\n');
 

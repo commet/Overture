@@ -44,7 +44,7 @@
 #### 분석 트래킹 (analytics)
 - **Supabase `user_events` 테이블**: event_name, properties(JSON), session_id, page_path
 - **`src/lib/analytics.ts`**: fire-and-forget `track()` 함수, 세션 기반
-- **8개 이벤트**: page_view, demo_step, project_created, decompose_complete, orchestrate_complete, feedback_complete, iteration_complete, loop_converged
+- **8개 이벤트**: page_view, demo_step, project_created, decompose_complete, recast_complete, feedback_complete, iteration_complete, loop_converged
 - SQL 쿼리 예시 포함 (일별 세션, 데모 완주율, 퍼널, 산출물 빈도)
 
 #### 판단 근거서 + 실행 준비도

@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, MessageSquare, X, Check } from 'lucide-react';
 import { callLLMJson } from '@/lib/llm';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import type { StepId } from '@/stores/useWorkspaceStore';
 
 interface QuickChatBarProps {
@@ -23,7 +23,7 @@ const SYSTEM_PROMPT = `당신은 Overture 워크스페이스의 어시스턴트�
 현재 단계: {step}
 
 사용 가능한 액션:
-- navigate: 다른 단계로 이동. params: { step: "decompose" | "orchestrate" | "persona-feedback" }
+- navigate: 다른 단계로 이동. params: { step: "reframe" | "recast" | "rehearse" }
 - update_actor: 편곡에서 특정 스텝의 담당자 변경. params: { stepIndex: number, actor: "ai" | "human" | "both" }
 - add_step: 편곡에 새 단계 추가. params: { task: string }
 - remove_step: 편곡에서 단계 제거. params: { stepIndex: number }
@@ -42,8 +42,8 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const orchestrateStore = useOrchestrateStore();
-  const decomposeStore = useDecomposeStore();
+  const recastStore = useRecastStore();
+  const reframeStore = useReframeStore();
 
   // Clear feedback after 3s
   useEffect(() => {
@@ -60,9 +60,9 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
         break;
 
       case 'update_actor': {
-        const currentId = orchestrateStore.currentId;
+        const currentId = recastStore.currentId;
         if (currentId) {
-          orchestrateStore.updateStep(currentId, action.params.stepIndex as number, {
+          recastStore.updateStep(currentId, action.params.stepIndex as number, {
             actor: action.params.actor as 'ai' | 'human' | 'both',
           });
         }
@@ -70,14 +70,14 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
       }
 
       case 'add_step': {
-        const currentId = orchestrateStore.currentId;
+        const currentId = recastStore.currentId;
         if (currentId) {
-          orchestrateStore.addStep(currentId);
-          const items = orchestrateStore.items;
+          recastStore.addStep(currentId);
+          const items = recastStore.items;
           const item = items.find(i => i.id === currentId);
           if (item) {
             const lastIdx = item.steps.length; // new step is at end
-            orchestrateStore.updateStep(currentId, lastIdx, {
+            recastStore.updateStep(currentId, lastIdx, {
               task: action.params.task as string,
             });
           }
@@ -86,9 +86,9 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
       }
 
       case 'remove_step': {
-        const currentId = orchestrateStore.currentId;
+        const currentId = recastStore.currentId;
         if (currentId) {
-          orchestrateStore.removeStep(currentId, action.params.stepIndex as number);
+          recastStore.removeStep(currentId, action.params.stepIndex as number);
         }
         break;
       }
@@ -118,7 +118,7 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
     // Quick local commands first (no LLM needed)
     const lowerInput = input.trim().toLowerCase();
     if (lowerInput === '다음' || lowerInput === '다음 단계' || lowerInput === '다음 단계로') {
-      const stepOrder: StepId[] = ['decompose', 'orchestrate', 'persona-feedback'];
+      const stepOrder: StepId[] = ['reframe', 'recast', 'rehearse'];
       const currentIdx = stepOrder.indexOf(activeStep);
       if (currentIdx >= 0 && currentIdx < stepOrder.length - 1) {
         onNavigate(stepOrder[currentIdx + 1]);
@@ -193,8 +193,8 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              activeStep === 'orchestrate' ? '"Step 3을 사람으로 바꿔줘" 또는 "리뷰 단계 추가해줘"' :
-              activeStep === 'decompose' ? '"2번 질문을 선택해줘" 또는 "다음 단계로"' :
+              activeStep === 'recast' ? '"Step 3을 사람으로 바꿔줘" 또는 "리뷰 단계 추가해줘"' :
+              activeStep === 'reframe' ? '"2번 질문을 선택해줘" 또는 "다음 단계로"' :
               '"다음 단계로" 또는 수정 요청...'
             }
             className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--text-secondary)]"

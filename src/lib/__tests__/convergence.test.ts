@@ -1,4 +1,4 @@
-import type { RefinementLoop, FeedbackRecord, ApprovalCondition, Persona, PersonaFeedbackResult } from '@/stores/types';
+import type { RefineLoop, FeedbackRecord, ApprovalCondition, Persona, RehearsalResult } from '@/stores/types';
 import {
   extractIssuesFromFeedback,
   extractApprovalConditions,
@@ -23,7 +23,7 @@ function makePersona(overrides: Partial<Persona> = {}): Persona {
   };
 }
 
-function makeResult(overrides: Partial<PersonaFeedbackResult> = {}): PersonaFeedbackResult {
+function makeResult(overrides: Partial<RehearsalResult> = {}): RehearsalResult {
   return {
     persona_id: 'p1', overall_reaction: '', failure_scenario: '',
     untested_assumptions: [], classified_risks: [], first_questions: [],
@@ -41,7 +41,7 @@ function makeRecord(overrides: Partial<FeedbackRecord> = {}): FeedbackRecord {
   };
 }
 
-function makeLoop(overrides: Partial<RefinementLoop> = {}): RefinementLoop {
+function makeLoop(overrides: Partial<RefineLoop> = {}): RefineLoop {
   return {
     id: 'loop-1', project_id: 'proj-1', name: 'test',
     goal: 'test', original_plan: '', initial_feedback_record_id: 'fb1',

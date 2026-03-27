@@ -8,10 +8,10 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User } from 'lucide-react';
 
 const processSteps = [
-  { step: 'decompose', label: '악보 해석', subtitle: '문제 재정의', icon: Layers, color: '#2d4a7c' },
-  { step: 'orchestrate', label: '편곡', subtitle: '실행 설계', icon: Map, color: '#8b6914' },
-  { step: 'persona-feedback', label: '리허설', subtitle: '사전 검증', icon: Users, color: '#6b4c9a' },
-  { step: 'refinement-loop', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw, color: '#2d6b2d' },
+  { step: 'reframe', label: '악보 해석', subtitle: '문제 재정의', icon: Layers, color: '#2d4a7c' },
+  { step: 'recast', label: '편곡', subtitle: '실행 설계', icon: Map, color: '#8b6914' },
+  { step: 'rehearse', label: '리허설', subtitle: '사전 검증', icon: Users, color: '#6b4c9a' },
+  { step: 'refine', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw, color: '#2d6b2d' },
 ];
 
 const utilityItems = [
@@ -98,7 +98,7 @@ export function Sidebar() {
             {personas.slice(0, 4).map((p) => (
               <Link
                 key={p.id}
-                href="/workspace?step=persona-feedback"
+                href="/workspace?step=rehearse"
                 className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg)] transition-colors"
               >
                 <div className="w-5 h-5 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0">

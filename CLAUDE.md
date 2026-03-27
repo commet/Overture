@@ -2,7 +2,7 @@
 
 ## Checklist: Adding a New Field to a Type
 
-When adding a field to any TypeScript interface (e.g., `Persona`, `OrchestrateStep`), check ALL of these:
+When adding a field to any TypeScript interface (e.g., `Persona`, `RecastStep`), check ALL of these:
 
 1. **Type definition** (`stores/types.ts`) — add the field
 2. **Store creator** (e.g., `createPersona()` in `usePersonaStore.ts`) — map the field explicitly
@@ -11,7 +11,7 @@ When adding a field to any TypeScript interface (e.g., `Persona`, `OrchestrateSt
 5. **All prompts that use this type** — update every system prompt that injects this data
    - `PersonaFeedbackStep.tsx` FEEDBACK_SYSTEM
    - `RefinementLoopStep.tsx` re-review prompt
-   - `OrchestrateStep.tsx` SYSTEM_PROMPT
+   - `RecastStep.tsx` SYSTEM_PROMPT
 6. **UI that displays this type** — update cards, forms, detail views
 7. **Handoff/conversion functions** — `autoPersonaToFull()`, `buildDecomposeContext()`, etc.
 
@@ -50,7 +50,7 @@ Compare against the TypeScript interface. Add missing columns.
 
 - **localStorage first, Supabase async** — app works offline, syncs when connected
 - **Zustand stores** — each store has loadData (merge local+remote), mutation methods
-- **Context chain** — typed data flows: decompose → orchestrate → persona-feedback → refinement
+- **Context chain** — typed data flows: decompose → recast → persona-feedback → refinement
 - **Quality signals** — `signal-recorder.ts` records implicit user behavior for learning
 - **Handoff store** — transient data between steps, consumed on mount via `useEffect([], [])`
 

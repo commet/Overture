@@ -73,8 +73,8 @@ describe('concertmaster', () => {
       });
       mockGetStorage.mockImplementation((key: string) => {
         if (key === 'sot_judgments') return [
-          { id: '1', user_changed: true, type: 'actor_override', decision: 'human', tool: 'orchestrate', context: '', original_ai_suggestion: '', created_at: '' },
-          { id: '2', user_changed: false, type: 'actor_override', decision: 'ai', tool: 'orchestrate', context: '', original_ai_suggestion: '', created_at: '' },
+          { id: '1', user_changed: true, type: 'actor_override', decision: 'human', tool: 'recast', context: '', original_ai_suggestion: '', created_at: '' },
+          { id: '2', user_changed: false, type: 'actor_override', decision: 'ai', tool: 'recast', context: '', original_ai_suggestion: '', created_at: '' },
         ];
         if (key === 'sot_projects') return [{ id: 'p1', name: 'P1' }];
         return [];
@@ -192,7 +192,7 @@ describe('concertmaster', () => {
   });
 
   describe('getStepCoaching', () => {
-    it('returns welcome for decompose with 0 sessions', () => {
+    it('returns welcome for reframe with 0 sessions', () => {
       mockGetSessionInsights.mockReturnValue([]);
       mockGetWorstPerformingEvals.mockReturnValue([]);
 
@@ -201,16 +201,16 @@ describe('concertmaster', () => {
         overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
       };
 
-      const coaching = getStepCoaching('decompose', profile);
+      const coaching = getStepCoaching('reframe', profile);
       expect(coaching).not.toBeNull();
       expect(coaching!.message).toContain('첫 분석');
     });
 
-    it('returns override coaching for orchestrate', () => {
+    it('returns override coaching for recast', () => {
       mockGetStorage.mockReturnValue([
-        { id: '1', type: 'actor_override', user_changed: true, decision: 'human', tool: 'orchestrate', context: '', original_ai_suggestion: '', created_at: '' },
-        { id: '2', type: 'actor_override', user_changed: true, decision: 'human', tool: 'orchestrate', context: '', original_ai_suggestion: '', created_at: '' },
-        { id: '3', type: 'actor_override', user_changed: true, decision: 'ai', tool: 'orchestrate', context: '', original_ai_suggestion: '', created_at: '' },
+        { id: '1', type: 'actor_override', user_changed: true, decision: 'human', tool: 'recast', context: '', original_ai_suggestion: '', created_at: '' },
+        { id: '2', type: 'actor_override', user_changed: true, decision: 'human', tool: 'recast', context: '', original_ai_suggestion: '', created_at: '' },
+        { id: '3', type: 'actor_override', user_changed: true, decision: 'ai', tool: 'recast', context: '', original_ai_suggestion: '', created_at: '' },
       ]);
 
       const profile: ConcertmasterProfile = {
@@ -218,18 +218,18 @@ describe('concertmaster', () => {
         overrideRate: 0.5, dominantStrategy: null, avgPassRate: 0.6, tier: 2,
       };
 
-      const coaching = getStepCoaching('orchestrate', profile);
+      const coaching = getStepCoaching('recast', profile);
       expect(coaching).not.toBeNull();
       expect(coaching!.message).toContain('수정');
     });
 
-    it('returns null for orchestrate with few judgments', () => {
+    it('returns null for recast with few judgments', () => {
       const profile: ConcertmasterProfile = {
         sessionCount: 1, projectCount: 1, totalJudgments: 1,
         overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
       };
 
-      const coaching = getStepCoaching('orchestrate', profile);
+      const coaching = getStepCoaching('recast', profile);
       expect(coaching).toBeNull();
     });
 
@@ -257,14 +257,14 @@ describe('concertmaster', () => {
         overrideRate: 0.2, dominantStrategy: null, avgPassRate: 0.7, tier: 2,
       };
 
-      const coaching = getStepCoaching('persona-feedback', profile);
+      const coaching = getStepCoaching('rehearse', profile);
       expect(coaching).not.toBeNull();
       expect(coaching!.message).toContain('정확도');
     });
 
-    it('returns convergence coaching for refinement loop', () => {
+    it('returns convergence coaching for refine step', () => {
       mockGetStorage.mockImplementation((key: string) => {
-        if (key === 'sot_refinement_loops') return [
+        if (key === 'sot_refine_loops') return [
           { iterations: [{}, {}, {}] },
         ];
         return [];
@@ -275,7 +275,7 @@ describe('concertmaster', () => {
         overrideRate: 0.2, dominantStrategy: null, avgPassRate: 0.7, tier: 2,
       };
 
-      const coaching = getStepCoaching('refinement-loop', profile);
+      const coaching = getStepCoaching('refine', profile);
       expect(coaching).not.toBeNull();
       expect(coaching!.message).toContain('3회 반복');
     });

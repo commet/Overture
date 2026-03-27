@@ -1,10 +1,10 @@
 'use client';
 
 import { Card } from '@/components/ui/Card';
-import type { RefinementIteration } from '@/stores/types';
+import type { RefineIteration } from '@/stores/types';
 
 interface ConvergenceChartProps {
-  iterations: RefinementIteration[];
+  iterations: RefineIteration[];
   initialIssueCount: number;
 }
 

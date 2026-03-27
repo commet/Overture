@@ -2,10 +2,10 @@
 
 import { Card } from '@/components/ui/Card';
 import { Flag, Scale } from 'lucide-react';
-import type { OrchestrateStep } from '@/stores/types';
+import type { RecastStep } from '@/stores/types';
 
 interface JudgmentPointsProps {
-  steps: OrchestrateStep[];
+  steps: RecastStep[];
 }
 
 export function JudgmentPoints({ steps }: JudgmentPointsProps) {

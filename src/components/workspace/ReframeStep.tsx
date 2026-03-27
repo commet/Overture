@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { track, trackError } from '@/lib/analytics';
 import Link from 'next/link';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { useReframeStore } from '@/stores/useReframeStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { decomposeToMarkdown } from '@/lib/export';
+import { reframeToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
-import type { DecomposeAnalysis, DecomposeItem, DecomposeHiddenQuestion, HiddenAssumption } from '@/stores/types';
+import type { ReframeAnalysis, ReframeItem, ReframeHiddenQuestion, HiddenAssumption } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -23,11 +23,11 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Pencil, Brain, AlertTriangle, ArrowRight, RotateCcw, Send, Loader2 } from 'lucide-react';
 import { StaffLines, BarLine } from '@/components/ui/MusicalElements';
-import { buildDecomposeContext, extractInterviewSignals } from '@/lib/context-chain';
+import { buildReframeContext, extractInterviewSignals } from '@/lib/context-chain';
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy } from '@/lib/reframing-strategy';
 import type { InterviewSignals } from '@/stores/types';
 import type { EntryStep } from '@/components/ui/StepEntry';
-import { recordDecomposeEval, getBestStrategy } from '@/lib/eval-engine';
+import { recordReframeEval, getBestStrategy } from '@/lib/eval-engine';
 import { applyPromptMutations } from '@/lib/prompt-mutation';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
@@ -350,7 +350,7 @@ function getInterviewPlaceholder(selections: Record<string, string>): string {
    Normalize legacy data
    ─────────────────────────────────────────── */
 
-function normalizeAnalysis(raw: DecomposeAnalysis): DecomposeAnalysis {
+function normalizeAnalysis(raw: ReframeAnalysis): ReframeAnalysis {
   return {
     surface_task: raw.surface_task || '',
     reframed_question: raw.reframed_question || raw.hypothesis || '',
@@ -370,12 +370,12 @@ function normalizeAnalysis(raw: DecomposeAnalysis): DecomposeAnalysis {
    Component
    ─────────────────────────────────────────── */
 
-interface DecomposeStepProps {
+interface ReframeStepProps {
   onNavigate: (step: string) => void;
 }
 
-export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
-  const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useDecomposeStore();
+export function ReframeStep({ onNavigate }: ReframeStepProps) {
+  const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useReframeStore();
   const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
   const { setHandoff } = useHandoffStore();
   const { projects, loadProjects, getOrCreateProject, addRef } = useProjectStore();
@@ -384,7 +384,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
   const [editingQuestion, setEditingQuestion] = useState(false);
   const [customQuestion, setCustomQuestion] = useState('');
   const [error, setError] = useState('');
-  const [similarItems, setSimilarItems] = useState<Array<DecomposeItem & { similarity: number }>>([]);
+  const [similarItems, setSimilarItems] = useState<Array<ReframeItem & { similarity: number }>>([]);
   const [currentStrategy, setCurrentStrategy] = useState<ReframingStrategy | null>(null);
   const [reviewStage, setReviewStage] = useState<'evaluate' | 'reframe'>('evaluate');
   const [reframing, setReframing] = useState(false);
@@ -420,7 +420,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     const timer = setTimeout(() => {
       const doneItems = items.filter((i) => i.status === 'done' && i.analysis);
       const matches = findSimilarItems(inputText, doneItems.map(i => ({ ...i, input_text: i.input_text || '' })));
-      setSimilarItems(matches as Array<DecomposeItem & { similarity: number }>);
+      setSimilarItems(matches as Array<ReframeItem & { similarity: number }>);
     }, 500);
     return () => clearTimeout(timer);
   }, [inputText, items]);
@@ -479,12 +479,12 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       setStreamingText('');
 
       // Try to parse JSON from the streamed text
-      let analysis: DecomposeAnalysis;
+      let analysis: ReframeAnalysis;
       try {
-        analysis = parseJSON<DecomposeAnalysis>(fullText);
+        analysis = parseJSON<ReframeAnalysis>(fullText);
       } catch {
         // JSON parse failed — fall back to non-streaming call
-        analysis = await callLLMJson<DecomposeAnalysis>(
+        analysis = await callLLMJson<ReframeAnalysis>(
           [{ role: 'user', content: finalPrompt }],
           { system: systemPrompt, maxTokens: 1200 }
         );
@@ -508,7 +508,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         const diversityRatio = axes.length > 0 ? uniqueAxes.size / axes.length : 0;
         recordSignal({
           project_id: current?.project_id,
-          tool: 'decompose',
+          tool: 'reframe',
           signal_type: 'axis_diversity',
           signal_data: {
             axes: Array.from(uniqueAxes),
@@ -524,7 +524,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
-      trackError('decompose_analyze', err);
+      trackError('reframe_analyze', err);
       const msg = err instanceof Error ? err.message : '';
       if (msg.startsWith('LOGIN_REQUIRED:')) {
         setError('LOGIN_REQUIRED');
@@ -560,7 +560,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
         original_ai_suggestion: analysis.hidden_questions[0]?.question || '',
         user_changed: isCustom,
         project_id: current.project_id,
-        tool: 'decompose',
+        tool: 'reframe',
       });
     }, 1000);
   };
@@ -633,12 +633,12 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       setStreamingText('');
 
       // Try to parse JSON from the streamed text
-      let reframingResult: Partial<DecomposeAnalysis>;
+      let reframingResult: Partial<ReframeAnalysis>;
       try {
-        reframingResult = parseJSON<Partial<DecomposeAnalysis>>(fullText);
+        reframingResult = parseJSON<Partial<ReframeAnalysis>>(fullText);
       } catch {
         // JSON parse failed — fall back to non-streaming call
-        reframingResult = await callLLMJson<Partial<DecomposeAnalysis>>(
+        reframingResult = await callLLMJson<Partial<ReframeAnalysis>>(
           [{ role: 'user', content: userMessage }],
           { system: reframingPrompt, maxTokens: 1500 }
         );
@@ -658,7 +658,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
-      trackError('decompose_reframe', err);
+      trackError('reframe_reframe', err);
       setError(err instanceof Error ? err.message : '질문을 재정의할 수 없었습니다.');
     } finally {
       setReframing(false);
@@ -677,7 +677,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     const evalPattern = dCount === 0 && uCount === 0 ? 'all_confirmed'
       : dCount >= assumptions.length * 0.5 ? 'mostly_doubtful'
       : 'mixed';
-    track('decompose_complete', {
+    track('reframe_complete', {
       assumptions: assumptions.length,
       eval_pattern: evalPattern,
       confirmed: cCount,
@@ -689,7 +689,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
     });
 
     // Phase 1: Record binary evals for strategy learning
-    recordDecomposeEval(current, currentStrategy);
+    recordReframeEval(current, currentStrategy);
 
     if (current?.analysis?.hidden_assumptions) {
       const assumptions = current.analysis.hidden_assumptions;
@@ -701,7 +701,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       const uniqueEvals = new Set(assumptions.map(a => typeof a === 'string' ? 'unevaluated' : (a.evaluation || 'unevaluated')));
       recordSignal({
         project_id: current?.project_id,
-        tool: 'decompose',
+        tool: 'reframe',
         signal_type: 'assumption_diversity',
         signal_data: { ...evalCounts, diversity: uniqueEvals.size, total: assumptions.length },
       });
@@ -723,7 +723,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       const prompt = current.selected_question
         ? `원래 과제: ${current.input_text}\n\n재정의된 질문으로 다시 분석해주세요: ${current.selected_question}`
         : current.input_text;
-      const analysis = await callLLMJson<DecomposeAnalysis>(
+      const analysis = await callLLMJson<ReframeAnalysis>(
         [{ role: 'user', content: prompt }],
         { system: buildEnhancedSystemPrompt(ASSUMPTION_PROMPT, current?.project_id), maxTokens: 1200 }
       );
@@ -773,9 +773,9 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
       {/* ─── Header ─── */}
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.decompose')}</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.reframe')}</h1>
           <span className="text-[13px] text-[var(--text-tertiary)]">|</span>
-          <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.decompose.subtitle')}</span>
+          <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.reframe.subtitle')}</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
           전략기획의 핵심 — 숨은 가정을 찾고, 진짜 질문을 재정의합니다.
@@ -816,7 +816,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
 
       {/* ─── Concertmaster inline coaching ─── */}
       {(!current || current.status === 'input') && !currentId && (
-        <ConcertmasterInline step="decompose" />
+        <ConcertmasterInline step="reframe" />
       )}
 
       {/* ═══════════════════════════════════════
@@ -862,6 +862,14 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
             }}
             textLabel="뭘 해야 하나요? (짧게도 OK)"
             textPlaceholder="예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안"
+            animatedPlaceholders={[
+              '예: 중국 시장 진출 전략 수립',
+              '예: AI 도입 ROI 분석 보고서',
+              '예: 경쟁사 가격 인하 대응 방안',
+              '예: 고객 이탈 원인 분석과 개선안',
+              '예: 신사업 아이템 사업성 검증',
+              '예: 분기 실적 프레젠테이션 준비',
+            ]}
             dynamicPlaceholderFn={getInterviewPlaceholder}
             textHint="위에서 선택한 맥락이 반영됩니다. 구체적일수록 정확합니다."
             onSubmit={(selections, text) => {
@@ -1067,7 +1075,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                         <RotateCcw size={14} /> 가정 재분석
                       </Button>
                       <Button onClick={handleReframe}>
-                        {t('decompose.reframe')} &rarr;
+                        {t('reframe.reframe')} &rarr;
                       </Button>
                     </div>
                   </div>
@@ -1082,7 +1090,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
               const allConfirmed = dCount === 0 && uCount === 0;
               const questionLabel = allConfirmed ? '구체화된 핵심 질문' : '재정의된 질문';
               const rationaleLabel = allConfirmed ? '왜 이렇게 구체화했는가' : '왜 이렇게 재정의했는가';
-              const directionLabel = allConfirmed ? '실행의 핵심 갈림길' : t('decompose.direction');
+              const directionLabel = allConfirmed ? '실행의 핵심 갈림길' : t('reframe.direction');
               return (
               <>
                 {/* 재정의된 질문 — 통합 카드 */}
@@ -1140,17 +1148,17 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {/* 방향 선택 */}
                 {analysis.hidden_questions.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-3 mb-5">
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
-                      <p className="text-[13px] font-bold text-[var(--text-primary)]">{directionLabel}</p>
+                      <p className="text-[15px] font-bold text-[var(--text-primary)]">{directionLabel}</p>
                       <div className="h-px flex-1 bg-[var(--border-subtle)]" />
                     </div>
-                    <div className="space-y-2.5">
-                      {analysis.hidden_questions.map((hq: DecomposeHiddenQuestion, i: number) => (
+                    <div className="space-y-3">
+                      {analysis.hidden_questions.map((hq: ReframeHiddenQuestion, i: number) => (
                         <div
                           key={i}
                           onClick={() => handleSelectQuestion(hq.question)}
-                          className={`rounded-xl border p-4 cursor-pointer transition-all duration-300 ${
+                          className={`rounded-xl border px-5 py-4 cursor-pointer transition-all duration-300 ${
                             current.selected_question === hq.question
                               ? 'border-[var(--accent)] bg-[var(--ai)] shadow-sm -translate-y-0.5'
                               : 'border-[var(--border-subtle)] hover:border-[var(--border)]'
@@ -1163,12 +1171,12 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                               {current.selected_question === hq.question && <Check size={10} className="text-white" />}
                             </div>
                             <div>
-                              <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
-                              <p className="text-[12px] text-[var(--text-secondary)] mt-1.5">{hq.reasoning}</p>
+                              <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{hq.question}</p>
+                              <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed">{hq.reasoning}</p>
                               {hq.source_assumption && (
-                                <p className="text-[11px] text-[var(--accent)] mt-1">
-                                  &larr; {hq.source_assumption}
-                                </p>
+                                <span className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-1 rounded-md text-[11px] text-[var(--accent)] font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)' }}>
+                                  <span className="opacity-50">&larr;</span> {hq.source_assumption}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -1208,7 +1216,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                 {analysis.ai_limitations?.length > 0 && (
                   <div className="text-[12px] text-[var(--text-tertiary)]">
                     <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5" />
-                    {t('decompose.aiLimitations')}: {analysis.ai_limitations.join(' · ')}
+                    {t('reframe.aiLimitations')}: {analysis.ai_limitations.join(' · ')}
                   </div>
                 )}
               </>
@@ -1244,7 +1252,7 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                   <RotateCcw size={14} /> 가정 다시 평가
                 </Button>
                 <div className="flex gap-2">
-                  <CopyButton getText={() => decomposeToMarkdown(current)} />
+                  <CopyButton getText={() => reframeToMarkdown(current)} />
                   <Button onClick={handleConfirm} disabled={!current.selected_question}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -1325,28 +1333,28 @@ export function DecomposeStep({ onNavigate }: DecomposeStepProps) {
                     if (!current || !current.analysis) return;
                     const projectId = current.project_id || getOrCreateProject(analysis.surface_task.slice(0, 30));
                     updateItem(currentId!, { project_id: projectId });
-                    addRef(projectId, { tool: 'decompose', itemId: current.id, label: analysis.surface_task });
-                    const content = decomposeToMarkdown(current);
-                    const contextData = buildDecomposeContext(current);
-                    setHandoff({ from: 'decompose', fromItemId: current.id, content, projectId, contextData });
-                    onNavigate('orchestrate');
+                    addRef(projectId, { tool: 'reframe', itemId: current.id, label: analysis.surface_task });
+                    const content = reframeToMarkdown(current);
+                    const contextData = buildReframeContext(current);
+                    setHandoff({ from: 'reframe', fromItemId: current.id, content, projectId, contextData });
+                    onNavigate('recast');
                   }}
                 >
                   <Send size={14} /> 편곡으로 보내기
                 </Button>
-                <CopyButton getText={() => decomposeToMarkdown(current)} label="마크다운 복사" />
+                <CopyButton getText={() => reframeToMarkdown(current)} label="마크다운 복사" />
               </div>
             </div>
 
             <NextStepGuide
-              currentTool="decompose"
+              currentTool="reframe"
               projectId={current.project_id}
               onSendTo={(href) => {
                 if (!current.analysis) return;
                 const projectId = current.project_id || getOrCreateProject(analysis.surface_task.slice(0, 30));
                 if (!current.project_id) updateItem(currentId!, { project_id: projectId });
-                addRef(projectId, { tool: 'decompose', itemId: current.id, label: analysis.surface_task });
-                setHandoff({ from: 'decompose', fromItemId: current.id, content: decomposeToMarkdown(current), projectId, contextData: buildDecomposeContext(current) });
+                addRef(projectId, { tool: 'reframe', itemId: current.id, label: analysis.surface_task });
+                setHandoff({ from: 'reframe', fromItemId: current.id, content: reframeToMarkdown(current), projectId, contextData: buildReframeContext(current) });
                 onNavigate(href.replace('/tools/', ''));
               }}
             />

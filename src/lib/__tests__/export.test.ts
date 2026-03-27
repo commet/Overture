@@ -1,22 +1,22 @@
 import type {
-  DecomposeItem,
+  ReframeItem,
   SynthesizeItem,
-  OrchestrateItem,
+  RecastItem,
   HiddenAssumption,
 } from '@/stores/types';
 import {
-  decomposeToMarkdown,
+  reframeToMarkdown,
   synthesizeToMarkdown,
-  orchestrateToMarkdown,
+  recastToMarkdown,
 } from '@/lib/export';
 
 /* ────────────────────────────────────
-   decomposeToMarkdown
+   reframeToMarkdown
    ──────────────────────────────────── */
 
-describe('decomposeToMarkdown', () => {
+describe('reframeToMarkdown', () => {
   it('returns empty string when analysis is null', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-1',
       input_text: 'test',
       selected_question: '',
@@ -25,11 +25,11 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    expect(decomposeToMarkdown(item)).toBe('');
+    expect(reframeToMarkdown(item)).toBe('');
   });
 
   it('includes surface_task in output', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-2',
       input_text: 'test',
       selected_question: 'Q1',
@@ -46,12 +46,12 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const md = decomposeToMarkdown(item);
+    const md = reframeToMarkdown(item);
     expect(md).toContain('Build a dashboard');
   });
 
   it('includes selected_question in output', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-3',
       input_text: 'test',
       selected_question: 'What is the real goal?',
@@ -68,12 +68,12 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const md = decomposeToMarkdown(item);
+    const md = reframeToMarkdown(item);
     expect(md).toContain('What is the real goal?');
   });
 
   it('uses hypothesis as fallback for selected question', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-4',
       input_text: 'test',
       selected_question: '',
@@ -91,12 +91,12 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const md = decomposeToMarkdown(item);
+    const md = reframeToMarkdown(item);
     expect(md).toContain('The hypothesis fallback');
   });
 
   it('handles legacy string[] assumptions', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-5',
       input_text: 'test',
       selected_question: 'Q',
@@ -114,13 +114,13 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const md = decomposeToMarkdown(item);
+    const md = reframeToMarkdown(item);
     expect(md).toContain('Legacy assumption 1');
     expect(md).toContain('Legacy assumption 2');
   });
 
   it('handles HiddenAssumption[] format with verified status', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       id: 'd-6',
       input_text: 'test',
       selected_question: 'Q',
@@ -140,7 +140,7 @@ describe('decomposeToMarkdown', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const md = decomposeToMarkdown(item);
+    const md = reframeToMarkdown(item);
     expect(md).toContain('Verified assumption');
     expect(md).toContain('✅');
     expect(md).toContain('Unverified assumption');
@@ -236,11 +236,11 @@ describe('synthesizeToMarkdown', () => {
 });
 
 /* ────────────────────────────────────
-   orchestrateToMarkdown
+   recastToMarkdown
    ──────────────────────────────────── */
 
-describe('orchestrateToMarkdown', () => {
-  function makeOrchestrateItem(overrides: Partial<OrchestrateItem> = {}): OrchestrateItem {
+describe('recastToMarkdown', () => {
+  function makeRecastItem(overrides: Partial<RecastItem> = {}): RecastItem {
     return {
       id: 'o-1',
       input_text: 'Plan a product launch',
@@ -254,7 +254,7 @@ describe('orchestrateToMarkdown', () => {
   }
 
   it('includes step table with actor labels', () => {
-    const item = makeOrchestrateItem({
+    const item = makeRecastItem({
       steps: [
         {
           task: 'Research competitors',
@@ -285,7 +285,7 @@ describe('orchestrateToMarkdown', () => {
         },
       ],
     });
-    const md = orchestrateToMarkdown(item);
+    const md = recastToMarkdown(item);
     expect(md).toContain('🤖 AI');
     expect(md).toContain('🧠 사람');
     expect(md).toContain('🤝 협업');
@@ -295,7 +295,7 @@ describe('orchestrateToMarkdown', () => {
   });
 
   it('includes governing_idea', () => {
-    const item = makeOrchestrateItem({
+    const item = makeRecastItem({
       analysis: {
         governing_idea: 'Speed over perfection',
         storyline: { situation: 's', complication: 'c', resolution: 'r' },
@@ -308,13 +308,13 @@ describe('orchestrateToMarkdown', () => {
         human_ratio: 60,
       },
     });
-    const md = orchestrateToMarkdown(item);
+    const md = recastToMarkdown(item);
     expect(md).toContain('Speed over perfection');
     expect(md).toContain('핵심 방향');
   });
 
   it('includes key_assumptions', () => {
-    const item = makeOrchestrateItem({
+    const item = makeRecastItem({
       analysis: {
         governing_idea: 'idea',
         storyline: { situation: 's', complication: 'c', resolution: 'r' },
@@ -330,7 +330,7 @@ describe('orchestrateToMarkdown', () => {
         human_ratio: 50,
       },
     });
-    const md = orchestrateToMarkdown(item);
+    const md = recastToMarkdown(item);
     expect(md).toContain('Budget is approved');
     expect(md).toContain('높음');
     expect(md).toContain('Delay launch');
@@ -339,7 +339,7 @@ describe('orchestrateToMarkdown', () => {
   });
 
   it('shows checkpoint reasons', () => {
-    const item = makeOrchestrateItem({
+    const item = makeRecastItem({
       steps: [
         {
           task: 'Review results',
@@ -352,7 +352,7 @@ describe('orchestrateToMarkdown', () => {
         },
       ],
     });
-    const md = orchestrateToMarkdown(item);
+    const md = recastToMarkdown(item);
     expect(md).toContain('Must verify before proceeding');
     expect(md).toContain('⚑');
   });

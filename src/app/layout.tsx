@@ -7,9 +7,9 @@ import { Analytics } from '@/components/layout/Analytics';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
 export const metadata: Metadata = {
-  title: 'Overture — Think before you orchestrate',
+  title: 'Overture — Think before you recast',
   description:
-    'Overture — Think before you orchestrate. 악보 해석, 편곡, 리허설, 합주 연습.',
+    'Overture — Think before you recast. 악보 해석, 편곡, 리허설, 합주 연습.',
 };
 
 export default function RootLayout({

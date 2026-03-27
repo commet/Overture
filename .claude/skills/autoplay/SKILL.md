@@ -1,6 +1,6 @@
 ---
-name: overture
-description: "Full decision harness. Runs the complete pipeline: reframe your question, design execution, stress-test with stakeholders, refine until solid, score your thinking. Produces 3 deliverables: a sharpened prompt, a team-shareable summary, and an agent-ready harness document. Use for important decisions. Takes 5-10 minutes."
+name: autoplay
+description: "Full decision harness. Runs the complete pipeline automatically: reframe your question, design execution, stress-test with stakeholders, refine until solid, score your thinking. Produces 3 deliverables: a sharpened prompt, a team-shareable summary, and an agent-ready harness document. Use for important decisions. Takes 5-10 minutes."
 argument-hint: "[important decision or problem]"
 effort: high
 ---
@@ -26,13 +26,26 @@ Check if `.overture/journal.md` exists.
 >
 > Let's go.
 
-Then proceed.
+Then, after analyzing the user's initial problem statement, offer one **counterfactual insight** — a concrete suggestion framed as possibility, not criticism:
 
-**If it exists:** Read the last 10 entries. Look for patterns — recurring weak areas, repeated assumption types. Mention anything relevant before starting.
+> ▸ Tip: if you had [specific action, e.g. "separated the timeline constraint from the market question"], [specific benefit, e.g. "the assumptions would have been clearer from the start"]. Something to try next time.
+
+This plants a seed. Even on a first run, the user walks away with something they can consciously try next time.
+
+**If it exists (2-4 entries):** Read all entries. Surface one specific improvement AND one area to watch:
+
+> ▸ Growth: [specific observation, e.g. "Last time you missed the regulatory angle — this time you named it upfront."]
+> ▸ Watch: [recurring pattern, e.g. "You tend to skip stakeholder concerns about timeline. Worth probing this time."]
+
+**If it exists (5+ entries):** Read last 10 entries. Surface a **strength profile** alongside weak patterns:
+
+> ▸ Your pattern (N runs): You consistently [strength, e.g. "reframe questions sharply — your reframing scores average 4.2/5"]. Your growth edge is [area, e.g. "exploring alternatives — you tend to commit to your first direction quickly"].
+
+The tone is a coach who has watched you over time — not a scorecard, but a "here's what I've noticed."
 
 ## If no argument is provided
 
-If the user just types `/overture` without a problem, ask:
+If the user just types `/autoplay` without a problem, ask:
 
 > What important decision or problem should we think through?
 
@@ -45,10 +58,10 @@ If running in a long conversation or constrained context, adapt: reduce to 2 per
 Show the pipeline header at the start:
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Full Pipeline                │
-  │  reframe → orchestrate → rehearse → refine│
-  ╰──────────────────────────────────────────╯
+  ╭──────────────────────────────────────────────╮
+  │  Overture · 4R Pipeline                     │
+  │  reframe → recast → rehearse → refine       │
+  ╰──────────────────────────────────────────────╯
 ```
 
 ## Stage 1 of 4: Reframe (~2 min)
@@ -60,23 +73,26 @@ Run `/reframe` in fast mode — use its full process, its design system, and its
 After the reframe output, show the breadcrumb:
 
 ```
-  reframe ● → orchestrate ○ → rehearse ○ → refine ○
+  reframe ● → recast ○ → rehearse ○ → refine ○
 ```
+
+**Micro-acknowledgment (if earned):** Did the user's original input already contain a sharp insight — an assumption they named, a risk they anticipated, a nuance most people miss? If so, acknowledge it in one specific line: `▸ [what they did well and why it matters]`. If nothing stands out, say nothing — silence is better than generic praise.
 
 Ask: **"Does this capture the real question? Correct me if not — otherwise I'll continue."** Wait for a response. If the user confirms or says nothing, proceed. If they correct, use the correction.
 
-## Stage 2 of 4: Orchestrate (~2 min)
+## Stage 2 of 4: Recast (~2 min)
 
-Run `/orchestrate` — use its full process, design system, and output format.
+Run `/recast` — use its full process, design system, and output format.
 - Use the reframed question from Stage 1 as the goal
 - Incorporate uncertain assumptions as validation steps
 - Generate 3 stakeholder personas for review
 
-After the orchestrate output, show breadcrumb:
+After the recast output, show breadcrumb:
 ```
-  reframe ● → orchestrate ● → rehearse ○ → refine ○
+  reframe ● → recast ● → rehearse ○ → refine ○
 ```
-Then move on.
+
+**Micro-acknowledgment (if earned):** Did the reframed question lead to an unusually clear role separation, or did the user's context make checkpoint placement obvious? Acknowledge one specific strength if genuine. Say nothing if nothing stands out.
 
 ## Stage 3 of 4: Rehearse (~3 min)
 
@@ -85,9 +101,10 @@ Run `/rehearse` — use its full process, design system, and output format.
 
 After the rehearse output, show breadcrumb:
 ```
-  reframe ● → orchestrate ● → rehearse ● → refine ○
+  reframe ● → recast ● → rehearse ● → refine ○
 ```
-Then move on.
+
+**Micro-acknowledgment (if earned):** Did a persona raise an issue the user had already flagged? Did the user's initial framing make the stress-test sharper than usual? Acknowledge if genuine.
 
 ## Stage 4 of 4: Refine (~2-5 min)
 
@@ -156,7 +173,7 @@ A structured instruction document for AI agents — ready to paste into a CLAUDE
 [reframed question — this is what we're solving]
 
 # Success Criteria
-[from orchestrate: what "done" looks like for each step]
+[from recast: what "done" looks like for each step]
 
 # Execution Steps
 1. [step] — Owner: [AI/Human/Both]
@@ -223,6 +240,12 @@ Anti-sycophancy check:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+**Qualitative interpretation:** After the scorecard, add one line explaining the score — not just the number but the *why*:
+
+- **First run (no journal):** Identify the strongest element and frame what could improve it further as a counterfactual: `▸ Strongest: Framing (4/5) — you questioned the premise early. If you had also named your confidence level on each assumption, Information would have scored higher.`
+- **Returning user (journal exists):** Compare to previous runs and attribute the change to a specific action: `▸ +12p from last run. The jump came from Perspectives — you brought in a stakeholder angle you've never considered before.`
+- **Declining score:** Don't sugarcoat, but attribute to a cause: `▸ -8p from last run. Alternatives dropped — this time you committed to one direction without exploring options. That may be fine if you're in execution mode.`
+
 **Warning:** If score ≥ 80 but anti-sycophancy checks are all empty, flag it: "High score but no pushback detected. The analysis may be validating existing thinking rather than challenging it."
 
 
@@ -255,12 +278,17 @@ This is the last thing the user reads. Make it count.
 Append to `.overture/journal.md` in the project root (the directory containing `.git`, or the current working directory):
 
 ```
-## [date] /overture — full pipeline
+## [date] /autoplay — full pipeline
 - Problem: "[original]"
 - Reframed: "[new question]"
 - Score: DQ [N] · [four notes, e.g. ░▓█▒]
+- Scores by element: F[n] A[n] I[n] P[n] R[n] Act[n]
 - Rehearsal: [N] personas, [M] critical, [K] unspoken
 - Convergence: [N] rounds | [converged/not]
 - Sharpest critique: "[quote]" — [persona]
+- Strength: [what the user did well — specific, earned]
+- Growth edge: [area where improvement would have the most impact]
 - Blind spots: [which assumption dimensions were missed]
 ```
+
+The `Strength` and `Growth edge` fields are critical for growth tracking. They must be specific and honest — "good framing" is useless, "named the regulatory risk before any prompt" is useful. These fields power the returning-user insights in the "Before starting" section.

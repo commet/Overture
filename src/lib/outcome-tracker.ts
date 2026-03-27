@@ -16,7 +16,7 @@ import type {
   OutcomeRecord,
   MaterializedRisk,
   FeedbackRecord,
-  RefinementLoop,
+  RefineLoop,
   Persona,
 } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from './storage';
@@ -49,7 +49,7 @@ export function saveOutcomeRecord(record: Omit<OutcomeRecord, 'id' | 'created_at
 
   // Record quality signal
   recordSignal({
-    tool: 'refinement',
+    tool: 'refine',
     signal_type: 'outcome_recorded',
     signal_data: {
       project_id: full.project_id,

@@ -17,7 +17,7 @@ export function Hero() {
           {/* ─── Left: Message ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
-              AI에게 시키기 전에,
+              <span className="whitespace-nowrap">AI에게 시키기 전에,</span>
               <br />
               <span className="text-gold-gradient">생각을 뾰족하게.</span>
             </h1>

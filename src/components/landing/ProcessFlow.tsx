@@ -13,7 +13,7 @@ const steps = [
     desc: '숨겨진 전제를 찾고, 진짜 질문을 재정의합니다',
     research: '구조화된 분석이 자유 대화 대비 12% 더 나은 결과',
     source: 'Harvard/BCG, 758명 실험',
-    href: '/workspace?step=decompose',
+    href: '/workspace?step=reframe',
     icon: Layers,
     color: '#2d4a7c',
   },
@@ -24,7 +24,7 @@ const steps = [
     desc: 'AI와 사람의 역할을 나누고 워크플로우를 설계합니다',
     research: 'AI 능력 밖 영역에서 체크포인트 없이 맡기면 오히려 품질 하락',
     source: 'Dell\'Acqua et al., Harvard',
-    href: '/workspace?step=orchestrate',
+    href: '/workspace?step=recast',
     icon: Map,
     color: '#8b6914',
   },
@@ -35,7 +35,7 @@ const steps = [
     desc: '이해관계자의 반응을 미리 시뮬레이션합니다',
     research: 'AI는 58%의 상황에서 당신에게 동의합니다. 의도적 반론이 필요합니다',
     source: 'Stanford SycEval, 2025',
-    href: '/workspace?step=persona-feedback',
+    href: '/workspace?step=rehearse',
     icon: Users,
     color: '#6b4c9a',
   },
@@ -46,7 +46,7 @@ const steps = [
     desc: '피드백을 반영하며 반복, 수렴하면 실행합니다',
     research: '"이미 실패했다고 가정하면" 위험 식별이 30% 향상됩니다',
     source: 'Klein, Harvard Business Review',
-    href: '/workspace?step=refinement-loop',
+    href: '/workspace?step=refine',
     icon: RefreshCw,
     color: '#2d6b2d',
   },
@@ -109,10 +109,13 @@ export function ProcessFlow() {
       <div className="max-w-2xl mx-auto px-5 md:px-6 py-12 md:py-16">
         <div className="text-center mb-8 md:mb-10">
           <h2 className="text-display-lg text-[var(--text-primary)]">
-            네 단계로 작동합니다
+            네 번의 <span className="text-gold-gradient">Re-</span>
           </h2>
+          <p className="mt-1.5 text-[13px] md:text-[14px] tracking-[0.08em] text-[var(--text-tertiary)] font-medium">
+            Reframe · Recast · Rehearse · Refine
+          </p>
           <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)]">
-            오케스트라가 악보 해석, 편곡, 리허설, 합주를 거치듯.
+            오케스트라가 악보를 해석하고, 편곡하고, 리허설하듯 — 매 단계마다 다시 생각합니다.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
-// ─── Decompose (악보 해석 | 문제 재정의) ───
+// ─── Reframe (악보 해석 | 문제 재정의) ───
 
-export interface DecomposeHiddenQuestion {
+export interface ReframeHiddenQuestion {
   question: string;
   reasoning: string;
   selected?: boolean;
@@ -18,24 +18,24 @@ export interface HiddenAssumption {
 }
 
 /** @deprecated Kept for backward compatibility with old localStorage data */
-export interface DecomposeSubtask {
+export interface ReframeSubtask {
   task: string;
   actor: 'ai' | 'human' | 'both';
   actor_reasoning: string;
 }
 
-export interface DecomposeAnalysis {
+export interface ReframeAnalysis {
   surface_task: string;
   reframed_question: string;
   why_reframing_matters: string;
   reasoning_narrative: string;
   hidden_assumptions: HiddenAssumption[];
-  hidden_questions: DecomposeHiddenQuestion[];
+  hidden_questions: ReframeHiddenQuestion[];
   ai_limitations: string[];
   // Legacy fields — kept for backward compat with old data
   hypothesis?: string;
   alternative_framings?: string[];
-  decomposition?: DecomposeSubtask[];
+  decomposition?: ReframeSubtask[];
 }
 
 export interface InterviewSignals {
@@ -54,15 +54,15 @@ export interface InterviewSignals {
   stakeholder?: 'executive' | 'team' | 'client' | 'self';
 }
 
-export interface DecomposeItem {
+export interface ReframeItem {
   id: string;
   project_id?: string;
   loop_id?: string;
   iteration_number?: number;
   input_text: string;
-  analysis: DecomposeAnalysis | null;
+  analysis: ReframeAnalysis | null;
   selected_question: string;
-  final_decomposition?: DecomposeSubtask[];
+  final_decomposition?: ReframeSubtask[];
   status: 'input' | 'analyzing' | 'review' | 'done';
   user_edited_question?: boolean;
   reanalysis_count?: number;
@@ -110,9 +110,9 @@ export interface SynthesizeItem {
   updated_at: string;
 }
 
-// ─── Orchestrate (편곡 | 실행 설계) ───
+// ─── Recast (편곡 | 실행 설계) ───
 
-export interface OrchestrateStep {
+export interface RecastStep {
   task: string;
   actor: 'ai' | 'human' | 'both';
   actor_reasoning: string;
@@ -150,7 +150,7 @@ export interface WorkflowReview {
   reviewed_at: string;
 }
 
-export interface OrchestrateAnalysis {
+export interface RecastAnalysis {
   governing_idea: string;
   storyline: {
     situation: string;
@@ -158,7 +158,7 @@ export interface OrchestrateAnalysis {
     resolution: string;
   };
   goal_summary: string;
-  steps: OrchestrateStep[];
+  steps: RecastStep[];
   key_assumptions: KeyAssumption[];
   critical_path: number[];
   total_estimated_time: string;
@@ -184,14 +184,14 @@ export interface SuggestedReviewer {
   why_relevant: string;
 }
 
-export interface OrchestrateItem {
+export interface RecastItem {
   id: string;
   project_id?: string;
   loop_id?: string;
   iteration_number?: number;
   input_text: string;
-  analysis: OrchestrateAnalysis | null;
-  steps: OrchestrateStep[];
+  analysis: RecastAnalysis | null;
+  steps: RecastStep[];
   status: 'input' | 'analyzing' | 'review' | 'done';
   created_at: string;
   updated_at: string;
@@ -232,7 +232,7 @@ export interface ClassifiedRisk {
   category: 'critical' | 'manageable' | 'unspoken';
 }
 
-export interface PersonaFeedbackResult {
+export interface RehearsalResult {
   persona_id: string;
   overall_reaction: string;
   failure_scenario: string;
@@ -275,7 +275,7 @@ export interface FeedbackRecord {
   persona_ids: string[];
   feedback_perspective: string;
   feedback_intensity: string;
-  results: PersonaFeedbackResult[];
+  results: RehearsalResult[];
   synthesis: string;
   structured_synthesis?: StructuredSynthesis;
   discussion?: DiscussionMessage[];
@@ -286,7 +286,7 @@ export interface FeedbackRecord {
 // ─── Project ───
 
 export interface ProjectRef {
-  tool: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback';
+  tool: 'reframe' | 'synthesize' | 'recast' | 'rehearse';
   itemId: string;
   label: string;
   linkedAt: string;
@@ -314,7 +314,7 @@ export interface MetaReflection {
 
 // ─── Context Chain (Phase 0: 타입드 맥락 파이프라인) ───
 
-export interface DecomposeContext {
+export interface ReframeContext {
   surface_task: string;
   reframed_question: string;
   why_reframing_matters: string;
@@ -325,14 +325,14 @@ export interface DecomposeContext {
   interview_signals?: InterviewSignals;
 }
 
-export interface OrchestrateContext {
+export interface RecastContext {
   governing_idea: string;
   storyline?: {
     situation: string;
     complication: string;
     resolution: string;
   };
-  steps: OrchestrateStep[];
+  steps: RecastStep[];
   key_assumptions: KeyAssumption[];
   critical_path: number[];
   design_rationale?: string;
@@ -345,12 +345,12 @@ export interface RehearsalContext {
   failure_scenarios: string[];
 }
 
-export type PhaseContext = DecomposeContext | OrchestrateContext | RehearsalContext;
+export type PhaseContext = ReframeContext | RecastContext | RehearsalContext;
 
 // ─── Handoff (transient, not persisted) ───
 
 export interface Handoff {
-  from: 'decompose' | 'synthesize' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
+  from: 'reframe' | 'synthesize' | 'recast' | 'rehearse' | 'refine';
   fromItemId: string;
   content: string;
   projectId?: string;
@@ -373,7 +373,7 @@ export interface JudgmentRecord {
   created_at: string;
 }
 
-// ─── Refinement Loop ───
+// ─── Refine Loop ───
 
 export interface ApprovalCondition {
   persona_id: string;
@@ -396,7 +396,7 @@ export interface IterationConvergence {
   approval_conditions: ApprovalCondition[];
 }
 
-export interface RefinementIteration {
+export interface RefineIteration {
   iteration_number: number;
   issues_to_address: string[];
   user_directive?: string;
@@ -408,7 +408,7 @@ export interface RefinementIteration {
   created_at: string;
 }
 
-export interface RefinementLoop {
+export interface RefineLoop {
   id: string;
   project_id: string;
   name: string;
@@ -417,7 +417,7 @@ export interface RefinementLoop {
   initial_feedback_record_id: string;
   initial_approval_conditions: ApprovalCondition[];
   persona_ids: string[];
-  iterations: RefinementIteration[];
+  iterations: RefineIteration[];
   status: 'active' | 'converged' | 'stopped_by_user';
   max_iterations: number;
   created_at: string;
@@ -425,7 +425,7 @@ export interface RefinementLoop {
 }
 
 // Legacy type kept for backward compatibility with existing data
-export interface RefinementIssue {
+export interface RefineIssue {
   id: string;
   source_persona_id: string;
   source_persona_name: string;
@@ -454,7 +454,7 @@ export interface PersonaAccuracyRating {
 export interface QualitySignal {
   id: string;
   project_id?: string;
-  tool: 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement';
+  tool: 'reframe' | 'recast' | 'rehearse' | 'refine';
   signal_type: string;
   signal_data: Record<string, unknown>;
   created_at: string;
@@ -512,7 +512,7 @@ export interface TeamReviewInput {
   id: string;
   project_id: string;
   user_id: string;
-  phase: 'decompose' | 'orchestrate' | 'rehearsal';
+  phase: 'reframe' | 'recast' | 'rehearse';
   target_type: 'assumption' | 'step' | 'risk' | 'direction' | 'general';
   target_id: string | null;
   input_type: 'rating' | 'concern' | 'endorsement' | 'alternative';

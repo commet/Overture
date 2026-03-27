@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRefineStore } from '@/stores/useRefineStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Check, AlertTriangle, Circle, Shield } from 'lucide-react';
 
@@ -21,22 +21,22 @@ interface ReadinessCheck {
 }
 
 export function ExecutionReadiness({ projectId }: Props) {
-  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
-  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+  const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
+  const { items: recastItems, loadItems: loadRecast } = useRecastStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
-  const { loops, loadLoops } = useRefinementStore();
+  const { loops, loadLoops } = useRefineStore();
   const { judgments, loadJudgments } = useJudgmentStore();
 
   useEffect(() => {
-    loadDecompose();
-    loadOrchestrate();
+    loadReframe();
+    loadRecast();
     loadPersona();
     loadLoops();
     loadJudgments();
-  }, [loadDecompose, loadOrchestrate, loadPersona, loadLoops, loadJudgments]);
+  }, [loadReframe, loadRecast, loadPersona, loadLoops, loadJudgments]);
 
-  const d = decomposeItems.filter(i => i.project_id === projectId);
-  const o = orchestrateItems.filter(i => i.project_id === projectId);
+  const d = reframeItems.filter(i => i.project_id === projectId);
+  const o = recastItems.filter(i => i.project_id === projectId);
   const fb = feedbackHistory.filter(i => i.project_id === projectId);
   const lp = loops.filter(i => i.project_id === projectId);
 

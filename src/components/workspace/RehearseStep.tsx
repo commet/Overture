@@ -12,18 +12,18 @@ import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
-import type { Persona, FeedbackRecord, PersonaFeedbackResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
+import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw, Check, AlertTriangle } from 'lucide-react';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
-import { buildDecomposeContext, buildOrchestrateContext, injectOrchestrateContext } from '@/lib/context-chain';
+import { buildReframeContext, buildRecastContext, injectRecastContext } from '@/lib/context-chain';
 import { recordRehearsalEval } from '@/lib/eval-engine';
 
 // Single source of truth: persona-prompt.ts
@@ -31,23 +31,23 @@ const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: strin
   buildFeedbackSystemPrompt(persona, perspective, intensity);
 
 /* ────────────────────────────────────────────
-   Phase-based flow (matches Decompose/Orchestrate pattern)
+   Phase-based flow (matches Reframe/Recast pattern)
    setup → running → results
    ──────────────────────────────────────────── */
 
 type RehearsalPhase = 'setup' | 'running' | 'results';
 
-interface PersonaFeedbackStepProps {
+interface RehearseStepProps {
   onNavigate: (step: string) => void;
 }
 
-export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
+export function RehearseStep({ onNavigate }: RehearseStepProps) {
   const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackRecord, updateFeedbackRecord, getPersona, seedDefaultPersonas } = usePersonaStore();
   const { loadSettings } = useSettingsStore();
   const { loadRatings } = useAccuracyStore();
   const { handoff, clearHandoff } = useHandoffStore();
-  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
-  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+  const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
+  const { items: recastItems, loadItems: loadRecast } = useRecastStore();
 
   const [phase, setPhase] = useState<RehearsalPhase>('setup');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
@@ -67,9 +67,9 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     loadData();
     loadSettings();
     loadRatings();
-    loadDecompose();
-    loadOrchestrate();
-  }, [loadData, loadSettings, loadRatings, loadDecompose, loadOrchestrate]);
+    loadReframe();
+    loadRecast();
+  }, [loadData, loadSettings, loadRatings, loadReframe, loadRecast]);
 
   // Seed default example personas on first use
   useEffect(() => {
@@ -81,7 +81,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content);
-      setHandoffTitle(`${handoff.from === 'decompose' ? '악보 해석' : handoff.from === 'orchestrate' ? '편곡' : '리허설'} 결과물`);
+      setHandoffTitle(`${handoff.from === 'reframe' ? '악보 해석' : handoff.from === 'recast' ? '편곡' : '리허설'} 결과물`);
       setPendingProjectId(handoff.projectId);
       if (handoff.autoPersonaIds && handoff.autoPersonaIds.length > 0) {
         setAutoPersonaIds(handoff.autoPersonaIds);
@@ -115,7 +115,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
     setFeedbackError('');
     setLastFeedbackData(data);
     try {
-      const results: PersonaFeedbackResult[] = [];
+      const results: RehearsalResult[] = [];
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
@@ -124,20 +124,20 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
 
         const projectId = pendingProjectId;
         if (projectId) {
-          const relDecompose = decomposeItems
+          const relReframe = reframeItems
             .filter(d => d.project_id === projectId && d.status === 'done' && d.analysis)
             .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-          const relOrchestrate = orchestrateItems
+          const relRecast = recastItems
             .filter(o => o.project_id === projectId && o.analysis && o.status === 'done')
             .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-          if (relOrchestrate) {
-            const orchCtx = buildOrchestrateContext(relOrchestrate);
-            const decCtx = relDecompose ? buildDecomposeContext(relDecompose) : undefined;
-            systemPrompt = injectOrchestrateContext(systemPrompt, orchCtx, decCtx);
+          if (relRecast) {
+            const orchCtx = buildRecastContext(relRecast);
+            const decCtx = relReframe ? buildReframeContext(relReframe) : undefined;
+            systemPrompt = injectRecastContext(systemPrompt, orchCtx, decCtx);
           }
         }
 
-        const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(
+        const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
           [{ role: 'user', content: data.documentText }],
           { system: systemPrompt, maxTokens: 2000 }
         );
@@ -311,7 +311,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           보내기 전에, 보고 대상의 시점에서 미리 피드백을 받습니다.
         </p>
         <div className="mt-2">
-          <ConcertmasterInline step="persona-feedback" />
+          <ConcertmasterInline step="rehearse" />
         </div>
       </div>
 
@@ -464,30 +464,30 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
           {(() => {
             const projectId = latestFeedback.project_id;
             if (!projectId) return null;
-            const decompose = decomposeItems.find(d => d.project_id === projectId && d.analysis);
-            const orchestrate = orchestrateItems.find(o => o.project_id === projectId && o.analysis);
-            if (!decompose?.analysis && !orchestrate?.analysis) return null;
+            const reframe = reframeItems.find(d => d.project_id === projectId && d.analysis);
+            const recast = recastItems.find(o => o.project_id === projectId && o.analysis);
+            if (!reframe?.analysis && !recast?.analysis) return null;
             const items = [];
-            if (decompose?.analysis?.hidden_assumptions && decompose.analysis.hidden_assumptions.length > 0) {
+            if (reframe?.analysis?.hidden_assumptions && reframe.analysis.hidden_assumptions.length > 0) {
               items.push({
                 label: '검증되지 않은 가정',
-                count: decompose.analysis.hidden_assumptions.length,
-                details: decompose.analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
+                count: reframe.analysis.hidden_assumptions.length,
+                details: reframe.analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
                   typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
                 ),
                 color: 'text-amber-700',
               });
             }
-            if (orchestrate?.analysis?.key_assumptions && orchestrate.analysis.key_assumptions.length > 0) {
+            if (recast?.analysis?.key_assumptions && recast.analysis.key_assumptions.length > 0) {
               items.push({
                 label: '편곡의 핵심 가정',
-                count: orchestrate.analysis.key_assumptions.length,
-                details: orchestrate.analysis.key_assumptions.map(ka => ka.assumption),
+                count: recast.analysis.key_assumptions.length,
+                details: recast.analysis.key_assumptions.map(ka => ka.assumption),
               });
             }
-            const summary = decompose?.analysis
-              ? `악보 해석에서 발견한 핵심 질문: ${decompose.selected_question || decompose.analysis.surface_task}`
-              : `편곡의 핵심 가정 ${orchestrate?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
+            const summary = reframe?.analysis
+              ? `악보 해석에서 발견한 핵심 질문: ${reframe.selected_question || reframe.analysis.surface_task}`
+              : `편곡의 핵심 가정 ${recast?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
             return <ContextChainBlock summary={summary} items={items} />;
           })()}
 
@@ -547,7 +547,7 @@ export function PersonaFeedbackStep({ onNavigate }: PersonaFeedbackStepProps) {
 
           {latestFeedback?.project_id && (
             <NextStepGuide
-              currentTool="persona-feedback"
+              currentTool="rehearse"
               projectId={latestFeedback.project_id}
               onSendTo={(href) => onNavigate(href.replace('/tools/', ''))}
             />

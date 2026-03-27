@@ -84,7 +84,7 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
         </p>
         {personas.length === 0 ? (
           <button
-            onClick={() => onStepClick('persona-feedback')}
+            onClick={() => onStepClick('rehearse')}
             className="w-full text-left text-[12px] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer py-1"
           >
             + 페르소나 추가...
@@ -94,7 +94,7 @@ export function WorkspaceSidebar({ activeStep, onStepClick }: WorkspaceSidebarPr
             {personas.slice(0, 5).map((p) => (
               <button
                 key={p.id}
-                onClick={() => onStepClick('persona-feedback')}
+                onClick={() => onStepClick('rehearse')}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="w-5 h-5 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0">

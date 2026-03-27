@@ -1,13 +1,13 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
-import { buildDecomposeContext } from './context-chain';
+import type { Project, ReframeItem, RecastItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
+import { buildReframeContext } from './context-chain';
 import { projectFilter } from './output-helpers';
 
 export function generateAgentSpec(project: Project | null): string {
   const pf = projectFilter(project);
-  const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
+  const decompositions = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, [])
     .filter((d) => pf(d) && d.status === 'done');
-  const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
+  const recasts = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, [])
     .filter(pf);
   const feedbacks = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, [])
     .filter(pf);
@@ -64,9 +64,9 @@ export function generateAgentSpec(project: Project | null): string {
     }
   }
 
-  // Workflow from orchestrate
-  if (orchestrations.length > 0) {
-    const latest = orchestrations[orchestrations.length - 1];
+  // Workflow from recast
+  if (recasts.length > 0) {
+    const latest = recasts[recasts.length - 1];
     const steps = latest.steps.length > 0 ? latest.steps : latest.analysis?.steps || [];
 
     lines.push(`workflow:`);
@@ -79,8 +79,8 @@ export function generateAgentSpec(project: Project | null): string {
     lines.push(`  steps:`);
 
     // Build assumption map for validation linking
-    const decomposeCtx = decompositions.length > 0 && decompositions[decompositions.length - 1].analysis
-      ? buildDecomposeContext(decompositions[decompositions.length - 1])
+    const reframeCtx = decompositions.length > 0 && decompositions[decompositions.length - 1].analysis
+      ? buildReframeContext(decompositions[decompositions.length - 1])
       : null;
 
     steps.forEach((step, i) => {
@@ -99,8 +99,8 @@ export function generateAgentSpec(project: Project | null): string {
         lines.push(`      checkpoint_reason: "${step.checkpoint_reason}"`);
       }
       // Link assumptions this step could validate
-      if (decomposeCtx?.unverified_assumptions.length) {
-        const relevant = decomposeCtx.unverified_assumptions.filter(a =>
+      if (reframeCtx?.unverified_assumptions.length) {
+        const relevant = reframeCtx.unverified_assumptions.filter(a =>
           step.task.includes(a.assumption.substring(0, 8))
         );
         if (relevant.length > 0) {

@@ -188,7 +188,12 @@ export function OutputSelector({ project }: OutputSelectorProps) {
                   value={codaForm.understanding_change || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, understanding_change: e.target.value }))}
                   rows={2}
-                  placeholder="처음에는 단순한 과제라고 생각했지만..."
+                  animatedPlaceholders={[
+                    '처음에는 단순한 과제라고 생각했지만...',
+                    '핵심 이해관계자의 관점이 완전히 달라 보이기 시작했다',
+                    '문제의 범위가 예상보다 넓다는 것을 알게 되었다',
+                    '기술적 해결이 아닌 조직적 문제라는 걸 깨달았다',
+                  ]}
                 />
               </div>
               <div>
@@ -199,7 +204,12 @@ export function OutputSelector({ project }: OutputSelectorProps) {
                   value={codaForm.surprising_discovery || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, surprising_discovery: e.target.value }))}
                   rows={2}
-                  placeholder="예상하지 못했던 리스크나 새로운 관점..."
+                  animatedPlaceholders={[
+                    '예상하지 못했던 리스크나 새로운 관점...',
+                    '이해관계자가 실제로는 다른 것을 원하고 있었다',
+                    '가정이 틀렸다는 걸 데이터가 보여줬다',
+                    '가장 작은 단계가 가장 큰 영향을 줄 수 있었다',
+                  ]}
                 />
               </div>
               <div>
@@ -210,7 +220,12 @@ export function OutputSelector({ project }: OutputSelectorProps) {
                   value={codaForm.next_time_differently || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, next_time_differently: e.target.value }))}
                   rows={2}
-                  placeholder="이해관계자를 더 일찍 참여시키거나..."
+                  animatedPlaceholders={[
+                    '이해관계자를 더 일찍 참여시키거나...',
+                    '가정 검증을 첫 단계에서 했을 것이다',
+                    '리스크를 미리 시뮬레이션해 봤을 것이다',
+                    '작은 파일럿으로 먼저 검증했을 것이다',
+                  ]}
                 />
               </div>
               <Button size="sm" onClick={handleSaveCoda}>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Button } from './Button';
+import { AnimatedPlaceholder } from './AnimatedPlaceholder';
 import { Sparkles, ArrowRight, ArrowLeft, Check, SkipForward } from 'lucide-react';
 
 interface ChipOption {
@@ -18,6 +19,8 @@ export interface InterviewStep {
   type: 'chips' | 'textarea';
   options?: ChipOption[];
   placeholder?: string;
+  /** When provided, cycles through these texts as an animated placeholder */
+  animatedPlaceholders?: string[];
   required?: boolean;
   rows?: number;
 }
@@ -231,15 +234,24 @@ export function InterviewInput({
 
         {/* Textarea */}
         {step.type === 'textarea' && (
-          <textarea
-            value={answers[step.key] || ''}
-            onChange={(e) => handleTextChange(step.key, e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={step.placeholder}
-            className="w-full mt-4 bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
-            rows={step.rows || 3}
-            autoFocus
-          />
+          <div className="relative mt-4">
+            {step.animatedPlaceholders && step.animatedPlaceholders.length > 0 && (
+              <AnimatedPlaceholder
+                texts={step.animatedPlaceholders}
+                visible={!answers[step.key]?.trim()}
+                className="absolute left-4 top-3 text-[14px] text-[var(--text-secondary)] leading-[1.7] max-w-[calc(100%-2rem)] truncate"
+              />
+            )}
+            <textarea
+              value={answers[step.key] || ''}
+              onChange={(e) => handleTextChange(step.key, e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={step.animatedPlaceholders ? undefined : step.placeholder}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
+              rows={step.rows || 3}
+              autoFocus
+            />
+          </div>
         )}
       </div>
 

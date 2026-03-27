@@ -16,10 +16,10 @@
 
 import type {
   DecisionQualityScore,
-  DecomposeItem,
-  OrchestrateItem,
+  ReframeItem,
+  RecastItem,
   FeedbackRecord,
-  RefinementLoop,
+  RefineLoop,
   JudgmentRecord,
   Persona,
 } from '@/stores/types';
@@ -33,10 +33,10 @@ import { recordSignal } from './signal-recorder';
    ──────────────────────────────────── */
 
 export interface DQInput {
-  decompose: DecomposeItem | null;
-  orchestrate: OrchestrateItem | null;
+  reframe: ReframeItem | null;
+  recast: RecastItem | null;
   feedbackRecords: FeedbackRecord[];
-  refinementLoop: RefinementLoop | null;
+  refineLoop: RefineLoop | null;
   judgments: JudgmentRecord[];
   personas: Persona[];
   projectId: string;
@@ -48,7 +48,7 @@ export interface DQInput {
  */
 export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   const {
-    decompose, orchestrate, feedbackRecords, refinementLoop,
+    reframe, recast, feedbackRecords, refineLoop,
     judgments, personas, projectId,
   } = input;
 
@@ -60,8 +60,8 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   // ── DQ Element 1: Appropriate Frame (적절한 프레이밍) ──
   // Did the reframing produce a meaningfully different question?
   let appropriateFrame = 0;
-  if (decompose?.analysis) {
-    const a = decompose.analysis;
+  if (reframe?.analysis) {
+    const a = reframe.analysis;
     // Has a reframed question different from surface task
     if (a.reframed_question && a.surface_task &&
         a.reframed_question !== a.surface_task) appropriateFrame += 2;
@@ -77,31 +77,31 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   // ── DQ Element 2: Creative Alternatives (창의적 대안) ──
   // Were multiple perspectives/questions generated?
   let creativeAlternatives = 0;
-  if (decompose?.analysis) {
-    const questionCount = decompose.analysis.hidden_questions.length;
+  if (reframe?.analysis) {
+    const questionCount = reframe.analysis.hidden_questions.length;
     if (questionCount >= 3) creativeAlternatives += 3;
     else if (questionCount >= 2) creativeAlternatives += 2;
     else if (questionCount >= 1) creativeAlternatives += 1;
 
     // Were alternative framings considered?
-    if (decompose.analysis.alternative_framings &&
-        decompose.analysis.alternative_framings.length >= 2) creativeAlternatives += 2;
+    if (reframe.analysis.alternative_framings &&
+        reframe.analysis.alternative_framings.length >= 2) creativeAlternatives += 2;
     else if (questionCount >= 3) creativeAlternatives += 1; // questions as proxy for alternatives
   }
 
   // ── DQ Element 3: Relevant Information (관련 정보) ──
   // Were key assumptions identified and evaluated?
   let relevantInformation = 0;
-  if (decompose?.analysis) {
-    const totalAssumptions = decompose.analysis.hidden_assumptions.length;
+  if (reframe?.analysis) {
+    const totalAssumptions = reframe.analysis.hidden_assumptions.length;
     if (totalAssumptions >= 3) relevantInformation += 2;
     else if (totalAssumptions >= 1) relevantInformation += 1;
 
     // Were AI limitations identified?
-    if (decompose.analysis.ai_limitations.length >= 1) relevantInformation += 1;
+    if (reframe.analysis.ai_limitations.length >= 1) relevantInformation += 1;
   }
-  if (orchestrate?.analysis) {
-    const keyAssumptions = orchestrate.analysis.key_assumptions?.length || 0;
+  if (recast?.analysis) {
+    const keyAssumptions = recast.analysis.key_assumptions?.length || 0;
     if (keyAssumptions >= 2) relevantInformation += 2;
     else if (keyAssumptions >= 1) relevantInformation += 1;
   }
@@ -128,39 +128,39 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   }
 
   // ── DQ Element 5: Sound Reasoning (건전한 추론) ──
-  // Did the refinement loop converge without circular issues?
+  // Did the refine loop converge without circular issues?
   let soundReasoning = 0;
-  if (refinementLoop) {
-    if (refinementLoop.status === 'converged') soundReasoning += 3;
-    if (refinementLoop.iterations.length <= 3) soundReasoning += 1;
+  if (refineLoop) {
+    if (refineLoop.status === 'converged') soundReasoning += 3;
+    if (refineLoop.iterations.length <= 3) soundReasoning += 1;
 
     // Issue trend decreasing?
-    const trend = refinementLoop.iterations.map(it => it.convergence.total_issues);
+    const trend = refineLoop.iterations.map(it => it.convergence.total_issues);
     let decreasing = true;
     for (let i = 1; i < trend.length; i++) {
       if (trend[i] > trend[i - 1]) { decreasing = false; break; }
     }
     if (decreasing && trend.length >= 2) soundReasoning += 1;
   } else if (feedbackRecords.length > 0) {
-    // No refinement loop but had feedback
+    // No refine loop but had feedback
     soundReasoning += 1;
   }
 
   // ── DQ Element 6: Commitment to Action (실행 의지) ──
   // Is the output actionable? (has concrete steps, checkpoints)
   let commitmentToAction = 0;
-  if (orchestrate?.analysis) {
-    const steps = orchestrate.analysis.steps;
+  if (recast?.analysis) {
+    const steps = recast.analysis.steps;
     if (steps.length >= 3) commitmentToAction += 2;
     const hasCheckpoints = steps.some(s => s.checkpoint);
     if (hasCheckpoints) commitmentToAction += 1;
-    if (orchestrate.analysis.design_rationale) commitmentToAction += 1;
-    if (orchestrate.analysis.governing_idea) commitmentToAction += 1;
+    if (recast.analysis.design_rationale) commitmentToAction += 1;
+    if (recast.analysis.governing_idea) commitmentToAction += 1;
   }
 
   // ── Anti-Sycophancy Metrics ──
-  const initialFramingChallenged = decompose?.analysis
-    ? decompose.analysis.reframed_question !== decompose.analysis.surface_task
+  const initialFramingChallenged = reframe?.analysis
+    ? reframe.analysis.reframed_question !== reframe.analysis.surface_task
     : false;
 
   const blindSpotsSurfaced = feedbackRecords.reduce(
@@ -209,7 +209,7 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   insertToSupabase('decision_quality_scores', score);
 
   recordSignal({
-    tool: 'refinement',
+    tool: 'refine',
     signal_type: 'dq_score_computed',
     signal_data: {
       overall_dq: score.overall_dq,

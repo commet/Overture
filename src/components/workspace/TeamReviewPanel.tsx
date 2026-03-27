@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { getCurrentUserId } from '@/lib/supabase';
-import type { TeamReviewInput, HiddenAssumption, OrchestrateStep, KeyAssumption } from '@/stores/types';
+import type { TeamReviewInput, HiddenAssumption, RecastStep, KeyAssumption } from '@/stores/types';
 import { Check, Eye, EyeOff, MessageCircle, Users, Send, AlertTriangle } from 'lucide-react';
 
 /* ────────────────────────────────────
@@ -211,10 +211,10 @@ type ReviewableAssumption = { assumption: string; risk_if_false?: string; if_wro
 
 interface TeamReviewPanelProps {
   projectId: string;
-  phase: 'decompose' | 'orchestrate' | 'rehearsal';
+  phase: 'reframe' | 'recast' | 'rehearse';
   // Items to review
   assumptions?: ReviewableAssumption[];
-  steps?: OrchestrateStep[];
+  steps?: RecastStep[];
   risks?: { text: string; category: string }[];
 }
 
@@ -311,7 +311,7 @@ export function TeamReviewPanel({
         {assumptions.length > 0 && (
           <div>
             <p className="text-[12px] font-semibold text-amber-700 mb-2">
-              {phase === 'decompose' ? '전제 평가' : '핵심 가정 평가'}
+              {phase === 'reframe' ? '전제 평가' : '핵심 가정 평가'}
             </p>
             <p className="text-[11px] text-[var(--text-tertiary)] mb-2.5">
               1 = 거짓일 가능성 높음 / 5 = 확실히 맞음

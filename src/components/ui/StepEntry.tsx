@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from './Button';
+import { AnimatedPlaceholder } from './AnimatedPlaceholder';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 
 interface EntryOption {
@@ -25,6 +26,10 @@ interface StepEntryProps {
   textLabel: string;
   textPlaceholder: string;
   textHint?: string;
+  /** When provided, cycles through these texts as an animated placeholder */
+  animatedPlaceholders?: string[];
+  /** Dynamic animated placeholders based on selections (overrides animatedPlaceholders) */
+  dynamicAnimatedPlaceholdersFn?: (selections: Record<string, string>) => string[];
   submitLabel?: string;
   onSubmit: (selections: Record<string, string>, text: string) => void;
   onSelectionChange?: (selections: Record<string, string>) => void;
@@ -42,6 +47,8 @@ export function StepEntry({
   submitLabel = 'AI 분석 시작',
   onSubmit,
   onSelectionChange,
+  animatedPlaceholders,
+  dynamicAnimatedPlaceholdersFn,
   dynamicPlaceholderFn,
   disabled,
   initialText,
@@ -84,6 +91,10 @@ export function StepEntry({
   const finalPlaceholder = dynamicPlaceholderFn
     ? dynamicPlaceholderFn(selections)
     : textPlaceholder;
+
+  const finalAnimatedPlaceholders = dynamicAnimatedPlaceholdersFn
+    ? dynamicAnimatedPlaceholdersFn(selections)
+    : animatedPlaceholders;
 
   return (
     <div className="space-y-4">
@@ -212,14 +223,23 @@ export function StepEntry({
             </div>
           )}
 
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSubmit(); }}
-            placeholder={finalPlaceholder}
-            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[15px] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)]"
-          />
+          <div className="relative">
+            {finalAnimatedPlaceholders && finalAnimatedPlaceholders.length > 0 && (
+              <AnimatedPlaceholder
+                texts={finalAnimatedPlaceholders}
+                visible={!text.trim()}
+                className="absolute left-4 top-3 text-[14px] text-[var(--text-secondary)] leading-normal max-w-[calc(100%-2rem)] truncate"
+              />
+            )}
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSubmit(); }}
+              placeholder={finalAnimatedPlaceholders ? undefined : finalPlaceholder}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[15px] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)]"
+            />
+          </div>
 
           <div className="flex items-center justify-between">
             {!text.trim() && Object.keys(selections).length > 0 && (

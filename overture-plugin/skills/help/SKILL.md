@@ -28,13 +28,14 @@ Overture sharpens your thinking before you ask.
   All skills:
 
   /reframe       Hidden assumptions + sharper question
-  /orchestrate   Execution plan (AI vs human roles)
+  /recast   Execution plan (AI vs human roles)
   /rehearse      Stakeholder stress-test
   /refine        Fix issues, repeat until solid
   /overture      Full pipeline + 3 deliverables + quality score
 
-  Each works alone. Chain them for deeper analysis:
-  /reframe → /orchestrate → /rehearse → /refine
+  Each works alone. Chain them — the 4R Framework:
+  /reframe → /recast → /rehearse → /refine
+  Every step Re-examines.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

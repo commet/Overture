@@ -9,7 +9,7 @@
  * 각 리뷰어는 구조화된 JSON만 반환 (BMAD subagent 패턴).
  */
 
-import type { OrchestrateStep, ReviewFinding, WorkflowReview } from '@/stores/types';
+import type { RecastStep, ReviewFinding, WorkflowReview } from '@/stores/types';
 import { callLLMJson } from '@/lib/llm';
 
 /* ────────────────────────────────────
@@ -25,7 +25,7 @@ interface ReviewLens {
 interface ReviewContext {
   governing_idea: string;
   goal_summary: string;
-  steps: OrchestrateStep[];
+  steps: RecastStep[];
   key_assumptions_text: string;
   original_task: string;
 }
@@ -191,7 +191,7 @@ findings는 2-4개. 반드시 JSON만 응답하세요.`,
    ──────────────────────────────────── */
 
 export async function runWorkflowReview(
-  steps: OrchestrateStep[],
+  steps: RecastStep[],
   governing_idea: string,
   goal_summary: string,
   key_assumptions: { assumption: string; if_wrong: string }[],

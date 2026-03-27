@@ -1,4 +1,4 @@
-import type { DecomposeItem } from '@/stores/types';
+import type { ReframeItem } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
 vi.mock('@/lib/storage', () => {
@@ -17,8 +17,8 @@ vi.mock('@/lib/context-chain', () => ({
 
 // Must import after mocks are declared
 import {
-  DECOMPOSE_EVALS,
-  recordDecomposeEval,
+  REFRAME_EVALS,
+  recordReframeEval,
   analyzeStrategyPerformance,
   getBestStrategy,
   getSessionInsights,
@@ -26,7 +26,7 @@ import {
 } from '@/lib/eval-engine';
 import { __resetStore } from '@/lib/storage';
 
-function makeItem(overrides: Partial<DecomposeItem> = {}): DecomposeItem {
+function makeItem(overrides: Partial<ReframeItem> = {}): ReframeItem {
   return {
     id: 'test-1',
     input_text: 'test input',
@@ -55,13 +55,13 @@ beforeEach(() => {
    Binary Eval Definitions
    ──────────────────────────────────── */
 
-describe('DECOMPOSE_EVALS', () => {
+describe('REFRAME_EVALS', () => {
   it('has exactly 4 evals', () => {
-    expect(DECOMPOSE_EVALS).toHaveLength(4);
+    expect(REFRAME_EVALS).toHaveLength(4);
   });
 
   it('has the expected ids', () => {
-    const ids = DECOMPOSE_EVALS.map(e => e.id);
+    const ids = REFRAME_EVALS.map(e => e.id);
     expect(ids).toEqual([
       'question_accepted',
       'assumptions_engaged',
@@ -71,7 +71,7 @@ describe('DECOMPOSE_EVALS', () => {
   });
 
   describe('question_accepted', () => {
-    const eval_ = DECOMPOSE_EVALS.find(e => e.id === 'question_accepted')!;
+    const eval_ = REFRAME_EVALS.find(e => e.id === 'question_accepted')!;
 
     it('returns true when selected_question matches a hidden question', () => {
       const item = makeItem({
@@ -117,7 +117,7 @@ describe('DECOMPOSE_EVALS', () => {
   });
 
   describe('assumptions_engaged', () => {
-    const eval_ = DECOMPOSE_EVALS.find(e => e.id === 'assumptions_engaged')!;
+    const eval_ = REFRAME_EVALS.find(e => e.id === 'assumptions_engaged')!;
 
     it('returns true when at least one assumption is verified', () => {
       const item = makeItem({
@@ -161,7 +161,7 @@ describe('DECOMPOSE_EVALS', () => {
   });
 
   describe('no_immediate_reanalyze', () => {
-    const eval_ = DECOMPOSE_EVALS.find(e => e.id === 'no_immediate_reanalyze')!;
+    const eval_ = REFRAME_EVALS.find(e => e.id === 'no_immediate_reanalyze')!;
 
     it('returns true when status is done', () => {
       const item = makeItem({ status: 'done' });
@@ -175,7 +175,7 @@ describe('DECOMPOSE_EVALS', () => {
   });
 
   describe('has_useful_assumptions', () => {
-    const eval_ = DECOMPOSE_EVALS.find(e => e.id === 'has_useful_assumptions')!;
+    const eval_ = REFRAME_EVALS.find(e => e.id === 'has_useful_assumptions')!;
 
     it('returns true when at least one assumption is not verified', () => {
       const item = makeItem({
@@ -220,10 +220,10 @@ describe('DECOMPOSE_EVALS', () => {
 });
 
 /* ────────────────────────────────────
-   recordDecomposeEval
+   recordReframeEval
    ──────────────────────────────────── */
 
-describe('recordDecomposeEval', () => {
+describe('recordReframeEval', () => {
   it('creates an EvalResult with correct pass_rate', () => {
     // Item passes: no_immediate_reanalyze (done), has_useful_assumptions (one unverified)
     // Fails: question_accepted (no match), assumptions_engaged (none verified)
@@ -244,7 +244,7 @@ describe('recordDecomposeEval', () => {
       },
     });
 
-    const result = recordDecomposeEval(item, 'narrow_scope');
+    const result = recordReframeEval(item, 'narrow_scope');
 
     expect(result.item_id).toBe('test-1');
     expect(result.strategy).toBe('narrow_scope');
@@ -257,11 +257,11 @@ describe('recordDecomposeEval', () => {
 
   it('persists result to storage', () => {
     const item = makeItem();
-    recordDecomposeEval(item, null);
+    recordReframeEval(item, null);
 
     // Record a second one
     const item2 = makeItem({ id: 'test-2' });
-    recordDecomposeEval(item2, 'diagnose_root');
+    recordReframeEval(item2, 'diagnose_root');
 
     // Retrieve from storage via a new call to getEvalSummary
     const summary = getEvalSummary();
@@ -270,7 +270,7 @@ describe('recordDecomposeEval', () => {
 
   it('records null strategy', () => {
     const item = makeItem();
-    const result = recordDecomposeEval(item, null);
+    const result = recordReframeEval(item, null);
     expect(result.strategy).toBeNull();
   });
 });
@@ -282,8 +282,8 @@ describe('recordDecomposeEval', () => {
 describe('analyzeStrategyPerformance', () => {
   it('returns empty array when fewer than 3 results', () => {
     const item = makeItem();
-    recordDecomposeEval(item, 'narrow_scope');
-    recordDecomposeEval(makeItem({ id: 'test-2' }), 'narrow_scope');
+    recordReframeEval(item, 'narrow_scope');
+    recordReframeEval(makeItem({ id: 'test-2' }), 'narrow_scope');
 
     expect(analyzeStrategyPerformance()).toEqual([]);
   });
@@ -305,7 +305,7 @@ describe('analyzeStrategyPerformance', () => {
           ai_limitations: [],
         },
       });
-      recordDecomposeEval(item, 'narrow_scope');
+      recordReframeEval(item, 'narrow_scope');
     }
 
     const perf = analyzeStrategyPerformance();
@@ -344,7 +344,7 @@ describe('getBestStrategy', () => {
           ai_limitations: [],
         },
       });
-      recordDecomposeEval(item, 'narrow_scope');
+      recordReframeEval(item, 'narrow_scope');
     }
 
     // Should return null because signals don't match stored data (no interview_signals in stored results)
@@ -375,7 +375,7 @@ describe('getSessionInsights', () => {
 
   it('returns last_strategy insight for 1 session', () => {
     const item = makeItem();
-    recordDecomposeEval(item, 'challenge_existence');
+    recordReframeEval(item, 'challenge_existence');
 
     const insights = getSessionInsights();
     expect(insights.length).toBeGreaterThanOrEqual(1);
@@ -387,7 +387,7 @@ describe('getSessionInsights', () => {
 
   it('returns no last_strategy insight when strategy is null', () => {
     const item = makeItem();
-    recordDecomposeEval(item, null);
+    recordReframeEval(item, null);
 
     const insights = getSessionInsights();
     const strategyInsight = insights.find(i => i.type === 'last_strategy');
@@ -427,7 +427,7 @@ describe('getEvalSummary', () => {
           ai_limitations: [],
         },
       });
-      recordDecomposeEval(item, 'narrow_scope');
+      recordReframeEval(item, 'narrow_scope');
     }
 
     const summary = getEvalSummary();

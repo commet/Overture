@@ -1,17 +1,17 @@
-import type { DecomposeItem, DecomposeContext, HiddenAssumption, KeyAssumption } from '@/stores/types';
+import type { ReframeItem, ReframeContext, HiddenAssumption, KeyAssumption } from '@/stores/types';
 import {
-  buildDecomposeContext,
-  injectDecomposeContext,
+  buildReframeContext,
+  injectReframeContext,
   extractInterviewSignals,
   mergeAssumptionsIntoKeyAssumptions,
 } from '@/lib/context-chain';
 
 /* ────────────────────────────────────
-   buildDecomposeContext
+   buildReframeContext
    ──────────────────────────────────── */
 
-describe('buildDecomposeContext', () => {
-  const baseItem: DecomposeItem = {
+describe('buildReframeContext', () => {
+  const baseItem: ReframeItem = {
     id: 'test-1',
     input_text: '테스트 과제입니다',
     analysis: null,
@@ -22,7 +22,7 @@ describe('buildDecomposeContext', () => {
   };
 
   it('returns empty context when analysis is null', () => {
-    const ctx = buildDecomposeContext(baseItem);
+    const ctx = buildReframeContext(baseItem);
     expect(ctx.surface_task).toBe('테스트 과제입니다');
     expect(ctx.reframed_question).toBe('');
     expect(ctx.why_reframing_matters).toBe('');
@@ -33,7 +33,7 @@ describe('buildDecomposeContext', () => {
   });
 
   it('normalizes legacy string[] assumptions to HiddenAssumption objects', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       ...baseItem,
       analysis: {
         surface_task: '표면 과제',
@@ -49,7 +49,7 @@ describe('buildDecomposeContext', () => {
       },
     };
 
-    const ctx = buildDecomposeContext(item);
+    const ctx = buildReframeContext(item);
     expect(ctx.unverified_assumptions).toHaveLength(2);
     expect(ctx.unverified_assumptions[0]).toEqual({
       assumption: '레거시 문자열 가정',
@@ -64,7 +64,7 @@ describe('buildDecomposeContext', () => {
   });
 
   it('extracts interview signals from input_text', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       ...baseItem,
       input_text: '[맥락] 위에서 내려온 지시, 이걸 왜 해야 하는지 모르겠음, 아직 모르겠음',
       analysis: {
@@ -78,7 +78,7 @@ describe('buildDecomposeContext', () => {
       },
     };
 
-    const ctx = buildDecomposeContext(item);
+    const ctx = buildReframeContext(item);
     expect(ctx.interview_signals).toBeDefined();
     expect(ctx.interview_signals?.origin).toBe('top-down');
     expect(ctx.interview_signals?.uncertainty).toBe('why');
@@ -86,7 +86,7 @@ describe('buildDecomposeContext', () => {
   });
 
   it('properly splits verified vs unverified assumptions', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       ...baseItem,
       analysis: {
         surface_task: '과제',
@@ -103,7 +103,7 @@ describe('buildDecomposeContext', () => {
       },
     };
 
-    const ctx = buildDecomposeContext(item);
+    const ctx = buildReframeContext(item);
     expect(ctx.verified_assumptions).toHaveLength(1);
     expect(ctx.verified_assumptions[0].assumption).toBe('확인됨');
     expect(ctx.unverified_assumptions).toHaveLength(2);
@@ -112,7 +112,7 @@ describe('buildDecomposeContext', () => {
   });
 
   it('uses hypothesis as fallback for reframed_question', () => {
-    const item: DecomposeItem = {
+    const item: ReframeItem = {
       ...baseItem,
       analysis: {
         surface_task: '과제',
@@ -126,20 +126,20 @@ describe('buildDecomposeContext', () => {
       },
     };
 
-    const ctx = buildDecomposeContext(item);
+    const ctx = buildReframeContext(item);
     expect(ctx.reframed_question).toBe('대안 가설');
   });
 });
 
 /* ────────────────────────────────────
-   injectDecomposeContext
+   injectReframeContext
    ──────────────────────────────────── */
 
-describe('injectDecomposeContext', () => {
+describe('injectReframeContext', () => {
   const basePrompt = '기본 시스템 프롬프트';
 
   it('returns basePrompt unchanged when no meaningful content', () => {
-    const emptyCtx: DecomposeContext = {
+    const emptyCtx: ReframeContext = {
       surface_task: '',
       reframed_question: '',
       why_reframing_matters: '',
@@ -149,12 +149,12 @@ describe('injectDecomposeContext', () => {
       ai_limitations: [],
     };
 
-    const result = injectDecomposeContext(basePrompt, emptyCtx);
+    const result = injectReframeContext(basePrompt, emptyCtx);
     expect(result).toBe(basePrompt);
   });
 
   it('includes surface_task and reframed_question', () => {
-    const ctx: DecomposeContext = {
+    const ctx: ReframeContext = {
       surface_task: '원래 과제',
       reframed_question: '재정의된 질문',
       why_reframing_matters: '',
@@ -164,13 +164,13 @@ describe('injectDecomposeContext', () => {
       ai_limitations: [],
     };
 
-    const result = injectDecomposeContext(basePrompt, ctx);
+    const result = injectReframeContext(basePrompt, ctx);
     expect(result).toContain('원래 과제');
     expect(result).toContain('선택된 방향');
   });
 
   it('includes unverified assumptions section', () => {
-    const ctx: DecomposeContext = {
+    const ctx: ReframeContext = {
       surface_task: '과제',
       reframed_question: '질문',
       why_reframing_matters: '',
@@ -183,7 +183,7 @@ describe('injectDecomposeContext', () => {
       ai_limitations: [],
     };
 
-    const result = injectDecomposeContext(basePrompt, ctx);
+    const result = injectReframeContext(basePrompt, ctx);
     expect(result).toContain('미확인 전제');
     expect(result).toContain('가정1');
     expect(result).toContain('만약 아니라면: 위험1');
@@ -191,7 +191,7 @@ describe('injectDecomposeContext', () => {
   });
 
   it('includes interview signals section', () => {
-    const ctx: DecomposeContext = {
+    const ctx: ReframeContext = {
       surface_task: '과제',
       reframed_question: '질문',
       why_reframing_matters: '',
@@ -205,14 +205,14 @@ describe('injectDecomposeContext', () => {
       },
     };
 
-    const result = injectDecomposeContext(basePrompt, ctx);
+    const result = injectReframeContext(basePrompt, ctx);
     expect(result).toContain('사용자 맥락 신호');
     expect(result).toContain('왜 해야 하는지');
     expect(result).toContain('성공 기준이 불명확');
   });
 
   it('includes AI limitations section', () => {
-    const ctx: DecomposeContext = {
+    const ctx: ReframeContext = {
       surface_task: '과제',
       reframed_question: '질문',
       why_reframing_matters: '',
@@ -222,7 +222,7 @@ describe('injectDecomposeContext', () => {
       ai_limitations: ['최신 데이터 없음', '도메인 지식 부족'],
     };
 
-    const result = injectDecomposeContext(basePrompt, ctx);
+    const result = injectReframeContext(basePrompt, ctx);
     expect(result).toContain('AI 한계');
     expect(result).toContain('최신 데이터 없음');
     expect(result).toContain('도메인 지식 부족');
@@ -290,69 +290,69 @@ describe('extractInterviewSignals', () => {
 
 describe('mergeAssumptionsIntoKeyAssumptions', () => {
   it('does not add verified assumptions', () => {
-    const decompose: HiddenAssumption[] = [
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '확인된 가정', risk_if_false: '위험', verified: true },
     ];
-    const orchestrate: KeyAssumption[] = [];
+    const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result).toHaveLength(0);
   });
 
   it('deduplicates by assumption text (case-insensitive)', () => {
-    const decompose: HiddenAssumption[] = [
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '중복 가정', risk_if_false: '위험', verified: false },
     ];
-    const orchestrate: KeyAssumption[] = [
+    const recast: KeyAssumption[] = [
       { assumption: '중복 가정', importance: 'medium', certainty: 'medium', if_wrong: '기존' },
     ];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result).toHaveLength(1);
     expect(result[0].if_wrong).toBe('기존');
   });
 
   it('maps risk_if_false to if_wrong', () => {
-    const decompose: HiddenAssumption[] = [
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '새 가정', risk_if_false: '큰 위험', verified: false },
     ];
-    const orchestrate: KeyAssumption[] = [];
+    const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result).toHaveLength(1);
     expect(result[0].if_wrong).toBe('큰 위험');
   });
 
   it('sets importance:high, certainty:low for inherited assumptions', () => {
-    const decompose: HiddenAssumption[] = [
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '새 가정', risk_if_false: '위험', verified: false },
     ];
-    const orchestrate: KeyAssumption[] = [];
+    const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result[0].importance).toBe('high');
     expect(result[0].certainty).toBe('low');
   });
 
   it('uses fallback text when risk_if_false is empty', () => {
-    const decompose: HiddenAssumption[] = [
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '가정', risk_if_false: '', verified: false },
     ];
-    const orchestrate: KeyAssumption[] = [];
+    const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result[0].if_wrong).toBe('영향 미확인');
   });
 
-  it('preserves existing orchestrate assumptions and appends new ones', () => {
-    const decompose: HiddenAssumption[] = [
+  it('preserves existing recast assumptions and appends new ones', () => {
+    const reframeAssumptions: HiddenAssumption[] = [
       { assumption: '새 가정', risk_if_false: '위험', verified: false },
     ];
-    const orchestrate: KeyAssumption[] = [
+    const recast: KeyAssumption[] = [
       { assumption: '기존 가정', importance: 'medium', certainty: 'high', if_wrong: '기존 위험' },
     ];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(decompose, orchestrate);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
     expect(result).toHaveLength(2);
     expect(result[0].assumption).toBe('기존 가정');
     expect(result[1].assumption).toBe('새 가정');

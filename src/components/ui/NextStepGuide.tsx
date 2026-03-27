@@ -13,7 +13,7 @@ interface NextStepOption {
 }
 
 interface NextStepGuideProps {
-  currentTool: 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
+  currentTool: 'reframe' | 'recast' | 'rehearse' | 'refine';
   projectId?: string;
   onSendTo?: (tool: string) => void;
 }
@@ -26,9 +26,9 @@ export function NextStepGuide({
   const options: NextStepOption[] = [];
 
   // 악보 해석 → 편곡
-  if (currentTool === 'decompose') {
+  if (currentTool === 'reframe') {
     options.push({
-      href: '/tools/orchestrate',
+      href: '/tools/recast',
       icon: <Map size={16} />,
       label: '편곡으로',
       reason: '숨겨진 질문을 찾았습니다. 이제 이 질문에 답하는 실행 계획을 설계하세요. 발견한 전제와 가설이 편곡의 기초가 됩니다.',
@@ -37,9 +37,9 @@ export function NextStepGuide({
   }
 
   // 편곡 → 리허설
-  if (currentTool === 'orchestrate') {
+  if (currentTool === 'recast') {
     options.push({
-      href: '/tools/persona-feedback',
+      href: '/tools/rehearse',
       icon: <Users size={16} />,
       label: '리허설로',
       reason: '실행 설계가 완성되었습니다. 이제 이해관계자 앞에서 연주해보세요. 핵심 가정이 맞는지, 놓친 리스크가 없는지 검증합니다.',
@@ -48,9 +48,9 @@ export function NextStepGuide({
   }
 
   // 리허설 → 합주 연습
-  if (currentTool === 'persona-feedback') {
+  if (currentTool === 'rehearse') {
     options.push({
-      href: '/tools/refinement-loop',
+      href: '/tools/refine',
       icon: <RefreshCw size={16} />,
       label: '합주 연습으로',
       reason: '이해관계자의 반응을 확인했습니다. 지적 사항을 제약조건으로 변환하여, 하모니가 맞을 때까지 반복 개선하세요.',
@@ -59,7 +59,7 @@ export function NextStepGuide({
   }
 
   // 합주 연습 → 공연(산출물) 또는 다시 리허설
-  if (currentTool === 'refinement-loop') {
+  if (currentTool === 'refine') {
     options.push({
       href: '/project',
       icon: <FileText size={16} />,
@@ -68,15 +68,15 @@ export function NextStepGuide({
       primary: true,
     });
     options.push({
-      href: '/tools/persona-feedback',
+      href: '/tools/rehearse',
       icon: <Users size={16} />,
       label: '리허설 다시',
       reason: '수정한 내용이 이해관계자의 우려를 해소했는지 다시 검증합니다.',
     });
   }
 
-  // 항상 프로젝트 오버뷰 표시 (현재 도구가 refinement-loop이 아닐 때만)
-  if (projectId && currentTool !== 'refinement-loop') {
+  // 항상 프로젝트 오버뷰 표시 (현재 도구가 refine이 아닐 때만)
+  if (projectId && currentTool !== 'refine') {
     options.push({
       href: '/project',
       icon: <FileText size={16} />,

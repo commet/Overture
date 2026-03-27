@@ -27,7 +27,7 @@
  *   -- 단계별 완료 퍼널
  *   select event_name, count(distinct session_id)
  *   from user_events
- *   where event_name in ('decompose_complete','orchestrate_complete','feedback_complete','loop_converged')
+ *   where event_name in ('decompose_complete','recast_complete','feedback_complete','loop_converged')
  *   group by event_name;
  *
  *   -- 산출물 사용 빈도

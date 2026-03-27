@@ -14,9 +14,9 @@ Rehearsal creates simulated stakeholders who react to your plan the way real peo
 
 ## If no argument is provided
 
-If the user just types `/rehearse` without a plan, and there's no previous `/orchestrate` or `/reframe` result in the conversation, ask:
+If the user just types `/rehearse` without a plan, and there's no previous `/recast` or `/reframe` result in the conversation, ask:
 
-> What plan or strategy do you want to stress-test? (Paste it here, or run /orchestrate first)
+> What plan or strategy do you want to stress-test? (Paste it here, or run /recast first)
 
 ## Before starting
 
@@ -33,12 +33,12 @@ Show the header:
 
 ## Context from previous steps
 
-- If `/orchestrate` generated stakeholders → use them as personas
+- If `/recast` generated stakeholders → use them as personas
 - If `/reframe` found uncertain assumptions → make sure personas probe those specifically
 
 ## Step 1: Create personas
 
-Build 2-3 stakeholder personas. If `/orchestrate` already suggested reviewers, use those. Otherwise, generate them from context.
+Build 2-3 stakeholder personas. If `/recast` already suggested reviewers, use those. Otherwise, generate them from context.
 
 Each persona needs: name/title, role, influence level, thinking style, risk appetite, #1 concern, communication style.
 

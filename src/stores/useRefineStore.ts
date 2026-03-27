@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import type { RefinementLoop, RefinementIteration, ApprovalCondition } from '@/stores/types';
+import type { RefineLoop, RefineIteration, ApprovalCondition } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { checkLoopConvergence } from '@/lib/convergence';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
-interface RefinementState {
-  loops: RefinementLoop[];
+interface RefineState {
+  loops: RefineLoop[];
   activeLoopId: string | null;
   loadLoops: () => void;
   createLoop: (params: {
@@ -18,29 +18,29 @@ interface RefinementState {
     personaIds: string[];
     name?: string;
   }) => string;
-  updateLoop: (id: string, data: Partial<RefinementLoop>) => void;
+  updateLoop: (id: string, data: Partial<RefineLoop>) => void;
   deleteLoop: (id: string) => void;
   setActiveLoopId: (id: string | null) => void;
-  getActiveLoop: () => RefinementLoop | undefined;
-  addIteration: (loopId: string, iteration: Omit<RefinementIteration, 'created_at'>) => void;
-  getLoopsByProject: (projectId: string) => RefinementLoop[];
+  getActiveLoop: () => RefineLoop | undefined;
+  addIteration: (loopId: string, iteration: Omit<RefineIteration, 'created_at'>) => void;
+  getLoopsByProject: (projectId: string) => RefineLoop[];
   checkConvergence: (loopId: string) => ReturnType<typeof checkLoopConvergence>;
 }
 
-export const useRefinementStore = create<RefinementState>((set, get) => ({
+export const useRefineStore = create<RefineState>((set, get) => ({
   loops: [],
   activeLoopId: null,
 
   loadLoops: () => {
-    const local = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+    const local = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
     set({ loops: local });
-    loadAndMerge<RefinementLoop>('refinement_loops', STORAGE_KEYS.REFINEMENT_LOOPS)
+    loadAndMerge<RefineLoop>('refine_loops', STORAGE_KEYS.REFINE_LOOPS)
       .then((merged) => set({ loops: merged }));
   },
 
   createLoop: (params) => {
     const now = new Date().toISOString();
-    const loop: RefinementLoop = {
+    const loop: RefineLoop = {
       id: generateId(),
       project_id: params.projectId,
       name: params.name || params.goal.slice(0, 30),
@@ -57,8 +57,8 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
     };
     const loops = [...get().loops, loop];
     set({ loops, activeLoopId: loop.id });
-    setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
-    upsertToSupabase('refinement_loops', loop);
+    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
+    upsertToSupabase('refine_loops', loop);
     return loop.id;
   },
 
@@ -67,17 +67,17 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
       l.id === id ? { ...l, ...data, updated_at: new Date().toISOString() } : l
     );
     set({ loops });
-    setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
     const updated = get().loops.find(l => l.id === id);
-    if (updated) upsertToSupabase('refinement_loops', updated);
+    if (updated) upsertToSupabase('refine_loops', updated);
   },
 
   deleteLoop: (id) => {
     const loops = get().loops.filter((l) => l.id !== id);
     const activeLoopId = get().activeLoopId === id ? null : get().activeLoopId;
     set({ loops, activeLoopId });
-    setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
-    deleteFromSupabase('refinement_loops', id);
+    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
+    deleteFromSupabase('refine_loops', id);
   },
 
   setActiveLoopId: (id) => set({ activeLoopId: id }),
@@ -97,9 +97,9 @@ export const useRefinementStore = create<RefinementState>((set, get) => ({
       };
     });
     set({ loops });
-    setStorage(STORAGE_KEYS.REFINEMENT_LOOPS, loops);
+    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
     const updated = get().loops.find(l => l.id === loopId);
-    if (updated) upsertToSupabase('refinement_loops', updated);
+    if (updated) upsertToSupabase('refine_loops', updated);
   },
 
   getLoopsByProject: (projectId) =>

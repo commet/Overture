@@ -4,12 +4,14 @@
 
 Getting generic answers from AI? The problem isn't the AI — it's your question. Overture finds hidden assumptions, stress-tests your plan with simulated stakeholders, and refines until solid.
 
-## Skills
+## The 4R Framework
+
+Every step Re-examines. Reframe · Recast · Rehearse · Refine.
 
 | Command | Time | What it does |
 |---------|------|-------------|
 | `/reframe` | 30 sec – 2 min | Find hidden assumptions, get a sharper question |
-| `/orchestrate` | 2 min | Design who does what (AI vs human) with checkpoints |
+| `/recast` | 2 min | Design who does what (AI vs human) with checkpoints |
 | `/rehearse` | 3 min | Stress-test with simulated stakeholders |
 | `/refine` | 3-5 min | Fix issues, re-test, repeat until converged |
 | `/overture` | 5-10 min | Full pipeline → 3 deliverables + quality score |

@@ -271,7 +271,7 @@ At the very end of the output, add one line that captures the GAP between what t
 Then:
 
 ```
-  Next: /orchestrate to design an execution plan
+  Next: /recast to design an execution plan
         /rehearse to stress-test with stakeholders
 ```
 

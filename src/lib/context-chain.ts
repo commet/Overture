@@ -7,10 +7,10 @@
  */
 
 import type {
-  DecomposeItem,
-  DecomposeContext,
-  OrchestrateItem,
-  OrchestrateContext,
+  ReframeItem,
+  ReframeContext,
+  RecastItem,
+  RecastContext,
   RehearsalContext,
   FeedbackRecord,
   HiddenAssumption,
@@ -18,10 +18,10 @@ import type {
 } from '@/stores/types';
 
 /* ────────────────────────────────────
-   Decompose → typed context
+   Reframe → typed context
    ──────────────────────────────────── */
 
-export function buildDecomposeContext(item: DecomposeItem): DecomposeContext {
+export function buildReframeContext(item: ReframeItem): ReframeContext {
   const analysis = item.analysis;
   if (!analysis) {
     return {
@@ -56,10 +56,10 @@ export function buildDecomposeContext(item: DecomposeItem): DecomposeContext {
 }
 
 /* ────────────────────────────────────
-   Orchestrate → typed context
+   Recast → typed context
    ──────────────────────────────────── */
 
-export function buildOrchestrateContext(item: OrchestrateItem): OrchestrateContext {
+export function buildRecastContext(item: RecastItem): RecastContext {
   const analysis = item.analysis;
   const steps = item.steps.length > 0 ? item.steps : analysis?.steps || [];
 
@@ -117,13 +117,13 @@ export function buildRehearsalContext(records: FeedbackRecord[]): RehearsalConte
    ──────────────────────────────────── */
 
 /**
- * Inject decompose context into orchestrate's system prompt.
+ * Inject reframe context into recast's system prompt.
  * Instead of appending raw markdown, injects structured context
  * that the AI can use precisely.
  */
-export function injectDecomposeContext(
+export function injectReframeContext(
   basePrompt: string,
-  ctx: DecomposeContext
+  ctx: ReframeContext
 ): string {
   const sections: string[] = [];
 
@@ -131,7 +131,7 @@ export function injectDecomposeContext(
   const question = (ctx.selected_direction || ctx.reframed_question || '').trim();
   if (!question && !ctx.surface_task?.trim()) return basePrompt;
 
-  // Core direction from decompose
+  // Core direction from reframe
   sections.push(`## 악보 해석에서 도출된 맥락`);
   if (ctx.surface_task?.trim()) sections.push(`- 원래 과제: ${ctx.surface_task}`);
   if (question) sections.push(`- 재정의된 질문: ${question}`);
@@ -188,7 +188,7 @@ export function injectDecomposeContext(
     });
   }
 
-  // Assumption evaluation pattern → guide orchestrate risk stance
+  // Assumption evaluation pattern → guide recast risk stance
   const evaluated = allAssumptions.filter(a => typeof a !== 'string' && a.evaluation);
   if (evaluated.length >= 2) {
     const doubtful = evaluated.filter(a => typeof a !== 'string' && a.evaluation === 'doubtful');
@@ -270,39 +270,39 @@ export function injectDecomposeContext(
 }
 
 /**
- * Inject orchestrate + decompose context into rehearsal's prompt.
+ * Inject recast + reframe context into rehearsal's prompt.
  */
-export function injectOrchestrateContext(
+export function injectRecastContext(
   basePrompt: string,
-  orchestrateCtx: OrchestrateContext,
-  decomposeCtx?: DecomposeContext
+  recastCtx: RecastContext,
+  reframeCtx?: ReframeContext
 ): string {
   const sections: string[] = [];
 
   sections.push('## 편곡에서 설계된 실행 계획');
-  sections.push(`- 핵심 방향: ${orchestrateCtx.governing_idea}`);
+  sections.push(`- 핵심 방향: ${recastCtx.governing_idea}`);
 
   // Storyline — 왜 이 접근인지 구조적 맥락
-  if (orchestrateCtx.storyline) {
-    const s = orchestrateCtx.storyline;
+  if (recastCtx.storyline) {
+    const s = recastCtx.storyline;
     sections.push(`- 상황: ${s.situation}`);
     sections.push(`- 문제: ${s.complication}`);
     sections.push(`- 해결: ${s.resolution}`);
   }
 
   // Design rationale
-  if (orchestrateCtx.design_rationale) {
-    sections.push(`- 설계 근거: ${orchestrateCtx.design_rationale}`);
+  if (recastCtx.design_rationale) {
+    sections.push(`- 설계 근거: ${recastCtx.design_rationale}`);
   }
 
   // Step summary — 압축된 실행 흐름 (페르소나가 전체 그림을 볼 수 있도록)
-  if (orchestrateCtx.steps.length > 0) {
+  if (recastCtx.steps.length > 0) {
     const actorLabel: Record<string, string> = { ai: 'AI', human: '사람', both: '협업' };
-    const stepSummary = orchestrateCtx.steps
+    const stepSummary = recastCtx.steps
       .map((step, i) => {
         const num = i + 1;
         const cp = step.checkpoint ? ' ⚑' : '';
-        const onCriticalPath = orchestrateCtx.critical_path?.includes(num) ? ' ★' : '';
+        const onCriticalPath = recastCtx.critical_path?.includes(num) ? ' ★' : '';
         return `${num}. ${step.task} [${actorLabel[step.actor] || step.actor}]${cp}${onCriticalPath}`;
       })
       .join(' / ');
@@ -312,19 +312,19 @@ export function injectOrchestrateContext(
   }
 
   // Key assumptions — 공격 대상
-  if (orchestrateCtx.key_assumptions.length > 0) {
+  if (recastCtx.key_assumptions.length > 0) {
     sections.push('');
     sections.push('### 핵심 가정 (공격 대상)');
-    orchestrateCtx.key_assumptions.forEach((ka, i) => {
+    recastCtx.key_assumptions.forEach((ka, i) => {
       sections.push(`${i + 1}. [${ka.importance}/${ka.certainty}] ${ka.assumption}`);
       if (ka.if_wrong) sections.push(`   틀리면: ${ka.if_wrong}`);
     });
   }
 
-  // Decompose unverified assumptions
-  if (decomposeCtx?.unverified_assumptions?.length) {
-    const doubtful = decomposeCtx.unverified_assumptions.filter(a => a.evaluation === 'doubtful');
-    const others = decomposeCtx.unverified_assumptions.filter(a => a.evaluation !== 'doubtful');
+  // Reframe unverified assumptions
+  if (reframeCtx?.unverified_assumptions?.length) {
+    const doubtful = reframeCtx.unverified_assumptions.filter(a => a.evaluation === 'doubtful');
+    const others = reframeCtx.unverified_assumptions.filter(a => a.evaluation !== 'doubtful');
     if (doubtful.length > 0) {
       sections.push('');
       sections.push('### 사용자가 의심한 전제 (우선 검증 대상)');
@@ -337,50 +337,50 @@ export function injectOrchestrateContext(
     }
   }
 
-  // AI limitations from decompose
-  if (decomposeCtx?.ai_limitations?.length) {
+  // AI limitations from reframe
+  if (reframeCtx?.ai_limitations?.length) {
     sections.push('');
     sections.push('### AI 한계 (이 영역은 사람이 판단해야 함)');
-    decomposeCtx.ai_limitations.forEach(l => sections.push(`- ${l}`));
+    reframeCtx.ai_limitations.forEach(l => sections.push(`- ${l}`));
   }
 
   return `${basePrompt}\n\n---\n\n${sections.join('\n')}`;
 }
 
 /**
- * Build refinement-specific context from orchestrate + decompose.
+ * Build refine-specific context from recast + reframe.
  * Gives the revision AI awareness of original design constraints.
  */
-export function buildRefinementContext(
-  orchestrateCtx: OrchestrateContext,
-  decomposeCtx?: DecomposeContext
+export function buildRefineContext(
+  recastCtx: RecastContext,
+  reframeCtx?: ReframeContext
 ): string {
   const sections: string[] = [];
 
   sections.push('## 원래 설계 맥락 (수정 시 위반하지 마세요)');
-  sections.push(`- 핵심 방향: ${orchestrateCtx.governing_idea}`);
+  sections.push(`- 핵심 방향: ${recastCtx.governing_idea}`);
 
-  if (orchestrateCtx.design_rationale) {
-    sections.push(`- 설계 근거: ${orchestrateCtx.design_rationale}`);
+  if (recastCtx.design_rationale) {
+    sections.push(`- 설계 근거: ${recastCtx.design_rationale}`);
   }
 
   // Critical path awareness
-  if (orchestrateCtx.critical_path?.length > 0 && orchestrateCtx.steps.length > 0) {
-    const cpSteps = orchestrateCtx.critical_path
-      .map(i => orchestrateCtx.steps[i - 1]?.task)
+  if (recastCtx.critical_path?.length > 0 && recastCtx.steps.length > 0) {
+    const cpSteps = recastCtx.critical_path
+      .map(i => recastCtx.steps[i - 1]?.task)
       .filter(Boolean);
     if (cpSteps.length > 0) {
       sections.push(`- 크리티컬 패스: ${cpSteps.join(' → ')}`);
     }
   }
 
-  if (decomposeCtx) {
-    const question = decomposeCtx.selected_direction || decomposeCtx.reframed_question;
+  if (reframeCtx) {
+    const question = reframeCtx.selected_direction || reframeCtx.reframed_question;
     if (question) {
       sections.push(`- 근본 질문: ${question}`);
     }
-    if (decomposeCtx.ai_limitations?.length > 0) {
-      sections.push(`- AI 한계: ${decomposeCtx.ai_limitations.join(', ')}`);
+    if (reframeCtx.ai_limitations?.length > 0) {
+      sections.push(`- AI 한계: ${reframeCtx.ai_limitations.join(', ')}`);
     }
   }
 
@@ -391,10 +391,10 @@ export function buildRefinementContext(
    Helpers
    ──────────────────────────────────── */
 
-export function extractInterviewSignals(inputText: string): DecomposeContext['interview_signals'] | undefined {
+export function extractInterviewSignals(inputText: string): ReframeContext['interview_signals'] | undefined {
   if (!inputText.includes('[맥락]')) return undefined;
 
-  const signals: DecomposeContext['interview_signals'] = {};
+  const signals: ReframeContext['interview_signals'] = {};
 
   // Extract origin
   if (inputText.includes('위에서 내려온 지시')) signals.origin = 'top-down';
@@ -418,18 +418,18 @@ export function extractInterviewSignals(inputText: string): DecomposeContext['in
 }
 
 /**
- * Merge decompose's unverified assumptions into orchestrate's key_assumptions.
+ * Merge reframe's unverified assumptions into recast's key_assumptions.
  * Prevents duplication. Adds provenance marker.
  */
 export function mergeAssumptionsIntoKeyAssumptions(
-  decomposeAssumptions: HiddenAssumption[],
-  orchestrateAssumptions: KeyAssumption[]
+  reframeAssumptions: HiddenAssumption[],
+  recastAssumptions: KeyAssumption[]
 ): KeyAssumption[] {
   const existing = new Set(
-    orchestrateAssumptions.map(ka => ka.assumption.toLowerCase().trim())
+    recastAssumptions.map(ka => ka.assumption.toLowerCase().trim())
   );
 
-  const inherited = decomposeAssumptions
+  const inherited = reframeAssumptions
     .filter(a => !a.verified)
     .filter(a => !existing.has(a.assumption.toLowerCase().trim()))
     .map(a => ({
@@ -439,5 +439,5 @@ export function mergeAssumptionsIntoKeyAssumptions(
       if_wrong: a.risk_if_false || '영향 미확인',
     }));
 
-  return [...orchestrateAssumptions, ...inherited];
+  return [...recastAssumptions, ...inherited];
 }

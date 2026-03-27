@@ -1,6 +1,6 @@
 # Overture
 
-**Think before you orchestrate.**
+**Think before you recast.**
 
 AI에게 일을 시키는 건 쉬워졌습니다.
 어려운 건 **무슨 일을 시킬지 정하는 겁니다.**

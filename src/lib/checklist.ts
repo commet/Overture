@@ -1,11 +1,11 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, DecomposeItem, OrchestrateItem, FeedbackRecord } from '@/stores/types';
+import type { Project, ReframeItem, RecastItem, FeedbackRecord } from '@/stores/types';
 
 export function generateChecklist(project: Project | null): string {
   if (!project) return '';
-  const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
+  const decompositions = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, [])
     .filter((d) => d.project_id === project.id && d.status === 'done');
-  const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
+  const recasts = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, [])
     .filter((o) => o.project_id === project.id);
   const feedbacks = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, [])
     .filter((f) => f.project_id === project.id);
@@ -28,8 +28,8 @@ export function generateChecklist(project: Project | null): string {
   }
 
   // Assumption validation checkpoint
-  if (orchestrations.length > 0) {
-    const latest = orchestrations[orchestrations.length - 1];
+  if (recasts.length > 0) {
+    const latest = recasts[recasts.length - 1];
     if (latest.analysis?.key_assumptions && latest.analysis.key_assumptions.length > 0) {
       lines.push(`## 가정 검증 체크포인트`);
       lines.push('');
@@ -42,8 +42,8 @@ export function generateChecklist(project: Project | null): string {
   }
 
   // Steps as checklist
-  if (orchestrations.length > 0) {
-    const latest = orchestrations[orchestrations.length - 1];
+  if (recasts.length > 0) {
+    const latest = recasts[recasts.length - 1];
     const steps = latest.steps.length > 0 ? latest.steps : latest.analysis?.steps || [];
 
     lines.push(`## 실행 단계`);

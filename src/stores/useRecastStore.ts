@@ -1,38 +1,38 @@
 import { create } from 'zustand';
-import type { OrchestrateItem, OrchestrateStep } from '@/stores/types';
+import type { RecastItem, RecastStep } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
 
-interface OrchestrateState {
-  items: OrchestrateItem[];
+interface RecastState {
+  items: RecastItem[];
   currentId: string | null;
   loadItems: () => void;
   createItem: () => string;
-  updateItem: (id: string, data: Partial<OrchestrateItem>) => void;
+  updateItem: (id: string, data: Partial<RecastItem>) => void;
   deleteItem: (id: string) => void;
   setCurrentId: (id: string | null) => void;
-  getCurrentItem: () => OrchestrateItem | undefined;
-  updateStep: (id: string, stepIndex: number, data: Partial<OrchestrateStep>) => void;
+  getCurrentItem: () => RecastItem | undefined;
+  updateStep: (id: string, stepIndex: number, data: Partial<RecastStep>) => void;
   removeStep: (id: string, stepIndex: number) => void;
   addStep: (id: string) => void;
   reorderSteps: (id: string, fromIndex: number, toIndex: number) => void;
 }
 
-export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
+export const useRecastStore = create<RecastState>((set, get) => ({
   items: [],
   currentId: null,
 
   loadItems: () => {
-    const local = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
+    const local = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []);
     set({ items: local });
-    loadAndMerge<OrchestrateItem>('orchestrate_items', STORAGE_KEYS.ORCHESTRATE_LIST)
+    loadAndMerge<RecastItem>('recast_items', STORAGE_KEYS.RECAST_LIST)
       .then((merged) => set({ items: merged }));
   },
 
   createItem: () => {
     const now = new Date().toISOString();
-    const newItem: OrchestrateItem = {
+    const newItem: RecastItem = {
       id: generateId(),
       input_text: '',
       analysis: null,
@@ -43,8 +43,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
     };
     const items = [...get().items, newItem];
     set({ items, currentId: newItem.id });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
-    upsertToSupabase('orchestrate_items', newItem);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
+    upsertToSupabase('recast_items', newItem);
     return newItem.id;
   },
 
@@ -53,17 +53,17 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       item.id === id ? { ...item, ...data, updated_at: new Date().toISOString() } : item
     );
     set({ items });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
     const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('orchestrate_items', updated);
+    if (updated) upsertToSupabase('recast_items', updated);
   },
 
   deleteItem: (id) => {
     const items = get().items.filter((item) => item.id !== id);
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
-    deleteFromSupabase('orchestrate_items', id);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
+    deleteFromSupabase('recast_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),
@@ -80,9 +80,9 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       return { ...item, steps, updated_at: new Date().toISOString() };
     });
     set({ items });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
     const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('orchestrate_items', updated);
+    if (updated) upsertToSupabase('recast_items', updated);
   },
 
   removeStep: (id, stepIndex) => {
@@ -91,9 +91,9 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       return { ...item, steps: item.steps.filter((_, i) => i !== stepIndex), updated_at: new Date().toISOString() };
     });
     set({ items });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
     const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('orchestrate_items', updated);
+    if (updated) upsertToSupabase('recast_items', updated);
   },
 
   addStep: (id) => {
@@ -106,9 +106,9 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       };
     });
     set({ items });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
     const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('orchestrate_items', updated);
+    if (updated) upsertToSupabase('recast_items', updated);
   },
 
   reorderSteps: (id, fromIndex, toIndex) => {
@@ -120,8 +120,8 @@ export const useOrchestrateStore = create<OrchestrateState>((set, get) => ({
       return { ...item, steps, updated_at: new Date().toISOString() };
     });
     set({ items });
-    setStorage(STORAGE_KEYS.ORCHESTRATE_LIST, items);
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
     const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('orchestrate_items', updated);
+    if (updated) upsertToSupabase('recast_items', updated);
   },
 }));

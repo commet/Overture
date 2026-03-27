@@ -14,7 +14,7 @@ import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance } from '
 import type { StrategyPerformance } from '@/lib/eval-engine';
 import { getWorstPerformingEvals } from '@/lib/prompt-mutation';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { JudgmentRecord, Project, PersonaAccuracyRating, DecomposeItem, OrchestrateItem, DecisionQualityScore } from '@/stores/types';
+import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
 /* ────────────────────────────────────
@@ -40,11 +40,12 @@ export interface ConcertmasterProfile {
   tier: 1 | 2 | 3;
 }
 
-export type CoachingStep = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
+export type CoachingStep = 'reframe' | 'recast' | 'rehearse' | 'refine';
 
 export interface StepCoaching {
   message: string;
   detail?: string;
+  tone?: 'neutral' | 'positive' | 'counterfactual';
 }
 
 /* ────────────────────────────────────
@@ -246,25 +247,49 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
 
 export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfile): StepCoaching | null {
   switch (step) {
-    case 'decompose':
-      return getDecomposeCoaching(profile);
-    case 'orchestrate':
-      return getOrchestrateCoaching(profile);
-    case 'persona-feedback':
+    case 'reframe':
+      return getReframeCoaching(profile);
+    case 'recast':
+      return getRecastCoaching(profile);
+    case 'rehearse':
       return getPersonaFeedbackCoaching(profile);
-    case 'refinement-loop':
-      return getRefinementLoopCoaching(profile);
+    case 'refine':
+      return getRefineCoaching(profile);
     default:
       return null;
   }
 }
 
-function getDecomposeCoaching(profile: ConcertmasterProfile): StepCoaching | null {
-  // Tier 1: Welcome
+function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching | null {
+  // Tier 1: First use — counterfactual tip
   if (profile.sessionCount === 0) {
     return {
       message: '첫 분석입니다. 과제를 입력하면 숨은 가정을 찾아드립니다.',
+      detail: '만약 문제를 입력하기 전에 "이 질문에서 내가 당연하게 여기는 것은 무엇인가?"를 먼저 떠올려보면, 더 날카로운 가정을 발견할 수 있습니다.',
+      tone: 'counterfactual',
     };
+  }
+
+  // Positive: improving assumption discovery rate
+  if (profile.tier >= 2) {
+    const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+    const doneItems = reframeItems.filter(d => d.status === 'done' && d.analysis);
+    if (doneItems.length >= 2) {
+      const recent = doneItems.slice(-2);
+      const recentAssumptions = recent.map(d => d.analysis!.hidden_assumptions?.length || 0);
+      const older = doneItems.slice(0, -2);
+      if (older.length > 0) {
+        const olderAvg = older.reduce((sum, d) => sum + (d.analysis!.hidden_assumptions?.length || 0), 0) / older.length;
+        const recentAvg = recentAssumptions.reduce((a, b) => a + b, 0) / recentAssumptions.length;
+        if (recentAvg > olderAvg * 1.3 && olderAvg > 0) {
+          return {
+            message: `가정 발견 수가 증가하고 있습니다 (평균 ${Math.round(olderAvg)}건 → ${Math.round(recentAvg)}건).`,
+            detail: '문제를 더 깊이 파고드는 습관이 형성되고 있습니다.',
+            tone: 'positive',
+          };
+        }
+      }
+    }
   }
 
   // Strategy repetition detection (tier 2+)
@@ -291,17 +316,28 @@ function getDecomposeCoaching(profile: ConcertmasterProfile): StepCoaching | nul
     }
   }
 
-  // High pass rate congratulation
+  // High pass rate — specific acknowledgment
   if (profile.avgPassRate >= 0.75 && profile.sessionCount >= 3) {
+    const pct = Math.round(profile.avgPassRate * 100);
     return {
-      message: '분석 활용도가 높습니다. 현재 접근이 잘 맞고 있습니다.',
+      message: `분석 활용률 ${pct}% — 분석 결과를 실제로 활용하고 있습니다.`,
+      tone: 'positive',
     };
   }
 
   return null;
 }
 
-function getOrchestrateCoaching(profile: ConcertmasterProfile): StepCoaching | null {
+function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching | null {
+  // First use — counterfactual
+  if (profile.sessionCount === 0) {
+    return {
+      message: '실행 설계 단계입니다.',
+      detail: '만약 각 단계에서 "이게 실패하면 누가 알아차리는가?"를 적어두면, 체크포인트 배치가 더 정확해집니다.',
+      tone: 'counterfactual',
+    };
+  }
+
   if (profile.totalJudgments < 3) return null;
 
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
@@ -332,10 +368,10 @@ function getOrchestrateCoaching(profile: ConcertmasterProfile): StepCoaching | n
   }
 
   // Cross-stage: check decompose for unverified assumptions
-  const decomposeItems = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
-  const latestDecompose = decomposeItems.filter(d => d.status === 'done').pop();
-  if (latestDecompose?.analysis) {
-    const uncertain = latestDecompose.analysis.hidden_assumptions.filter(
+  const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+  const latestReframe = reframeItems.filter(d => d.status === 'done').pop();
+  if (latestReframe?.analysis) {
+    const uncertain = latestReframe.analysis.hidden_assumptions.filter(
       a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
     );
     if (uncertain.length > 0) {
@@ -350,11 +386,37 @@ function getOrchestrateCoaching(profile: ConcertmasterProfile): StepCoaching | n
 }
 
 function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching | null {
-  // Cross-stage: check orchestrate for key assumptions to test
-  const orchestrateItems = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, []);
-  const latestOrch = orchestrateItems.filter(o => o.status === 'done').pop();
-  if (latestOrch?.analysis?.key_assumptions) {
-    const highImportance = latestOrch.analysis.key_assumptions.filter(ka => ka.importance === 'high');
+  // First use — counterfactual
+  if (profile.sessionCount === 0) {
+    return {
+      message: '페르소나가 당신의 계획을 검증합니다.',
+      detail: '만약 리허설 전에 "가장 불편한 질문이 뭘까?"를 먼저 떠올려보면, 페르소나의 피드백을 더 깊이 받아들일 수 있습니다.',
+      tone: 'counterfactual',
+    };
+  }
+
+  // Positive: improving persona accuracy over time
+  const allRatings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
+  if (allRatings.length >= 4) {
+    const sorted = [...allRatings].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const firstHalf = sorted.slice(0, Math.floor(sorted.length / 2));
+    const secondHalf = sorted.slice(Math.floor(sorted.length / 2));
+    const firstAvg = firstHalf.reduce((s, r) => s + r.accuracy_score, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((s, r) => s + r.accuracy_score, 0) / secondHalf.length;
+    if (secondAvg > firstAvg + 0.5) {
+      return {
+        message: `페르소나 정확도가 향상되고 있습니다 (${firstAvg.toFixed(1)} → ${secondAvg.toFixed(1)}).`,
+        detail: '페르소나의 피드백을 반영한 결과, 시뮬레이션 품질이 올라가고 있습니다.',
+        tone: 'positive',
+      };
+    }
+  }
+
+  // Cross-stage: check recast for key assumptions to test
+  const recastItems = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []);
+  const latestRecast = recastItems.filter(o => o.status === 'done').pop();
+  if (latestRecast?.analysis?.key_assumptions) {
+    const highImportance = latestRecast.analysis.key_assumptions.filter(ka => ka.importance === 'high');
     if (highImportance.length > 0) {
       return {
         message: `편곡에서 중요도 높은 가정 ${highImportance.length}건 — 페르소나에게 검증 요청하세요.`,
@@ -412,26 +474,60 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   };
 }
 
-function getRefinementLoopCoaching(_profile: ConcertmasterProfile): StepCoaching | null {
+function getRefineCoaching(_profile: ConcertmasterProfile): StepCoaching | null {
+  // First use — counterfactual
+  if (_profile.sessionCount === 0) {
+    return {
+      message: '피드백을 반영하며 수렴하는 단계입니다.',
+      detail: '만약 수정할 때 "이 변경이 다른 단계에 어떤 영향을 주는가?"를 함께 생각하면, 1회 반복으로 수렴할 가능성이 높아집니다.',
+      tone: 'counterfactual',
+    };
+  }
+
   // Cross-stage: DQ trend from previous projects
   const dqScores = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
   if (dqScores.length >= 2) {
     const sorted = [...dqScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
     const prev = sorted[sorted.length - 2];
     const last = sorted[sorted.length - 1];
+    const dqElements = [
+      { key: 'appropriate_frame' as const, label: '프레이밍' },
+      { key: 'creative_alternatives' as const, label: '대안 탐색' },
+      { key: 'relevant_information' as const, label: '정보 수집' },
+      { key: 'clear_values' as const, label: '관점 다양성' },
+      { key: 'sound_reasoning' as const, label: '추론 품질' },
+      { key: 'commitment_to_action' as const, label: '실행 가능성' },
+    ];
     if (last.overall_dq > prev.overall_dq) {
+      let biggestGainLabel = '';
+      let biggestDelta = 0;
+      for (const { key, label } of dqElements) {
+        const delta = (last[key] || 0) - (prev[key] || 0);
+        if (delta > biggestDelta) { biggestDelta = delta; biggestGainLabel = label; }
+      }
+      const detail = biggestGainLabel ? `가장 큰 개선: ${biggestGainLabel}` : undefined;
       return {
         message: `판단 품질이 개선되고 있습니다 (${prev.overall_dq} → ${last.overall_dq}).`,
+        detail,
+        tone: 'positive',
       };
     } else if (last.overall_dq < prev.overall_dq * 0.85) {
+      let biggestDropLabel = '';
+      let biggestDelta = 0;
+      for (const { key, label } of dqElements) {
+        const delta = (prev[key] || 0) - (last[key] || 0);
+        if (delta > biggestDelta) { biggestDelta = delta; biggestDropLabel = label; }
+      }
+      const detail = biggestDropLabel ? `하락 원인: ${biggestDropLabel}` : undefined;
       return {
         message: `판단 품질이 하락했습니다 (${prev.overall_dq} → ${last.overall_dq}). 이번엔 가정 검토를 더 꼼꼼히 해보세요.`,
+        detail,
       };
     }
   }
 
-  // Check if there are active refinement loops
-  const loops = getStorage<{ iterations?: unknown[] }[]>('sot_refinement_loops', []);
+  // Check if there are active refine loops
+  const loops = getStorage<{ iterations?: unknown[] }[]>('sot_refine_loops', []);
   if (loops.length === 0) return null;
 
   const activeLoop = loops[loops.length - 1];

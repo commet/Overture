@@ -40,7 +40,7 @@ const DEMO = {
     unspoken_risk: '솔직히 팀원 절반은 "AI가 내 일을 뺏는 거 아냐?"라고 생각하고 있어. 아무도 대놓고 말 안 하지만.',
   },
 
-  refinement: [
+  refine: [
     { fixes: ['IT 보안 승인 병행 프로세스 추가', '팀원 온보딩 워크숍 설계'], score: 78, review: '워크숍은 좋은데, 실제 업무 데이터로 해봐야 감이 와.' },
     { fixes: ['Before/After 측정 프레임 구체화', '팀원 불안감 관리 커뮤니케이션'], score: 92, review: '좋아. 데이터가 있으면 대표한테 보고할 수 있어.' },
   ],
@@ -110,10 +110,10 @@ function getReframed(doubted: Set<number>): { question: string; insight: string 
 
 const STEPS = [
   { id: 'intro', label: '시작', icon: Play },
-  { id: 'decompose', label: '악보 해석', icon: Layers },
-  { id: 'orchestrate', label: '편곡', icon: Map },
+  { id: 'reframe', label: '악보 해석', icon: Layers },
+  { id: 'recast', label: '편곡', icon: Map },
   { id: 'persona', label: '리허설', icon: Users },
-  { id: 'refinement', label: '합주', icon: RefreshCw },
+  { id: 'refine', label: '합주', icon: RefreshCw },
   { id: 'outro', label: '결과', icon: Sparkles },
 ];
 
@@ -207,10 +207,10 @@ export function DemoWalkthrough() {
       {/* Content */}
       <div key={step} className="animate-fade-in">
         {step === 0 && <IntroSection />}
-        {step === 1 && <DecomposeSection />}
-        {step === 2 && <OrchestrateSection />}
+        {step === 1 && <ReframeSection />}
+        {step === 2 && <RecastSection />}
         {step === 3 && <PersonaSection />}
-        {step === 4 && <RefinementSection />}
+        {step === 4 && <RefineSection />}
         {step === 5 && <OutroSection />}
       </div>
 
@@ -276,7 +276,7 @@ function IntroSection() {
    악보 해석 — 전제 토글 → 질문 실시간 전환
    ═══════════════════════════════════════ */
 
-function DecomposeSection() {
+function ReframeSection() {
   const [doubted, setDoubted] = useState<Set<number>>(new Set());
 
   useEffect(() => { demoChoices.doubted = doubted; }, [doubted]);
@@ -369,7 +369,7 @@ function DecomposeSection() {
    편곡 — 역할 토글 + 분배 바
    ═══════════════════════════════════════ */
 
-function OrchestrateSection() {
+function RecastSection() {
   const [actors, setActors] = useState<Record<number, 'ai' | 'human' | 'both'>>(
     Object.fromEntries(DEMO.steps.map((s, i) => [i, s.actor]))
   );
@@ -554,7 +554,7 @@ function PersonaSection() {
    합주 — 자동 재생 수렴
    ═══════════════════════════════════════ */
 
-function RefinementSection() {
+function RefineSection() {
   const [phase, setPhase] = useState<'ready' | 'r1-loading' | 'r1' | 'r2-loading' | 'r2'>('ready');
 
   useEffect(() => {
@@ -629,7 +629,7 @@ function RefinementSection() {
       {/* Revision results */}
       {(phase === 'r1' || phase === 'r2-loading' || phase === 'r2') && (
         <div className="space-y-3 animate-fade-in">
-          {DEMO.refinement.slice(0, phase === 'r1' ? 1 : 2).map((r, idx) => (
+          {DEMO.refine.slice(0, phase === 'r1' ? 1 : 2).map((r, idx) => (
             <div key={idx} className="rounded-xl border border-[#2d6b2d]/15 bg-[#2d6b2d]/[0.03] px-4 py-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[13px] font-bold text-[#2d6b2d]">{idx + 1}차 수정</span>

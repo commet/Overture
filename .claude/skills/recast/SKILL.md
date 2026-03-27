@@ -1,5 +1,5 @@
 ---
-name: orchestrate
+name: recast
 description: "Design an execution plan that separates what AI should do from what humans must decide. Creates a storyline, assigns actors, identifies checkpoints. Use after /reframe or when planning any complex project involving both AI and human work."
 argument-hint: "[goal or reframed question]"
 ---
@@ -12,19 +12,19 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 ## If no argument is provided
 
-If the user just types `/orchestrate` without a goal, and there's no `/reframe` result in the conversation, ask:
+If the user just types `/recast` without a goal, and there's no `/reframe` result in the conversation, ask:
 
 > What's the goal or project you want to plan? (Tip: try /reframe first for a sharper starting point)
 
 ## Before starting
 
-Check if `.overture/journal.md` exists. If it has previous `/orchestrate` entries, note any patterns.
+Check if `.overture/journal.md` exists. If it has previous `/recast` entries, note any patterns.
 
 Show the header:
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Orchestrate                  │
+  │  Overture · Recast                  │
   │  Execution design with AI/human roles    │
   ╰──────────────────────────────────────────╯
 ```
@@ -93,7 +93,7 @@ Format the output inside a code block for consistent rendering:
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Orchestrate                  │
+  │  Overture · Recast                  │
   │  Execution design with AI/human roles    │
   ╰──────────────────────────────────────────╯
 
@@ -166,7 +166,7 @@ Format the output inside a code block for consistent rendering:
 
 Append to `.overture/journal.md` in the project root (directory with `.git`, or current working directory):
 ```
-## [date] /orchestrate
+## [date] /recast
 - Goal: "[governing idea]"
 - Steps: [N] | AI: [M]% / Human: [K]%
 - Key assumptions: [N]

@@ -12,10 +12,10 @@
  */
 
 import type {
-  DecomposeItem,
-  OrchestrateItem,
+  ReframeItem,
+  RecastItem,
   FeedbackRecord,
-  RefinementLoop,
+  RefineLoop,
   Persona,
   PersonaAccuracyRating,
 } from '@/stores/types';
@@ -25,11 +25,11 @@ import { extractInterviewSignals as extractSignals } from '@/lib/context-chain';
 import { recordSignal } from '@/lib/signal-recorder';
 
 const EVAL_STORAGE_KEY = 'overture_eval_results';
-const ORCHESTRATE_EVAL_KEY = 'overture_eval_orchestrate';
+const RECAST_EVAL_KEY = 'overture_eval_recast';
 const REHEARSAL_EVAL_KEY = 'overture_eval_rehearsal';
-const REFINEMENT_EVAL_KEY = 'overture_eval_refinement';
+const REFINE_EVAL_KEY = 'overture_eval_refine';
 
-export type EvalTool = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement';
+export type EvalTool = 'reframe' | 'recast' | 'rehearse' | 'refine';
 
 /* ────────────────────────────────────
    Binary Eval Definitions
@@ -38,10 +38,10 @@ export type EvalTool = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refin
 export interface BinaryEval {
   id: string;
   question: string;
-  measure: (item: DecomposeItem) => boolean;
+  measure: (item: ReframeItem) => boolean;
 }
 
-export const DECOMPOSE_EVALS: BinaryEval[] = [
+export const REFRAME_EVALS: BinaryEval[] = [
   {
     id: 'question_accepted',
     question: '사용자가 AI 제안 질문을 수정 없이 채택했는가?',
@@ -113,17 +113,17 @@ export interface EvalResult {
 }
 
 /**
- * Record eval results for a completed decompose item.
+ * Record eval results for a completed reframe item.
  * Called when user confirms (status → done).
  */
-export function recordDecomposeEval(
-  item: DecomposeItem,
+export function recordReframeEval(
+  item: ReframeItem,
   strategy: ReframingStrategy | null
 ): EvalResult {
   const evals: Record<string, boolean> = {};
   let passed = 0;
 
-  for (const evalDef of DECOMPOSE_EVALS) {
+  for (const evalDef of REFRAME_EVALS) {
     const result = evalDef.measure(item);
     evals[evalDef.id] = result;
     if (result) passed++;
@@ -137,7 +137,7 @@ export function recordDecomposeEval(
     strategy,
     interview_signals: signals as InterviewSignals | null,
     evals,
-    pass_rate: passed / DECOMPOSE_EVALS.length,
+    pass_rate: passed / REFRAME_EVALS.length,
     recorded_at: new Date().toISOString(),
   };
 
@@ -150,7 +150,7 @@ export function recordDecomposeEval(
 
   // Sync to Supabase via quality_signals (fire-and-forget)
   recordSignal({
-    tool: 'decompose',
+    tool: 'reframe',
     signal_type: 'eval_result',
     signal_data: {
       item_id: evalResult.item_id,
@@ -165,28 +165,28 @@ export function recordDecomposeEval(
 }
 
 /* ────────────────────────────────────
-   Orchestrate Evals (편곡 품질 측정)
+   Recast Evals (편곡 품질 측정)
    ──────────────────────────────────── */
 
-export interface OrchestrateEvalInput {
-  item: OrchestrateItem;
+export interface RecastEvalInput {
+  item: RecastItem;
   actorOverrideCount: number;
 }
 
-export const ORCHESTRATE_EVALS: Array<{ id: string; question: string; measure: (input: OrchestrateEvalInput) => boolean }> = [
+export const RECAST_EVALS: Array<{ id: string; question: string; measure: (input: RecastEvalInput) => boolean }> = [
   { id: 'steps_accepted', question: 'AI의 워크플로우 구조를 대체로 유지했는가?', measure: ({ item }) => { if (!item.analysis) return false; return Math.abs(item.analysis.steps.length - item.steps.length) <= 2; } },
   { id: 'actor_overrides_low', question: '역할 배정을 대부분 수용했는가?', measure: ({ item, actorOverrideCount }) => { if (!item.analysis) return true; const t = item.analysis.steps.length; return t === 0 || actorOverrideCount / t < 0.3; } },
   { id: 'has_key_assumptions', question: 'AI가 핵심 가정을 2개 이상 도출했는가?', measure: ({ item }) => (item.analysis?.key_assumptions?.length || 0) >= 2 },
   { id: 'has_design_rationale', question: 'AI가 설계 근거를 제시했는가?', measure: ({ item }) => !!item.analysis?.design_rationale && item.analysis.design_rationale.length > 20 },
 ];
 
-export function recordOrchestrateEval(item: OrchestrateItem, actorOverrideCount: number): EvalResult {
+export function recordRecastEval(item: RecastItem, actorOverrideCount: number): EvalResult {
   const evals: Record<string, boolean> = {};
   let passed = 0;
-  for (const e of ORCHESTRATE_EVALS) { const r = e.measure({ item, actorOverrideCount }); evals[e.id] = r; if (r) passed++; }
-  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: item.id, tool: 'orchestrate', strategy: null, interview_signals: null, evals, pass_rate: passed / ORCHESTRATE_EVALS.length, recorded_at: new Date().toISOString() };
-  const history = getStorage<EvalResult[]>(ORCHESTRATE_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(ORCHESTRATE_EVAL_KEY, history);
-  recordSignal({ tool: 'orchestrate', signal_type: 'eval_result', signal_data: { item_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate }, project_id: item.project_id });
+  for (const e of RECAST_EVALS) { const r = e.measure({ item, actorOverrideCount }); evals[e.id] = r; if (r) passed++; }
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: item.id, tool: 'recast', strategy: null, interview_signals: null, evals, pass_rate: passed / RECAST_EVALS.length, recorded_at: new Date().toISOString() };
+  const history = getStorage<EvalResult[]>(RECAST_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(RECAST_EVAL_KEY, history);
+  recordSignal({ tool: 'recast', signal_type: 'eval_result', signal_data: { item_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate }, project_id: item.project_id });
   return evalResult;
 }
 
@@ -207,30 +207,30 @@ export function recordRehearsalEval(record: FeedbackRecord, personas: Persona[],
   const evals: Record<string, boolean> = {};
   let passed = 0;
   for (const e of REHEARSAL_EVALS) { const r = e.measure({ record, personas, accuracyRatings }); evals[e.id] = r; if (r) passed++; }
-  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: record.id, tool: 'persona-feedback', strategy: null, interview_signals: null, evals, pass_rate: passed / REHEARSAL_EVALS.length, recorded_at: new Date().toISOString() };
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: record.id, tool: 'rehearse', strategy: null, interview_signals: null, evals, pass_rate: passed / REHEARSAL_EVALS.length, recorded_at: new Date().toISOString() };
   const history = getStorage<EvalResult[]>(REHEARSAL_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REHEARSAL_EVAL_KEY, history);
-  recordSignal({ tool: 'persona-feedback', signal_type: 'eval_result', signal_data: { record_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, persona_count: record.results.length }, project_id: record.project_id });
+  recordSignal({ tool: 'rehearse', signal_type: 'eval_result', signal_data: { record_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, persona_count: record.results.length }, project_id: record.project_id });
   return evalResult;
 }
 
 /* ────────────────────────────────────
-   Refinement Evals (합주 연습 품질 측정)
+   Refine Evals (합주 연습 품질 측정)
    ──────────────────────────────────── */
 
-export const REFINEMENT_EVALS: Array<{ id: string; question: string; measure: (loop: RefinementLoop) => boolean }> = [
+export const REFINE_EVALS: Array<{ id: string; question: string; measure: (loop: RefineLoop) => boolean }> = [
   { id: 'converged_efficiently', question: '3회 이내에 수렴했는가?', measure: (loop) => loop.status === 'converged' && loop.iterations.length <= 3 },
   { id: 'issues_trending_down', question: '이슈 수가 반복마다 감소했는가?', measure: (loop) => { if (loop.iterations.length < 2) return true; const t = loop.iterations.map(it => it.convergence.total_issues); for (let i = 1; i < t.length; i++) { if (t[i] > t[i - 1]) return false; } return true; } },
   { id: 'critical_resolved', question: '모든 핵심 리스크가 해소됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; return loop.iterations[loop.iterations.length - 1].convergence.critical_risks === 0; } },
   { id: 'approval_conditions_met', question: '고영향력 승인 조건 80% 이상 충족됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; const hi = loop.iterations[loop.iterations.length - 1].convergence.approval_conditions.filter(ac => ac.influence === 'high'); if (hi.length === 0) return true; return hi.filter(ac => ac.met).length >= hi.length * 0.8; } },
 ];
 
-export function recordRefinementEval(loop: RefinementLoop): EvalResult {
+export function recordRefineEval(loop: RefineLoop): EvalResult {
   const evals: Record<string, boolean> = {};
   let passed = 0;
-  for (const e of REFINEMENT_EVALS) { const r = e.measure(loop); evals[e.id] = r; if (r) passed++; }
-  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: loop.id, tool: 'refinement', strategy: null, interview_signals: null, evals, pass_rate: passed / REFINEMENT_EVALS.length, recorded_at: new Date().toISOString() };
-  const history = getStorage<EvalResult[]>(REFINEMENT_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REFINEMENT_EVAL_KEY, history);
-  recordSignal({ tool: 'refinement', signal_type: 'eval_result', signal_data: { loop_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, iteration_count: loop.iterations.length, final_status: loop.status }, project_id: loop.project_id });
+  for (const e of REFINE_EVALS) { const r = e.measure(loop); evals[e.id] = r; if (r) passed++; }
+  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: loop.id, tool: 'refine', strategy: null, interview_signals: null, evals, pass_rate: passed / REFINE_EVALS.length, recorded_at: new Date().toISOString() };
+  const history = getStorage<EvalResult[]>(REFINE_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REFINE_EVAL_KEY, history);
+  recordSignal({ tool: 'refine', signal_type: 'eval_result', signal_data: { loop_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, iteration_count: loop.iterations.length, final_status: loop.status }, project_id: loop.project_id });
   return evalResult;
 }
 
@@ -239,7 +239,7 @@ export function recordRefinementEval(loop: RefinementLoop): EvalResult {
    ──────────────────────────────────── */
 
 export function getStageEvalSummary(tool: EvalTool): { tool: EvalTool; total_sessions: number; avg_pass_rate: number; worst_eval: string | null; per_eval_rates: Record<string, number> } {
-  const keyMap: Record<EvalTool, string> = { decompose: EVAL_STORAGE_KEY, orchestrate: ORCHESTRATE_EVAL_KEY, 'persona-feedback': REHEARSAL_EVAL_KEY, refinement: REFINEMENT_EVAL_KEY };
+  const keyMap: Record<EvalTool, string> = { reframe: EVAL_STORAGE_KEY, recast: RECAST_EVAL_KEY, 'rehearse': REHEARSAL_EVAL_KEY, refine: REFINE_EVAL_KEY };
   const history = getStorage<EvalResult[]>(keyMap[tool], []);
   if (history.length === 0) return { tool, total_sessions: 0, avg_pass_rate: 0, worst_eval: null, per_eval_rates: {} };
   const avgPassRate = history.reduce((s, r) => s + r.pass_rate, 0) / history.length;
@@ -251,7 +251,7 @@ export function getStageEvalSummary(tool: EvalTool): { tool: EvalTool; total_ses
   return { tool, total_sessions: history.length, avg_pass_rate: avgPassRate, worst_eval: worstEval, per_eval_rates: perEvalRates };
 }
 
-export function getAllStagesSummary() { return (['decompose', 'orchestrate', 'persona-feedback', 'refinement'] as EvalTool[]).map(getStageEvalSummary).filter(s => s.total_sessions > 0); }
+export function getAllStagesSummary() { return (['reframe', 'recast', 'rehearse', 'refine'] as EvalTool[]).map(getStageEvalSummary).filter(s => s.total_sessions > 0); }
 
 /* ────────────────────────────────────
    Strategy Performance Analysis
@@ -307,7 +307,7 @@ export function analyzeStrategyPerformance(
     const avgPassRate = results.reduce((sum, r) => sum + r.pass_rate, 0) / results.length;
 
     const perEval: Record<string, number> = {};
-    for (const evalDef of DECOMPOSE_EVALS) {
+    for (const evalDef of REFRAME_EVALS) {
       const passCount = results.filter(r => r.evals[evalDef.id]).length;
       perEval[evalDef.id] = passCount / results.length;
     }

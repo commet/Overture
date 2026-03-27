@@ -35,10 +35,10 @@ describe('middleware route matching', () => {
     '/workspace',
     '/project',
     '/settings',
-    '/tools/decompose',
-    '/tools/orchestrate',
-    '/tools/persona-feedback',
-    '/tools/refinement-loop',
+    '/tools/reframe',
+    '/tools/recast',
+    '/tools/rehearse',
+    '/tools/refine',
     '/tools/synthesize',
   ])('"%s" is protected', (path) => {
     expect(isPublic(path)).toBe(false);

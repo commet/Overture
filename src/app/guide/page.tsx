@@ -10,7 +10,7 @@ const tools = [
     subtitle: '문제 재정의',
     color: '#2d4a7c',
     bg: 'var(--ai)',
-    href: '/workspace?step=decompose',
+    href: '/workspace?step=reframe',
     why: '과제를 받으면 바로 실행하고 싶지만, 전제가 틀리면 보고서 전체가 무의미합니다. 이 단계에서 과제 뒤에 숨은 전제를 점검하고, 진짜 물어야 할 질문을 재정의합니다.',
     flow: [
       '과제의 맥락을 입력합니다 (출처, 성공 기준, 이해관계자)',
@@ -28,7 +28,7 @@ const tools = [
     subtitle: '실행 설계',
     color: '#8b6914',
     bg: 'var(--human)',
-    href: '/workspace?step=orchestrate',
+    href: '/workspace?step=recast',
     why: 'AI에게 전부 맡기면 방향이 틀어집니다. 이 단계에서 AI와 사람이 각각 무엇을 맡을지 정하고, 사람이 판단해야 할 곳에서 실제로 결정을 내립니다.',
     flow: [
       '결과물 유형, 팀 규모, 기간을 선택하고 목표를 입력합니다',
@@ -46,7 +46,7 @@ const tools = [
     subtitle: '사전 검증',
     color: '#6b4c9a',
     bg: '#f5f0fa',
-    href: '/workspace?step=persona-feedback',
+    href: '/workspace?step=rehearse',
     why: '같은 보고서도 CEO에게 보여줄 때와 실무진에게 보여줄 때 프레이밍이 달라야 합니다. 보내기 전에 주요 이해관계자의 반응을 시뮬레이션하면 약점을 미리 보완할 수 있습니다.',
     flow: [
       '이해관계자 페르소나를 설정합니다 (프리셋 선택 또는 직접 입력)',
@@ -64,7 +64,7 @@ const tools = [
     subtitle: '피드백 반영',
     color: '#2d6b2d',
     bg: 'var(--collab)',
-    href: '/workspace?step=refinement-loop',
+    href: '/workspace?step=refine',
     why: '한 번의 분석으로 완벽한 결과가 나오지 않습니다. 이해관계자의 지적을 반영하여 반복하면, 매 반복마다 맥락이 누적되면서 결과가 정교해집니다.',
     flow: [
       '리허설에서 받은 피드백을 입력합니다',

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRefineStore } from '@/stores/useRefineStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { ConvergenceChart } from './ConvergenceChart';
@@ -13,17 +13,17 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { callLLMJson } from '@/lib/llm';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
-import type { FeedbackRecord, PersonaFeedbackResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefinementLoop } from '@/stores/types';
+import type { FeedbackRecord, RehearsalResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefineLoop } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
 import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
-import { buildOrchestrateContext, buildDecomposeContext, buildRefinementContext } from '@/lib/context-chain';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { buildRecastContext, buildReframeContext, buildRefineContext } from '@/lib/context-chain';
+import { useRecastStore } from '@/stores/useRecastStore';
+import { useReframeStore } from '@/stores/useReframeStore';
 import { recordSignal } from '@/lib/signal-recorder';
 import { generateRetrospectiveQuestions, saveRetrospectiveAnswer } from '@/lib/retrospective';
-import { recordRefinementEval } from '@/lib/eval-engine';
+import { recordRefineEval } from '@/lib/eval-engine';
 import { computeDecisionQuality, getDQScores, correlateDQWithOutcomes } from '@/lib/decision-quality';
 import type { DecisionQualityScore } from '@/stores/types';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
@@ -53,12 +53,12 @@ const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다
 
 반드시 JSON만 응답하세요.`;
 
-interface RefinementLoopStepProps {
+interface RefineStepProps {
   onNavigate: (step: string) => void;
 }
 
-export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
-  const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence } = useRefinementStore();
+export function RefineStep({ onNavigate }: RefineStepProps) {
+  const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence } = useRefineStore();
   const { projects, loadProjects, updateProject } = useProjectStore();
   const { personas, feedbackHistory, loadData: loadPersonaData, getPersona, addFeedbackRecord } = usePersonaStore();
 
@@ -126,18 +126,18 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 
       // Build revision system prompt with original design context
       let revisionSystem = REVISION_SYSTEM;
-      const { items: orchestrateItems } = useOrchestrateStore.getState();
-      const { items: decomposeItems } = useDecomposeStore.getState();
-      const relOrch = orchestrateItems
+      const { items: recastItems } = useRecastStore.getState();
+      const { items: reframeItems } = useReframeStore.getState();
+      const relRecast = recastItems
         .filter(o => o.project_id === activeLoop.project_id && o.status === 'done' && o.analysis)
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-      const relDec = decomposeItems
+      const relDec = reframeItems
         .filter(d => d.project_id === activeLoop.project_id && d.status === 'done' && d.analysis)
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-      if (relOrch) {
-        const orchCtx = buildOrchestrateContext(relOrch);
-        const decCtx = relDec ? buildDecomposeContext(relDec) : undefined;
-        revisionSystem = `${REVISION_SYSTEM}\n\n${buildRefinementContext(orchCtx, decCtx)}`;
+      if (relRecast) {
+        const orchCtx = buildRecastContext(relRecast);
+        const decCtx = relDec ? buildReframeContext(relDec) : undefined;
+        revisionSystem = `${REVISION_SYSTEM}\n\n${buildRefineContext(orchCtx, decCtx)}`;
       }
 
       // ── Phase A: Plan Revision ──
@@ -151,7 +151,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
       );
 
       // ── Phase B: Re-review with same personas ──
-      const reReviewResults: PersonaFeedbackResult[] = [];
+      const reReviewResults: RehearsalResult[] = [];
       const personaIds = activeLoop.persona_ids;
 
       for (const personaId of personaIds) {
@@ -171,7 +171,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           ? `${revision.revised_plan}\n\n---\n[이번 수정 사항]\n${changesContext}`
           : revision.revised_plan;
 
-        const result = await callLLMJson<Omit<PersonaFeedbackResult, 'persona_id'>>(
+        const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
           [{ role: 'user', content: reReviewContent }],
           { system: systemPrompt, maxTokens: 2000 }
         );
@@ -265,7 +265,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
         personas_count: personaIds.length,
       });
     } catch (err) {
-      trackError('refinement_iterate', err);
+      trackError('refine_iterate', err);
       setError(err instanceof Error ? err.message : '개선안을 생성할 수 없었습니다.');
     } finally {
       setIsRefining(false);
@@ -288,7 +288,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
           핵심 위협이 해소될 때까지 기획안을 수정하고 재리뷰를 받습니다.
         </p>
         <div className="mt-2">
-          <ConcertmasterInline step="refinement-loop" />
+          <ConcertmasterInline step="refine" />
         </div>
       </div>
 
@@ -302,7 +302,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
               <p className="text-[var(--text-secondary)] text-[12px] mt-1 max-w-xs mx-auto">
                 리허설에서 피드백을 받은 뒤, &ldquo;합주 연습 시작&rdquo;을 눌러 반복 개선을 시작하세요.
               </p>
-              <button onClick={() => onNavigate('persona-feedback')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
+              <button onClick={() => onNavigate('rehearse')} className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
                 리허설 먼저 진행하기 <ArrowRight size={14} />
               </button>
             </Card>
@@ -590,7 +590,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: 'converged' }); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefineEval({ ...activeLoop, status: 'converged' }); }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -612,7 +612,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refinement', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefinementEval({ ...activeLoop, status: fs }); }}>
+                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefineEval({ ...activeLoop, status: fs }); }}>
                   마무리
                 </Button>
               </div>
@@ -659,7 +659,7 @@ export function RefinementLoopStep({ onNavigate }: RefinementLoopStepProps) {
 }
 
 // ── Retrospective Card ──
-function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefineLoop; feedbackHistory: FeedbackRecord[] }) {
   const { updateProject } = useProjectStore();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -676,7 +676,7 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefinementLoop; fe
       if (answers[q.id]?.trim()) {
         recordSignal({
           project_id: loop.project_id,
-          tool: 'refinement',
+          tool: 'refine',
           signal_type: 'retrospective_answer',
           signal_data: { question: q.question, answer: answers[q.id], category: q.category },
         });
@@ -770,17 +770,17 @@ function IssueCheckbox({ issue, selected, onToggle, variant }: {
 }
 
 // ── DQ Score Card ──
-function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+function DQScoreCard({ loop, feedbackHistory }: { loop: RefineLoop; feedbackHistory: FeedbackRecord[] }) {
   const [score, setScore] = useState<DecisionQualityScore | null>(null);
   const animatedDq = useCountUp(score?.overall_dq ?? 0);
 
   useEffect(() => {
     if (!loop.project_id || loop.status === 'active') return;
-    const decompose = useDecomposeStore.getState().items.find(d => d.project_id === loop.project_id && d.status === 'done') || null;
-    const orchestrate = useOrchestrateStore.getState().items.find(o => o.project_id === loop.project_id && o.status === 'done') || null;
+    const reframe = useReframeStore.getState().items.find(d => d.project_id === loop.project_id && d.status === 'done') || null;
+    const recast = useRecastStore.getState().items.find(o => o.project_id === loop.project_id && o.status === 'done') || null;
     const judgments = useJudgmentStore.getState().judgments.filter(j => j.project_id === loop.project_id);
     const personas = usePersonaStore.getState().personas;
-    const result = computeDecisionQuality({ decompose, orchestrate, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === loop.project_id), refinementLoop: loop, judgments, personas, projectId: loop.project_id });
+    const result = computeDecisionQuality({ reframe, recast, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === loop.project_id), refineLoop: loop, judgments, personas, projectId: loop.project_id });
     setScore(result);
   }, [loop.project_id, loop.status, feedbackHistory]);
 
@@ -845,20 +845,59 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedback
         </div>
       </div>
 
-      {/* Inline trend — one line, only with 2+ projects */}
+      {/* Inline trend + qualitative interpretation */}
       {(() => {
         const allScores = getDQScores();
-        if (allScores.length < 2) return null;
+        const dqElements = [
+          { key: 'appropriate_frame' as const, label: '프레이밍' },
+          { key: 'creative_alternatives' as const, label: '대안 탐색' },
+          { key: 'relevant_information' as const, label: '정보 수집' },
+          { key: 'clear_values' as const, label: '이해관계자' },
+          { key: 'sound_reasoning' as const, label: '추론 건전성' },
+          { key: 'commitment_to_action' as const, label: '실행 구체성' },
+        ];
+
+        // First use — counterfactual insight
+        if (allScores.length < 2) {
+          const strongest = dqElements.reduce((best, el) =>
+            (score[el.key] || 0) > (score[best.key] || 0) ? el : best
+          , dqElements[0]);
+          const weakest = dqElements.reduce((worst, el) =>
+            (score[el.key] || 0) < (score[worst.key] || 0) ? el : worst
+          , dqElements[0]);
+          return (strongest.key !== weakest.key) ? (
+            <p className="mt-3 text-[11px] text-blue-600 dark:text-blue-400">
+              ▸ 강점: {strongest.label} ({score[strongest.key]}/5). 만약 {weakest.label}을 더 보강했다면 전체 점수가 올라갔을 것.
+            </p>
+          ) : null;
+        }
+
+        // Returning user — trend + attribution
         const sorted = [...allScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
         const prev = sorted[sorted.length - 2];
         const diff = score.overall_dq - prev.overall_dq;
         if (diff === 0) return null;
+
+        let biggestChangeLabel = '';
+        let biggestDelta = 0;
+        for (const { key, label } of dqElements) {
+          const delta = Math.abs((score[key] || 0) - (prev[key] || 0));
+          if (delta > biggestDelta) { biggestDelta = delta; biggestChangeLabel = label; }
+        }
+
         const arrow = diff > 0 ? '↑' : '↓';
         const color = diff > 0 ? 'var(--success)' : 'var(--danger)';
         return (
-          <p className="mt-3 text-[11px] font-medium" style={{ color }}>
-            {arrow} 이전 프로젝트 대비 {diff > 0 ? '+' : ''}{diff}p
-          </p>
+          <div className="mt-3 space-y-0.5">
+            <p className="text-[11px] font-medium" style={{ color }}>
+              {arrow} 이전 프로젝트 대비 {diff > 0 ? '+' : ''}{diff}p
+            </p>
+            {biggestChangeLabel && (
+              <p className="text-[11px]" style={{ color: diff > 0 ? 'var(--success)' : 'var(--danger)', opacity: 0.8 }}>
+                ▸ {diff > 0 ? '가장 큰 개선' : '하락 원인'}: {biggestChangeLabel}
+              </p>
+            )}
+          </div>
         );
       })()}
 
@@ -913,7 +952,7 @@ function PersonaAccuracyCard() {
 }
 
 // ── Outcome Recording Card (Phase 1) ──
-function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefinementLoop; feedbackHistory: FeedbackRecord[] }) {
+function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefineLoop; feedbackHistory: FeedbackRecord[] }) {
   const existing = getOutcomeRecords(loop.project_id);
   const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);

@@ -5,17 +5,17 @@ import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { WorkspaceSidebar } from '@/components/workspace/WorkspaceSidebar';
-import { DecomposeStep } from '@/components/workspace/DecomposeStep';
-import { OrchestrateStep } from '@/components/workspace/OrchestrateStep';
-import { PersonaFeedbackStep } from '@/components/workspace/PersonaFeedbackStep';
-import { RefinementLoopStep } from '@/components/workspace/RefinementLoopStep';
+import { ReframeStep } from '@/components/workspace/ReframeStep';
+import { RecastStep } from '@/components/workspace/RecastStep';
+import { RehearseStep } from '@/components/workspace/RehearseStep';
+import { RefineStep } from '@/components/workspace/RefineStep';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { Menu, Sparkles, Clock, X } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { RefinementLoop, OutcomeRecord } from '@/stores/types';
+import type { RefineLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
@@ -35,7 +35,7 @@ function WorkspaceContent() {
   // Sync URL params with store
   useEffect(() => {
     const step = searchParams.get('step') as StepId | null;
-    if (step && ['decompose', 'orchestrate', 'persona-feedback', 'refinement-loop'].includes(step)) {
+    if (step && ['reframe', 'recast', 'rehearse', 'refine'].includes(step)) {
       setActiveStep(step);
     }
   }, [searchParams, setActiveStep]);
@@ -52,10 +52,10 @@ function WorkspaceContent() {
   };
 
   const stepLabels: Record<StepId, string> = {
-    'decompose': '악보 해석 | 문제 재정의',
-    'orchestrate': '편곡 | 실행 설계',
-    'persona-feedback': '리허설 | 사전 검증',
-    'refinement-loop': '합주 연습 | 피드백 반영',
+    'reframe': '악보 해석 | 문제 재정의',
+    'recast': '편곡 | 실행 설계',
+    'rehearse': '리허설 | 사전 검증',
+    'refine': '합주 연습 | 피드백 반영',
   };
 
   return (
@@ -158,10 +158,10 @@ function WorkspaceContent() {
 
           {currentProjectId && (
             <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
-              {activeStep === 'decompose' && <DecomposeStep onNavigate={handleNavigate} />}
-              {activeStep === 'orchestrate' && <OrchestrateStep onNavigate={handleNavigate} />}
-              {activeStep === 'persona-feedback' && <PersonaFeedbackStep onNavigate={handleNavigate} />}
-              {activeStep === 'refinement-loop' && <RefinementLoopStep onNavigate={handleNavigate} />}
+              {activeStep === 'reframe' && <ReframeStep onNavigate={handleNavigate} />}
+              {activeStep === 'recast' && <RecastStep onNavigate={handleNavigate} />}
+              {activeStep === 'rehearse' && <RehearseStep onNavigate={handleNavigate} />}
+              {activeStep === 'refine' && <RefineStep onNavigate={handleNavigate} />}
             </div>
           )}
         </div>
@@ -175,18 +175,18 @@ function WorkspaceContent() {
 
       {/* Mobile bottom tab bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around px-1 py-2 z-40">
-        {(['decompose', 'orchestrate', 'persona-feedback', 'refinement-loop'] as StepId[]).map((step) => {
+        {(['reframe', 'recast', 'rehearse', 'refine'] as StepId[]).map((step) => {
           const icons: Record<string, React.ReactNode> = {
-            'decompose': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,
-            'orchestrate': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="22" r="0" fill="currentColor"/><path d="M8 6l4-4 4 4"/></svg>,
-            'persona-feedback': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><circle cx="12" cy="16" r="3"/></svg>,
-            'refinement-loop': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>,
+            'reframe': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,
+            'recast': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="22" r="0" fill="currentColor"/><path d="M8 6l4-4 4 4"/></svg>,
+            'rehearse': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><circle cx="12" cy="16" r="3"/></svg>,
+            'refine': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>,
           };
           const labels: Record<string, string> = {
-            'decompose': '해석',
-            'orchestrate': '편곡',
-            'persona-feedback': '리허설',
-            'refinement-loop': '합주',
+            'reframe': '해석',
+            'recast': '편곡',
+            'rehearse': '리허설',
+            'refine': '합주',
           };
           return (
             <button
@@ -213,7 +213,7 @@ function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+    const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
     const outcomes = getStorage<OutcomeRecord[]>(STORAGE_KEYS.OUTCOME_RECORDS, []);
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
@@ -234,7 +234,7 @@ function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
         <Clock size={14} className="text-[var(--risk-manageable)] shrink-0" />
         <span className="text-[var(--text-primary)]">
           {staleCount}개 프로젝트의 실행 결과를 기록할 수 있습니다.{' '}
-          <button onClick={() => onNavigate('refinement-loop')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button>
+          <button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button>
         </span>
       </div>
       <button onClick={() => setDismissed(true)} className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer">

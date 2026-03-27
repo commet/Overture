@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
-import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRefineStore } from '@/stores/useRefineStore';
 import { useRouter } from 'next/navigation';
 import { extractApprovalConditions } from '@/lib/convergence';
 
@@ -35,7 +35,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
   const { addRating } = useAccuracyStore();
   const { addJudgment } = useJudgmentStore();
   const router = useRouter();
-  const { createLoop, setActiveLoopId } = useRefinementStore();
+  const { createLoop, setActiveLoopId } = useRefineStore();
   const [ratingState, setRatingState] = useState<Record<string, {
     score: number;
     accurateAspects: string[];
@@ -79,7 +79,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
       original_ai_suggestion: '',
       user_changed: rating.score < 4,
       project_id: record.project_id,
-      tool: 'persona-feedback',
+      tool: 'rehearse',
     });
     setRatingState(prev => ({ ...prev, [personaId]: { ...prev[personaId], saved: true } }));
   };
@@ -105,7 +105,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
     return text;
   };
 
-  // ── Start refinement loop ──
+  // ── Start refine loop ──
   const handleStartLoop = () => {
     if (!record.project_id) return;
 
@@ -121,8 +121,8 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
     });
 
     setActiveLoopId(loopId);
-    if (onNavigate) onNavigate('refinement-loop');
-    else router.push('/tools/refinement-loop');
+    if (onNavigate) onNavigate('refine');
+    else router.push('/tools/refine');
   };
 
   // ── Risk counts ──

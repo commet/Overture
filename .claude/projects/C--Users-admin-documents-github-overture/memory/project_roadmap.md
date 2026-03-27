@@ -1,6 +1,6 @@
 ---
 name: Overture Technical Roadmap
-description: 6-phase roadmap transforming Overture from prompt wrapper to adaptive strategic thinking engine. Priorities context chain typing, judgment learning loop, multi-lens orchestration.
+description: 6-phase roadmap transforming Overture from prompt wrapper to adaptive strategic thinking engine. Priorities context chain typing, judgment learning loop, multi-lens recasting.
 type: project
 ---
 
@@ -13,6 +13,6 @@ Overture ROADMAP.md created 2026-03-20 with 6 phases.
 Key decisions:
 - Phase order: 0→1→2→5→3→4→6
 - autoresearch binary eval pattern adopted for prompt self-improvement
-- BMAD multi-lens review adopted for orchestrate validation
+- BMAD multi-lens review adopted for recast validation
 - SDD steering documents pattern for persistent project context
 - RIPER branch-aware memory concept for scenario isolation

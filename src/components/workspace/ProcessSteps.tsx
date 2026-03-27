@@ -1,9 +1,9 @@
 'use client';
 
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useRefinementStore } from '@/stores/useRefinementStore';
+import { useRefineStore } from '@/stores/useRefineStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { Layers, Map, Users, RefreshCw, Check } from 'lucide-react';
 import { DynamicMark, BarLine } from '@/components/ui/MusicalElements';
@@ -25,44 +25,44 @@ interface StepInfo {
 }
 
 const steps: StepInfo[] = [
-  { id: 'decompose', number: 1, label: '악보 해석', icon: <Layers size={16} />, color: 'text-[#2d4a7c]', bgColor: 'bg-[var(--ai)]' },
-  { id: 'orchestrate', number: 2, label: '편곡', icon: <Map size={16} />, color: 'text-[#8b6914]', bgColor: 'bg-[var(--human)]' },
-  { id: 'persona-feedback', number: 3, label: '리허설', icon: <Users size={16} />, color: 'text-purple-700', bgColor: 'bg-purple-50' },
-  { id: 'refinement-loop', number: 4, label: '합주 연습', icon: <RefreshCw size={16} />, color: 'text-[#2d6b2d]', bgColor: 'bg-[var(--collab)]' },
+  { id: 'reframe', number: 1, label: '악보 해석', icon: <Layers size={16} />, color: 'text-[#2d4a7c]', bgColor: 'bg-[var(--ai)]' },
+  { id: 'recast', number: 2, label: '편곡', icon: <Map size={16} />, color: 'text-[#8b6914]', bgColor: 'bg-[var(--human)]' },
+  { id: 'rehearse', number: 3, label: '리허설', icon: <Users size={16} />, color: 'text-purple-700', bgColor: 'bg-purple-50' },
+  { id: 'refine', number: 4, label: '합주 연습', icon: <RefreshCw size={16} />, color: 'text-[#2d6b2d]', bgColor: 'bg-[var(--collab)]' },
 ];
 
 export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
-  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
-  const { items: orchestrateItems, loadItems: loadOrchestrate } = useOrchestrateStore();
+  const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
+  const { items: recastItems, loadItems: loadRecast } = useRecastStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
-  const { loops, loadLoops } = useRefinementStore();
+  const { loops, loadLoops } = useRefineStore();
   const { currentProjectId } = useProjectStore();
 
   useEffect(() => {
-    loadDecompose();
-    loadOrchestrate();
+    loadReframe();
+    loadRecast();
     loadPersona();
     loadLoops();
-  }, [loadDecompose, loadOrchestrate, loadPersona, loadLoops]);
+  }, [loadReframe, loadRecast, loadPersona, loadLoops]);
 
   const getStatus = (stepId: StepId): 'done' | 'in-progress' | 'not-started' => {
     const pid = currentProjectId;
     switch (stepId) {
-      case 'decompose': {
-        const items = pid ? decomposeItems.filter(d => d.project_id === pid) : decomposeItems;
+      case 'reframe': {
+        const items = pid ? reframeItems.filter(d => d.project_id === pid) : reframeItems;
         const latest = items[items.length - 1];
         return latest?.status === 'done' ? 'done' : latest ? 'in-progress' : 'not-started';
       }
-      case 'orchestrate': {
-        const items = pid ? orchestrateItems.filter(o => o.project_id === pid) : orchestrateItems;
+      case 'recast': {
+        const items = pid ? recastItems.filter(o => o.project_id === pid) : recastItems;
         const latest = items[items.length - 1];
         return latest?.status === 'done' ? 'done' : latest ? 'in-progress' : 'not-started';
       }
-      case 'persona-feedback': {
+      case 'rehearse': {
         const items = pid ? feedbackHistory.filter(f => f.project_id === pid) : feedbackHistory;
         return items.length > 0 ? 'done' : 'not-started';
       }
-      case 'refinement-loop': {
+      case 'refine': {
         const projectLoops = pid ? loops.filter(l => l.project_id === pid) : loops;
         const convergedLoop = projectLoops.find(l => l.status === 'converged');
         const activeLoop = projectLoops.find(l => l.status === 'active');
@@ -126,7 +126,7 @@ export function ProcessSteps({ activeStep, onStepClick }: ProcessStepsProps) {
       })}
 
       {/* Active loop info */}
-      {activeLoops.length > 0 && activeStep === 'refinement-loop' && (
+      {activeLoops.length > 0 && activeStep === 'refine' && (
         <div className="px-3 pt-1 text-[10px] text-[var(--text-secondary)]">
           {activeLoops[0].iterations.length}회 반복 · 위협 {activeLoops[0].iterations[activeLoops[0].iterations.length - 1]?.convergence?.critical_risks ?? '?'}건
         </div>

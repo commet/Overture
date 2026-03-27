@@ -12,8 +12,8 @@ import { log } from './logger';
  * - This ensures the app works offline AND syncs across devices.
  */
 
-type TableName = 'projects' | 'personas' | 'decompose_items' | 'orchestrate_items'
-  | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refinement_loops'
+type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
+  | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refine_loops'
   | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores';
 
 // ─── Merge Logic ───
@@ -202,7 +202,7 @@ export async function deleteAllUserData(): Promise<void> {
   const tables: TableName[] = [
     'outcome_records', 'retrospective_answers', 'decision_quality_scores',
     'quality_signals', 'accuracy_ratings', 'feedback_records', 'judgment_records',
-    'refinement_loops', 'decompose_items', 'orchestrate_items',
+    'refine_loops', 'reframe_items', 'recast_items',
     'personas', 'projects',
   ];
 

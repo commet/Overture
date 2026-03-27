@@ -1,26 +1,26 @@
 import { getStorage, STORAGE_KEYS } from './storage';
 import type {
-  Project, DecomposeItem, OrchestrateItem,
-  FeedbackRecord, RefinementLoop, JudgmentRecord,
+  Project, ReframeItem, RecastItem,
+  FeedbackRecord, RefineLoop, JudgmentRecord,
   Persona, HiddenAssumption,
 } from '@/stores/types';
 
 export function generateDecisionRationale(project: Project | null): string {
   if (!project) return '';
-  const decompositions = getStorage<DecomposeItem[]>(STORAGE_KEYS.DECOMPOSE_LIST, [])
+  const decompositions = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, [])
     .filter(d => d.project_id === project.id && d.status === 'done');
-  const orchestrations = getStorage<OrchestrateItem[]>(STORAGE_KEYS.ORCHESTRATE_LIST, [])
+  const recasts = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, [])
     .filter(o => o.project_id === project.id);
   const feedbacks = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, [])
     .filter(f => f.project_id === project.id);
   const personas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
-  const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, [])
+  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, [])
     .filter(l => l.project_id === project.id);
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, [])
     .filter(j => j.project_id === project.id);
 
   const d = decompositions[decompositions.length - 1];
-  const o = orchestrations[orchestrations.length - 1];
+  const o = recasts[recasts.length - 1];
   const fb = feedbacks[feedbacks.length - 1];
   const loop = loops[loops.length - 1];
 

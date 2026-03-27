@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from './Button';
+import { AnimatedPlaceholder } from './AnimatedPlaceholder';
 import { Sparkles } from 'lucide-react';
 
 interface ChipOption {
@@ -21,6 +22,8 @@ interface GuidedInputProps {
   textLabel: string;
   textPlaceholder: string;
   textHint?: string;
+  /** When provided, cycles through these texts as an animated placeholder */
+  animatedPlaceholders?: string[];
   submitLabel?: string;
   onSubmit: (context: Record<string, string>, text: string) => void;
   disabled?: boolean;
@@ -31,6 +34,7 @@ export function GuidedInput({
   textLabel,
   textPlaceholder,
   textHint,
+  animatedPlaceholders,
   submitLabel = 'AI 분석 시작',
   onSubmit,
   disabled,
@@ -104,13 +108,22 @@ export function GuidedInput({
         {textHint && (
           <p className="text-[11px] text-[var(--text-secondary)] mb-2">{textHint}</p>
         )}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={textPlaceholder}
-          className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
-          rows={3}
-        />
+        <div className="relative">
+          {animatedPlaceholders && animatedPlaceholders.length > 0 && (
+            <AnimatedPlaceholder
+              texts={animatedPlaceholders}
+              visible={!text.trim()}
+              className="absolute left-4 top-3 text-[14px] text-[var(--text-secondary)] leading-[1.7] max-w-[calc(100%-2rem)] truncate"
+            />
+          )}
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={animatedPlaceholders ? undefined : textPlaceholder}
+            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(74,111,165,0.08)] resize-none transition-all"
+            rows={3}
+          />
+        </div>
       </div>
 
       {/* Submit */}

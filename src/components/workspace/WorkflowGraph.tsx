@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { OrchestrateStep as StepType, OrchestrateAnalysis } from '@/stores/types';
+import type { RecastStep as StepType, RecastAnalysis } from '@/stores/types';
 import { Bot, Brain, Handshake, Flag, Clock, Package, Zap, Trash2 } from 'lucide-react';
 
 interface WorkflowGraphProps {
   steps: StepType[];
-  analysis: OrchestrateAnalysis | null;
+  analysis: RecastAnalysis | null;
   editable?: boolean;
   onUpdateActor?: (index: number, actor: 'ai' | 'human' | 'both') => void;
   onToggleCheckpoint?: (index: number) => void;
@@ -351,92 +351,189 @@ export function WorkflowGraph({
                           </p>
                         )}
 
-                        {/* AI guide input */}
-                        {editable && (step.actor === 'ai' || step.actor === 'both') && (
-                          <div>
-                            <p className="text-[11px] font-semibold text-[#2d4a7c] mb-1">AI 실행 방향</p>
-                            {step.ai_direction_options && step.ai_direction_options.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mb-2">
-                                {step.ai_direction_options.map((opt, j) => (
-                                  <button
-                                    key={j}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const current = step.user_ai_guide || '';
-                                      const isSelected = current.includes(opt);
-                                      const next = isSelected
-                                        ? current.split(', ').filter(s => s !== opt).join(', ')
-                                        : current ? `${current}, ${opt}` : opt;
-                                      onUpdateField?.(i, { user_ai_guide: next });
-                                    }}
-                                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
-                                      (step.user_ai_guide || '').includes(opt)
-                                        ? 'border-[#3b6dcc] bg-[#3b6dcc]/10 text-[#2d4a7c]'
-                                        : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#3b6dcc]/50'
-                                    }`}
-                                  >
-                                    {opt}
-                                  </button>
-                                ))}
+                        {/* AI + Human inputs — side-by-side for "both" */}
+                        {editable && step.actor === 'both' ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* AI column */}
+                            <div className="rounded-lg p-3" style={{ backgroundColor: `${ACTORS.ai.color}06` }}>
+                              <div className="flex items-center gap-1.5 mb-2.5">
+                                <Bot size={12} style={{ color: ACTORS.ai.text }} />
+                                <p className="text-[12px] font-semibold text-[#2d4a7c]">AI 실행 방향</p>
                               </div>
-                            )}
-                            <input
-                              type="text"
-                              value={step.user_ai_guide || ''}
-                              onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
-                              placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로, 최근 3년 데이터 기준으로'}
-                              className="w-full text-[13px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </div>
-                        )}
-
-                        {/* Human judgment + decision */}
-                        {editable && (step.actor === 'human' || step.actor === 'both') && (
-                          <div>
-                            <p className="text-[11px] font-semibold text-[#8b6914] mb-1.5">여기서 결정할 것</p>
-                            {step.judgment?.trim() && (
-                              <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed bg-[var(--bg)] rounded-lg px-3 py-2">
-                                {step.judgment.replace(/[:：]\s*$/, '')}
-                              </p>
-                            )}
-                            {options.length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap gap-1.5">
-                                  {options.map((opt, j) => (
+                              {step.ai_direction_options && step.ai_direction_options.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-2">
+                                  {step.ai_direction_options.map((opt, j) => (
                                     <button
                                       key={j}
-                                      onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
-                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-all ${
-                                        step.user_decision === opt
-                                          ? 'border-[#8b6914] bg-[#8b6914] text-white'
-                                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#8b6914] hover:text-[#8b6914]'
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const current = step.user_ai_guide || '';
+                                        const isSelected = current.includes(opt);
+                                        const next = isSelected
+                                          ? current.split(', ').filter(s => s !== opt).join(', ')
+                                          : current ? `${current}, ${opt}` : opt;
+                                        onUpdateField?.(i, { user_ai_guide: next });
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                                        (step.user_ai_guide || '').includes(opt)
+                                          ? 'border-[#3b6dcc] bg-[#3b6dcc]/10 text-[#2d4a7c]'
+                                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#3b6dcc]/50'
                                       }`}
                                     >
                                       {opt}
                                     </button>
                                   ))}
                                 </div>
+                              )}
+                              <input
+                                type="text"
+                                value={step.user_ai_guide || ''}
+                                onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
+                                placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로'}
+                                className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            {/* Human column */}
+                            <div className="rounded-lg p-3" style={{ backgroundColor: `${ACTORS.human.color}06` }}>
+                              <div className="flex items-center gap-1.5 mb-2.5">
+                                <Brain size={12} style={{ color: ACTORS.human.text }} />
+                                <p className="text-[12px] font-semibold text-[#8b6914]">사람이 결정할 것</p>
+                              </div>
+                              {/* Show judgment only when no pills extracted (otherwise redundant) */}
+                              {step.judgment?.trim() && options.length === 0 && (
+                                <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed bg-[var(--bg)] rounded-lg px-3 py-2">
+                                  {step.judgment.replace(/[:：]\s*$/, '')}
+                                </p>
+                              )}
+                              {options.length > 0 ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {options.map((opt, j) => (
+                                      <button
+                                        key={j}
+                                        onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                                          step.user_decision === opt
+                                            ? 'border-[#8b6914] bg-[#8b6914] text-white'
+                                            : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#8b6914] hover:text-[#8b6914]'
+                                        }`}
+                                      >
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <input
+                                    type="text"
+                                    value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
+                                    onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                    placeholder="또는 직접 입력..."
+                                    className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                              ) : (
+                                <textarea
+                                  value={step.user_decision || ''}
+                                  onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                  placeholder="이 단계에서의 판단을 입력하세요..."
+                                  rows={2}
+                                  className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* AI guide input (ai-only steps) */}
+                            {editable && step.actor === 'ai' && (
+                              <div>
+                                <p className="text-[12px] font-semibold text-[#2d4a7c] mb-1.5">AI 실행 방향</p>
+                                {step.ai_direction_options && step.ai_direction_options.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mb-2">
+                                    {step.ai_direction_options.map((opt, j) => (
+                                      <button
+                                        key={j}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const current = step.user_ai_guide || '';
+                                          const isSelected = current.includes(opt);
+                                          const next = isSelected
+                                            ? current.split(', ').filter(s => s !== opt).join(', ')
+                                            : current ? `${current}, ${opt}` : opt;
+                                          onUpdateField?.(i, { user_ai_guide: next });
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                                          (step.user_ai_guide || '').includes(opt)
+                                            ? 'border-[#3b6dcc] bg-[#3b6dcc]/10 text-[#2d4a7c]'
+                                            : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#3b6dcc]/50'
+                                        }`}
+                                      >
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                                 <input
                                   type="text"
-                                  value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
-                                  onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                  placeholder="또는 직접 입력..."
-                                  className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
+                                  value={step.user_ai_guide || ''}
+                                  onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
+                                  placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로, 최근 3년 데이터 기준으로'}
+                                  className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
                                   onClick={(e) => e.stopPropagation()}
                                 />
                               </div>
-                            ) : (
-                              <textarea
-                                value={step.user_decision || ''}
-                                onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                placeholder="이 단계에서의 판단을 입력하세요..."
-                                rows={2}
-                                className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
-                                onClick={(e) => e.stopPropagation()}
-                              />
                             )}
-                          </div>
+
+                            {/* Human judgment + decision (human-only steps) */}
+                            {editable && step.actor === 'human' && (
+                              <div>
+                                <p className="text-[12px] font-semibold text-[#8b6914] mb-1.5">여기서 결정할 것</p>
+                                {step.judgment?.trim() && options.length === 0 && (
+                                  <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed bg-[var(--bg)] rounded-lg px-3 py-2">
+                                    {step.judgment.replace(/[:：]\s*$/, '')}
+                                  </p>
+                                )}
+                                {options.length > 0 ? (
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {options.map((opt, j) => (
+                                        <button
+                                          key={j}
+                                          onClick={(e) => { e.stopPropagation(); onUpdateField?.(i, { user_decision: opt }); }}
+                                          className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                                            step.user_decision === opt
+                                              ? 'border-[#8b6914] bg-[#8b6914] text-white'
+                                              : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#8b6914] hover:text-[#8b6914]'
+                                          }`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
+                                      onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                      placeholder="또는 직접 입력..."
+                                      className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                ) : (
+                                  <textarea
+                                    value={step.user_decision || ''}
+                                    onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
+                                    placeholder="이 단계에서의 판단을 입력하세요..."
+                                    rows={2}
+                                    className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {/* Read-only filled values */}

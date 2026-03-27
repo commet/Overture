@@ -6,14 +6,14 @@ import { describe, it, expect } from 'vitest';
  */
 
 const STORAGE_KEYS = {
-  DECOMPOSE_LIST: 'sot_decompose_list',
+  REFRAME_LIST: 'sot_reframe_list',
   SYNTHESIZE_LIST: 'sot_synthesize_list',
-  ORCHESTRATE_LIST: 'sot_orchestrate_list',
+  RECAST_LIST: 'sot_recast_list',
   PERSONAS: 'sot_personas',
   FEEDBACK_HISTORY: 'sot_feedback_history',
   PROJECTS: 'sot_projects',
   JUDGMENTS: 'sot_judgments',
-  REFINEMENT_LOOPS: 'sot_refinement_loops',
+  REFINE_LOOPS: 'sot_refine_loops',
   ACCURACY_RATINGS: 'sot_accuracy_ratings',
   SETTINGS: 'sot_settings',
 } as const;

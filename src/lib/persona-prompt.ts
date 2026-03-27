@@ -1,7 +1,7 @@
 /**
  * Persona Prompt Builder — Single Source of Truth
  *
- * Both PersonaFeedbackStep (initial rehearsal) and RefinementLoopStep (re-review)
+ * Both RehearseStep (initial rehearsal) and RefineStep (re-review)
  * MUST use this function. Never copy-paste persona prompts.
  */
 

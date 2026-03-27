@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import type { Persona, OrchestrateItem, DecomposeItem } from '@/stores/types';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import type { Persona, RecastItem, ReframeItem } from '@/stores/types';
+import { useRecastStore } from '@/stores/useRecastStore';
+import { useReframeStore } from '@/stores/useReframeStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { orchestrateToMarkdown } from '@/lib/export';
+import { recastToMarkdown } from '@/lib/export';
+import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { Send, Loader2, Upload, Check, AlertTriangle, ChevronDown, ChevronUp, Bot, Brain, Flag } from 'lucide-react';
 
 interface FeedbackRequestProps {
@@ -45,8 +46,8 @@ const INFLUENCE_STYLES = {
 };
 
 export function FeedbackRequest({ personas, onSubmit, loading, initialContent, initialTitle, initialPersonaIds }: FeedbackRequestProps) {
-  const { items: orchestrateItems } = useOrchestrateStore();
-  const { items: decomposeItems } = useDecomposeStore();
+  const { items: recastItems } = useRecastStore();
+  const { items: reframeItems } = useReframeStore();
   const { currentProjectId } = useProjectStore();
 
   const [documentText, setDocumentText] = useState(initialContent || '');
@@ -62,26 +63,26 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   const [showFullDoc, setShowFullDoc] = useState(false);
   const [useCustomDoc, setUseCustomDoc] = useState(false);
 
-  // Auto-populate from orchestrate if available
-  const relatedOrchestrate = currentProjectId
-    ? orchestrateItems.filter(o => o.project_id === currentProjectId && o.status === 'done' && o.analysis)
+  // Auto-populate from recast if available
+  const relatedRecast = currentProjectId
+    ? recastItems.filter(o => o.project_id === currentProjectId && o.status === 'done' && o.analysis)
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0]
     : null;
 
-  const relatedDecompose = currentProjectId
-    ? decomposeItems.filter(d => d.project_id === currentProjectId && d.status === 'done' && d.analysis)
+  const relatedReframe = currentProjectId
+    ? reframeItems.filter(d => d.project_id === currentProjectId && d.status === 'done' && d.analysis)
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0]
     : null;
 
-  const relatedOrchestrateId = relatedOrchestrate?.id;
+  const relatedRecastId = relatedRecast?.id;
   useEffect(() => {
-    if (relatedOrchestrate && !initialContent && !useCustomDoc) {
-      const md = orchestrateToMarkdown(relatedOrchestrate);
+    if (relatedRecast && !initialContent && !useCustomDoc) {
+      const md = recastToMarkdown(relatedRecast);
       setDocumentText(md);
       setDocumentTitle('편곡 결과물');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [relatedOrchestrateId, initialContent, useCustomDoc]);
+  }, [relatedRecastId, initialContent, useCustomDoc]);
 
   const togglePersona = (id: string) => {
     setSelectedIds(prev =>
@@ -111,7 +112,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
             <h3 className="text-[15px] font-bold text-[var(--text-primary)]">검증 대상</h3>
             <p className="text-[12px] text-[var(--text-secondary)]">이해관계자 앞에서 리허설할 자료</p>
           </div>
-          {relatedOrchestrate && !useCustomDoc && (
+          {relatedRecast && !useCustomDoc && (
             <button
               onClick={() => setUseCustomDoc(true)}
               className="text-[11px] text-[var(--accent)] hover:underline cursor-pointer"
@@ -119,9 +120,9 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
               직접 입력으로 전환
             </button>
           )}
-          {useCustomDoc && relatedOrchestrate && (
+          {useCustomDoc && relatedRecast && (
             <button
-              onClick={() => { setUseCustomDoc(false); setDocumentText(orchestrateToMarkdown(relatedOrchestrate)); }}
+              onClick={() => { setUseCustomDoc(false); setDocumentText(recastToMarkdown(relatedRecast)); }}
               className="text-[11px] text-[var(--accent)] hover:underline cursor-pointer"
             >
               편곡 결과 사용
@@ -130,7 +131,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
         </div>
 
         {/* Auto-populated structured preview */}
-        {relatedOrchestrate?.analysis && !useCustomDoc ? (
+        {relatedRecast?.analysis && !useCustomDoc ? (
           <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden">
             {/* Summary */}
             <div className="px-4 py-3 bg-[var(--ai)]">
@@ -139,7 +140,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
                 <span className="text-[12px] font-semibold text-[var(--accent)]">편곡 결과가 자동으로 연결되었습니다</span>
               </div>
               <p className="text-[14px] font-bold text-[var(--text-primary)] mt-1">
-                {relatedOrchestrate.analysis.governing_idea}
+                {relatedRecast.analysis.governing_idea}
               </p>
             </div>
 
@@ -148,20 +149,20 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
               <div className="flex flex-wrap gap-3 text-[11px]">
                 <span className="text-[var(--text-secondary)]">
                   <Bot size={10} className="inline mr-1" />
-                  {relatedOrchestrate.analysis.steps?.filter(s => s.actor === 'ai').length || 0} AI 단계
+                  {relatedRecast.analysis.steps?.filter(s => s.actor === 'ai').length || 0} AI 단계
                 </span>
                 <span className="text-[var(--text-secondary)]">
                   <Brain size={10} className="inline mr-1" />
-                  {relatedOrchestrate.analysis.steps?.filter(s => s.actor === 'human').length || 0} 사람 단계
+                  {relatedRecast.analysis.steps?.filter(s => s.actor === 'human').length || 0} 사람 단계
                 </span>
                 <span className="text-[var(--text-secondary)]">
                   <Flag size={10} className="inline mr-1" />
-                  {relatedOrchestrate.analysis.steps?.filter(s => s.checkpoint).length || 0} 체크포인트
+                  {relatedRecast.analysis.steps?.filter(s => s.checkpoint).length || 0} 체크포인트
                 </span>
-                {relatedOrchestrate.analysis.key_assumptions?.length > 0 && (
+                {relatedRecast.analysis.key_assumptions?.length > 0 && (
                   <span className="text-amber-700">
                     <AlertTriangle size={10} className="inline mr-1" />
-                    핵심 가정 {relatedOrchestrate.analysis.key_assumptions.length}건
+                    핵심 가정 {relatedRecast.analysis.key_assumptions.length}건
                   </span>
                 )}
               </div>
@@ -182,13 +183,25 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
         ) : (
           /* Manual input */
           <div className="space-y-2">
-            <textarea
-              value={documentText}
-              onChange={(e) => setDocumentText(e.target.value)}
-              placeholder="보고서, 기획서, 제안서 등의 내용을 붙여넣으세요..."
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[14px] leading-relaxed placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none"
-              rows={6}
-            />
+            <div className="relative">
+              <AnimatedPlaceholder
+                texts={[
+                  'AI 도입 전략 보고서를 여기에 붙여넣으세요',
+                  '분기 실적 프레젠테이션 핵심 내용을 입력하세요',
+                  '신사업 제안서의 내용을 공유하세요',
+                  '프로젝트 기획서의 주요 내용을 작성하세요',
+                  '경쟁 분석 보고서를 여기에 입력하세요',
+                ]}
+                visible={!documentText.trim()}
+                className="absolute left-4 top-3 text-[14px] text-[var(--text-tertiary)] leading-relaxed max-w-[calc(100%-2rem)] truncate"
+              />
+              <textarea
+                value={documentText}
+                onChange={(e) => setDocumentText(e.target.value)}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-xl px-4 py-3 text-[14px] leading-relaxed placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                rows={6}
+              />
+            </div>
             <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-[var(--border)] text-[12px] text-[var(--text-secondary)] hover:border-[var(--accent)] cursor-pointer">
               <Upload size={12} /> .txt / .md 파일 업로드
               <input type="file" accept=".txt,.md" onChange={handleFileUpload} className="hidden" />

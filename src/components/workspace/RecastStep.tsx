@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { track, trackError } from '@/lib/analytics';
 import Link from 'next/link';
-import { useOrchestrateStore } from '@/stores/useOrchestrateStore';
+import { useRecastStore } from '@/stores/useRecastStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { orchestrateToMarkdown } from '@/lib/export';
+import { recastToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
-import type { OrchestrateAnalysis, OrchestrateItem, DecomposeItem, Persona } from '@/stores/types';
+import type { RecastAnalysis, RecastItem, ReframeItem, Persona } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -18,17 +18,17 @@ import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
 import { FileText, Trash2, Check, Plus, AlertTriangle, ArrowRight, RotateCcw, Send } from 'lucide-react';
 import { WorkflowGraph } from './WorkflowGraph';
-import { useDecomposeStore } from '@/stores/useDecomposeStore';
+import { useReframeStore } from '@/stores/useReframeStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
-import { buildDecomposeContext, injectDecomposeContext, mergeAssumptionsIntoKeyAssumptions } from '@/lib/context-chain';
-import type { DecomposeContext } from '@/stores/types';
+import { buildReframeContext, injectReframeContext, mergeAssumptionsIntoKeyAssumptions } from '@/lib/context-chain';
+import type { ReframeContext } from '@/stores/types';
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';
 import { autoPersonaToFull } from '@/lib/auto-persona';
-import { recordOrchestrateEval } from '@/lib/eval-engine';
+import { recordRecastEval } from '@/lib/eval-engine';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Users } from 'lucide-react';
 
@@ -111,7 +111,7 @@ const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: strin
   { value: 'both', label: '협업', icon: '🤝' },
 ];
 
-const ORCHESTRATE_ENTRY_STEPS = [
+const RECAST_ENTRY_STEPS = [
   {
     key: 'outputType',
     question: '어떤 결과물을 만드나요?',
@@ -164,8 +164,8 @@ const ORCHESTRATE_ENTRY_STEPS = [
   },
 ];
 
-/* ── Orchestration Loader ── */
-function OrchestrationLoader() {
+/* ── Recasting Loader ── */
+function RecastLoader() {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -219,22 +219,22 @@ function OrchestrationLoader() {
   );
 }
 
-interface OrchestrateStepProps {
+interface RecastStepProps {
   onNavigate: (step: string) => void;
 }
 
-export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
-  const store = useOrchestrateStore();
+export function RecastStep({ onNavigate }: RecastStepProps) {
+  const store = useRecastStore();
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem, updateStep, removeStep, addStep, reorderSteps } = store;
   const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
   const { handoff, clearHandoff, setHandoff } = useHandoffStore();
   const { addRef } = useProjectStore();
-  const { items: decomposeItems, loadItems: loadDecompose } = useDecomposeStore();
+  const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
   const { settings } = useSettingsStore();
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState('');
   const [pendingProjectId, setPendingProjectId] = useState<string | undefined>();
-  const [decomposeCtx, setDecomposeCtx] = useState<DecomposeContext | null>(null);
+  const [reframeCtx, setReframeCtx] = useState<ReframeContext | null>(null);
   // multi-lens review removed — auto-persona + rehearsal replaces it
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -242,17 +242,17 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   useEffect(() => {
     loadItems();
     loadJudgments();
-    loadDecompose();
-  }, [loadItems, loadJudgments, loadDecompose]);
+    loadReframe();
+  }, [loadItems, loadJudgments, loadReframe]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (handoff && handoff.from === 'decompose') {
+    if (handoff && handoff.from === 'reframe') {
       setInputText(handoff.content);
       setPendingProjectId(handoff.projectId);
       // Capture typed context from decompose (Phase 0)
       if (handoff.contextData && 'reframed_question' in handoff.contextData) {
-        setDecomposeCtx(handoff.contextData as DecomposeContext);
+        setReframeCtx(handoff.contextData as ReframeContext);
       }
       clearHandoff();
     }
@@ -271,8 +271,8 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const current = getCurrentItem();
 
   // Find latest related decompose item for context chain (not first/oldest)
-  const relatedDecompose = current?.project_id
-    ? decomposeItems
+  const relatedReframe = current?.project_id
+    ? reframeItems
         .filter(d => d.project_id === current.project_id && d.status === 'done' && d.analysis)
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
         [0] || null
@@ -289,7 +289,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       ...(pendingProjectId ? { project_id: pendingProjectId } : {}),
     });
     if (pendingProjectId) {
-      addRef(pendingProjectId, { tool: 'orchestrate', itemId: id, label: '워크플로우 설계' });
+      addRef(pendingProjectId, { tool: 'recast', itemId: id, label: '워크플로우 설계' });
       setPendingProjectId(undefined);
     }
 
@@ -297,9 +297,9 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     let systemPrompt = buildEnhancedSystemPrompt(SYSTEM_PROMPT, current?.project_id || pendingProjectId);
 
     // Inject typed context from decompose (Phase 0 pipeline)
-    const ctx = decomposeCtx || (relatedDecompose ? buildDecomposeContext(relatedDecompose) : null);
+    const ctx = reframeCtx || (relatedReframe ? buildReframeContext(relatedReframe) : null);
     if (ctx) {
-      systemPrompt = injectDecomposeContext(systemPrompt, ctx);
+      systemPrompt = injectReframeContext(systemPrompt, ctx);
     }
 
     // Note: multi-lens review was removed — replaced by auto-persona + rehearsal
@@ -327,12 +327,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       setStreamingText('');
 
       // Try to parse JSON from the streamed text
-      let analysis: OrchestrateAnalysis;
+      let analysis: RecastAnalysis;
       try {
-        analysis = parseJSON<OrchestrateAnalysis>(fullText);
+        analysis = parseJSON<RecastAnalysis>(fullText);
       } catch {
         // JSON parse failed — fall back to non-streaming call
-        analysis = await callLLMJson<OrchestrateAnalysis>(
+        analysis = await callLLMJson<RecastAnalysis>(
           [{ role: 'user', content: finalPrompt }],
           { system: systemPrompt, maxTokens: 3500 }
         );
@@ -344,16 +344,16 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       }
 
       // Code-level guarantee: merge decompose assumptions into key_assumptions
-      const decomposeAssumptions = (ctx as DecomposeContext | null)?.unverified_assumptions || [];
-      if (decomposeAssumptions.length > 0 && analysis.key_assumptions) {
+      const reframeAssumptions = (ctx as ReframeContext | null)?.unverified_assumptions || [];
+      if (reframeAssumptions.length > 0 && analysis.key_assumptions) {
         analysis.key_assumptions = mergeAssumptionsIntoKeyAssumptions(
-          decomposeAssumptions,
+          reframeAssumptions,
           analysis.key_assumptions
         );
       }
 
       // Code-level validation: flag AI limitation conflicts
-      const aiLimitations = (ctx as DecomposeContext | null)?.ai_limitations || [];
+      const aiLimitations = (ctx as ReframeContext | null)?.ai_limitations || [];
       if (aiLimitations.length > 0 && analysis.steps) {
         const aiSteps = analysis.steps.filter(s => s.actor === 'ai');
         const warnings: string[] = [];
@@ -381,7 +381,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     } catch (err) {
       setIsStreaming(false);
       setStreamingText('');
-      trackError('orchestrate_analyze', err);
+      trackError('recast_analyze', err);
       const msg = err instanceof Error ? err.message : '';
       setError(msg.startsWith('LOGIN_REQUIRED:') ? 'LOGIN_REQUIRED' : (msg || '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.'));
       updateItem(id, { status: 'input' });
@@ -391,7 +391,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
   const handleConfirm = () => {
     if (!currentId) return;
     updateItem(currentId, { status: 'done' });
-    track('orchestrate_complete', {
+    track('recast_complete', {
       steps: steps.length,
       checkpoints: steps.filter(s => s.checkpoint).length,
       ai_steps: steps.filter(s => s.actor === 'ai').length,
@@ -400,7 +400,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       has_reviews: !!(current?.analysis?.reviews?.length),
       ai_limitation_warnings: current?.analysis?.ai_limitation_warnings?.length || 0,
     });
-    if (current) { const oc = useJudgmentStore.getState().judgments.filter(j => j.type === 'actor_override' && j.project_id === current.project_id).length; recordOrchestrateEval(current, oc); }
+    if (current) { const oc = useJudgmentStore.getState().judgments.filter(j => j.type === 'actor_override' && j.project_id === current.project_id).length; recordRecastEval(current, oc); }
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);
@@ -421,11 +421,11 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
         original_ai_suggestion: step.actor,
         user_changed: true,
         project_id: current?.project_id,
-        tool: 'orchestrate',
+        tool: 'recast',
       });
       recordSignal({
         project_id: current?.project_id,
-        tool: 'orchestrate',
+        tool: 'recast',
         signal_type: 'actor_override_direction',
         signal_data: { from_actor: step.actor, to_actor: newActor, step_task: step.task?.slice(0, 100) },
       });
@@ -454,12 +454,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.orchestrate')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.orchestrate.subtitle')}</span></h1>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.recast')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.recast.subtitle')}</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             AI와 사람의 역할을 나누고, 실행 단계를 설계합니다.
           </p>
           {(() => {
-            const signals = getSignals({ tool: 'orchestrate' });
+            const signals = getSignals({ tool: 'recast' });
             return signals.length > 0 ? (
               <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
                 이전 {signals.length}건의 편곡 이력이 학습에 반영되고 있습니다
@@ -467,7 +467,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             ) : null;
           })()}
           <div className="mt-2">
-            <ConcertmasterInline step="orchestrate" />
+            <ConcertmasterInline step="recast" />
           </div>
         </div>
       </div>
@@ -498,27 +498,34 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── STEP 1: Input ─── */}
       {(!current || current.status === 'input') && !currentId && (
         <Card>
-          {decomposeCtx && (
+          {reframeCtx && (
             <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] mb-3">
               <Check size={12} /> 악보 해석 맥락이 반영되고 있습니다
             </div>
           )}
           <StepEntry
-            steps={ORCHESTRATE_ENTRY_STEPS}
+            steps={RECAST_ENTRY_STEPS}
             textLabel="추가로 알려줄 맥락이 있나요?"
             textPlaceholder="예: 지난 분기 실적 데이터를 반드시 포함해야 함 / 마케팅팀과 병렬 진행 중 / 대표가 '고객 관점'을 강조했음"
+            animatedPlaceholders={[
+              '예: 지난 분기 실적 데이터를 반드시 포함해야 함',
+              '예: 마케팅팀과 병렬 진행 중이라 일정 조율 필요',
+              '예: 대표가 "고객 관점"을 강조했음',
+              '예: 3주 내 경영회의 발표 예정, 실행안 수준 필요',
+              '예: 기술팀 리소스 2명만 투입 가능, 외주 고려 중',
+            ]}
             textHint="위에서 선택한 내용만으로도 충분합니다. 특수한 조건이나 배경이 있다면 자유롭게 적어주세요."
             submitLabel="워크플로우 설계"
             initialText={inputText}
-            contextPanel={decomposeCtx ? (
+            contextPanel={reframeCtx ? (
               <div className="rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3">
                 <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">악보 해석에서 도출된 맥락</p>
                 <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">
-                  {decomposeCtx.reframed_question || decomposeCtx.surface_task}
+                  {reframeCtx.reframed_question || reframeCtx.surface_task}
                 </p>
-                {decomposeCtx.unverified_assumptions && decomposeCtx.unverified_assumptions.length > 0 && (
+                {reframeCtx.unverified_assumptions && reframeCtx.unverified_assumptions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {decomposeCtx.unverified_assumptions.slice(0, 3).map((a, i) => (
+                    {reframeCtx.unverified_assumptions.slice(0, 3).map((a, i) => (
                       <span key={i} className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200">
                         미확인: {typeof a === 'string' ? a : a.assumption}
                       </span>
@@ -530,7 +537,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             onSubmit={(selections, text) => {
               const context = Object.entries(selections)
                 .map(([k, v]) => {
-                  const step = ORCHESTRATE_ENTRY_STEPS.find(s => s.key === k);
+                  const step = RECAST_ENTRY_STEPS.find(s => s.key === k);
                   const opt = step?.options.find(o => o.value === v);
                   return opt ? `${step?.question.replace('?', '')}: ${opt.label}` : '';
                 })
@@ -568,7 +575,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
       {/* ─── Loading / Streaming Preview ─── */}
       {current?.status === 'analyzing' && (
         <Card>
-          <OrchestrationLoader />
+          <RecastLoader />
         </Card>
       )}
 
@@ -580,18 +587,18 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
           {current.analysis && (
             <div className="space-y-3">
               {/* 재정의된 질문 (from 악보 해석) — compact reference */}
-              {relatedDecompose?.analysis && (
+              {relatedReframe?.analysis && (
                 <div className="rounded-xl bg-[var(--bg)] px-4 py-3">
                   <p className="text-[11px] font-medium text-[var(--text-secondary)] mb-1">악보 해석에서 재정의된 질문</p>
                   <p className="text-[14px] font-bold text-[var(--text-primary)] leading-snug">
-                    {relatedDecompose.selected_question || relatedDecompose.analysis.reframed_question || relatedDecompose.analysis.surface_task}
+                    {relatedReframe.selected_question || relatedReframe.analysis.reframed_question || relatedReframe.analysis.surface_task}
                   </p>
                 </div>
               )}
 
               {/* 핵심 방향 */}
               <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
-                <p className="text-[11px] font-medium text-white/50 mb-1">{t('orchestrate.governingIdea')}</p>
+                <p className="text-[11px] font-medium text-white/50 mb-1">{t('recast.governingIdea')}</p>
                 <p className="text-[16px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
                   {current.analysis.governing_idea}
                 </p>
@@ -608,12 +615,12 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
             editable={current.status === 'review'}
             onUpdateActor={(idx, actor) => handleStepActorChange(idx, actor)}
             onToggleCheckpoint={(idx) => { if (currentId) updateStep(currentId, idx, { checkpoint: !steps[idx].checkpoint }); }}
-            onRemoveStep={(idx) => { if (currentId) { const removedStep = steps[idx]; removeStep(currentId, idx); recordSignal({ project_id: current?.project_id, tool: 'orchestrate', signal_type: 'step_structural_change', signal_data: { action: 'delete', step_actor: removedStep?.actor, step_task: removedStep?.task?.slice(0, 100) } }); } }}
+            onRemoveStep={(idx) => { if (currentId) { const removedStep = steps[idx]; removeStep(currentId, idx); recordSignal({ project_id: current?.project_id, tool: 'recast', signal_type: 'step_structural_change', signal_data: { action: 'delete', step_actor: removedStep?.actor, step_task: removedStep?.task?.slice(0, 100) } }); } }}
             onUpdateField={(idx, updates) => { if (currentId) updateStep(currentId, idx, updates); }}
           />
 
           {current.status === 'review' && (
-            <Button variant="ghost" onClick={() => { if (currentId) { addStep(currentId); recordSignal({ project_id: current?.project_id, tool: 'orchestrate', signal_type: 'step_structural_change', signal_data: { action: 'add' } }); } }}>
+            <Button variant="ghost" onClick={() => { if (currentId) { addStep(currentId); recordSignal({ project_id: current?.project_id, tool: 'recast', signal_type: 'step_structural_change', signal_data: { action: 'add' } }); } }}>
               <Plus size={14} /> 단계 추가
             </Button>
           )}
@@ -656,7 +663,7 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                   <RotateCcw size={14} /> {t('common.newStart')}
                 </Button>
                 <div className="flex gap-2">
-                  <CopyButton getText={() => orchestrateToMarkdown(current)} />
+                  <CopyButton getText={() => recastToMarkdown(current)} />
                   <Button onClick={handleConfirm}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -672,19 +679,19 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      const content = orchestrateToMarkdown(current!);
+                      const content = recastToMarkdown(current!);
                       setHandoff({
-                        from: 'orchestrate',
+                        from: 'recast',
                         fromItemId: current!.id,
                         content,
                         projectId: current!.project_id,
                       });
-                      onNavigate('persona-feedback');
+                      onNavigate('rehearse');
                     }}
                   >
                     <Send size={14} /> 리허설 받기
                   </Button>
-                  <CopyButton getText={() => orchestrateToMarkdown(current)} label="마크다운 복사" />
+                  <CopyButton getText={() => recastToMarkdown(current)} label="마크다운 복사" />
                 </div>
               </>
             )}
@@ -717,30 +724,30 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
 
           {current.status === 'done' && current.analysis && (
             <QuickRehearsalCard
-              orchestrate={current}
-              decompose={relatedDecompose || null}
+              recast={current}
+              reframe={relatedReframe || null}
               onStartRehearsal={(personas) => {
                 if (!current) return;
-                const content = orchestrateToMarkdown(current);
+                const content = recastToMarkdown(current);
                 setHandoff({
-                  from: 'orchestrate',
+                  from: 'recast',
                   fromItemId: current.id,
                   content,
                   projectId: current.project_id,
                   autoPersonaIds: personas.map(p => p.id),
                 });
-                onNavigate('persona-feedback');
+                onNavigate('rehearse');
               }}
             />
           )}
           {current.status === 'done' && (
             <NextStepGuide
-              currentTool="orchestrate"
+              currentTool="recast"
               projectId={current?.project_id}
               onSendTo={(href) => {
                 if (!current) return;
-                const content = orchestrateToMarkdown(current);
-                setHandoff({ from: 'orchestrate', fromItemId: current.id, content, projectId: current.project_id });
+                const content = recastToMarkdown(current);
+                setHandoff({ from: 'recast', fromItemId: current.id, content, projectId: current.project_id });
                 onNavigate(href.replace('/tools/', ''));
               }}
             />
@@ -753,14 +760,14 @@ export function OrchestrateStep({ onNavigate }: OrchestrateStepProps) {
 
 // ── Quick Rehearsal Card — reads from analysis.suggested_reviewers (no extra LLM call) ──
 function QuickRehearsalCard({
-  orchestrate,
+  recast,
   onStartRehearsal,
 }: {
-  orchestrate: OrchestrateItem;
-  decompose: DecomposeItem | null;
+  recast: RecastItem;
+  reframe: ReframeItem | null;
   onStartRehearsal: (personas: Persona[]) => void;
 }) {
-  const reviewers = orchestrate.analysis?.suggested_reviewers || [];
+  const reviewers = recast.analysis?.suggested_reviewers || [];
   const [selected, setSelected] = useState<Set<number>>(new Set(reviewers.map((_, i) => i)));
   const [started, setStarted] = useState(false);
   const { createPersona, personas } = usePersonaStore();

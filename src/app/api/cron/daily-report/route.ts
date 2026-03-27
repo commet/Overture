@@ -110,7 +110,7 @@ export async function GET(req: Request) {
 
   // 7. Stale projects needing outcome recording
   const { data: staleProjects } = await supabase
-    .from('refinement_loops')
+    .from('refine_loops')
     .select('project_id, user_id, updated_at')
     .in('status', ['converged', 'stopped_by_user'])
     .lt('updated_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString());
@@ -133,8 +133,8 @@ export async function GET(req: Request) {
   const totalEvents = events.length;
 
   const funnelItems = [
-    { label: '악보 해석', key: 'decompose_complete' },
-    { label: '편곡', key: 'orchestrate_complete' },
+    { label: '악보 해석', key: 'reframe_complete' },
+    { label: '편곡', key: 'recast_complete' },
     { label: '리허설', key: 'feedback_complete' },
     { label: '토론', key: 'discussion_complete' },
     { label: '합주 수렴', key: 'loop_converged' },

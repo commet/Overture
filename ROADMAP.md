@@ -42,7 +42,7 @@
 
 ### 현재 문제
 ```
-decomposeToMarkdown(item) → string → orchestrate prompt에 concat
+decomposeToMarkdown(item) → string → recast prompt에 concat
 ```
 이건 **텍스트 연결**이지 **맥락 전달**이 아님. 정보가 손실되고, 추적이 안 되고, 자동 반응이 불가능.
 
@@ -52,15 +52,15 @@ decomposeToMarkdown(item) → string → orchestrate prompt에 concat
 // 각 단계의 출력이 다음 단계의 입력을 정확히 정의
 interface ContextChain {
   decompose: {
-    reframed_question: string;         // → orchestrate.governing_idea의 시드
+    reframed_question: string;         // → recast.governing_idea의 시드
     unverified_assumptions: HiddenAssumption[];  // verified=false인 것만
     selected_direction: string;         // 사용자가 선택한 방향
     user_uncertainty_type: 'why' | 'what' | 'how' | 'none';  // 인터뷰에서 수집
     success_criteria_clarity: 'measurable' | 'risk' | 'opportunity' | 'unclear';
   };
-  orchestrate: {
+  recast: {
     governing_idea: string;
-    steps: OrchestrateStep[];
+    steps: RecastStep[];
     key_assumptions: KeyAssumption[];   // decompose의 전제를 확장
     critical_path: number[];
     unresolved_judgments: string[];     // 사용자가 아직 결정 안 한 판단 포인트
@@ -85,12 +85,12 @@ interface ContextChain {
 ```
 전제 변경 → 자동 영향 분석:
   decompose.assumption[2].verified = true
-    → orchestrate.key_assumptions에서 해당 항목 "확인됨" 표시
+    → recast.key_assumptions에서 해당 항목 "확인됨" 표시
     → rehearsal에서 해당 가정 공격 제외
     → checklist에서 해당 검증 단계 제거
 
 역추적:
-  orchestrate.step[3] ← 어디서 왔나?
+  recast.step[3] ← 어디서 왔나?
     → decompose.selected_direction에서 파생
     → 사용자가 3개 선택지 중 2번을 골라서
     → 원래 가설은 "X이지만 Y를 고려하면 Z"
@@ -114,8 +114,8 @@ interface ContextChain {
 **구현 항목:**
 1. `ContextChain` 인터페이스 정의 (types.ts)
 2. `useContextChainStore` 생성 — 프로젝트별 체인 상태 관리
-3. `buildContextForOrchestrate(decomposeItem)` — 구조화된 handoff
-4. `buildContextForRehearsal(orchestrateItem, decomposeItem)` — 누적 handoff
+3. `buildContextForRecast(decomposeItem)` — 구조화된 handoff
+4. `buildContextForRehearsal(recastItem, decomposeItem)` — 누적 handoff
 5. `traceProvenance(field)` — 역추적 함수
 6. 기존 `useHandoffStore`의 markdown string → ContextChain 객체로 교체
 
@@ -125,7 +125,7 @@ interface ContextChain {
 - `onAssumptionChange()` 이벤트 → 다운스트림 자동 갱신
 
 **검증 기준:**
-- [ ] orchestrate가 decompose의 미확인 전제만 자동으로 key_assumptions에 포함하는가?
+- [ ] recast가 decompose의 미확인 전제만 자동으로 key_assumptions에 포함하는가?
 - [ ] 전제 1개를 "확인됨"으로 바꾸면 downstream 산출물이 자동 반영되는가?
 - [ ] 최종 Agent Spec의 모든 필드에서 원래 가설까지 역추적 가능한가?
 
@@ -166,7 +166,7 @@ interface ContextChain {
 const DECOMPOSE_EVALS = [
   { id: 'question_accepted', question: '사용자가 제안된 질문을 수정 없이 선택했는가?' },
   { id: 'assumptions_useful', question: '전제 중 "확인됨"으로 마킹되지 않은 것이 1개 이상인가?' },
-  { id: 'proceeded_to_orchestrate', question: '사용자가 편곡 단계로 진행했는가?' },
+  { id: 'proceeded_to_recast', question: '사용자가 편곡 단계로 진행했는가?' },
   { id: 'no_immediate_reanalyze', question: '사용자가 즉시 재분석을 요청하지 않았는가?' },
 ];
 
@@ -178,7 +178,7 @@ function recordDecomposeEval(item: DecomposeItem): EvalResult {
     evals: {
       question_accepted: item.selected_question === item.analysis.hidden_questions[0]?.question,
       assumptions_useful: item.analysis.hidden_assumptions.filter(a => !a.verified).length > 0,
-      proceeded_to_orchestrate: hasLinkedOrchestrateItem(item),
+      proceeded_to_recast: hasLinkedRecastItem(item),
       no_immediate_reanalyze: !item.reanalyzed_immediately,
     },
     pass_rate: calculatePassRate(evals),
@@ -204,7 +204,7 @@ function adaptStrategySelection(evalHistory: EvalResult[]): StrategyWeights {
 
 ---
 
-### Phase 2: Multi-Lens Orchestration (다관점 편곡)
+### Phase 2: Multi-Lens Recasting (다관점 편곡)
 
 **목표**: 워크플로우 설계를 단일 LLM 호출이 아닌 다관점 검증 시스템으로.
 
@@ -264,7 +264,7 @@ interface AssumptionNode {
 
 function buildAssumptionGraph(
   decomposeAssumptions: HiddenAssumption[],
-  orchestrateAssumptions: KeyAssumption[]
+  recastAssumptions: KeyAssumption[]
 ): AssumptionGraph {
   // LLM에게 의존 관계 분석 요청 (1회 추가 호출)
   // 또는 텍스트 유사도 기반 자동 연결
@@ -311,7 +311,7 @@ interface PersonaBehaviorModel {
 1. `PersonaBehaviorModel` 구축 — accuracy_ratings를 구조적으로 분석
 2. 페르소나 프롬프트에 행동 모델 주입 — "이 사람은 비용을 과대평가하는 경향이 있으니 보정하세요"
 3. 교차 프로젝트 페르소나 지식 — 같은 "CEO" 페르소나가 여러 프로젝트에서 쓰이면 통합 학습
-4. **리스크 전파**: rehearsal의 classified_risks가 자동으로 orchestrate의 step에 매핑
+4. **리스크 전파**: rehearsal의 classified_risks가 자동으로 recast의 step에 매핑
    - critical risk → 해당 step에 경고 배지
    - unspoken risk → 별도 "주의" 패널
 
@@ -346,7 +346,7 @@ program.md (human guidance)   →  IMPROVEMENT_POLICY.md
 ```typescript
 interface BinaryEval {
   id: string;
-  phase: 'decompose' | 'orchestrate' | 'rehearsal';
+  phase: 'decompose' | 'recast' | 'rehearsal';
   question: string;  // yes/no
   measure: (item: any) => boolean;
 }
@@ -361,13 +361,13 @@ const EVALS: BinaryEval[] = [
     measure: (item) => item.analysis?.hidden_assumptions?.some(a => !a.verified) },
   { id: 'd_proceeded', phase: 'decompose',
     question: '편곡으로 진행했는가?',
-    measure: (item) => hasLinkedItem(item, 'orchestrate') },
+    measure: (item) => hasLinkedItem(item, 'recast') },
 
-  // Orchestrate
-  { id: 'o_no_major_edit', phase: 'orchestrate',
+  // Recast
+  { id: 'o_no_major_edit', phase: 'recast',
     question: '사용자가 step을 50% 이상 수정하지 않았는가?',
     measure: (item) => calculateEditRate(item) < 0.5 },
-  { id: 'o_proceeded', phase: 'orchestrate',
+  { id: 'o_proceeded', phase: 'recast',
     question: '리허설로 진행했는가?',
     measure: (item) => hasLinkedItem(item, 'persona-feedback') },
 
@@ -507,7 +507,7 @@ CREATE TABLE reframing_patterns (
    Improving)          |  Decompose)
                         |          ★
    Phase 6 (Cross-    |  Phase 2 (Multi-Lens
-   User)               |  Orchestrate)
+   User)               |  Recast)
                         |
    ─────────────────────┼──────────────────→ 높은 Feasibility
                         |
@@ -519,7 +519,7 @@ CREATE TABLE reframing_patterns (
 ```
 
 **★★★ Phase 0을 먼저**: 타입드 파이프라인 없이는 다른 모든 Phase가 마크다운 해킹에 의존.
-**★ Phase 1+2를 다음**: 사용자가 체감하는 가장 큰 변화. Decompose + Orchestrate가 진짜 "달라졌다" 느껴지는 순간.
+**★ Phase 1+2를 다음**: 사용자가 체감하는 가장 큰 변화. Decompose + Recast가 진짜 "달라졌다" 느껴지는 순간.
 
 ### 권장 순서
 

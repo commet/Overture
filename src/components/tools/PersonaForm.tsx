@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Field } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { callLLMJson } from '@/lib/llm';
 import type { Persona } from '@/stores/types';
 import { Sparkles, Loader2, Check, Pencil, Upload, ChevronRight, ChevronLeft, FileText, UserCircle } from 'lucide-react';
@@ -497,13 +498,25 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">뒤로</button>
           </div>
           <p className="text-[12px] text-[var(--text-secondary)]">이름, 직책, 성격, 의사결정 스타일, 최근 관심사 — 무엇이든.</p>
-          <textarea
-            value={freeText}
-            onChange={(e) => setFreeText(e.target.value)}
-            placeholder="김 상무님은 CFO입니다. ROI를 최우선시하고, 결론부터 듣고 싶어합니다. 최근 신사업 실패로 보수적..."
-            className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
-            rows={5}
-          />
+          <div className="relative">
+            <AnimatedPlaceholder
+              texts={[
+                '김 상무님은 CFO입니다. ROI를 최우선시하고, 결론부터 듣고 싶어합니다.',
+                '박 대표님은 비전형 리더입니다. 큰 그림을 먼저 보고, 시장 기회를 놓치면 안 된다고 강조합니다.',
+                '이 팀장은 기술 출신입니다. 실현 가능성과 구체적 스펙을 먼저 확인하려 합니다.',
+                '정 이사님은 투자자입니다. 유닛 이코노믹스와 시장 규모부터 봅니다.',
+                '최 부장은 클라이언트 측 PM입니다. 납기와 리스크 사전 공유를 중시합니다.',
+              ]}
+              visible={!freeText.trim()}
+              className="absolute left-4 top-3 text-[14px] text-[var(--text-secondary)] leading-[1.7] max-w-[calc(100%-2rem)] truncate"
+            />
+            <textarea
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
+              rows={5}
+            />
+          </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex justify-end">
             <Button onClick={handleFreeTextStructure} disabled={!freeText.trim() || loading}>

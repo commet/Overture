@@ -8,7 +8,7 @@
 
 import { getSignals, recordSignal } from './signal-recorder';
 import type {
-  RefinementLoop,
+  RefineLoop,
   FeedbackRecord,
   RetrospectiveQuestion,
   RetrospectiveAnswer,
@@ -22,7 +22,7 @@ import { generateId } from './uuid';
  * Generate 2-4 retrospective questions based on accumulated project data.
  */
 export function generateRetrospectiveQuestions(
-  loop: RefinementLoop,
+  loop: RefineLoop,
   feedbackRecords: FeedbackRecord[],
 ): RetrospectiveQuestion[] {
   const questions: RetrospectiveQuestion[] = [];
@@ -143,7 +143,7 @@ export function saveRetrospectiveAnswer(answer: Omit<RetrospectiveAnswer, 'id' |
   if (existing.length > 200) existing.splice(0, existing.length - 200);
   setStorage(STORAGE_KEYS.RETROSPECTIVE_ANSWERS, existing);
   insertToSupabase('retrospective_answers', full);
-  recordSignal({ tool: 'refinement', signal_type: 'retrospective_answered', signal_data: { question_id: full.question_id, category: full.category, answer_length: full.answer.length }, project_id: full.project_id });
+  recordSignal({ tool: 'refine', signal_type: 'retrospective_answered', signal_data: { question_id: full.question_id, category: full.category, answer_length: full.answer.length }, project_id: full.project_id });
   return full;
 }
 

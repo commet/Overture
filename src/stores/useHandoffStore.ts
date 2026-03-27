@@ -9,10 +9,10 @@ interface HandoffState {
 }
 
 const STEP_MAP: Record<string, string> = {
-  'decompose': '악보 해석',
-  'orchestrate': '편곡',
-  'persona-feedback': '리허설',
-  'refinement-loop': '합주 연습',
+  'reframe': '악보 해석',
+  'recast': '편곡',
+  'rehearse': '리허설',
+  'refine': '합주 연습',
 };
 
 export const useHandoffStore = create<HandoffState>((set) => ({

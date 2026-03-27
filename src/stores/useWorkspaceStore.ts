@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type StepId = 'decompose' | 'orchestrate' | 'persona-feedback' | 'refinement-loop';
+export type StepId = 'reframe' | 'recast' | 'rehearse' | 'refine';
 
 interface WorkspaceState {
   activeStep: StepId;
@@ -13,7 +13,7 @@ interface WorkspaceState {
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
-  activeStep: 'decompose',
+  activeStep: 'reframe',
   sidebarOpen: true,
   concertmasterOpen: false,
   setActiveStep: (step) => set({ activeStep: step }),

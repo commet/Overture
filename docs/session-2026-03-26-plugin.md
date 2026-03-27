@@ -70,7 +70,7 @@ overture-plugin/
 └── skills/
     ├── help/SKILL.md (/overture-help)
     ├── reframe/SKILL.md + references/reframing-strategies.md
-    ├── orchestrate/SKILL.md + references/execution-design.md
+    ├── recast/SKILL.md + references/execution-design.md
     ├── rehearse/SKILL.md + references/persona-design.md, risk-classification.md
     ├── refine/SKILL.md + references/convergence.md
     └── overture/SKILL.md + references/decision-quality.md
@@ -81,7 +81,7 @@ overture-plugin/
 | 스킬 | 역할 | 상태 |
 |------|------|------|
 | `/reframe` | 인터뷰 3개 → 전제 도출 → 전제 평가 → 리프레이밍 + Sharpened Prompt | 가장 완성도 높음. 인터뷰 + 평가 + 출력 모두 디자인됨 |
-| `/orchestrate` | 실행 설계 — Governing Idea, Storyline, AI/Human 역할 분리, 체크포인트 | 디자인 시스템 적용됨. 스텝 박스(┌┐└┘) 포함 |
+| `/recast` | 실행 설계 — Governing Idea, Storyline, AI/Human 역할 분리, 체크포인트 | 디자인 시스템 적용됨. 스텝 박스(┌┐└┘) 포함 |
 | `/rehearse` | 페르소나 사전 검증 — 2-3명 독립 리뷰 + Devil's Advocate + 종합 | Bottom line first 패턴. Devil's Advocate 에이전트 참조 |
 | `/refine` | 수렴 루프 — 이슈 추출 → 수정 → 재리뷰 → 수렴 판정 (최대 3회) | 수렴 상태 표시 포함 |
 | `/overture` | 전체 파이프라인 — 각 스킬 순서대로 실행 + DQ 스코어 + 3 deliverables | 각 스킬의 디자인을 그대로 사용하도록 위임 |
@@ -138,12 +138,12 @@ curl -fsSL https://raw.githubusercontent.com/commet/Overture/main/overture-plugi
 ## 못 한 것 / 문제점
 
 1. **실제 end-to-end 테스트 미완료**: /reframe 인터뷰 Q1까지만 테스트함. Q2~Q3 → 전제 평가 → 리프레이밍 → 출력까지 전체 플로우 미확인
-2. **다른 스킬 테스트 0회**: /orchestrate, /rehearse, /refine, /overture 전부 실사용 테스트 안 함
+2. **다른 스킬 테스트 0회**: /recast, /rehearse, /refine, /overture 전부 실사용 테스트 안 함
 3. **인터뷰 신호 → 전제 도출 연결 품질 미확인**: 인터뷰 답변이 실제로 전제에 영향을 주는지 검증 안 됨
 4. **Devil's Advocate 에이전트 동작 미확인**: `context: fork`가 실제로 작동하는지 테스트 안 함
 5. **학습 저널 동작 미확인**: .overture/journal.md 실제 생성/읽기 테스트 안 함
 6. **Slack/Discord 출력 호환 미확인**: 코드블록이 실제 메시징 앱에서 어떻게 렌더링되는지 미확인
-7. **다른 스킬들의 디자인 시스템 실제 렌더링 미확인**: /orchestrate의 스텝 박스, /rehearse의 bottom line 등이 Claude Code에서 잘 보이는지 확인 안 함
+7. **다른 스킬들의 디자인 시스템 실제 렌더링 미확인**: /recast의 스텝 박스, /rehearse의 bottom line 등이 Claude Code에서 잘 보이는지 확인 안 함
 8. **한글 렌더링 정렬**: 한글 문자가 모노스페이스에서 2칸 차지해서 정렬이 밀릴 수 있음 — 미확인
 9. **/overture 전체 파이프라인**: 5-10분 연속 실행 시 context window 소진 여부 미확인
 
@@ -151,7 +151,7 @@ curl -fsSL https://raw.githubusercontent.com/commet/Overture/main/overture-plugi
 
 ### 즉시 (이어서 할 것)
 - [ ] `/reframe` 전체 플로우 end-to-end 테스트 (Q1~Q3 → 전제 → 평가 → 리프레이밍 → Sharpened Prompt → "What you didn't see")
-- [ ] `/orchestrate` 실사용 테스트
+- [ ] `/recast` 실사용 테스트
 - [ ] `/rehearse` 실사용 테스트 (Devil's Advocate 포함)
 - [ ] `/refine` 실사용 테스트 (수렴 루프)
 - [ ] `/overture` 전체 파이프라인 테스트
@@ -213,5 +213,5 @@ cp -r overture-plugin/skills/* .claude/skills/
 
 ### 웹앱 변경 파일 (이 세션)
 storage.ts, db.ts, decision-quality.ts, use-count-up.ts (신규), concertmaster.ts,
-RefinementLoopStep.tsx, DecomposeStep.tsx, OrchestrateStep.tsx, PersonaFeedbackStep.tsx,
+RefinementLoopStep.tsx, DecomposeStep.tsx, RecastStep.tsx, PersonaFeedbackStep.tsx,
 workspace/page.tsx, globals.css, daily-report/route.ts

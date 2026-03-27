@@ -517,7 +517,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
                     content,
                     projectId: current!.project_id,
                   });
-                  onNavigate('persona-feedback');
+                  onNavigate('rehearse');
                 }}
               >
                 <Send size={14} /> 리허설 받기

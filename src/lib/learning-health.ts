@@ -9,7 +9,7 @@ import { getStorage, STORAGE_KEYS } from './storage';
 import { getSignals } from './signal-recorder';
 import type {
   JudgmentRecord,
-  RefinementLoop,
+  RefineLoop,
   PersonaAccuracyRating,
   LearningHealth,
 } from '@/stores/types';
@@ -21,9 +21,9 @@ import type {
 export function assessLearningHealth(): LearningHealth {
   const signals = getSignals();
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
-  const loops = getStorage<RefinementLoop[]>(STORAGE_KEYS.REFINEMENT_LOOPS, []);
+  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
   const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
-  const decompose = getStorage<{ id: string }[]>(STORAGE_KEYS.DECOMPOSE_LIST, []);
+  const reframeItems = getStorage<{ id: string }[]>(STORAGE_KEYS.REFRAME_LIST, []);
 
   const recommendations: string[] = [];
 
@@ -32,8 +32,8 @@ export function assessLearningHealth(): LearningHealth {
 
   // Eval coverage
   const evalSignals = signals.filter(s => s.signal_type === 'assumption_diversity');
-  const eval_coverage = decompose.length > 0
-    ? Math.round((evalSignals.length / decompose.length) * 100)
+  const eval_coverage = reframeItems.length > 0
+    ? Math.round((evalSignals.length / reframeItems.length) * 100)
     : 0;
 
   // Override trend: compare first half vs second half
@@ -91,7 +91,7 @@ export function assessLearningHealth(): LearningHealth {
   if (signal_count < 5) {
     recommendations.push('프로젝트를 더 진행하면 학습 데이터가 축적됩니다.');
   }
-  if (eval_coverage < 50 && decompose.length >= 3) {
+  if (eval_coverage < 50 && reframeItems.length >= 3) {
     recommendations.push('악보 해석에서 전제를 평가하면 전략 학습이 활성화됩니다.');
   }
   if (ratings.length < 2) {

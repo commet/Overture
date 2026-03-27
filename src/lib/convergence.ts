@@ -1,4 +1,4 @@
-import type { RefinementLoop, FeedbackRecord, ApprovalCondition, Persona } from '@/stores/types';
+import type { RefineLoop, FeedbackRecord, ApprovalCondition, Persona } from '@/stores/types';
 import { computeSimilarity } from './similarity';
 
 export interface ConvergenceResult {
@@ -78,7 +78,7 @@ export function extractApprovalConditions(
  * 2. Approval gate: ≥80% of high-influence approval conditions met
  * 3. Progress: issue count trending down
  */
-export function checkLoopConvergence(loop: RefinementLoop): ConvergenceResult {
+export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
   const highInfluenceConditions = loop.initial_approval_conditions
     .filter(ac => ac.influence === 'high');
 

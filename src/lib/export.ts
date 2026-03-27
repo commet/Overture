@@ -1,4 +1,4 @@
-import type { DecomposeItem, SynthesizeItem, OrchestrateItem, HiddenAssumption } from '@/stores/types';
+import type { ReframeItem, SynthesizeItem, RecastItem, HiddenAssumption } from '@/stores/types';
 
 const actorLabels: Record<string, string> = {
   ai: '🤖 AI',
@@ -6,7 +6,7 @@ const actorLabels: Record<string, string> = {
   both: '🤝 협업',
 };
 
-export function decomposeToMarkdown(item: DecomposeItem): string {
+export function reframeToMarkdown(item: ReframeItem): string {
   const analysis = item.analysis;
   if (!analysis) return '';
 
@@ -75,7 +75,7 @@ ${conflicts}
 ${item.final_synthesis ? `### 종합 결론\n${item.final_synthesis}` : ''}`;
 }
 
-export function orchestrateToMarkdown(item: OrchestrateItem): string {
+export function recastToMarkdown(item: RecastItem): string {
   const steps = item.steps.length > 0 ? item.steps : item.analysis?.steps || [];
 
   const rows = steps

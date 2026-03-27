@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Persona, FeedbackLog, FeedbackRecord, PersonaFeedbackResult } from '@/stores/types';
+import type { Persona, FeedbackLog, FeedbackRecord, RehearsalResult } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
