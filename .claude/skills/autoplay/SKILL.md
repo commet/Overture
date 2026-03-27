@@ -67,13 +67,19 @@ Show the pipeline header at the start:
 ## Stage 1 of 4: Reframe (~2 min)
 
 Run `/reframe` in fast mode — use its full process, its design system, and its output format. The only difference:
-- Skip the interactive interview. Infer signals from the user's input instead.
+- Skip the interactive interview. Infer signals from the user's input instead. Mark inferred signals with `[inferred]` in the Context Contract.
 - If the user's input contains confidence signals ("we've validated X"), reflect those. Otherwise treat all assumptions as "uncertain."
+- **MUST produce the `■ Context Contract — /reframe` block.** This is the input for Stage 2.
 
-After the reframe output, show the breadcrumb:
+After the reframe output, show the breadcrumb — completed steps in diff `+` (green):
 
+```diff
++ reframe ●  done
 ```
-  reframe ● → recast ○ → rehearse ○ → refine ○
+```
+  recast  ○  next
+  rehearse ○
+  refine   ○
 ```
 
 **Micro-acknowledgment (if earned):** Did the user's original input already contain a sharp insight — an assumption they named, a risk they anticipated, a nuance most people miss? If so, acknowledge it in one specific line: `▸ [what they did well and why it matters]`. If nothing stands out, say nothing — silence is better than generic praise.
@@ -83,13 +89,20 @@ Ask: **"Does this capture the real question? Correct me if not — otherwise I'l
 ## Stage 2 of 4: Recast (~2 min)
 
 Run `/recast` — use its full process, design system, and output format.
-- Use the reframed question from Stage 1 as the goal
-- Incorporate uncertain assumptions as validation steps
+- **Extract the `■ Context Contract — /reframe` from Stage 1 output above.** Apply the full context extraction protocol (assumption merge, risk stance, signal mapping, AI limitation validation).
+- Use the reframed question as the goal
+- Incorporate uncertain/doubtful assumptions as validation steps
 - Generate 3 stakeholder personas for review
+- **MUST produce the `■ Context Contract — /recast` block.** This is the input for Stage 3.
 
 After the recast output, show breadcrumb:
+```diff
++ reframe ●  done
++ recast  ●  done
 ```
-  reframe ● → recast ● → rehearse ○ → refine ○
+```
+  rehearse ○  next
+  refine   ○
 ```
 
 **Micro-acknowledgment (if earned):** Did the reframed question lead to an unusually clear role separation, or did the user's context make checkpoint placement obvious? Acknowledge one specific strength if genuine. Say nothing if nothing stands out.
@@ -97,11 +110,18 @@ After the recast output, show breadcrumb:
 ## Stage 3 of 4: Rehearse (~3 min)
 
 Run `/rehearse` — use its full process, design system, and output format.
-- Use the stakeholders from Stage 2 as personas
+- **Extract BOTH Contract blocks** from Stage 1 (/reframe) and Stage 2 (/recast). Inject into each persona's review per /rehearse's context extraction protocol.
+- Use the personas from Stage 2's Contract
+- **MUST produce the `■ Context Contract — /rehearse` block.** This is the input for Stage 4.
 
 After the rehearse output, show breadcrumb:
+```diff
++ reframe  ●  done
++ recast   ●  done
++ rehearse ●  done
 ```
-  reframe ● → recast ● → rehearse ● → refine ○
+```
+  refine   ○  next
 ```
 
 **Micro-acknowledgment (if earned):** Did a persona raise an issue the user had already flagged? Did the user's initial framing make the stress-test sharper than usual? Acknowledge if genuine.
@@ -120,82 +140,88 @@ Also save the 3 deliverables (Sharpened Prompt, Thinking Summary, Agent Harness)
 
 ### ■ Deliverable 1: Sharpened Prompt
 
-A ready-to-use prompt the user can paste into any AI conversation. It should incorporate:
-- The reframed question
-- Key constraints discovered
-- What to watch out for
+A ready-to-use prompt the user can paste into any AI conversation. It should incorporate the reframed question, key constraints discovered, and what to watch out for.
 
-```
-## Sharpened Prompt
+**Render as blockquote** — feels immediately copy-pasteable:
 
-Paste this into your next AI conversation:
-
-> [reframed question with context, constraints, and guardrails baked in.
-> Include what AI should focus on and what it should flag for human review.]
-```
+> **✦ Sharpened Prompt** — paste into your next AI conversation:
+>
+> *[reframed question with context, constraints, and guardrails baked in. Include what AI should focus on and what it should flag for human review.]*
 
 ### ■ Deliverable 2: Thinking Summary
 
 A team-shareable summary. Written like an email you'd send to your team — not a consulting document. Keep it under 3000 characters (Slack-friendly).
 
-```
-## Thinking Summary
+**Render as markdown bold/italic** — reads like an email, not a report:
 
 **TL;DR:** [one sentence: what changed in our thinking and what to do next]
 
 **Original question vs. the real question:**
+
+```diff
 - Asked: [original]
-- Real question: [reframed]
-- Why: [one sentence]
++ Real question: [reframed]
+```
+
+**Why:** [one sentence]
 
 **Key risks found:**
+
+```diff
 - [critical] [risk — one line]
 - [unspoken] [risk — one line]
+```
 
-**Sharpest critique:** "[direct quote from the most challenging persona]" — [persona name]
+**Sharpest critique:** *"[direct quote from the most challenging persona]"* — [persona name]
 
 **Next steps:**
 1. [concrete action + who]
 2. [concrete action + who]
 3. [concrete action + who]
 
-Decision Quality: [N]/100
-```
+**Decision Quality:** [N]/100
 
 ### ■ Deliverable 3: Agent Harness
 
 A structured instruction document for AI agents — ready to paste into a CLAUDE.md, project brief, or any agent configuration tool. This gives an AI agent everything it needs to execute the plan with the right constraints and checkpoints.
 
-```
-## Agent Harness
+**Render as `yaml` code block** — structured document with syntax highlighting:
 
-# Mission
-[reframed question — this is what we're solving]
+```yaml
+mission: "[reframed question — this is what we're solving]"
 
-# Success Criteria
-[from recast: what "done" looks like for each step]
+success_criteria:
+  - "[from recast: what 'done' looks like for each step]"
 
-# Execution Steps
-1. [step] — Owner: [AI/Human/Both]
-   Deliverable: [specific output]
-2. ...
+steps:
+  - name: "[step]"
+    owner: human
+    deliverable: "[specific output]"
+    checkpoint: true
 
-# Checkpoints (stop and verify)
-- Before step [N]: [what to verify and who approves]
-- Before step [M]: [what to verify]
+  - name: "[step]"
+    owner: ai
+    deliverable: "[specific output]"
 
-# Constraints
-- [uncertain assumption → must validate before proceeding]
-- [AI limitation → human must handle this]
-- [stakeholder requirement → must satisfy before delivery]
+  - name: "[step]"
+    owner: both
+    ai_scope: "[what AI does]"
+    human_scope: "[what human does]"
+    deliverable: "[specific output]"
 
-# Known Risks
-- [critical risk + mitigation]
-- [unspoken risk + how to surface it]
+constraints:
+  - "[uncertain assumption → must validate before proceeding]"
+  - "[AI limitation → human must handle this]"
+  - "[stakeholder requirement → must satisfy before delivery]"
 
-# Stakeholder Requirements
-- [Name]: needs [specific deliverable/metric] to approve
-- [Name]: will block if [specific concern] isn't addressed
+risks:
+  critical: "[risk + mitigation]"
+  unspoken: "[risk + how to surface it]"
+
+stakeholders:
+  - name: "[Name]"
+    needs: "[specific deliverable/metric to approve]"
+    will_block_if: "[specific concern isn't addressed]"
 ```
 
 ### ■ Decision Quality Scorecard
@@ -232,12 +258,24 @@ Anti-sycophancy check:
   Actionability  ███░░  3/5
   ────────────────────────
   Overall        77/100
-
-  Anti-sycophancy:
-  ✓ Initial framing challenged
-  ✓ 2 blind spots surfaced
-  ✓ Plan revised after rehearsal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Anti-sycophancy checks — render as diff (green = passed):
+
+```diff
++ ✓ Initial framing challenged
++ ✓ 2 blind spots surfaced
++ ✓ Plan revised after rehearsal
+```
+
+For **returning users** with journal data, show score changes with diff:
+
+```diff
+- Framing      ███░░  3/5  (last run)
++ Framing      ████░  4/5  (+1: named assumptions upfront)
+  Alternatives ███░░  3/5
+- Reasoning    ██░░░  2/5  (needs work)
 ```
 
 **Qualitative interpretation:** After the scorecard, add one line explaining the score — not just the number but the *why*:
@@ -260,14 +298,10 @@ If any answer is "no," strengthen that section.
 
 ### "What you didn't see" — Overture's signature
 
-At the very end, after all deliverables and the DQ scorecard, add one line:
+At the very end, after all deliverables and the DQ scorecard, add one line as a **blockquote**:
 
-```
-  ▸ What you didn't see ──────────────────
-    [One sentence capturing the core blind spot.
-     The gap between what the user was thinking
-     and what actually matters.]
-```
+> **What you didn't see**
+> *[One sentence capturing the core blind spot. The gap between what the user was thinking and what actually matters.]*
 
 This must be specific, uncomfortable, and insightful. See `/reframe` SKILL.md for examples and rules.
 

@@ -8,21 +8,25 @@ Most strategic failures start with the wrong question, not the wrong answer. You
 
 **Always respond in the same language the user uses.** If the input is in Korean, all output — including headers, labels, and options — should be in Korean. The UI chrome (boxes, symbols, progress indicators) stays the same regardless of language.
 
-## Before starting
+## Step 0: Get the problem first
 
-Check if `.overture/journal.md` exists in the project root.
+**If no argument is provided** (user just typed `/reframe` without a problem):
 
-**If it does NOT exist (first use):** Show the welcome + overview, then proceed to Step 1.
-
-**If it exists:** Read the last 10 entries. If you see patterns from previous runs, mention them briefly before the overview.
-
-## If no argument is provided
-
-If the user just types `/reframe` without a problem, ask:
+Ask ONLY this — nothing else, no overview, no interview yet:
 
 > What problem or decision are you thinking about?
 
-Wait for their response, then proceed.
+Wait for their response. Only AFTER receiving the problem, proceed to the overview + interview.
+
+**If an argument IS provided** (e.g., `/reframe "expand into SEA"`), proceed immediately.
+
+## Before starting (after you have the problem)
+
+Check if `.overture/journal.md` exists in the project root.
+
+**If it does NOT exist (first use):** Briefly say this is the first time, then show the overview + Q1.
+
+**If it exists:** Read the last 10 entries. If you see patterns from previous runs, mention them briefly before the overview.
 
 ## Handling edge cases
 
@@ -30,11 +34,27 @@ Wait for their response, then proceed.
 - **Personal decisions** (e.g., "should I go to grad school"): Adapt interview options and assumption dimensions to personal context (see Step 1 notes).
 - **Trivial decisions**: Mention it's a quick call, offer to proceed anyway or skip.
 
+## Rendering rules — hybrid approach
+
+Use **hybrid rendering** to create visual rhythm: structure/data in code blocks, insights/commentary in markdown.
+
+- **Code blocks**: box headers, progress indicators, option lists, data tables (Hidden Assumptions, Questions)
+- **Markdown** (outside code blocks): analysis text, "Why this is sharper", short insights — keep to 1-2 sentences max
+- **`diff` blocks**: original vs reframed comparison (`-` red = old thinking, `+` green = new thinking)
+- **Blockquotes** (`>`): "What you didn't see", Sharpened Prompt — creates breathing room
+- **Bold/italic**: key phrases in markdown sections
+
+This creates rhythm: dense data → breathing room → dense data → insight. Never put everything in one giant code block.
+
 ## The flow
 
 The reframe process has 3 phases. Show the overview first, then walk through each phase one question at a time.
 
-### Overview (show once at the start)
+### Overview + First question (combined in ONE code block)
+
+The overview and Q1 go in a SINGLE code block. The box header (`Overture · Reframe`) and progress dots ALWAYS stay in English. All other text (phase labels, question text, options) is in the user's language.
+
+**Template — translate text content to the user's language, keep UI chrome identical:**
 
 ```
   ╭──────────────────────────────────────────╮
@@ -42,123 +62,77 @@ The reframe process has 3 phases. Show the overview first, then walk through eac
   │  ● Interview  ○ Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  3 phases — just pick numbers, I'll do the rest.
+  ① [Interview] (3)  ② [Assumptions] (3-4)  ③ [Reframe]
 
-  ① Interview (3 questions)
-  ② Assumption check (3-4 items)
-  ③ Reframed question + Sharpened Prompt
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ■ [Interview]                        1 / 3
+
+  [What best describes this task?]
+
+    1 · [Clear path — we know what to do]
+    2 · [Needs analysis — right answer exists but unclear]
+    3 · [No clear answer — must explore and learn]
+    4 · [On fire — urgent, need to act now]
+
+  ▸
 ```
 
-Then immediately show the first interview question.
+`[brackets]` = translate to user's language. Everything else (╭╮, ●○, ■, ▸, numbers, separators) stays exactly the same.
+
+**Example in Korean:**
+- `[Interview]` → `인터뷰`
+- `[What best describes this task?]` → `이 과제의 성격은?`
+- `[Clear path]` → `방법이 명확함`
+- `[Needs analysis]` → `분석 필요`
+- `[No clear answer]` → `답이 불분명`
+- `[On fire]` → `긴급 대응`
 
 ### Phase 1: Interview
 
-Present each question ONE AT A TIME. Each question = one number from the user. Show progress in the header.
+After Q1, show a brief text confirmation (e.g., "✓ Top-down directive" / "✓ 위에서 지시") outside the code block, then Q2 in a new code block. This creates visual separation.
 
-**Question 1:**
+**Q2 template:**
 ```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ○ Assumptions  ○ Reframe   │
-  ╰──────────────────────────────────────────╯
+  ■ [Interview]                        2 / 3
 
-  ■ Interview                          1 of 3
+  [What's the goal?]
 
-  Where did this task come from?
-
-    1 · Top-down directive
-    2 · External request
-    3 · Self-initiated
-    4 · Urgent / fire-fighting
+    1 · [Clear goal — know exactly what success looks like]
+    2 · [Direction only — general direction but unclear target]
+    3 · [Competing goals — stakeholders want different things]
+    4 · [Unclear — not sure what we're optimizing for]
 
   ▸
 ```
 
-(Korean version:)
+After Q2 confirmation, Q3:
+
+**Q3 template:**
 ```
-  ■ 인터뷰                             1 / 3
+  ■ [Interview]                        3 / 3
 
-  이 과제는 어디서 나왔나요?
+  [How heavy is this decision?]
 
-    1 · 위에서 지시
-    2 · 외부 요청
-    3 · 내가 시작
-    4 · 긴급 대응
+    1 · [Irreversible — can't undo once committed]
+    2 · [Important — significant but adjustable]
+    3 · [Experiment — low cost to try and learn]
+    4 · [Unknown — not sure yet]
 
   ▸
 ```
 
-Wait for user input (a number). Then show Question 2:
+**Interview signals mapping (v2):**
+- Q1 maps to `nature`: 1=known_path, 2=needs_analysis, 3=no_answer, 4=on_fire
+- Q2 maps to `goal`: 1=clear_goal, 2=direction_only, 3=competing, 4=unclear
+- Q3 maps to `stakes`: 1=irreversible, 2=important, 3=experiment, 4=unknown
 
-**Question 2:**
-```
-  ■ Interview                          2 of 3
-
-  What's most uncertain about this?
-
-    1 · Why we should do it
-    2 · What exactly to do
-    3 · How to execute
-    4 · Nothing — it's clear
-
-  ▸
-```
-
-(Korean:)
-```
-  ■ 인터뷰                             2 / 3
-
-  가장 불확실한 부분은?
-
-    1 · 왜 해야 하는지
-    2 · 뭘 해야 하는지
-    3 · 어떻게 해야 하는지
-    4 · 불확실한 건 없음
-
-  ▸
-```
-
-Wait for input. Then Question 3:
-
-**Question 3:**
-```
-  ■ Interview                          3 of 3
-
-  What does success look like?
-
-    1 · Measurable metrics
-    2 · Risk managed
-    3 · Opportunity captured
-    4 · Unclear
-
-  ▸
-```
-
-(Korean:)
-```
-  ■ 인터뷰                             3 / 3
-
-  성공은 어떤 모습인가요?
-
-    1 · 측정 가능한 지표
-    2 · 리스크 관리
-    3 · 기회 포착
-    4 · 불명확
-
-  ▸
-```
-
-**Interview signals mapping:**
-- Q1 maps to `origin`: 1=top-down, 2=external, 3=self, 4=fire
-- Q2 maps to `uncertainty`: 1=why, 2=what, 3=how, 4=none
-- Q3 maps to `success`: 1=measurable, 2=risk, 3=opportunity, 4=unclear
-
-Use these signals to select the reframing strategy (see `references/reframing-strategies.md` for the selection matrix).
+These signals influence BOTH assumption extraction (Phase 2) AND reframing strategy (Phase 3). See below for specific mappings.
 
 **Personal decision adaptation:** If the problem is personal (not organizational), adapt the options:
-- Q1: 1·External pressure  2·Others suggested  3·My own idea  4·Urgent deadline
-- Q2: Same
-- Q3: 1·Clear goal  2·Avoiding downside  3·Seizing opportunity  4·Unclear
+- Q1: 1·Clear path  2·Need to research  3·No right answer  4·Urgent deadline
+- Q2: 1·Clear goal  2·General direction  3·Conflicting priorities  4·Unclear
+- Q3: Same
 
 ### Phase 2: Assumption discovery + evaluation
 
@@ -171,7 +145,17 @@ After the interview, analyze the problem using interview signals to find 3-4 hid
 
 For personal decisions, adapt: Personal growth / Financial impact / Opportunity cost / Readiness.
 
-Then present each assumption ONE AT A TIME for evaluation:
+**Interview signals shape what assumptions to look for:**
+- nature=no_answer → find **existential** assumptions ("this direction has value", "this problem actually exists")
+- nature=needs_analysis → find **methodological** assumptions ("the right approach is X", "data exists to decide")
+- nature=on_fire → find **causal** assumptions ("the root cause is X", "this is urgent because Y")
+- goal=competing → find **priority** assumptions ("stakeholder A's goal matters more than B's")
+- goal=unclear → find **value** assumptions ("we know what success looks like")
+- stakes=irreversible → MUST include at least one assumption about **consequences of being wrong**
+
+Then present each assumption ONE AT A TIME for evaluation. Same template rules: UI chrome in English, content in user's language.
+
+**First assumption includes the updated progress header. Subsequent ones omit the box header.**
 
 ```
   ╭──────────────────────────────────────────╮
@@ -179,29 +163,18 @@ Then present each assumption ONE AT A TIME for evaluation:
   │  ● Interview  ● Assumptions  ○ Reframe   │
   ╰──────────────────────────────────────────╯
 
-  ■ Assumptions                        1 of 4
+  ■ [Assumptions]                      1 / 4
 
-  "AI can meaningfully improve our team's efficiency"
+  "[assumption text in user's language]"
 
-    1 · Confident ✓
-    2 · Uncertain ?
-    3 · Doubtful ✗
-
-  ▸
-```
-
-(Korean:)
-```
-  ■ 전제 평가                           1 / 4
-
-  "AI가 우리 팀의 업무를 의미있게 효율화할 수 있다"
-
-    1 · 맞다 ✓
-    2 · 불확실 ?
-    3 · 아니다 ✗
+    1 · [Confident] ✓
+    2 · [Uncertain] ?
+    3 · [Doubtful] ✗
 
   ▸
 ```
+
+For assumptions 2-4, omit the box header — just the section header + assumption + options.
 
 Repeat for each assumption (3-4 total). Each is one number.
 
@@ -211,88 +184,143 @@ Repeat for each assumption (3-4 total). Each is one number.
 
 ### Phase 3: Reframing + output
 
-Use the interview signals + assumption evaluations to select the reframing strategy:
+Two things determine the reframing approach: the **evaluation pattern** (how the user rated assumptions) and the **interview signals** (nature/goal/stakes).
 
-**Strategy selection (from interview signals + evaluation pattern):**
-- Q2=why + mostly doubtful → Challenge Existence
-- Q2=how + mostly confident → Narrow Scope
-- Q1=fire → Diagnose Root Cause
-- Mixed signals → Redirect Angle
-- See `references/reframing-strategies.md` for the full matrix.
+#### Step 3a: Select reframing PATTERN based on assumption evaluations
 
-Before reframing, mentally check:
-- What does the person who assigned this REALLY want?
-- What happens if we do nothing for 6 months?
-- What is this problem deliberately NOT addressing that might matter?
-- Is this a technical problem, organizational problem, political problem, or timing problem?
+Count the evaluations from Phase 2:
 
-The **reframed question** should be equal or broader in scope than the original. The **hidden questions** CAN point to focused experiments or first steps.
+**ALL CONFIRMED (0 doubtful, 0 uncertain)** → CONFIRMED pattern
+- Direction is validated. Don't question the "why" — sharpen the "how."
+- Reframed question focuses on execution effectiveness, not direction.
+- Hidden questions should point to execution forks, not strategic pivots.
 
-**Output — lead with the sharpened prompt:**
+**MOSTLY DOUBTFUL (≥50% doubtful)** → CHALLENGED pattern
+- Premises are broken. Question the task itself.
+- Reframed question may challenge whether this should be done at all.
+- Hidden questions should include fundamental alternatives.
+- It's valid to suggest "don't do this" as a direction.
+
+**MIXED (anything else)** → MIXED pattern
+- Direction stands. Integrate the doubtful/uncertain items as CONDITIONS, not direction changes.
+- **CRITICAL ANTI-PATTERN:** Do NOT flip the entire direction based on one doubtful assumption. The confirmed assumptions support the current direction — respect that.
+- Reframed question = original direction + conditions revealed by the doubtful/uncertain assumptions.
+- Example: If "AI 업무 효율화" has confirmed "비효율 존재" + "경영진 지원" but doubtful "팀원 수용성":
+  - WRONG: "AI 대신 프로세스 개선부터 하라" (ignores confirmed direction)
+  - RIGHT: "AI 효율화의 성패는 기술이 아니라 조직 설계에 달려 있다 — 기술 도입과 변화관리를 어떻게 동시에 설계할 것인가?" (maintains direction, integrates condition)
+
+#### Step 3b: Select reframing STRATEGY based on interview signals
+
+Within the chosen pattern, use the strategy that fits the signal combination:
+- nature=on_fire → **Diagnose Root Cause** (separate immediate response from structural fix)
+- nature=no_answer + mostly doubtful → **Challenge Existence** (the problem may not need solving)
+- nature=needs_analysis + mostly confident → **Narrow Scope** (find the smallest experiment)
+- goal=competing → **Redirect Angle** (look through a different stakeholder's eyes)
+- Otherwise → **Redirect Angle** (find the perspective shift)
+
+See `references/reframing-strategies.md` for strategy details and examples.
+
+#### Step 3c: Strategic thinking frame (mental checklist before reframing)
+
+1. What does the person who assigned this REALLY want? (surface goal ≠ actual goal)
+2. What happens if we do nothing for 6 months? (urgency signal)
+3. What is this problem deliberately NOT addressing that might matter?
+4. Is this a technical problem, organizational problem, political problem, or timing problem?
+5. Scope check: the reframed question should be equal or broader in scope than the original.
+
+The **hidden questions** CAN point to focused experiments or first steps.
+
+**Output — hybrid rendering with `---` act separators. Translate ALL section labels and content to user's language. UI chrome stays the same.**
+
+The output has 4 acts separated by `---`: Answer → Shift → Evidence → Punch.
+
+**Act 1: The Answer**
 
 ```
   ╭──────────────────────────────────────────╮
   │  Overture · Reframe                      │
   │  ● Interview  ● Assumptions  ● Reframe   │
   ╰──────────────────────────────────────────╯
+```
 
+> **✦ Sharpened Prompt**
+>
+> *"[reframed question with constraints and context baked in]"*
 
-  ╭──────────────────────────────────────────╮
-  │  ✦ Sharpened Prompt                      │
-  ╰──────────────────────────────────────────╯
+---
 
-  Paste this into your next AI conversation:
+**Act 2: The Shift**
 
-  ▸ "[reframed question with key constraints
-     and context baked in]"
+```diff
+- [You asked:] "[original problem]"
++ [The real question:] "[reframed question]"
+```
 
-  ──────────────────────────────────────────
+**[Why this is sharper:]** [1-2 sentences explaining the shift. What changes in how you'd approach this.]
 
-  ■ Analysis
+---
 
-  You asked:
-    "[original problem]"
+**Act 3: The Evidence** (grouped in one code block — reference material, lower visual weight)
 
-  The real question:
-  ▸ [reframed question — 1-2 sentences]
+```
+  ■ [Hidden Assumptions]
 
-  Why this is sharper:
-    [1-2 sentences explaining the shift]
-
-  ──────────────────────────────────────────
-
-  ■ Hidden Assumptions
-
-    1  ✓  [assumption — confident]
-    2  ✗  [assumption — doubtful]
-    3  ?  [assumption — uncertain]
-    4  ✗  [assumption — doubtful]
+    1  ✓  [assumption]
+    2  ✗  [assumption]
+    3  ?  [assumption]
+    4  ✗  [assumption]
 
   ──────────────────────────────────────────
 
-  ■ Questions to Answer First
+  ■ [Hidden Questions]
 
-    1 · [question] — [why this changes direction]
+    1 · [question] — [why this matters for execution]
     2 · [question] — [why]
-    3 · [question] — [why]
 
   ──────────────────────────────────────────
 
-  ■ What AI Can't Help With
+  ■ [AI Limitations]
 
     · [specific limitation]
     · [specific limitation]
 ```
+
+---
+
+**Act 4: The Punch**
+
+> **What you didn't see**
+> *[One sentence: the core blind spot. What the user was optimizing for vs what actually matters.]*
+
+```
+  ■ Context Contract — /reframe
+
+    reframed_question: [the reframed question]
+    assumption_pattern: [confirmed | mixed | mostly_doubtful]
+    strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle]
+    interview_signals: nature=[X] goal=[X] stakes=[X]
+
+    assumptions_doubtful:
+      - [assumption] | reason: [user's reason if given]
+    assumptions_uncertain:
+      - [assumption] | reason: [user's reason if given]
+    assumptions_confirmed:
+      - [assumption]
+
+    ai_limitations:
+      - [specific limitation]
+
+    hidden_questions:
+      - [question]
+
+  Next: /recast to design an execution plan
+        /rehearse to stress-test with stakeholders
+```
+
+**Keep these in English always:** `Overture · Reframe`, `Sharpened Prompt`, `Context Contract`, progress dots (● ○), all symbols (■ ▸ ✓ ✗ ? ·), all field names in the contract.
+**Translate to user's language:** section labels (Hidden Assumptions, etc.), all content, option text. Contract field VALUES are in user's language.
 
 ### "What you didn't see" — Overture's signature
-
-At the very end of the output, add one line that captures the GAP between what the user was thinking and what they should have been thinking. This is Overture's most distinctive element.
-
-```
-  ▸ What you didn't see ──────────────────
-    [One sentence: the core blind spot. What the user was
-     optimizing for vs what actually matters.]
-```
 
 **Rules for this line:**
 - It must be specific to THIS problem, not generic
@@ -309,13 +337,6 @@ At the very end of the output, add one line that captures the GAP between what t
 - "There are risks to consider." (too vague)
 - "This is a complex problem." (says nothing)
 - "You should think more carefully." (patronizing)
-
-Then:
-
-```
-  Next: /recast to design an execution plan
-        /rehearse to stress-test with stakeholders
-```
 
 ## Rules
 
@@ -336,8 +357,9 @@ After completing, append to `.overture/journal.md` in the project root (director
 ## [date] /reframe
 - Original: "[original question]"
 - Reframed: "[new question]"
-- Interview: origin=[answer] uncertainty=[answer] success=[answer]
-- Strategy: [which pattern]
+- Interview: nature=[answer] goal=[answer] stakes=[answer]
+- Pattern: [confirmed | mixed | mostly_doubtful]
+- Strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle]
 - Assumptions: [N] confident, [N] uncertain, [N] doubtful
 ```
 

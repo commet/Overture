@@ -40,17 +40,34 @@ Look at the same situation through a different stakeholder's eyes. "What if this
 - Original: "Set pricing for our B2B SaaS product"
 - Reframed: "Pricing is an output of value perception, not an input. How do we design the customer's perception of value so that price becomes obvious?"
 
-## Selection logic
+## Two-axis selection
 
-```
-Mostly confident assumptions     → Narrow Scope or Redirect Angle
-Mixed (some doubtful)            → depends on pattern:
-  ├─ "Why" is unclear            → Challenge Existence
-  ├─ "How" is unclear            → Narrow Scope
-  ├─ Urgent/crisis               → Diagnose Root Cause
-  └─ Stakeholder conflict        → Redirect Angle
-Mostly doubtful assumptions      → Challenge Existence
-```
+Reframing uses TWO independent axes:
+
+### Axis 1: Reframing PATTERN (from assumption evaluation)
+
+| Evaluation result | Pattern | Stance |
+|---|---|---|
+| All confirmed (0 doubtful, 0 uncertain) | CONFIRMED | Direction right, sharpen execution |
+| Mixed (some doubtful/uncertain + some confirmed) | MIXED | Direction stands, integrate conditions |
+| ≥50% doubtful | CHALLENGED | Question the task itself |
+
+### Axis 2: Reframing STRATEGY (from interview signals)
+
+| Signal combination | Strategy |
+|---|---|
+| nature=on_fire | Diagnose Root Cause |
+| nature=no_answer + mostly doubtful | Challenge Existence |
+| nature=needs_analysis + mostly confident | Narrow Scope |
+| goal=competing | Redirect Angle |
+| Otherwise | Redirect Angle |
+
+### Critical anti-pattern for MIXED pattern
+
+When the pattern is MIXED, do NOT flip the entire direction based on doubtful assumptions alone. The confirmed assumptions support the current direction — respect that.
+
+**Wrong:** "Instead of AI, just fix the process first" (ignores confirmed "inefficiency exists" + "leadership support")
+**Right:** "AI efficiency depends on org design — how do we deploy tech AND change management simultaneously?" (keeps direction, adds condition)
 
 ## What a bad reframe looks like
 

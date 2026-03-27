@@ -8,6 +8,8 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 **Always respond in the same language the user uses.**
 
+Use **hybrid rendering** — structure/data in code blocks, change rationale in markdown. Use `diff` blocks for before/after plan changes and convergence status.
+
 ## Before starting
 
 **If no `/rehearse` results exist in the conversation**, tell the user: "I need stakeholder feedback to refine against. Run `/rehearse` first, or paste the feedback you've received and I'll work with that."
@@ -23,12 +25,40 @@ Show the header:
   ╰──────────────────────────────────────────╯
 ```
 
+## Context extraction — design constraints (DO NOT violate)
+
+Locate the `■ Context Contract` blocks from previous steps.
+
+### From /recast Contract (immutable constraints):
+- `governing_idea` → the revised plan MUST still serve this direction. If a change contradicts it, flag explicitly and explain why.
+- `design_rationale` → the reasoning behind the original design. Changes should work WITH this, not against it.
+- `critical_path` → steps on this path need extra care. Changes to critical-path steps cascade to everything downstream.
+- `ai_limitations` → these are PERMANENT. Never reassign AI-limitation areas to AI during refinement.
+
+### From /reframe Contract (root question):
+- `reframed_question` → the ROOT question. If refinement drifts from this, the entire pipeline is compromised. After each revision round, verify: "Does the revised plan still answer this question?"
+
+### From /rehearse Contract (feedback + personas):
+- `risks_critical` → must-fix items
+- `risks_unspoken` → should-fix (these are Overture's core value)
+- `devils_advocate` → should-fix
+- `risks_manageable` → can-fix (add mitigation)
+- `approval_conditions` → convergence targets
+- `persona_profiles` → reproduce EXACTLY for re-testing (see below)
+
+### Persona continuity:
+Use the `persona_profiles` from the /rehearse Contract to reproduce the exact same personas for re-testing:
+- Same name, role, decision_style, risk_tolerance
+- Same primary_concern and blocking_condition
+- DO NOT soften personas between rounds (this defeats the purpose)
+- DO NOT add new personas (stability needed for convergence measurement)
+
 ## How it works
 
-1. Extract issues from `/rehearse` results
+1. Extract issues from `/rehearse` results (using Contract data)
 2. Ask the user which to address (or auto-address all critical ones)
-3. Revise the plan — surgically, not wholesale
-4. Re-run stakeholder review on the revised version
+3. Revise the plan — surgically, not wholesale, respecting design constraints
+4. Re-run stakeholder review on the revised version (same personas)
 5. Check if issues are converging. If not, repeat. Max 3 rounds.
 
 ## Step 1: Extract and prioritize issues
@@ -67,7 +97,9 @@ If the user skips, auto-fix all critical issues.
 
 ## Step 4: Re-test
 
-Reproduce the exact same persona profiles and run them through the revised plan. Also run Devil's Advocate again.
+Reproduce personas from the /rehearse Contract's `persona_profiles` — field by field, no deviations. Run them through the revised plan with the same context injection as the original rehearsal. Also run Devil's Advocate again.
+
+After re-testing, verify: does the revised plan still answer the `reframed_question` from /reframe? If not, flag the drift.
 
 ## Step 5: Convergence check
 
@@ -86,36 +118,63 @@ Max 3 rounds (2 when inside `/overture`).
   │  Overture · Refine                       │
   │  Converge until solid                    │
   ╰──────────────────────────────────────────╯
+```
 
-
+```
   ■ Round [N]
+```
 
-    Changes made:
-    1 · [what changed] — [which feedback]
-    2 · [what changed] — [which feedback]
+Changes — show before/after with `diff` blocks so improvements are instantly visible:
 
-    Not addressed:
-    · [issue] — Reason: [why]
+```diff
+- Step 2: [old version of the step]
++ Step 2: [revised version with specific change]
+  Reason: [which feedback this addresses]
+```
 
+```diff
+- [another change — old]
++ [another change — new]
+  Reason: [which feedback]
+```
 
+**Not addressed:** [issue] — Reason: [why]
+
+```
   ■ Re-test Results
 
-    Critical:   [N] → [M]   [✓ resolved / ✗ remaining]
-    Manageable: [N]
-    Conditions: [N/M] met
+    Critical:   ██░░░  [N] → ░░░░░  [M]  ✓
+    Manageable: ███░░  [N]    ██░░░  [M]
+    Conditions: █░░░░  [N/M]  ███░░  [K/M]
+```
+```diff
++ Status: Converged after [N] rounds ✓
+```
 
-    Status: [Converged ✓ / Iterating ○ / Max reached ✗]
+Or if not converged:
+```diff
+- Status: [N] critical issues remaining — iterating
+```
 
-
+```
   ■ Final Plan
 
     [complete revised plan]
+```
 
-  ──────────────────────────────────────────
+```
+  ■ Context Contract — /refine
 
-  [If converged:]
-  ✓ Converged after [N] rounds.
-  Next: Your plan is ready for execution.
+    converged: [yes|no]
+    rounds: [N]
+    critical_remaining: [N]
+    approval_conditions_met:
+      - [persona name]: [condition] ✓
+    approval_conditions_unmet:
+      - [persona name]: [condition] ✗
+    key_changes:
+      - [what changed and why]
+    governing_idea_preserved: [yes | no — explain if no]
 ```
 
 ## Learning journal

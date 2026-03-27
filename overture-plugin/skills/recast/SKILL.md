@@ -10,7 +10,7 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 **Always respond in the same language the user uses.**
 
-**ALL designed output (boxes, section headers, option lists, results) MUST be inside fenced code blocks** so Claude Code preserves monospace formatting. Plain text commentary between sections stays outside code blocks.
+Use **hybrid rendering** — structure/data in code blocks, rationale/insights in markdown. Use **actor-specific box styles** to visually distinguish Human/AI/Both steps. Use `diff` blocks for low-confidence assumptions.
 
 ## If no argument is provided
 
@@ -31,12 +31,44 @@ Show the header:
   ╰──────────────────────────────────────────╯
 ```
 
-## Context from previous steps
+## Context extraction from /reframe
 
-If there's a `/reframe` result in the conversation, use it:
-- Uncertain assumptions → include validation steps in the plan
-- AI limitations → assign those steps to humans
-- Reframed question → this is the goal now, not the original question
+If a `/reframe` result exists in this conversation, locate its `■ Context Contract — /reframe` block and extract:
+
+### Mandatory extractions:
+- `reframed_question` → this is your GOAL, not the user's original text
+- `assumptions_doubtful` → each becomes a key_assumption with importance: H, certainty: L. Include validation steps in the plan for each.
+- `assumptions_uncertain` → each becomes a key_assumption with importance: M, certainty: L. Include verification method.
+- `assumptions_confirmed` → use as plan foundation. Do not re-validate.
+- `ai_limitations` → any step touching these areas MUST have actor: human or both. Cross-check after assigning actors.
+
+### Risk stance (from `assumption_pattern`):
+- `mostly_doubtful` → be conservative. Place validation steps BEFORE commitment steps. Front-load cheap experiments.
+- `confirmed` → be execution-focused. Optimize for speed and specificity.
+- `mixed` → maintain direction but add verification checkpoints for doubtful items.
+
+### Interview signal → execution style (from `interview_signals`):
+- nature=known_path → focus on execution specifics, proven methods
+- nature=needs_analysis → include data gathering and expert consultation steps
+- nature=no_answer → design as **learning loops**: small experiments, frequent checkpoints
+- nature=on_fire → **separate immediate response from structural fix** (two tracks)
+- goal=competing → include **stakeholder alignment step** early
+- goal=unclear → include **goal-definition step** before execution
+- stakes=irreversible → place validation BEFORE any commitment point
+
+### Assumption merge (critical):
+Every assumption from `assumptions_doubtful` and `assumptions_uncertain` MUST appear in your key_assumptions output:
+- From `assumptions_doubtful`: importance=H, certainty=L
+- From `assumptions_uncertain`: importance=M, certainty=L
+- Add `if_wrong` based on the original reason from reframe
+- If your own key_assumption covers the same ground, keep yours and note it inherits from reframe
+- Mark inherited assumptions with `[from reframe]`
+
+### AI limitation validation:
+After assigning actors to all steps, cross-check: does any AI-assigned step touch an area listed in `ai_limitations`? If yes, reassign to human or both.
+
+### If no /reframe result exists:
+Proceed normally using the user's input as the goal. The extraction rules above are skipped — but still generate key_assumptions and stakeholders independently.
 
 ## Step 1: Governing idea
 
@@ -75,11 +107,24 @@ See `references/execution-design.md` for detailed guidance.
 
 What must be TRUE for this plan to work? 2-4 assumptions with importance, confidence, and what happens if wrong.
 
-## Step 5: Stakeholders
+## Step 5: Stakeholders (→ personas for /rehearse)
 
-Identify 2-4 people who should review this plan. These become personas for `/rehearse`.
+Generate 3 stakeholder personas who should review this plan. These flow directly to `/rehearse`.
 
-For each: name/title, role, what they care about most, what would make them say no, what they need to see to say yes.
+**Diversity rule — at least one from each category:**
+1. **Reporting audience** — the person who receives the deliverable
+2. **Gatekeeper** — the person who controls resources or approval
+3. **Domain expert** — the person who knows if this is realistic
+
+**For each persona, provide ALL of these fields** (needed for /rehearse to reproduce them exactly):
+- **name** — realistic name for the persona
+- **role** — title and function
+- **influence** — high / medium / low
+- **decision_style** — analytical / intuitive / consensus / directive
+- **risk_tolerance** — low / medium / high
+- **primary_concern** — what they care about MOST in this project
+- **blocking_condition** — what would make them say no
+- **success_metric** — what they need to see to say yes
 
 ## Rules
 
@@ -91,75 +136,129 @@ For each: name/title, role, what they care about most, what would make them say 
 
 ## Output
 
-Format the output inside a code block for consistent rendering:
+Output has 4 acts separated by `---`.
+
+**Act 1: Direction**
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Recast                  │
+  │  Overture · Recast                       │
   │  Execution design with AI/human roles    │
   ╰──────────────────────────────────────────╯
+```
 
+**▸ Governing Idea:** [one sentence — a decision-maker gets it in 10 seconds]
 
-  ■ Governing Idea
-
-  ▸ [one sentence]
-
-
+```
   ■ Storyline
 
     Situation:    [agreed facts]
     Complication: [the tension]
     Resolution:   [our approach]
+```
 
+---
 
+**Act 2: Execution** — each owner type gets a distinct box style:
+
+```
   ■ Execution Steps
 
-  ┌─ Step 1 ─────────────────────── Human ──┐
-  │  [task]                                  │
-  │  Why: [reasoning]                        │
-  │  Deliverable: [output]                   │
-  │  Checkpoint: [yes/no + reason]           │
-  └──────────────────────────────────────────┘
+  ┌─ Step 1 ────────────────────── 🧑 Human ──┐
+  │  [task]                                     │
+  │  Why: [reasoning]                           │
+  │  Deliverable: [output]                      │
+  │  Checkpoint: [yes/no + reason]              │
+  └─────────────────────────────────────────────┘
+```
+```
+  ╔═ Step 2 ════════════════════════ 🤖 AI ═══╗
+  ║  [task]                                     ║
+  ║  Deliverable: [output]                      ║
+  ╚═════════════════════════════════════════════╝
+```
+```
+  ┏━ Step 3 ━━━━━━━━━━━━━━━━━━━━━━ ⚡ Both ━━━┓
+  ┃  [task]                                     ┃
+  ┃  AI does: [scope]                           ┃
+  ┃  Human does: [scope]                        ┃
+  ┃  Deliverable: [output]                      ┃
+  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
 
-  ┌─ Step 2 ──────────────────────── Both ──┐
-  │  [task]                                  │
-  │  AI does: [scope]                        │
-  │  Human does: [scope]                     │
-  │  Deliverable: [output]                   │
-  └──────────────────────────────────────────┘
+---
 
-  ┌─ Step 3 ───────────────────────── AI ───┐
-  │  [task]                                  │
-  │  Deliverable: [output]                   │
-  └──────────────────────────────────────────┘
+**Act 3: Evidence** (grouped — reference material)
 
+Key Assumptions — `diff` block for low-confidence and inherited items:
 
+```
   ■ Key Assumptions
 
     1  [assumption]
-       Importance: [H/M/L] · Confidence: [H/M/L]
+       Importance: H · Confidence: H
        If wrong: [impact]
+```
+```diff
+-   2  [assumption] [from reframe]
+-      Importance: H · Confidence: L
+-      If wrong: [impact]
+```
 
-    2  [assumption]
-       ...
+```
+  ■ Stakeholders (→ /rehearse personas)
 
-
-  ■ Stakeholders
-
-    1 · [Name/Title]
-        Cares about: [priority]
-        Will block if: [concern]
+    1 · [Name] — [Role]
+        Influence: [H/M/L] · Style: [analytical/intuitive/consensus/directive]
+        Risk tolerance: [low/medium/high]
+        Primary concern: [what they care about most]
+        Will block if: [specific condition]
         Needs to see: [success metric]
 
-    2 · [Name/Title]
+    2 · [Name] — [Role]
         ...
 
+    3 · [Name] — [Role]
+        ...
+```
 
-  ■ Design Rationale
+---
 
-    [2-3 sentences: why this sequence, why these owners]
+**Act 4: Rationale + Contract**
 
-  ──────────────────────────────────────────
+**Design Rationale:** [2-3 sentences: why this sequence, why these owners]
+
+```
+  ■ Context Contract — /recast
+
+    governing_idea: [one sentence]
+    design_rationale: [why this approach]
+
+    storyline:
+      situation: [facts]
+      complication: [tension]
+      resolution: [approach]
+
+    steps:
+      1. [task] | actor: [ai|human|both] | checkpoint: [yes|no] | critical: [yes|no]
+      2. [task] | actor: [ai|human|both] | checkpoint: [yes|no] | critical: [yes|no]
+      ...
+
+    critical_path: [step numbers that gate everything]
+
+    key_assumptions:
+      - [assumption] | importance: [H|M|L] | certainty: [H|M|L] | if_wrong: [impact]
+
+    inherited_assumptions:
+      - [from reframe] [assumption] | importance: H | certainty: L | if_wrong: [impact]
+
+    personas:
+      1. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
+      2. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
+      3. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
+
+    ai_limitations:
+      - [carried from reframe]
 
   Next: /rehearse to stress-test with stakeholders
 ```

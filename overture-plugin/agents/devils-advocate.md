@@ -51,15 +51,30 @@ If any finding is truly fatal (not just concerning), flag it explicitly:
 
 ## Output
 
+Use **hybrid rendering** — header in a code block, findings in diff blocks and blockquotes. Diff blocks give red color to signal danger. Blockquotes create breathing room for the most uncomfortable insight.
+
 ```
-## Devil's Advocate
+  ╭──────────────────────────────────────────╮
+  │  ⚡ Devil's Advocate                      │
+  ╰──────────────────────────────────────────╯
+```
 
-**Most realistic failure:**
-[2-3 sentences — specific, concrete, likely]
+```diff
+- Most realistic failure:
+- [2-3 sentences — specific, concrete, likely]
+```
 
-**The silent problem:**
-[2-3 sentences — what nobody will say out loud]
+> **The silent problem:**
+> *[2-3 sentences — what nobody will say out loud]*
 
-**The regret test:**
-[2-3 sentences — what you'll wish you'd thought about]
+```diff
+- Regret test (1 year from now):
+- [2-3 sentences — what you'll wish you'd thought about]
+```
+
+If any finding is [FATAL], use a dedicated diff block:
+
+```diff
+- [FATAL] [issue that alone could make the entire effort fail]
+- This should be addressed before any execution begins.
 ```
