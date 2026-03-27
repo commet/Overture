@@ -190,7 +190,7 @@ describe('Concertmaster Simulation', () => {
       const coaching = getStepCoaching('reframe', profile);
       expect(coaching.length).toBe(1);
       expect(coaching[0].tone).toBe('counterfactual');
-      expect(coaching[0].message).toContain('첫 분석');
+      expect(coaching[0].message).toContain('coaching.reframe.firstUse');
     });
 
     it('recast: counterfactual 코칭', () => {
@@ -239,7 +239,7 @@ describe('Concertmaster Simulation', () => {
 
       const coaching = getStepCoaching('reframe', profile);
       expect(coaching[0].tone).toBe('challenge');
-      expect(coaching[0].message).toContain('모두 수락');
+      expect(coaching[0].message).toContain('coaching.reframe.demoAllAccepted');
     });
   });
 
@@ -258,7 +258,7 @@ describe('Concertmaster Simulation', () => {
       const profile = buildConcertmasterProfile();
       const coaching = getStepCoaching('reframe', profile);
       expect(coaching[0].tone).toBe('positive');
-      expect(coaching[0].message).toContain('모두 의심');
+      expect(coaching[0].message).toContain('coaching.reframe.demoAllDoubted');
     });
 
     it('recast: positive 코칭 — "직접 실행 선호"', () => {
@@ -270,7 +270,7 @@ describe('Concertmaster Simulation', () => {
       const profile = buildConcertmasterProfile();
       const coaching = getStepCoaching('recast', profile);
       expect(coaching[0].tone).toBe('positive');
-      expect(coaching[0].message).toContain('사람이 직접');
+      expect(coaching[0].message).toContain('coaching.recast.demoHumanHeavy');
     });
   });
 
@@ -481,7 +481,7 @@ describe('Concertmaster Simulation', () => {
       expect(profile.overrideRate).toBe(0.6);
 
       const coaching = getStepCoaching('recast', profile);
-      const overrideMsg = coaching.find(c => c.message.includes('수정'));
+      const overrideMsg = coaching.find(c => c.message.includes('coaching.recast.overrideHigh'));
       expect(overrideMsg).toBeDefined();
       expect(overrideMsg!.tone).toBe('positive');
     });
@@ -544,7 +544,7 @@ describe('Concertmaster Simulation', () => {
     it('refine: DQ 상승 코칭이 나와야 한다', () => {
       const profile = buildConcertmasterProfile();
       const coaching = getStepCoaching('refine', profile);
-      const dqMsg = coaching.find(c => c.message.includes('개선'));
+      const dqMsg = coaching.find(c => c.message.includes('coaching.refine.dqImproving'));
       expect(dqMsg).toBeDefined();
       expect(dqMsg!.tone).toBe('positive');
     });
@@ -552,7 +552,8 @@ describe('Concertmaster Simulation', () => {
     it('refine: 가장 큰 개선 요소가 detail에 있어야 한다', () => {
       const profile = buildConcertmasterProfile();
       const coaching = getStepCoaching('refine', profile);
-      const dqMsg = coaching.find(c => c.message.includes('개선'));
+      const dqMsg = coaching.find(c => c.message.includes('coaching.refine.dqImproving'));
+      // detail is from t('coaching.refine.biggestGain', { element }) which contains the element param
       expect(dqMsg?.detail).toContain('프레이밍');
     });
   });
@@ -620,7 +621,7 @@ describe('Concertmaster Simulation', () => {
       // completed: false → demoSeedData exists but completed is false
       const coaching = getStepCoaching('reframe', profile);
       expect(coaching[0].tone).toBe('counterfactual');
-      expect(coaching[0].message).toContain('첫 분석');
+      expect(coaching[0].message).toContain('coaching.reframe.firstUse');
     });
 
     it('DQ 점수 1개만 있으면 sparkline 대신 단일 숫자', () => {

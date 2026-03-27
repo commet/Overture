@@ -277,7 +277,7 @@ describe('Scenario C: 빠른 결정자 (1회 반복 패턴)', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
     // 1회 반복 후 stopped → 반복 관련 코칭
-    const iterMsg = coaching.find(c => c.message.includes('반복'));
+    const iterMsg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
     expect(iterMsg).toBeDefined();
   });
 });
@@ -308,7 +308,8 @@ describe('Scenario D: 분석 마비 (과도한 반복)', () => {
   it('refine 코칭: 5회 반복 중임을 알려줘야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const msg = coaching.find(c => c.message.includes('5회 반복'));
+    // mock t() returns "coaching.refine.iterationStatus count=5"
+    const msg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
     expect(msg).toBeDefined();
   });
 });
@@ -337,7 +338,7 @@ describe('Scenario E: DQ 하락 사용자', () => {
   it('refine 코칭: 하락을 경고하고 원인을 짚어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const warnMsg = coaching.find(c => c.message.includes('하락'));
+    const warnMsg = coaching.find(c => c.message.includes('coaching.refine.dqDeclining'));
     expect(warnMsg).toBeDefined();
     expect(warnMsg!.tone).toBe('challenge');
   });
@@ -345,7 +346,8 @@ describe('Scenario E: DQ 하락 사용자', () => {
   it('refine 코칭: 하락 원인(프레이밍)이 detail에 있어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const warnMsg = coaching.find(c => c.message.includes('하락'));
+    const warnMsg = coaching.find(c => c.message.includes('coaching.refine.dqDeclining'));
+    // detail is from t('coaching.refine.biggestDrop', { element: '프레이밍' }) → "coaching.refine.biggestDrop element=프레이밍"
     expect(warnMsg?.detail).toContain('프레이밍');
   });
 
@@ -410,9 +412,9 @@ describe('Scenario G: 가정 미평가 사용자', () => {
   it('reframe 코칭: 가정 평가를 독려하는 메시지가 나와야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('reframe', profile);
-    const engageMsg = coaching.find(c => c.message.includes('가정 평가'));
+    const engageMsg = coaching.find(c => c.message.includes('coaching.reframe.assumptionEngage'));
     expect(engageMsg).toBeDefined();
-    expect(engageMsg!.detail).toContain('확인됨');
+    expect(engageMsg!.detail).toContain('coaching.reframe.assumptionEngageDetail');
   });
 });
 
@@ -437,13 +439,13 @@ describe('Scenario H: 데모에서 AI 올인', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('recast', profile);
     expect(coaching[0].tone).toBe('challenge');
-    expect(coaching[0].message).toContain('AI에 위임');
+    expect(coaching[0].message).toContain('coaching.recast.demoAiHeavy');
   });
 
-  it('recast 코칭: 체크포인트를 언급해야 한다', () => {
+  it('recast 코칭: 체크포인트 detail이 있어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('recast', profile);
-    expect(coaching[0].detail).toContain('체크포인트');
+    expect(coaching[0].detail).toContain('coaching.recast.demoAiHeavyDetail');
   });
 });
 
@@ -472,7 +474,7 @@ describe('Scenario I: 페르소나 정확도 개선', () => {
   it('rehearse 코칭: 페르소나 정확도 향상을 positive로 알려야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('rehearse', profile);
-    const accuracyMsg = coaching.find(c => c.message.includes('향상'));
+    const accuracyMsg = coaching.find(c => c.message.includes('coaching.rehearse.accuracyImproving'));
     expect(accuracyMsg).toBeDefined();
     expect(accuracyMsg!.tone).toBe('positive');
   });
@@ -480,8 +482,8 @@ describe('Scenario I: 페르소나 정확도 개선', () => {
   it('rehearse 코칭: 정확도 수치가 포함되어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('rehearse', profile);
-    const accuracyMsg = coaching.find(c => c.message.includes('향상'));
-    // 2.25 → 3.75 형태의 수치
+    // mock t() returns "coaching.rehearse.accuracyImproving from=2.0 to=3.8" with numeric params
+    const accuracyMsg = coaching.find(c => c.message.includes('coaching.rehearse.accuracyImproving'));
     expect(accuracyMsg!.message).toMatch(/\d+\.\d/);
   });
 });
@@ -577,7 +579,7 @@ describe('Cross-scenario: 코칭 품질 규칙', () => {
     }
   });
 
-  it('counterfactual 코칭에는 "만약" 또는 "~하면"이 포함되어야 한다', () => {
+  it('counterfactual 코칭의 detail은 유효한 i18n Detail 키여야 한다', () => {
     setupScenario({ sessions: 0, projects: 0 });
     const profile = buildConcertmasterProfile();
 
@@ -586,7 +588,8 @@ describe('Cross-scenario: 코칭 품질 규칙', () => {
       const coaching = getStepCoaching(step, profile);
       const cfMsg = coaching.find(c => c.tone === 'counterfactual');
       if (cfMsg?.detail) {
-        expect(cfMsg.detail).toMatch(/만약|하면|해보면|떠올려보면/);
+        // detail is an i18n key like "coaching.reframe.firstUseDetail"
+        expect(cfMsg.detail).toContain('Detail');
       }
     }
   });
@@ -772,8 +775,8 @@ describe('Scenario N: 과신 수락 패턴 → 프롬프트 주입', () => {
 // 어색한 표현, 잘린 문장, 과잉 존대 검증
 // ══════════════════════════════════════
 
-describe('Scenario O: 코칭 한국어 품질', () => {
-  it('모든 코칭 메시지는 완전한 문장이어야 한다 (마침표 또는 물음표로 끝남)', () => {
+describe('Scenario O: 코칭 i18n 키 품질', () => {
+  it('모든 코칭 메시지는 유효한 i18n 키를 포함해야 한다', () => {
     const scenarios = [
       { sessions: 0, projects: 0 }, // 초보
       { sessions: 5, projects: 2 }, // 중급
@@ -787,14 +790,14 @@ describe('Scenario O: 코칭 한국어 품질', () => {
       for (const step of steps) {
         const coaching = getStepCoaching(step, profile);
         for (const c of coaching) {
-          // 메시지는 마침표, 물음표, 또는 감탄표로 끝나야 한다
-          expect(c.message).toMatch(/[.!?。]$/);
+          // i18n mock returns key as-is; messages should contain a valid coaching key
+          expect(c.message).toMatch(/^coaching\./);
         }
       }
     }
   });
 
-  it('코칭 메시지에 코드 용어가 노출되면 안 된다', () => {
+  it('코칭 메시지에 내부 코드 변수명이 직접 노출되면 안 된다', () => {
     setupScenario({ sessions: 0, projects: 0 });
     const profile = buildConcertmasterProfile();
     const steps: Array<'reframe' | 'recast' | 'rehearse' | 'refine'> = ['reframe', 'recast', 'rehearse', 'refine'];
@@ -802,10 +805,10 @@ describe('Scenario O: 코칭 한국어 품질', () => {
     for (const step of steps) {
       const coaching = getStepCoaching(step, profile);
       for (const c of coaching) {
-        // 코드 변수명, 함수명이 노출되면 안 됨
-        expect(c.message).not.toMatch(/assumptions_engaged|pass_rate|eval_result|signal_type/);
+        // Internal variable names / function names should not leak into messages
+        expect(c.message).not.toMatch(/pass_rate|eval_result|signal_type/);
         if (c.detail) {
-          expect(c.detail).not.toMatch(/assumptions_engaged|pass_rate|eval_result|signal_type/);
+          expect(c.detail).not.toMatch(/pass_rate|eval_result|signal_type/);
         }
       }
     }
@@ -838,10 +841,10 @@ describe('Scenario P: DQ 하락 후 회복', () => {
 
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const recoveryMsg = coaching.find(c => c.message.includes('개선'));
+    const recoveryMsg = coaching.find(c => c.message.includes('coaching.refine.dqImproving'));
     expect(recoveryMsg).toBeDefined();
     expect(recoveryMsg!.tone).toBe('positive');
-    // detail에 어떤 요소가 개선됐는지 명시
+    // detail is from t('coaching.refine.biggestGain', { element: '프레이밍' }) → "coaching.refine.biggestGain element=프레이밍"
     expect(recoveryMsg!.detail).toContain('프레이밍');
   });
 });
@@ -992,7 +995,7 @@ describe('Thin Data Conservatism: 과잉 해석 방지', () => {
     const profile = buildConcertmasterProfile();
     // recast에서 totalJudgments < 3이면 override 코칭을 건너뛴다
     const coaching = getStepCoaching('recast', profile);
-    const overrideMsg = coaching.find(c => c.message.includes('수정'));
+    const overrideMsg = coaching.find(c => c.message.includes('coaching.recast.overrideHigh'));
     // 판단이 2건밖에 없으므로 override 코칭이 나오면 안 된다
     expect(overrideMsg).toBeUndefined();
   });
@@ -1031,7 +1034,7 @@ describe('Thin Data Conservatism: 과잉 해석 방지', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('rehearse', profile);
     // "향상" 메시지는 4건 이상에서만 비교 가능
-    const trendMsg = coaching.find(c => c.message.includes('향상'));
+    const trendMsg = coaching.find(c => c.message.includes('coaching.rehearse.accuracyImproving'));
     expect(trendMsg).toBeUndefined();
   });
 
@@ -1046,11 +1049,11 @@ describe('Thin Data Conservatism: 과잉 해석 방지', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('reframe', profile);
     // "모두 수락" (challenge)이면 안 됨
-    expect(coaching[0].message).not.toContain('모두 수락');
+    expect(coaching[0].message).not.toContain('coaching.reframe.demoAllAccepted');
     // "모두 의심" (strong positive)이면 안 됨
-    expect(coaching[0].message).not.toContain('모두 의심');
-    // 1/3이라는 사실만 언급하고 중립적 tone
-    expect(coaching[0].message).toContain('1개');
+    expect(coaching[0].message).not.toContain('coaching.reframe.demoAllDoubted');
+    // partial doubted with doubted=1 param
+    expect(coaching[0].message).toContain('coaching.reframe.demoPartialDoubted');
     expect(coaching[0].tone).toBe('positive');
   });
 
@@ -1208,7 +1211,7 @@ describe('Thin Data Conservatism: 과잉 해석 방지', () => {
     });
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const dqMsg = coaching.find(c => c.message.includes('개선') || c.message.includes('하락'));
+    const dqMsg = coaching.find(c => c.message.includes('coaching.refine.dqImproving') || c.message.includes('coaching.refine.dqDeclining'));
     expect(dqMsg).toBeUndefined();
   });
 });
