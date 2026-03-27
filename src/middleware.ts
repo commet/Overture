@@ -10,7 +10,10 @@ import type { NextRequest } from 'next/server';
  * - Auth is handled client-side (Supabase + AuthGuard + RLS)
  */
 export function middleware(req: NextRequest) {
-  const nonce = btoa(crypto.randomUUID());
+  // Use getRandomValues (guaranteed in Edge Runtime) instead of randomUUID
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = btoa(String.fromCharCode(...nonceBytes));
 
   const csp = [
     "default-src 'self'",

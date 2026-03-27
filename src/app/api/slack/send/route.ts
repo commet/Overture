@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { channelId, title, content } = body;
 
-  if (!channelId || typeof channelId !== 'string') {
+  if (!channelId || typeof channelId !== 'string' || !/^[CDGU][A-Z0-9]{5,}$/i.test(channelId)) {
     return NextResponse.json({ error: 'channelId is required' }, { status: 400 });
   }
   if (!title || typeof title !== 'string') {
