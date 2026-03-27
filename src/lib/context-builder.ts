@@ -302,7 +302,7 @@ function buildAdaptiveContext(): string | null {
       }
     }
 
-    if (total > 0) {
+    if (total >= 8) { // 최소 8개 가정이 있어야 축 분포를 신뢰 (과잉 해석 방지)
       const axisLabels: Record<string, string> = {
         customer_value: '고객 가치', feasibility: '실현 가능성',
         business: '비즈니스', org_capacity: '조직 역량',
@@ -313,7 +313,7 @@ function buildAdaptiveContext(): string | null {
         .map(([axis]) => axisLabels[axis] || axis);
 
       if (gaps.length > 0) {
-        lines.push(`- 참고: 최근 ${recentItems.length}건 분석에서 ${gaps.join(', ')} 관점의 가정이 부족합니다. 이 축에서도 가정을 탐색해주세요.`);
+        lines.push(`- 참고: 최근 ${recentItems.length}건 분석에서 ${gaps.join(', ')} 관점의 가정이 탐색되지 않았습니다. 이 축에서도 가정을 생성해주세요.`);
       }
     }
   }
@@ -354,7 +354,7 @@ function buildAdaptiveContext(): string | null {
  */
 export function buildConvergencePatterns(): string | null {
   const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
-  const completed = loops.filter(l => l.status === 'converged' || l.status === 'stopped_by_user');
+  const completed = loops.filter(l => l.status === 'converged');
   if (completed.length < 2) return null;
 
   const avgIterations = completed.reduce((s, l) => s + l.iterations.length, 0) / completed.length;

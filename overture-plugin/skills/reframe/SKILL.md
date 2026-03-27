@@ -34,17 +34,13 @@ Check if `.overture/journal.md` exists in the project root.
 - **Personal decisions** (e.g., "should I go to grad school"): Adapt interview options and assumption dimensions to personal context (see Step 1 notes).
 - **Trivial decisions**: Mention it's a quick call, offer to proceed anyway or skip.
 
-## Rendering rules — hybrid approach
+## Rendering rules
 
-Use **hybrid rendering** to create visual rhythm: structure/data in code blocks, insights/commentary in markdown.
+**Interview phase (Phase 1-2):** Each question/assumption in its own code block — interactive, one at a time. Confirmations (`✓ 분석 필요`) outside code blocks as plain text.
 
-- **Code blocks**: box headers, progress indicators, option lists, data tables (Hidden Assumptions, Questions)
-- **Markdown** (outside code blocks): analysis text, "Why this is sharper", short insights — keep to 1-2 sentences max
-- **`diff` blocks**: original vs reframed comparison (`-` red = old thinking, `+` green = new thinking)
-- **Blockquotes** (`>`): "What you didn't see", Sharpened Prompt — creates breathing room
-- **Bold/italic**: key phrases in markdown sections
+**Final output (Phase 3):** ONE code block (the "card"). Internal hierarchy through spacing, `─` separators, symbols, and emojis. No multiple blocks, no markdown between sections.
 
-This creates rhythm: dense data → breathing room → dense data → insight. Never put everything in one giant code block.
+**Critical:** ALL designed output MUST be inside fenced code blocks so Claude Code preserves monospace formatting.
 
 ## The flow
 
@@ -230,122 +226,109 @@ See `references/reframing-strategies.md` for strategy details and examples.
 
 The **hidden questions** CAN point to focused experiments or first steps.
 
-**Output — hybrid rendering with `---` act separators. Translate ALL section labels and content to user's language. UI chrome stays the same.**
+**Output — single card. Everything the user sees in ONE code block.**
 
-The output has 4 acts separated by `---`: Answer → Shift → Evidence → Punch.
-
-**Act 1: The Answer**
+**Card template:**
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ● Assumptions  ● Reframe   │
+  │  🎯 Overture · Reframe                   │
   ╰──────────────────────────────────────────╯
+
+  ┌──────────────────────────────────────┐
+  │  [original problem]                  │
+  └──────────────────┬───────────────────┘
+                     ↓
+  ╔══════════════════════════════════════╗
+  ║  [reframed question]                ║
+  ╚══════════════════════════════════════╝
+
+  ─────────────────────────────────────────
+
+  [Assumption label]                   [Eval]
+  ─────────────────────────────────────────
+  [assumption full text]                 ✓
+  [assumption full text]                 ?
+  [assumption full text]                 ?
+  [assumption full text]                 ✗
+
+  [Check First label]
+  · [question — concrete, one line]
+  · [question — bake AI limitation naturally]
+
+  ─────────────────────────────────────────
+
+  💡 [blind spot — 1-2 lines max]
+
+  /recast · /rehearse                📄 saved
 ```
 
-> **✦ Sharpened Prompt**
->
-> *"[reframed question with constraints and context baked in]"*
+**Visual shift boxes:** Original question in thin box (`┌┐`), reframed in bold box (`╔═╗`). The visual weight difference immediately shows the upgrade. `↓` arrow connects them.
+
+**Assumption table:** Each assumption gets its own row with evaluation symbol (`✓ ? ✗`) right-aligned. Full text, not abbreviated — the table format makes it readable without compression.
+
+**`[Check First]` absorbs AI limitations** — phrase questions to naturally show what needs human investigation (e.g., "직원 AI 수준 — 직접 파악" instead of separate section).
+
+**`💡`** = the uncomfortable blind spot. **`📄 saved`** = saved to `.overture/reframe.md`.
+
+**Translate to user's language:** [Assumption label], [Check First label], all content. Keep in English: `Overture · Reframe`, emojis, symbols.
+
+## Auto-save
+
+After outputting the card, save to `.overture/reframe.md` (create `.overture/` dir if needed):
+
+```markdown
+# 🎯 Reframe
+
+**[Original]:** [original question]
+**[Real question]:** [reframed question]
+
+## [Assumptions]
+- [symbol] [full assumption text] — [reason if user gave one]
+
+## [Check First]
+- [question]
+
+> 💡 [blind spot]
 
 ---
 
-**Act 2: The Shift**
-
-```diff
-- [You asked:] "[original problem]"
-+ [The real question:] "[reframed question]"
+## Context Contract
+reframed_question: [question]
+assumption_pattern: [confirmed|mixed|mostly_doubtful]
+strategy: [strategy name]
+interview_signals: nature=[X] goal=[X] stakes=[X]
+assumptions_doubtful:
+  - [assumption] | reason: [reason]
+assumptions_uncertain:
+  - [assumption] | reason: [reason]
+assumptions_confirmed:
+  - [assumption]
+ai_limitations:
+  - [limitation]
 ```
 
-**[Why this is sharper:]** [1-2 sentences explaining the shift. What changes in how you'd approach this.]
+Top section (above `---`) = shareable (Slack, email, Notion). Bottom section = pipeline data for next skill. `[brackets]` = translate to user's language.
 
----
+### 💡 Blind spot rules
 
-**Act 3: The Evidence** (grouped in one code block — reference material, lower visual weight)
+The `💡` line in the card is Overture's signature — the uncomfortable truth.
 
-```
-  ■ [Hidden Assumptions]
+- Specific to THIS problem, not generic
+- Uncomfortable — if the user nods "yeah I knew that," you failed
+- Captures the DELTA: "You were thinking about X, but the real issue is Y"
+- Like a smart mentor after listening carefully
 
-    1  ✓  [assumption]
-    2  ✗  [assumption]
-    3  ?  [assumption]
-    4  ✗  [assumption]
-
-  ──────────────────────────────────────────
-
-  ■ [Hidden Questions]
-
-    1 · [question] — [why this matters for execution]
-    2 · [question] — [why]
-
-  ──────────────────────────────────────────
-
-  ■ [AI Limitations]
-
-    · [specific limitation]
-    · [specific limitation]
-```
-
----
-
-**Act 4: The Punch**
-
-> **What you didn't see**
-> *[One sentence: the core blind spot. What the user was optimizing for vs what actually matters.]*
-
-```
-  ■ Context Contract — /reframe
-
-    reframed_question: [the reframed question]
-    assumption_pattern: [confirmed | mixed | mostly_doubtful]
-    strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle]
-    interview_signals: nature=[X] goal=[X] stakes=[X]
-
-    assumptions_doubtful:
-      - [assumption] | reason: [user's reason if given]
-    assumptions_uncertain:
-      - [assumption] | reason: [user's reason if given]
-    assumptions_confirmed:
-      - [assumption]
-
-    ai_limitations:
-      - [specific limitation]
-
-    hidden_questions:
-      - [question]
-
-  Next: /recast to design an execution plan
-        /rehearse to stress-test with stakeholders
-```
-
-**Keep these in English always:** `Overture · Reframe`, `Sharpened Prompt`, `Context Contract`, progress dots (● ○), all symbols (■ ▸ ✓ ✗ ? ·), all field names in the contract.
-**Translate to user's language:** section labels (Hidden Assumptions, etc.), all content, option text. Contract field VALUES are in user's language.
-
-### "What you didn't see" — Overture's signature
-
-**Rules for this line:**
-- It must be specific to THIS problem, not generic
-- It must be uncomfortable — if the user nods and says "yeah I knew that," you failed
-- It captures the DELTA: "You were thinking about X, but the real issue is Y"
-- It should be the kind of thing a smart mentor would say after listening carefully
-
-**Good examples:**
-- "You were solving a technology problem, but this is a people problem."
-- "You're optimizing for the stakeholder who'll say yes, not the one who'll block you."
-- "The question isn't whether to do this — it's whether now is the right time."
-
-**Bad examples:**
-- "There are risks to consider." (too vague)
-- "This is a complex problem." (says nothing)
-- "You should think more carefully." (patronizing)
+**Good:** "기술 프로젝트가 아니라 조직 변화 프로젝트다." / "승인해줄 사람이 아니라 막을 사람을 보고 있다."
+**Bad:** "리스크가 있다." (vague) / "복잡한 문제다." (nothing) / "더 신중해야 한다." (patronizing)
 
 ## Rules
 
 - Never start with "Great question!" or any form of flattery. Go straight to the overview, then the first interview question.
 - The reframed question MUST be meaningfully different from the original. If you can't find a sharper angle, you haven't looked hard enough.
 - Uncomfortable assumptions are the most important ones. Find what the user doesn't want to hear.
-- The Sharpened Prompt must be immediately usable — copy, paste, get a better answer.
-- For AI limitations: be specific. Not "AI can't predict the future" but "AI has no access to your internal team dynamics or adoption history."
-- **Keep the visual formatting consistent.** Always use the box header with progress dots, section headers with ■, options with `number · text`, and ▸ for key highlights.
+- For AI limitations: absorb into "Check First" questions naturally. Be specific — not "AI can't predict" but "내부 팀 역학은 직접 파악 필요."
+- **Keep the card formatting consistent.** Box header with 🎯, `─` separators between sections, symbols (`✓ ? ✗`) for assumptions, `💡` for blind spot.
 
 **Self-check before outputting:** Did the reframed question actually challenge the user's thinking, or did it just polish their original question? If you removed the labels and showed someone both questions, would they immediately see the difference?
 

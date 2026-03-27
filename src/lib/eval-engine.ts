@@ -401,7 +401,7 @@ export function getSessionInsights(): SessionInsight[] {
     if (dominant && dominant[1] >= 2) {
       insights.push({
         type: 'pattern',
-        message: `최근 "${STRATEGY_DISPLAY[dominant[0] as ReframingStrategy]}" 접근을 자주 사용하고 계십니다.`,
+        message: `최근 "${STRATEGY_DISPLAY[dominant[0] as ReframingStrategy]}" 접근을 자주 사용하고 있습니다.`,
       });
     }
 

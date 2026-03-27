@@ -35,6 +35,19 @@ vi.mock('@/lib/signal-recorder', () => ({
   getSignals: vi.fn(() => []),
 }));
 
+// i18n: passthrough — return key with params interpolated
+vi.mock('@/lib/i18n', () => ({
+  t: vi.fn((key: string, params?: Record<string, unknown>) => {
+    let text = key;
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        text += ` ${k}=${v}`;
+      }
+    }
+    return text;
+  }),
+}));
+
 vi.mock('@/lib/storage', () => ({
   getStorage: vi.fn(() => []),
   STORAGE_KEYS: {
@@ -224,7 +237,7 @@ describe('concertmaster', () => {
       const coaching = getStepCoaching('reframe', profile);
       expect(Array.isArray(coaching)).toBe(true);
       expect(coaching.length).toBeGreaterThan(0);
-      expect(coaching[0].message).toContain('첫 분석');
+      expect(coaching[0].message).toContain('coaching.reframe.firstUse');
       expect(coaching[0].tone).toBe('counterfactual');
     });
 
@@ -236,7 +249,7 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('reframe', profile);
-      expect(coaching[0].message).toContain('모두 의심');
+      expect(coaching[0].message).toContain('coaching.reframe.demoAllDoubted');
       expect(coaching[0].tone).toBe('positive');
     });
 
@@ -248,7 +261,7 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('reframe', profile);
-      expect(coaching[0].message).toContain('모두 수락');
+      expect(coaching[0].message).toContain('coaching.reframe.demoAllAccepted');
       expect(coaching[0].tone).toBe('challenge');
     });
 
@@ -261,7 +274,7 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('recast', profile);
-      expect(coaching[0].message).toContain('AI에 위임');
+      expect(coaching[0].message).toContain('coaching.recast.demoAiHeavy');
       expect(coaching[0].tone).toBe('challenge');
     });
 
@@ -279,7 +292,7 @@ describe('concertmaster', () => {
 
       const coaching = getStepCoaching('recast', profile);
       expect(coaching.length).toBeGreaterThan(0);
-      expect(coaching[0].message).toContain('수정');
+      expect(coaching[0].message).toContain('coaching.recast.overrideHigh');
     });
 
     it('returns empty array for recast with few judgments and no cross-stage data', () => {
@@ -320,7 +333,7 @@ describe('concertmaster', () => {
 
       const coaching = getStepCoaching('rehearse', profile);
       expect(coaching.length).toBeGreaterThan(0);
-      const accuracyMsg = coaching.find(c => c.message.includes('정확도'));
+      const accuracyMsg = coaching.find(c => c.message.includes('coaching.rehearse.personaAccuracy'));
       expect(accuracyMsg).toBeDefined();
     });
 
@@ -339,7 +352,7 @@ describe('concertmaster', () => {
 
       const coaching = getStepCoaching('refine', profile);
       expect(coaching.length).toBeGreaterThan(0);
-      const convergenceMsg = coaching.find(c => c.message.includes('3회 반복'));
+      const convergenceMsg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
       expect(convergenceMsg).toBeDefined();
     });
 
@@ -428,9 +441,13 @@ describe('concertmaster', () => {
               hidden_assumptions: [
                 { assumption: 'a', axis: 'customer_value', risk_if_false: 'r' },
                 { assumption: 'b', axis: 'customer_value', risk_if_false: 'r' },
-                { assumption: 'c', axis: 'business', risk_if_false: 'r' },
-                { assumption: 'd', axis: 'feasibility', risk_if_false: 'r' },
-                // No org_capacity → should be the gap
+                { assumption: 'c', axis: 'customer_value', risk_if_false: 'r' },
+                { assumption: 'd', axis: 'business', risk_if_false: 'r' },
+                { assumption: 'e', axis: 'business', risk_if_false: 'r' },
+                { assumption: 'f', axis: 'business', risk_if_false: 'r' },
+                { assumption: 'g', axis: 'feasibility', risk_if_false: 'r' },
+                { assumption: 'h', axis: 'feasibility', risk_if_false: 'r' },
+                // 8 assumptions, No org_capacity → should be the gap
               ],
             },
           },
@@ -445,7 +462,7 @@ describe('concertmaster', () => {
       const curve = buildLearningCurve();
       expect(curve.axis_gap).toBe('조직 역량');
       expect(curve.axis_coverage['조직 역량']).toBe(0);
-      expect(curve.axis_coverage['고객 가치']).toBe(50);
+      expect(curve.axis_coverage['고객 가치']).toBe(38); // 3/8 = 37.5 → 38
     });
 
     it('computes tier progress correctly', () => {

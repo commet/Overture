@@ -10,7 +10,7 @@ Rehearsal creates simulated stakeholders who react to your plan the way real peo
 
 **Always respond in the same language the user uses.**
 
-Use **hybrid rendering** — structure/data in code blocks, insights in markdown. Use `diff` blocks for risk severity (red = critical/unspoken) and blockquotes for Devil's Advocate's sharpest insights. This creates visual rhythm and uses color functionally, not decoratively.
+**Rendering:** Final output in ONE code block (the "card"). Use risk symbols: `✗` critical, `?` manageable, `🔇` unspoken. Persona sections within the card separated by blank lines. Devil's Advocate gets `⚡` marker.
 
 ## If no argument is provided
 
@@ -26,14 +26,13 @@ Show the header:
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Rehearse                     │
-  │  Stakeholder stress-test                 │
+  │  👥 Overture · Rehearse                  │
   ╰──────────────────────────────────────────╯
 ```
 
 ## Context extraction from /recast and /reframe
 
-Locate the `■ Context Contract` blocks from previous steps if they exist.
+Read `.overture/recast.md` and `.overture/reframe.md` for contract data. If files don't exist, scan the conversation for contract blocks.
 
 ### From /recast Contract (primary — the plan being stress-tested):
 - `governing_idea` → the core thesis each persona evaluates
@@ -110,111 +109,55 @@ If no → the rehearsal was too soft. Make at least one persona harsher.
 
 ## Output
 
-```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Rehearse                     │
-  │  Stakeholder stress-test                 │
-  ╰──────────────────────────────────────────╯
-```
-
-**Bottom Line** — do this before executing:
-1. **[action]**
-2. **[action]**
-3. **[action]**
-
-**Key tension:** [where personas disagree]
-
----
-
-```
-  ■ [Persona 1 Name] — [Title]
-
-    First reaction:
-    ▸ "[their words, their style]"
-
-    Most likely failure:
-      "[specific scenario]"
-```
-
-Risks — use diff blocks for critical and unspoken (renders red), plain code block for manageable:
-
-```diff
-- [critical]  [risk description]
-```
-```
-  [manageable] [risk description]
-```
-```diff
-- [unspoken]  [risk description]
-```
-
-```
-    Will approve if:
-      [specific conditions]
-```
-
-```
-  ■ [Persona 2 Name] — [Title]
-    ...
-```
-
-Devil's Advocate — the **strongest visual treatment** in the entire output:
+**Single card** — one code block. Auto-save to `.overture/rehearse.md`.
 
 ```
   ╭──────────────────────────────────────────╮
-  │  ⚡ Devil's Advocate                      │
+  │  👥 Overture · Rehearse                  │
   ╰──────────────────────────────────────────╯
+
+  [Bottom line label]:
+  1. [action]
+  2. [action]
+  3. [action]
+
+  ─────────────────────────────────────────
+
+  [Name]       [Risk]        [Unspoken]      [Approve if]
+  ──────────────────────────────────────────────────────
+  [name]       ✗ [risk]      🔇 [risk]       [condition]
+  [name]       ✗ [risk]      🔇 [risk]       [condition]
+  [name]       ? [risk]                       [condition]
+
+  ▸ [name]: "[sharpest quote — their voice]"
+  ▸ [name]: "[sharpest quote]"
+  ▸ [name]: "[sharpest quote]"
+
+  ─────────────────────────────────────────
+
+  ⚡ Devil's Advocate
+  ✗ [realistic failure]
+  🔇 [silent problem]
+  ⏳ [regret in 1 year]
+
+  ─────────────────────────────────────────
+
+  💡 [key tension or insight]
+
+  /refine                          📄 saved
 ```
 
-```diff
-- Most realistic failure:
-- [scenario — specific, concrete, likely]
-```
+**Persona comparison table:** Header row + `─` separator. Each persona is ONE row: name, critical risk, unspoken risk, approval condition. Instant cross-comparison.
 
-> **The silent problem:**
-> *[what nobody will say out loud]*
+**Sharpest quotes:** After the table, each persona's most distinctive reaction in one `▸` line. Gives VOICE without the full vertical review sections.
 
-```diff
-- Regret test (1 year from now):
-- [what you'll wish you'd considered]
-```
+**Risk symbols:** `✗` critical, `?` manageable, `🔇` unspoken.
 
----
+Detailed persona reviews (full reactions, failure scenarios, all risks) go into the saved `.overture/rehearse.md` file — the card is the summary, the file has the full analysis.
 
-**Act 4: Contract**
-
-```
-  ■ Context Contract — /rehearse
-
-    risks_critical:
-      - [risk] | source: [persona name]
-    risks_manageable:
-      - [risk] | source: [persona name]
-    risks_unspoken:
-      - [risk] | source: [persona name]
-
-    untested_assumptions:
-      - [assumption no persona could confirm]
-
-    approval_conditions:
-      [persona 1 name]: [what they need to say yes]
-      [persona 2 name]: [what they need to say yes]
-      [persona 3 name]: [what they need to say yes]
-
-    persona_profiles:
-      1. [name] | [role] | style: [X] | risk: [X] | concern: [X]
-      2. [name] | [role] | style: [X] | risk: [X] | concern: [X]
-      3. [name] | [role] | style: [X] | risk: [X] | concern: [X]
-
-    devils_advocate:
-      realistic_failure: [one-line summary]
-      silent_problem: [one-line summary]
-      regret_test: [one-line summary]
-
-  Next: /refine to address these issues
-```
-
-After the output, suggest: *"Issues found? /refine to address them."*
+**After the card**, save to `.overture/rehearse.md`:
+- Top: bottom-line actions, persona summaries, devil's advocate (clean markdown)
+- Bottom after `---`: full Context Contract with all fields (risks by category with source, untested_assumptions, approval_conditions per persona, persona_profiles with ALL fields for /refine reuse, devils_advocate summary)
 
 ## Learning journal
 

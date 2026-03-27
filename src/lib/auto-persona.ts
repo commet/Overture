@@ -109,19 +109,19 @@ import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 /** Persona archetypes mapped to assumption axes they naturally cover */
 const AXIS_PERSONA_MAP: Record<string, { name: string; role: string; why: string }[]> = {
   customer_value: [
-    { name: '고객 경험 담당자', role: 'CX 팀장', why: '고객 관점의 가정이 부족합니다. 고객 가치 축을 검증할 수 있습니다.' },
+    { name: '고객 경험 담당자', role: 'CX 팀장', why: '고객 관점이 아직 충분히 탐색되지 않았습니다. 고객 가치 축을 검증할 수 있습니다.' },
     { name: '서비스 기획자', role: '프로덕트 매니저', why: '사용자 니즈를 대변하여 고객 가치 관점의 맹점을 보완합니다.' },
   ],
   feasibility: [
-    { name: '기술 리드', role: 'CTO / 개발팀장', why: '실현 가능성 관점의 가정이 부족합니다. 기술적 제약을 검증합니다.' },
+    { name: '기술 리드', role: 'CTO / 개발팀장', why: '실현 가능성 관점이 아직 충분히 탐색되지 않았습니다. 기술적 제약을 검증합니다.' },
     { name: '운영 담당자', role: 'COO / 운영팀장', why: '실행 가능성과 운영 복잡도를 현실적으로 평가합니다.' },
   ],
   business: [
-    { name: '사업 전략가', role: 'CSO / 전략기획', why: '비즈니스 모델 관점의 가정이 부족합니다. 수익성과 시장성을 검증합니다.' },
+    { name: '사업 전략가', role: 'CSO / 전략기획', why: '비즈니스 모델 관점이 아직 충분히 탐색되지 않았습니다. 수익성과 시장성을 검증합니다.' },
     { name: '재무 담당자', role: 'CFO / 재무팀장', why: '재무적 타당성과 투자 회수를 냉정하게 평가합니다.' },
   ],
   org_capacity: [
-    { name: '조직문화 담당자', role: 'CHRO / 인사팀장', why: '조직 역량 관점의 가정이 부족합니다. 인력과 문화적 준비도를 검증합니다.' },
+    { name: '조직문화 담당자', role: 'CHRO / 인사팀장', why: '조직 역량 관점이 아직 충분히 탐색되지 않았습니다. 인력과 문화적 준비도를 검증합니다.' },
     { name: '변화관리 전문가', role: '조직개발 매니저', why: '조직의 변화 수용력과 실행 역량을 현실적으로 평가합니다.' },
   ],
 };
@@ -163,7 +163,7 @@ export function recommendBlindSpotPersona(
     }
   }
 
-  if (total < 4) return null; // Not enough assumptions to determine pattern
+  if (total < 8) return null; // 최소 8개 가정이 있어야 축 분포를 신뢰 (과잉 해석 방지, buildLearningCurve와 통일)
 
   const axisLabels: Record<string, string> = {
     customer_value: '고객 가치', feasibility: '실현 가능성',

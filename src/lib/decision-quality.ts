@@ -399,3 +399,180 @@ export function correlateDQWithOutcomes(
     insight,
   };
 }
+
+/* ────────────────────────────────────
+   Confidence Calibration (Validation Chain ②)
+   사용자의 자기 평가 정확도를 측정한다.
+   ──────────────────────────────────── */
+
+import type { Project } from '@/stores/types';
+
+export interface CalibrationData {
+  data_points: Array<{ confidence: number; success: boolean; project_name: string }>;
+  overconfident: boolean;
+  underconfident: boolean;
+  well_calibrated: boolean;
+  calibration_gap: number; // avg confidence - actual success rate (positive = overconfident)
+  insight: string;
+}
+
+/**
+ * Analyze confidence calibration: user's predicted confidence vs actual outcomes.
+ * Requires projects with confidence_at_completion AND matching outcome records.
+ */
+export function analyzeConfidenceCalibration(
+  projects: Project[],
+  outcomes: OutcomeRecord[]
+): CalibrationData {
+  const points: CalibrationData['data_points'] = [];
+
+  for (const project of projects) {
+    if (!project.confidence_at_completion) continue;
+    const outcome = outcomes.find(o => o.project_id === project.id);
+    if (!outcome) continue;
+
+    points.push({
+      confidence: project.confidence_at_completion,
+      success: outcome.overall_success === 'exceeded' || outcome.overall_success === 'met',
+      project_name: project.name,
+    });
+  }
+
+  if (points.length < 3) {
+    return {
+      data_points: points,
+      overconfident: false,
+      underconfident: false,
+      well_calibrated: false,
+      calibration_gap: 0,
+      insight: points.length === 0
+        ? '완료 시 확신도를 기록하면 자기 평가의 정확도를 추적할 수 있습니다.'
+        : `${points.length}건의 데이터. 3건 이상이면 보정 분석이 가능합니다.`,
+    };
+  }
+
+  // Average confidence (1-5 → 0-100%)
+  const avgConfidence = points.reduce((s, p) => s + p.confidence, 0) / points.length;
+  const avgConfidencePct = (avgConfidence / 5) * 100;
+
+  // Actual success rate
+  const successRate = points.filter(p => p.success).length / points.length * 100;
+
+  const gap = avgConfidencePct - successRate;
+  const overconfident = gap > 15;
+  const underconfident = gap < -15;
+  const well_calibrated = Math.abs(gap) <= 15;
+
+  let insight: string;
+  if (overconfident) {
+    insight = `평균 확신도 ${Math.round(avgConfidencePct)}% vs 실제 성공률 ${Math.round(successRate)}% — 과신 경향이 있습니다. 리스크를 더 보수적으로 평가해보세요.`;
+  } else if (underconfident) {
+    insight = `평균 확신도 ${Math.round(avgConfidencePct)}% vs 실제 성공률 ${Math.round(successRate)}% — 실제보다 자신을 낮게 평가합니다. 확신을 가져도 좋습니다.`;
+  } else {
+    insight = `평균 확신도 ${Math.round(avgConfidencePct)}% vs 실제 성공률 ${Math.round(successRate)}% — 자기 평가가 정확합니다.`;
+  }
+
+  return {
+    data_points: points,
+    overconfident,
+    underconfident,
+    well_calibrated,
+    calibration_gap: Math.round(gap),
+    insight,
+  };
+}
+
+/* ────────────────────────────────────
+   Eval Criteria Validation (Validation Chain ④)
+   DQ 요소들이 실제로 결과를 예측하는지 메타 검증.
+   ──────────────────────────────────── */
+
+export interface EvalValidation {
+  /** DQ 요소 중 성공과 양의 상관을 보이는 것 */
+  predictive_elements: Array<{ element: string; correlation: number }>;
+  /** DQ 요소 중 상관이 없거나 음의 상관인 것 */
+  non_predictive_elements: Array<{ element: string; correlation: number }>;
+  /** 충분한 데이터가 있는지 */
+  significant: boolean;
+  insight: string;
+}
+
+/**
+ * Meta-validate: do our DQ scoring criteria actually predict outcomes?
+ * This is the system checking whether its own rubric works.
+ */
+export function validateEvalCriteria(
+  scores: DecisionQualityScore[],
+  outcomes: OutcomeRecord[]
+): EvalValidation {
+  const elementKeys = [
+    { key: 'appropriate_frame' as const, label: '프레이밍' },
+    { key: 'creative_alternatives' as const, label: '대안 탐색' },
+    { key: 'relevant_information' as const, label: '정보 수집' },
+    { key: 'clear_values' as const, label: '관점 다양성' },
+    { key: 'sound_reasoning' as const, label: '추론 품질' },
+    { key: 'commitment_to_action' as const, label: '실행 가능성' },
+  ];
+
+  // Match scores to outcomes
+  const pairs: Array<{ score: DecisionQualityScore; success: boolean }> = [];
+  for (const score of scores) {
+    const outcome = outcomes.find(o => o.project_id === score.project_id);
+    if (!outcome) continue;
+    pairs.push({
+      score,
+      success: outcome.overall_success === 'exceeded' || outcome.overall_success === 'met',
+    });
+  }
+
+  if (pairs.length < 5) {
+    return {
+      predictive_elements: [],
+      non_predictive_elements: [],
+      significant: false,
+      insight: `${pairs.length}건의 매칭 데이터. 5건 이상이면 DQ 기준의 예측력을 검증할 수 있습니다.`,
+    };
+  }
+
+  // For each DQ element, compute point-biserial-like correlation:
+  // avg element score for successful vs failed projects
+  const predictive: EvalValidation['predictive_elements'] = [];
+  const nonPredictive: EvalValidation['non_predictive_elements'] = [];
+
+  for (const { key, label } of elementKeys) {
+    const successPairs = pairs.filter(p => p.success);
+    const failPairs = pairs.filter(p => !p.success);
+
+    if (successPairs.length === 0 || failPairs.length === 0) continue;
+
+    const successAvg = successPairs.reduce((s, p) => s + p.score[key], 0) / successPairs.length;
+    const failAvg = failPairs.reduce((s, p) => s + p.score[key], 0) / failPairs.length;
+    const diff = successAvg - failAvg; // positive = higher score → more success
+
+    if (diff > 0.3) {
+      predictive.push({ element: label, correlation: Math.round(diff * 10) / 10 });
+    } else {
+      nonPredictive.push({ element: label, correlation: Math.round(diff * 10) / 10 });
+    }
+  }
+
+  predictive.sort((a, b) => b.correlation - a.correlation);
+
+  let insight: string;
+  if (predictive.length > 0) {
+    const topPredictors = predictive.slice(0, 2).map(p => p.element).join(', ');
+    insight = `${topPredictors}이(가) 실제 성공과 가장 높은 상관을 보입니다.`;
+    if (nonPredictive.length > 0) {
+      insight += ` ${nonPredictive[0].element}은 현재 예측력이 낮습니다.`;
+    }
+  } else {
+    insight = '현재 DQ 요소와 성과 간 명확한 패턴이 아직 없습니다. 더 많은 데이터가 필요합니다.';
+  }
+
+  return {
+    predictive_elements: predictive,
+    non_predictive_elements: nonPredictive,
+    significant: pairs.length >= 5 && (predictive.length > 0 || nonPredictive.length > 0),
+    insight,
+  };
+}

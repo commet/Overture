@@ -10,12 +10,12 @@
  * - 점진적 노출 — 세션 수에 따라 티어 상승
  */
 
-import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance, getAllStagesSummary } from '@/lib/eval-engine';
-import type { StrategyPerformance } from '@/lib/eval-engine';
+import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance } from '@/lib/eval-engine';
 import { getWorstPerformingEvals } from '@/lib/prompt-mutation';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getDQScores, analyzeDQTrend } from '@/lib/decision-quality';
 import { getSignals } from '@/lib/signal-recorder';
+import { t } from '@/lib/i18n';
 import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore, RefineLoop } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
@@ -212,7 +212,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_high',
           category: 'pattern',
-          message: `AI 제안 수정률 ${pct}% — 높은 자기 판단 성향`,
+          message: `AI 제안 수정률 ${pct}% — 자기 판단이 강한 패턴입니다.`,
           detail: '이 패턴이 향후 AI 제안에 반영됩니다.',
           tier: 2,
           priority: priority++,
@@ -221,7 +221,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_low',
           category: 'coaching',
-          message: `AI 제안을 거의 그대로 수용하고 계십니다 (수정률 ${pct}%)`,
+          message: `AI 제안을 거의 그대로 수용하고 있습니다 (수정률 ${pct}%).`,
           detail: 'AI 제안을 비판적으로 검토하면 더 나은 결과를 얻을 수 있습니다.',
           tier: 2,
           priority: priority++,
@@ -312,28 +312,28 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
       // Personalized coaching based on demo behavior
       if (seed.doubted_count === 0) {
         results.push({
-          message: '데모에서 전제를 모두 수락하셨습니다.',
-          detail: '이번에는 "정말 그런가?"라고 전제 하나를 의심해보세요. 전제를 의심하면 질문 자체가 달라집니다.',
+          message: t('coaching.reframe.demoAllAccepted'),
+          detail: t('coaching.reframe.demoAllAcceptedDetail'),
           tone: 'challenge',
         });
       } else if (seed.doubted_count >= seed.total_premises) {
         results.push({
-          message: `데모에서 전제 ${seed.total_premises}개를 모두 의심하셨습니다 — 비판적 관점이 강합니다.`,
-          detail: '이번에도 그 날카로움을 적용해보세요. 어떤 전제가 가장 위험한지 표시하면 실행 설계에 반영됩니다.',
+          message: t('coaching.reframe.demoAllDoubted', { total: seed.total_premises }),
+          detail: t('coaching.reframe.demoAllDoubtedDetail'),
           tone: 'positive',
         });
       } else {
         results.push({
-          message: `데모에서 전제 ${seed.total_premises}개 중 ${seed.doubted_count}개를 의심하셨습니다.`,
-          detail: '이번에도 같은 기준을 적용해보세요. 의심스러운 가정을 "의심됨"으로 마킹하면 이후 단계에서 검증됩니다.',
+          message: t('coaching.reframe.demoPartialDoubted', { total: seed.total_premises, doubted: seed.doubted_count }),
+          detail: t('coaching.reframe.demoPartialDoubtedDetail'),
           tone: 'positive',
         });
       }
     } else {
       // No demo seed — generic counterfactual
       results.push({
-        message: '첫 분석입니다. 과제를 입력하면 숨은 가정을 찾아드립니다.',
-        detail: '만약 문제를 입력하기 전에 "이 질문에서 내가 당연하게 여기는 것은 무엇인가?"를 먼저 떠올려보면, 더 날카로운 가정을 발견할 수 있습니다.',
+        message: t('coaching.reframe.firstUse'),
+        detail: t('coaching.reframe.firstUseDetail'),
         tone: 'counterfactual',
       });
     }
@@ -353,8 +353,8 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
         const recentAvg = recentAssumptions.reduce((a, b) => a + b, 0) / recentAssumptions.length;
         if (recentAvg > olderAvg * 1.3 && olderAvg > 0) {
           results.push({
-            message: `가정 발견 수가 증가하고 있습니다 (평균 ${Math.round(olderAvg)}건 → ${Math.round(recentAvg)}건).`,
-            detail: '문제를 더 깊이 파고드는 습관이 형성되고 있습니다.',
+            message: t('coaching.reframe.assumptionGrowth', { old: Math.round(olderAvg), new: Math.round(recentAvg) }),
+            detail: t('coaching.reframe.assumptionGrowthDetail'),
             tone: 'positive',
           });
         }
@@ -369,7 +369,7 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     if (patternInsight) {
       const strategyName = STRATEGY_DISPLAY[profile.dominantStrategy];
       results.push({
-        message: `'${strategyName}'를 자주 사용하고 계십니다. 다른 관점도 시도해보세요.`,
+        message: t('coaching.reframe.strategyRepetition', { strategy: strategyName }),
         tone: 'challenge',
       });
     }
@@ -381,8 +381,8 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const assumptionFail = worstEvals.find((m) => m.evalId === 'assumptions_engaged');
     if (assumptionFail) {
       results.push({
-        message: '가정 평가를 더 적극적으로 해보세요.',
-        detail: '가정에 "확인됨" 마킹을 하면 분석 품질이 올라갑니다.',
+        message: t('coaching.reframe.assumptionEngage'),
+        detail: t('coaching.reframe.assumptionEngageDetail'),
       });
     }
   }
@@ -391,7 +391,7 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   if (results.length === 0 && profile.avgPassRate >= 0.75 && profile.sessionCount >= 3) {
     const pct = Math.round(profile.avgPassRate * 100);
     results.push({
-      message: `분석 활용률 ${pct}% — 분석 결과를 실제로 활용하고 있습니다.`,
+      message: t('coaching.reframe.highPassRate', { pct }),
       tone: 'positive',
     });
   }
@@ -407,30 +407,14 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const seed = profile.demoSeedData;
     if (seed?.completed) {
       if (seed.ai_only_steps >= seed.total_steps - 1) {
-        results.push({
-          message: '데모에서 대부분을 AI에 위임하셨습니다.',
-          detail: '이번에는 핵심 판단 단계에 "사람" 또는 "협업"을 배치해보세요. 체크포인트가 실패를 조기에 잡아줍니다.',
-          tone: 'challenge',
-        });
+        results.push({ message: t('coaching.recast.demoAiHeavy'), detail: t('coaching.recast.demoAiHeavyDetail'), tone: 'challenge' });
       } else if (seed.human_only_steps >= seed.total_steps - 1) {
-        results.push({
-          message: '데모에서 대부분을 사람이 직접 하도록 배치하셨습니다.',
-          detail: '반복적인 단계는 AI에 위임하고, 판단이 필요한 곳에 집중하면 효율이 올라갑니다.',
-          tone: 'positive',
-        });
+        results.push({ message: t('coaching.recast.demoHumanHeavy'), detail: t('coaching.recast.demoHumanHeavyDetail'), tone: 'positive' });
       } else {
-        results.push({
-          message: '데모에서 AI와 사람의 역할을 균형 있게 배분하셨습니다.',
-          detail: '이번에도 "이 단계는 누가 해야 가장 효과적인가?"를 기준으로 배치해보세요.',
-          tone: 'positive',
-        });
+        results.push({ message: t('coaching.recast.demoBalanced'), detail: t('coaching.recast.demoBalancedDetail'), tone: 'positive' });
       }
     } else {
-      results.push({
-        message: '실행 설계 단계입니다.',
-        detail: '만약 각 단계에서 "이게 실패하면 누가 알아차리는가?"를 적어두면, 체크포인트 배치가 더 정확해집니다.',
-        tone: 'counterfactual',
-      });
+      results.push({ message: t('coaching.recast.firstUse'), detail: t('coaching.recast.firstUseDetail'), tone: 'counterfactual' });
     }
     return results;
   }
@@ -445,7 +429,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
       );
       if (uncertain.length > 0) {
         results.push({
-          message: `악보 해석에서 불확실한 가정 ${uncertain.length}건 — 실행 설계에 검증 단계를 포함하세요.`,
+          message: t('coaching.recast.uncertainAssumptions', { count: uncertain.length }),
           detail: uncertain.slice(0, 2).map(a => a.assumption).join(' / '),
         });
       }
@@ -460,7 +444,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   if (profile.overrideRate > 0.4) {
     const pct = Math.round(profile.overrideRate * 100);
     results.push({
-      message: `AI 제안을 자주 수정하시는군요 (${pct}%). 이 패턴이 반영되고 있습니다.`,
+      message: t('coaching.recast.overrideHigh', { pct }),
       tone: 'positive',
     });
   }
@@ -471,12 +455,12 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const aiPrefs = actorOverrides.filter((j) => j.decision === 'ai').length;
     if (humanPrefs > aiPrefs * 1.5) {
       results.push({
-        message: '사람이 직접 하는 것을 선호하시는 경향이 있습니다.',
+        message: t('coaching.recast.prefersHuman'),
       });
     }
     if (aiPrefs > humanPrefs * 1.5) {
       results.push({
-        message: 'AI에 많이 위임하는 편입니다. 체크포인트를 충분히 두세요.',
+        message: t('coaching.recast.prefersAi'),
         tone: 'challenge',
       });
     }
@@ -506,8 +490,8 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   // First use — counterfactual
   if (profile.sessionCount === 0) {
     results.push({
-      message: '페르소나가 당신의 계획을 검증합니다.',
-      detail: '만약 리허설 전에 "가장 불편한 질문이 뭘까?"를 먼저 떠올려보면, 페르소나의 피드백을 더 깊이 받아들일 수 있습니다.',
+      message: t('coaching.rehearse.firstUse'),
+      detail: t('coaching.rehearse.firstUseDetail'),
       tone: 'counterfactual',
     });
     return results;
@@ -523,8 +507,8 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
     const secondAvg = secondHalf.reduce((s, r) => s + r.accuracy_score, 0) / secondHalf.length;
     if (secondAvg > firstAvg + 0.5) {
       results.push({
-        message: `페르소나 정확도가 향상되고 있습니다 (${firstAvg.toFixed(1)} → ${secondAvg.toFixed(1)}).`,
-        detail: '페르소나의 피드백을 반영한 결과, 시뮬레이션 품질이 올라가고 있습니다.',
+        message: t('coaching.rehearse.accuracyImproving', { from: firstAvg.toFixed(1), to: secondAvg.toFixed(1) }),
+        detail: t('coaching.rehearse.accuracyImprovingDetail'),
         tone: 'positive',
       });
     }
@@ -537,7 +521,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
     const highImportance = latestRecast.analysis.key_assumptions.filter(ka => ka.importance === 'high');
     if (highImportance.length > 0) {
       results.push({
-        message: `편곡에서 중요도 높은 가정 ${highImportance.length}건 — 페르소나에게 검증 요청하세요.`,
+        message: t('coaching.rehearse.keyAssumptions', { count: highImportance.length }),
         detail: highImportance.slice(0, 2).map(ka => ka.assumption).join(' / '),
       });
     }
@@ -584,7 +568,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
       }
 
       results.push({
-        message: `페르소나 정확도 ${score}/5 (${personaRatings.length}회 평가)`,
+        message: t('coaching.rehearse.personaAccuracy', { score, count: personaRatings.length }),
         detail,
       });
     }
@@ -593,14 +577,14 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   return results;
 }
 
-function getRefineCoaching(_profile: ConcertmasterProfile): StepCoaching[] {
+function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   const results: StepCoaching[] = [];
 
   // First use — counterfactual
-  if (_profile.sessionCount === 0) {
+  if (profile.sessionCount === 0) {
     results.push({
-      message: '피드백을 반영하며 수렴하는 단계입니다.',
-      detail: '만약 수정할 때 "이 변경이 다른 단계에 어떤 영향을 주는가?"를 함께 생각하면, 1회 반복으로 수렴할 가능성이 높아집니다.',
+      message: t('coaching.refine.firstUse'),
+      detail: t('coaching.refine.firstUseDetail'),
       tone: 'counterfactual',
     });
     return results;
@@ -627,9 +611,9 @@ function getRefineCoaching(_profile: ConcertmasterProfile): StepCoaching[] {
         const delta = (last[key] || 0) - (prev[key] || 0);
         if (delta > biggestDelta) { biggestDelta = delta; biggestGainLabel = label; }
       }
-      const detail = biggestGainLabel ? `가장 큰 개선: ${biggestGainLabel}` : undefined;
+      const detail = biggestGainLabel ? t('coaching.refine.biggestGain', { element: biggestGainLabel }) : undefined;
       results.push({
-        message: `판단 품질이 개선되고 있습니다 (${prev.overall_dq} → ${last.overall_dq}).`,
+        message: t('coaching.refine.dqImproving', { prev: prev.overall_dq, current: last.overall_dq }),
         detail,
         tone: 'positive',
       });
@@ -640,9 +624,9 @@ function getRefineCoaching(_profile: ConcertmasterProfile): StepCoaching[] {
         const delta = (prev[key] || 0) - (last[key] || 0);
         if (delta > biggestDelta) { biggestDelta = delta; biggestDropLabel = label; }
       }
-      const detail = biggestDropLabel ? `하락 원인: ${biggestDropLabel}` : undefined;
+      const detail = biggestDropLabel ? t('coaching.refine.biggestDrop', { element: biggestDropLabel }) : undefined;
       results.push({
-        message: `판단 품질이 하락했습니다 (${prev.overall_dq} → ${last.overall_dq}). 이번엔 가정 검토를 더 꼼꼼히 해보세요.`,
+        message: t('coaching.refine.dqDeclining', { prev: prev.overall_dq, current: last.overall_dq }),
         detail,
         tone: 'challenge',
       });
@@ -657,7 +641,7 @@ function getRefineCoaching(_profile: ConcertmasterProfile): StepCoaching[] {
 
     if (iterationCount > 0) {
       results.push({
-        message: `현재 ${iterationCount}회 반복. 위협이 줄어들고 있다면 수렴에 가까워지고 있습니다.`,
+        message: t('coaching.refine.iterationStatus', { count: iterationCount }),
       });
     }
   }
@@ -809,8 +793,9 @@ export function buildLearningCurve(): LearningCurve {
   }
 
   // Find blind spot: axis significantly below average
+  // Guard: 최소 8개 가정이 있어야 축 분포를 신뢰할 수 있다 (과잉 해석 방지)
   let axis_gap: string | null = null;
-  if (totalAssumptions > 0) {
+  if (totalAssumptions >= 8) {
     let minCoverage = Infinity;
     let minLabel = '';
     for (const [label, pct] of Object.entries(axis_coverage)) {

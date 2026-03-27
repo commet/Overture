@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import {
-  Play, Layers, Map, Users, RefreshCw, Sparkles,
+  Play, Layers, Map, Users, RefreshCw, Sparkles, Music2,
   Check, ArrowRight, ArrowLeft, Bot, Brain, Handshake, ChevronDown,
 } from 'lucide-react';
 import { track } from '@/lib/analytics';
@@ -414,6 +414,18 @@ function ReframeSection() {
           {reframed.question}
         </p>
       </div>
+
+      {/* Concertmaster hint — shows after user interacts with premises */}
+      {doubted.size > 0 && (
+        <div key={`hint-${doubted.size}`} className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
+          <Music2 size={11} className="text-[var(--gold)]" />
+          <span className="text-[11px] text-[var(--gold)]">
+            {doubted.size === DEMO.premises.length
+              ? '강한 비판적 관점 — 악장이 기억합니다'
+              : `전제 ${doubted.size}개 의심 — 이 성향이 다음 분석에 반영됩니다`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -516,6 +528,25 @@ function RecastSection() {
           );
         })}
       </div>
+
+      {/* Concertmaster hint — role distribution pattern */}
+      {(() => {
+        const aiCount = Object.values(actors).filter(a => a === 'ai').length;
+        const humanCount = Object.values(actors).filter(a => a === 'human').length;
+        const changed = DEMO.steps.some((s, i) => actors[i] !== s.actor);
+        if (!changed) return null;
+        const msg = aiCount >= 3
+          ? 'AI 위임 성향 — 체크포인트 권장이 다음에 반영됩니다'
+          : humanCount >= 3
+          ? '직접 실행 선호 — AI 활용 기회를 다음에 제안합니다'
+          : '균형 있는 배분 — 악장이 이 패턴을 학습합니다';
+        return (
+          <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
+            <Music2 size={11} className="text-[var(--gold)]" />
+            <span className="text-[11px] text-[var(--gold)]">{msg}</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

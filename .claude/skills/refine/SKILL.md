@@ -8,7 +8,7 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 **Always respond in the same language the user uses.**
 
-Use **hybrid rendering** — structure/data in code blocks, change rationale in markdown. Use `diff` blocks for before/after plan changes and convergence status.
+**Rendering:** Final output in ONE code block (the "card"). Changes shown as `- old → + new` inline. Convergence bars (`█░`) for progress visualization.
 
 ## Before starting
 
@@ -20,14 +20,13 @@ Show the header:
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Refine                       │
-  │  Converge until solid                    │
+  │  🔧 Overture · Refine                   │
   ╰──────────────────────────────────────────╯
 ```
 
 ## Context extraction — design constraints (DO NOT violate)
 
-Locate the `■ Context Contract` blocks from previous steps.
+Read `.overture/recast.md`, `.overture/reframe.md`, and `.overture/rehearse.md` for contract data. If files don't exist, scan the conversation for contract blocks.
 
 ### From /recast Contract (immutable constraints):
 - `governing_idea` → the revised plan MUST still serve this direction. If a change contradicts it, flag explicitly and explain why.
@@ -113,69 +112,41 @@ Max 3 rounds (2 when inside `/overture`).
 
 ## Output
 
+**Single card** — one code block per round. Auto-save to `.overture/refine.md`.
+
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Refine                       │
-  │  Converge until solid                    │
+  │  🔧 Overture · Refine · Round [N]       │
   ╰──────────────────────────────────────────╯
+
+  [Changes label]:
+  - Step 2: [old] → [new]
+    [Reason]: [feedback addressed]
+  - Step 4: [old] → [new]
+    [Reason]: [feedback addressed]
+
+  [Not addressed]: [issue] — [why]
+
+  ─────────────────────────────────────────
+
+  [Results label]:
+    ✗ [Critical]:  ██░░░ [N] → ░░░░░ [M]  ✓
+    ? [Manageable]: ███░░ [N]   ██░░░ [M]
+    ✓ [Conditions]: █░░░░ [N/M] ███░░ [K/M]
+
+  [Status]: ✓ [Converged after N rounds]
+       or:  ✗ [N critical remaining — iterating]
+
+  ─────────────────────────────────────────
+
+  [Final Plan — compact revised version]
+
+  /rehearse ([re-verify])          📄 saved
 ```
 
-```
-  ■ Round [N]
-```
-
-Changes — show before/after with `diff` blocks so improvements are instantly visible:
-
-```diff
-- Step 2: [old version of the step]
-+ Step 2: [revised version with specific change]
-  Reason: [which feedback this addresses]
-```
-
-```diff
-- [another change — old]
-+ [another change — new]
-  Reason: [which feedback]
-```
-
-**Not addressed:** [issue] — Reason: [why]
-
-```
-  ■ Re-test Results
-
-    Critical:   ██░░░  [N] → ░░░░░  [M]  ✓
-    Manageable: ███░░  [N]    ██░░░  [M]
-    Conditions: █░░░░  [N/M]  ███░░  [K/M]
-```
-```diff
-+ Status: Converged after [N] rounds ✓
-```
-
-Or if not converged:
-```diff
-- Status: [N] critical issues remaining — iterating
-```
-
-```
-  ■ Final Plan
-
-    [complete revised plan]
-```
-
-```
-  ■ Context Contract — /refine
-
-    converged: [yes|no]
-    rounds: [N]
-    critical_remaining: [N]
-    approval_conditions_met:
-      - [persona name]: [condition] ✓
-    approval_conditions_unmet:
-      - [persona name]: [condition] ✗
-    key_changes:
-      - [what changed and why]
-    governing_idea_preserved: [yes | no — explain if no]
-```
+**After the card**, save to `.overture/refine.md`:
+- Top: changes, results, final plan (clean markdown)
+- Bottom after `---`: Context Contract (converged, rounds, critical_remaining, approval_conditions met/unmet, key_changes, governing_idea_preserved)
 
 ## Learning journal
 

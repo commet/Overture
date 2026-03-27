@@ -406,7 +406,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                   <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-[12px] font-medium text-[var(--text-primary)]">
-                      {blindSpotRec.axis_label} 관점이 부족합니다
+                      {blindSpotRec.axis_label} 관점이 아직 탐색되지 않았습니다
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {blindSpotRec.why}

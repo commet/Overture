@@ -297,16 +297,16 @@ export function ConcertmasterStrip() {
         )}
 
         {/* ── Axis Fingerprint (3+ sessions) ── */}
-        {profile.sessionCount >= 3 && Object.values(learningCurve.axis_coverage).some(v => v > 0) && (
+        {profile.sessionCount >= 1 && Object.values(learningCurve.axis_coverage).some(v => v > 0) && (
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] space-y-2">
             <div className="flex items-center gap-1.5">
               <Eye size={12} className="text-[var(--gold)]" />
-              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">가정 축 커버리지</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">탐색된 관점</span>
             </div>
             <AxisCoverageBar coverage={learningCurve.axis_coverage} gap={learningCurve.axis_gap} />
             {learningCurve.axis_gap && (
               <p className="text-[10px] text-amber-500">
-                {learningCurve.axis_gap} 관점이 부족합니다
+                {learningCurve.axis_gap} 관점이 아직 탐색되지 않았습니다
               </p>
             )}
           </div>

@@ -10,7 +10,7 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 **Always respond in the same language the user uses.**
 
-Use **hybrid rendering** — structure/data in code blocks, rationale/insights in markdown. Use **actor-specific box styles** to visually distinguish Human/AI/Both steps. Use `diff` blocks for low-confidence assumptions.
+**Rendering:** Final output in ONE code block (the "card"). Use emoji markers for actor types (`🧑 Human`, `🤖 AI`, `⚡ Both`), `⚑` for checkpoints, `★` for critical path. Interview/interaction phases use separate code blocks.
 
 ## If no argument is provided
 
@@ -26,14 +26,13 @@ Show the header:
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Recast                  │
-  │  Execution design with AI/human roles    │
+  │  📋 Overture · Recast                    │
   ╰──────────────────────────────────────────╯
 ```
 
 ## Context extraction from /reframe
 
-If a `/reframe` result exists in this conversation, locate its `■ Context Contract — /reframe` block and extract:
+If a `/reframe` result exists, read `.overture/reframe.md` and locate the `## Context Contract` section. If the file doesn't exist, scan the conversation for the reframe card output. Extract:
 
 ### Mandatory extractions:
 - `reframed_question` → this is your GOAL, not the user's original text
@@ -136,132 +135,54 @@ Generate 3 stakeholder personas who should review this plan. These flow directly
 
 ## Output
 
-Output has 4 acts separated by `---`.
-
-**Act 1: Direction**
+**Single card** — one code block. Auto-save to `.overture/recast.md`.
 
 ```
   ╭──────────────────────────────────────────╮
-  │  Overture · Recast                       │
-  │  Execution design with AI/human roles    │
+  │  📋 Overture · Recast                    │
   ╰──────────────────────────────────────────╯
+
+  ▸ [governing idea — one sentence, 10초 이해]
+
+  [situation] → [complication]
+  [approach]: [resolution]
+
+  ─────────────────────────────────────────
+
+  #  Actor  [Task label]        [Deliverable label]
+  ─────────────────────────────────────────────────
+  1  🧑    [task]               [deliverable]       ⚑
+  2  🤖    [task]               [deliverable]
+  3  ⚡    [task]               [deliverable]       ★
+  4  🧑    [task]               [deliverable]       ⚑
+
+  ⚑ = checkpoint  ★ = critical
+
+  ─────────────────────────────────────────
+
+  [Assumption label]        [Imp] [Conf] [Source]
+  ─────────────────────────────────────────────────
+  [assumption]               H     H
+  [assumption]               M     L     reframe
+  [assumption]               H     L     reframe
+
+  [Personas label] (→ /rehearse)
+  1 · [Name] — [Role] — [primary concern]
+  2 · [Name] — [Role] — [primary concern]
+  3 · [Name] — [Role] — [primary concern]
+
+  /rehearse · /refine              📄 saved
 ```
 
-**▸ Governing Idea:** [one sentence — a decision-maker gets it in 10 seconds]
+**Step table:** Header row with column labels + `─` separator. Each step is one row: `#`, actor emoji, task, deliverable, checkpoint/critical marker.
+- For `⚡ Both` steps: add `AI: [scope] / [Human label]: [scope]` on next line
+**Assumption table:** Columns for importance (H/M/L), confidence (H/M/L), source (`reframe` if inherited). Inherited assumptions from /reframe are flagged visually.
 
-```
-  ■ Storyline
+**After the card**, save to `.overture/recast.md` with shareable top + contract bottom (same pattern as reframe):
+- Top: governing idea, storyline, steps, assumptions, personas (clean markdown)
+- Bottom after `---`: full Context Contract with all fields (governing_idea, design_rationale, storyline, steps with actor/checkpoint/critical, critical_path, key_assumptions, inherited_assumptions, personas with ALL fields, ai_limitations)
 
-    Situation:    [agreed facts]
-    Complication: [the tension]
-    Resolution:   [our approach]
-```
-
----
-
-**Act 2: Execution** — each owner type gets a distinct box style:
-
-```
-  ■ Execution Steps
-
-  ┌─ Step 1 ────────────────────── 🧑 Human ──┐
-  │  [task]                                     │
-  │  Why: [reasoning]                           │
-  │  Deliverable: [output]                      │
-  │  Checkpoint: [yes/no + reason]              │
-  └─────────────────────────────────────────────┘
-```
-```
-  ╔═ Step 2 ════════════════════════ 🤖 AI ═══╗
-  ║  [task]                                     ║
-  ║  Deliverable: [output]                      ║
-  ╚═════════════════════════════════════════════╝
-```
-```
-  ┏━ Step 3 ━━━━━━━━━━━━━━━━━━━━━━ ⚡ Both ━━━┓
-  ┃  [task]                                     ┃
-  ┃  AI does: [scope]                           ┃
-  ┃  Human does: [scope]                        ┃
-  ┃  Deliverable: [output]                      ┃
-  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
-
----
-
-**Act 3: Evidence** (grouped — reference material)
-
-Key Assumptions — `diff` block for low-confidence and inherited items:
-
-```
-  ■ Key Assumptions
-
-    1  [assumption]
-       Importance: H · Confidence: H
-       If wrong: [impact]
-```
-```diff
--   2  [assumption] [from reframe]
--      Importance: H · Confidence: L
--      If wrong: [impact]
-```
-
-```
-  ■ Stakeholders (→ /rehearse personas)
-
-    1 · [Name] — [Role]
-        Influence: [H/M/L] · Style: [analytical/intuitive/consensus/directive]
-        Risk tolerance: [low/medium/high]
-        Primary concern: [what they care about most]
-        Will block if: [specific condition]
-        Needs to see: [success metric]
-
-    2 · [Name] — [Role]
-        ...
-
-    3 · [Name] — [Role]
-        ...
-```
-
----
-
-**Act 4: Rationale + Contract**
-
-**Design Rationale:** [2-3 sentences: why this sequence, why these owners]
-
-```
-  ■ Context Contract — /recast
-
-    governing_idea: [one sentence]
-    design_rationale: [why this approach]
-
-    storyline:
-      situation: [facts]
-      complication: [tension]
-      resolution: [approach]
-
-    steps:
-      1. [task] | actor: [ai|human|both] | checkpoint: [yes|no] | critical: [yes|no]
-      2. [task] | actor: [ai|human|both] | checkpoint: [yes|no] | critical: [yes|no]
-      ...
-
-    critical_path: [step numbers that gate everything]
-
-    key_assumptions:
-      - [assumption] | importance: [H|M|L] | certainty: [H|M|L] | if_wrong: [impact]
-
-    inherited_assumptions:
-      - [from reframe] [assumption] | importance: H | certainty: L | if_wrong: [impact]
-
-    personas:
-      1. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
-      2. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
-      3. [name] | role: [role] | style: [X] | risk: [X] | concern: [X] | blocks_if: [X]
-
-    ai_limitations:
-      - [carried from reframe]
-
-  Next: /rehearse to stress-test with stakeholders
-```
+Personas in the contract MUST include ALL fields (name, role, influence, decision_style, risk_tolerance, primary_concern, blocking_condition, success_metric) — these are needed for /rehearse to reproduce exactly.
 
 ## Learning journal
 
