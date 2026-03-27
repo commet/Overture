@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+// CSP is set dynamically in middleware.ts (nonce-based, per-request).
+// Only non-CSP security headers live here.
 const securityHeaders = [
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
   {
     key: 'X-DNS-Prefetch-Control',
     value: 'on',
@@ -20,18 +26,6 @@ const securityHeaders = [
   {
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=()',
-  },
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
-      "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://lh3.googleusercontent.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com",
-      "frame-ancestors 'none'",
-    ].join('; '),
   },
 ];
 

@@ -17,14 +17,60 @@ export interface StreamCallbacks {
   onError: (error: Error) => void;
 }
 
+const MAX_JSON_LENGTH = 200_000; // 200KB — well above any reasonable LLM response
+
 export function parseJSON<T = unknown>(text: string): T {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error('Failed to parse JSON from LLM response');
+  if (text.length > MAX_JSON_LENGTH) {
+    throw new Error('LLM response too large to parse');
   }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Extract outermost JSON object from markdown fences or surrounding text.
+    // Greedy [\s\S]* is safe here (linear backtracking, no nested quantifiers).
+    // Length limit above guards against excessive memory usage.
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) parsed = JSON.parse(match[0]);
+    else throw new Error('Failed to parse JSON from LLM response');
+  }
+
+  // Reject non-object primitives (LLM should always return objects)
+  if (parsed === null || typeof parsed !== 'object') {
+    throw new Error('LLM returned a non-object JSON value');
+  }
+
+  return parsed as T;
+}
+
+/**
+ * Validate that a parsed object has expected keys with expected types.
+ * Returns the object if valid, throws if not.
+ *
+ * Usage:
+ *   const data = validateShape(parsed, { findings: 'array', score: 'number' });
+ */
+export function validateShape<T extends Record<string, unknown>>(
+  obj: unknown,
+  schema: Record<string, 'string' | 'number' | 'boolean' | 'array' | 'object'>
+): T {
+  if (!obj || typeof obj !== 'object') {
+    throw new Error('validateShape: expected object');
+  }
+  const record = obj as Record<string, unknown>;
+  for (const [key, expectedType] of Object.entries(schema)) {
+    const value = record[key];
+    if (value === undefined || value === null) continue; // optional fields OK
+    if (expectedType === 'array') {
+      if (!Array.isArray(value)) {
+        throw new Error(`validateShape: "${key}" expected array, got ${typeof value}`);
+      }
+    } else if (typeof value !== expectedType) {
+      throw new Error(`validateShape: "${key}" expected ${expectedType}, got ${typeof value}`);
+    }
+  }
+  return record as T;
 }
 
 // ─── Retry logic for transient HTTP errors ───
@@ -145,10 +191,17 @@ async function callProxy(
 
 export async function callLLMJson<T = unknown>(
   messages: LLMMessage[],
-  options: LLMOptions
+  options: LLMOptions & {
+    /** Optional shape schema for runtime validation of LLM output */
+    shape?: Record<string, 'string' | 'number' | 'boolean' | 'array' | 'object'>;
+  } = { system: '' }
 ): Promise<T> {
   const text = await callLLM(messages, options);
-  return parseJSON<T>(text);
+  const parsed = parseJSON<T>(text);
+  if (options.shape) {
+    return validateShape<T & Record<string, unknown>>(parsed, options.shape) as T;
+  }
+  return parsed;
 }
 
 // ─── Streaming call ───

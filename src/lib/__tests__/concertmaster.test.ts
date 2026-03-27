@@ -3,6 +3,7 @@ import {
   buildConcertmasterProfile,
   buildConcertmasterInsights,
   getStepCoaching,
+  buildLearningCurve,
 } from '@/lib/concertmaster';
 import type { ConcertmasterProfile } from '@/lib/concertmaster';
 
@@ -22,12 +23,28 @@ vi.mock('@/lib/prompt-mutation', () => ({
   getWorstPerformingEvals: vi.fn(() => []),
 }));
 
+vi.mock('@/lib/decision-quality', () => ({
+  getDQScores: vi.fn(() => []),
+  analyzeDQTrend: vi.fn(() => ({
+    total_projects: 0, avg_dq: 0, trend: 'not_enough_data',
+    weakest_element: null, strongest_element: null, avg_blind_spots: 0, framing_challenge_rate: 0,
+  })),
+}));
+
+vi.mock('@/lib/signal-recorder', () => ({
+  getSignals: vi.fn(() => []),
+}));
+
 vi.mock('@/lib/storage', () => ({
   getStorage: vi.fn(() => []),
   STORAGE_KEYS: {
     JUDGMENTS: 'sot_judgments',
     PROJECTS: 'sot_projects',
     ACCURACY_RATINGS: 'sot_accuracy_ratings',
+    REFINE_LOOPS: 'sot_refine_loops',
+    REFRAME_LIST: 'sot_reframe_list',
+    RECAST_LIST: 'sot_recast_list',
+    DQ_SCORES: 'sot_dq_scores',
   },
 }));
 
@@ -35,11 +52,14 @@ vi.mock('@/lib/storage', () => ({
 import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance } from '@/lib/eval-engine';
 import { getWorstPerformingEvals } from '@/lib/prompt-mutation';
 import { getStorage } from '@/lib/storage';
+import { getDQScores, analyzeDQTrend } from '@/lib/decision-quality';
 
 const mockGetSessionInsights = vi.mocked(getSessionInsights);
 const mockGetEvalSummary = vi.mocked(getEvalSummary);
 const mockAnalyzeStrategyPerformance = vi.mocked(analyzeStrategyPerformance);
 const mockGetWorstPerformingEvals = vi.mocked(getWorstPerformingEvals);
+const mockGetDQScores = vi.mocked(getDQScores);
+const mockAnalyzeDQTrend = vi.mocked(analyzeDQTrend);
 const mockGetStorage = vi.mocked(getStorage);
 
 describe('concertmaster', () => {
@@ -192,7 +212,7 @@ describe('concertmaster', () => {
   });
 
   describe('getStepCoaching', () => {
-    it('returns welcome for reframe with 0 sessions', () => {
+    it('returns generic counterfactual for reframe with 0 sessions and no demo', () => {
       mockGetSessionInsights.mockReturnValue([]);
       mockGetWorstPerformingEvals.mockReturnValue([]);
 
@@ -202,8 +222,47 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('reframe', profile);
-      expect(coaching).not.toBeNull();
-      expect(coaching!.message).toContain('첫 분석');
+      expect(Array.isArray(coaching)).toBe(true);
+      expect(coaching.length).toBeGreaterThan(0);
+      expect(coaching[0].message).toContain('첫 분석');
+      expect(coaching[0].tone).toBe('counterfactual');
+    });
+
+    it('returns personalized coaching for reframe when demo seed exists (all doubted)', () => {
+      const profile: ConcertmasterProfile = {
+        sessionCount: 0, projectCount: 0, totalJudgments: 0,
+        overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
+        demoSeedData: { doubted_count: 3, total_premises: 3, ai_only_steps: 1, human_only_steps: 1, total_steps: 4, completed: true },
+      };
+
+      const coaching = getStepCoaching('reframe', profile);
+      expect(coaching[0].message).toContain('모두 의심');
+      expect(coaching[0].tone).toBe('positive');
+    });
+
+    it('returns challenge coaching for reframe when demo seed shows zero doubts', () => {
+      const profile: ConcertmasterProfile = {
+        sessionCount: 0, projectCount: 0, totalJudgments: 0,
+        overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
+        demoSeedData: { doubted_count: 0, total_premises: 3, ai_only_steps: 0, human_only_steps: 0, total_steps: 4, completed: true },
+      };
+
+      const coaching = getStepCoaching('reframe', profile);
+      expect(coaching[0].message).toContain('모두 수락');
+      expect(coaching[0].tone).toBe('challenge');
+    });
+
+    it('returns personalized recast coaching when demo seed shows heavy AI delegation', () => {
+      mockGetStorage.mockReturnValue([]);
+      const profile: ConcertmasterProfile = {
+        sessionCount: 0, projectCount: 0, totalJudgments: 0,
+        overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
+        demoSeedData: { doubted_count: 1, total_premises: 3, ai_only_steps: 3, human_only_steps: 0, total_steps: 4, completed: true },
+      };
+
+      const coaching = getStepCoaching('recast', profile);
+      expect(coaching[0].message).toContain('AI에 위임');
+      expect(coaching[0].tone).toBe('challenge');
     });
 
     it('returns override coaching for recast', () => {
@@ -219,18 +278,20 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('recast', profile);
-      expect(coaching).not.toBeNull();
-      expect(coaching!.message).toContain('수정');
+      expect(coaching.length).toBeGreaterThan(0);
+      expect(coaching[0].message).toContain('수정');
     });
 
-    it('returns null for recast with few judgments', () => {
+    it('returns empty array for recast with few judgments and no cross-stage data', () => {
+      mockGetStorage.mockReturnValue([]);
+
       const profile: ConcertmasterProfile = {
         sessionCount: 1, projectCount: 1, totalJudgments: 1,
         overrideRate: 0, dominantStrategy: null, avgPassRate: 0, tier: 1,
       };
 
       const coaching = getStepCoaching('recast', profile);
-      expect(coaching).toBeNull();
+      expect(coaching).toEqual([]);
     });
 
     it('returns persona accuracy coaching when ratings exist', () => {
@@ -258,8 +319,9 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('rehearse', profile);
-      expect(coaching).not.toBeNull();
-      expect(coaching!.message).toContain('정확도');
+      expect(coaching.length).toBeGreaterThan(0);
+      const accuracyMsg = coaching.find(c => c.message.includes('정확도'));
+      expect(accuracyMsg).toBeDefined();
     });
 
     it('returns convergence coaching for refine step', () => {
@@ -276,8 +338,132 @@ describe('concertmaster', () => {
       };
 
       const coaching = getStepCoaching('refine', profile);
-      expect(coaching).not.toBeNull();
-      expect(coaching!.message).toContain('3회 반복');
+      expect(coaching.length).toBeGreaterThan(0);
+      const convergenceMsg = coaching.find(c => c.message.includes('3회 반복'));
+      expect(convergenceMsg).toBeDefined();
+    });
+
+    it('returns at most 2 coaching items', () => {
+      // Tier 2 user with strategy pattern + assumption failure + high pass rate
+      mockGetSessionInsights.mockReturnValue([
+        { type: 'pattern', message: '관점 전환 패턴' },
+      ]);
+      mockGetWorstPerformingEvals.mockReturnValue([
+        { evalId: 'assumptions_engaged', instruction: '전제를 찾으세요', passRate: 0.2 },
+      ]);
+      mockGetStorage.mockReturnValue([]);
+
+      const profile: ConcertmasterProfile = {
+        sessionCount: 8, projectCount: 1, totalJudgments: 10,
+        overrideRate: 0.2, dominantStrategy: 'redirect_angle', avgPassRate: 0.8, tier: 2,
+      };
+
+      const coaching = getStepCoaching('reframe', profile);
+      expect(coaching.length).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('buildLearningCurve', () => {
+    it('returns has_data: false when no DQ scores', () => {
+      mockGetDQScores.mockReturnValue([]);
+      mockAnalyzeDQTrend.mockReturnValue({
+        total_projects: 0, avg_dq: 0, trend: 'not_enough_data',
+        weakest_element: null, strongest_element: null, avg_blind_spots: 0, framing_challenge_rate: 0,
+      });
+      mockGetStorage.mockReturnValue([]);
+      mockAnalyzeStrategyPerformance.mockReturnValue([]);
+      mockGetEvalSummary.mockReturnValue({
+        total_sessions: 0, avg_pass_rate: 0, best_strategy: null, worst_eval: null,
+      });
+
+      const curve = buildLearningCurve();
+      expect(curve.has_data).toBe(false);
+      expect(curve.dq_points).toHaveLength(0);
+      expect(curve.most_improved_element).toBeNull();
+    });
+
+    it('computes element trends from DQ scores', () => {
+      const scores = [
+        { project_id: 'p1', appropriate_frame: 2, creative_alternatives: 3, relevant_information: 2, clear_values: 1, sound_reasoning: 1, commitment_to_action: 2, overall_dq: 37, created_at: '2026-01-01', initial_framing_challenged: false, blind_spots_surfaced: 0, user_changed_mind: false, id: 's1' },
+        { project_id: 'p2', appropriate_frame: 4, creative_alternatives: 3, relevant_information: 3, clear_values: 3, sound_reasoning: 3, commitment_to_action: 3, overall_dq: 63, created_at: '2026-02-01', initial_framing_challenged: true, blind_spots_surfaced: 2, user_changed_mind: true, id: 's2' },
+      ];
+      mockGetDQScores.mockReturnValue(scores);
+      mockAnalyzeDQTrend.mockReturnValue({
+        total_projects: 2, avg_dq: 50, trend: 'improving',
+        weakest_element: '관점 다양성', strongest_element: '프레이밍', avg_blind_spots: 1, framing_challenge_rate: 50,
+      });
+      mockGetStorage.mockImplementation((key: string) => {
+        if (key === 'sot_projects') return [
+          { id: 'p1', name: '프로젝트A', refs: [] },
+          { id: 'p2', name: '프로젝트B', refs: [] },
+        ];
+        return [];
+      });
+      mockAnalyzeStrategyPerformance.mockReturnValue([]);
+      mockGetEvalSummary.mockReturnValue({
+        total_sessions: 2, avg_pass_rate: 0.5, best_strategy: null, worst_eval: null,
+      });
+
+      const curve = buildLearningCurve();
+      expect(curve.has_data).toBe(true);
+      expect(curve.dq_points).toHaveLength(2);
+      expect(curve.dq_points[0].project_name).toBe('프로젝트A');
+      expect(curve.dq_points[1].overall_dq).toBe(63);
+      expect(curve.trend).toBe('improving');
+      expect(curve.most_improved_element).toBe('프레이밍'); // 2 → 4 = +2, biggest gain
+      expect(curve.improvement_delta).toBe(2);
+    });
+
+    it('identifies axis gap from assumption data', () => {
+      mockGetDQScores.mockReturnValue([]);
+      mockAnalyzeDQTrend.mockReturnValue({
+        total_projects: 0, avg_dq: 0, trend: 'not_enough_data',
+        weakest_element: null, strongest_element: null, avg_blind_spots: 0, framing_challenge_rate: 0,
+      });
+      mockGetStorage.mockImplementation((key: string) => {
+        if (key === 'sot_reframe_list') return [
+          {
+            id: 'd1', status: 'done',
+            analysis: {
+              hidden_assumptions: [
+                { assumption: 'a', axis: 'customer_value', risk_if_false: 'r' },
+                { assumption: 'b', axis: 'customer_value', risk_if_false: 'r' },
+                { assumption: 'c', axis: 'business', risk_if_false: 'r' },
+                { assumption: 'd', axis: 'feasibility', risk_if_false: 'r' },
+                // No org_capacity → should be the gap
+              ],
+            },
+          },
+        ];
+        return [];
+      });
+      mockAnalyzeStrategyPerformance.mockReturnValue([]);
+      mockGetEvalSummary.mockReturnValue({
+        total_sessions: 3, avg_pass_rate: 0.5, best_strategy: null, worst_eval: null,
+      });
+
+      const curve = buildLearningCurve();
+      expect(curve.axis_gap).toBe('조직 역량');
+      expect(curve.axis_coverage['조직 역량']).toBe(0);
+      expect(curve.axis_coverage['고객 가치']).toBe(50);
+    });
+
+    it('computes tier progress correctly', () => {
+      mockGetDQScores.mockReturnValue([]);
+      mockAnalyzeDQTrend.mockReturnValue({
+        total_projects: 0, avg_dq: 0, trend: 'not_enough_data',
+        weakest_element: null, strongest_element: null, avg_blind_spots: 0, framing_challenge_rate: 0,
+      });
+      mockGetStorage.mockReturnValue([]);
+      mockAnalyzeStrategyPerformance.mockReturnValue([]);
+
+      // Tier 1 with 2/3 sessions → 67% progress
+      mockGetEvalSummary.mockReturnValue({
+        total_sessions: 2, avg_pass_rate: 0.5, best_strategy: null, worst_eval: null,
+      });
+      const curve = buildLearningCurve();
+      expect(curve.current_tier).toBe(1);
+      expect(curve.tier_progress).toBe(67);
     });
   });
 });

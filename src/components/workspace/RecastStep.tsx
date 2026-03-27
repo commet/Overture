@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { ShareBar } from '@/components/ui/ShareBar';
 import { recastToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
 import type { RecastAnalysis, RecastItem, ReframeItem, Persona } from '@/stores/types';
@@ -663,7 +663,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                   <RotateCcw size={14} /> {t('common.newStart')}
                 </Button>
                 <div className="flex gap-2">
-                  <CopyButton getText={() => recastToMarkdown(current)} />
+                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => '편곡 | ' + (current.analysis?.goal_summary || '')} />
                   <Button onClick={handleConfirm}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -691,7 +691,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                   >
                     <Send size={14} /> 리허설 받기
                   </Button>
-                  <CopyButton getText={() => recastToMarkdown(current)} label="마크다운 복사" />
+                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => '편곡 | ' + (current.analysis?.goal_summary || '')} />
                 </div>
               </>
             )}

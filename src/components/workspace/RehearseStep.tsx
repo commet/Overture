@@ -25,6 +25,8 @@ import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildReframeContext, buildRecastContext, injectRecastContext } from '@/lib/context-chain';
 import { recordRehearsalEval } from '@/lib/eval-engine';
+import { recommendBlindSpotPersona } from '@/lib/auto-persona';
+import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
 // Single source of truth: persona-prompt.ts
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) =>
@@ -62,6 +64,15 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
   const [managingPersonas, setManagingPersonas] = useState(false);
   const [feedbackError, setFeedbackError] = useState('');
   const [lastFeedbackData, setLastFeedbackData] = useState<{ documentTitle: string; documentText: string; personaIds: string[]; perspective: string; intensity: string } | null>(null);
+  const [blindSpotRec, setBlindSpotRec] = useState<BlindSpotRecommendation | null>(null);
+  const [blindSpotDismissed, setBlindSpotDismissed] = useState(false);
+
+  // Compute blind spot recommendation
+  useEffect(() => {
+    const existingRoles = personas.map(p => p.role);
+    const rec = recommendBlindSpotPersona(existingRoles);
+    setBlindSpotRec(rec);
+  }, [personas]);
 
   useEffect(() => {
     loadData();
@@ -384,6 +395,45 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--ai)]">
               <Check size={14} className="text-[var(--accent)]" />
               <span className="text-[12px] font-medium text-[#2d4a7c]">편곡에서 찾은 이해관계자 {autoPersonaIds.length}명이 선택되었습니다</span>
+            </div>
+          )}
+
+          {/* Blind spot persona recommendation (Phase 3: Active Adaptation) */}
+          {blindSpotRec && !blindSpotDismissed && phase === 'setup' && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[12px] font-medium text-[var(--text-primary)]">
+                      {blindSpotRec.axis_label} 관점이 부족합니다
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      {blindSpotRec.why}
+                    </p>
+                    <button
+                      onClick={() => {
+                        createPersona({
+                          name: blindSpotRec.name,
+                          role: blindSpotRec.role,
+                          influence: 'high',
+                          known_concerns: blindSpotRec.why,
+                        });
+                        setBlindSpotDismissed(true);
+                      }}
+                      className="mt-2 px-3 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 cursor-pointer transition-colors"
+                    >
+                      + {blindSpotRec.name} ({blindSpotRec.role}) 추가
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBlindSpotDismissed(true)}
+                  className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer"
+                >
+                  <Plus size={12} className="rotate-45" />
+                </button>
+              </div>
             </div>
           )}
 

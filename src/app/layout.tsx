@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { LayoutShell } from '@/components/layout/LayoutShell';
@@ -12,11 +13,13 @@ export const metadata: Metadata = {
     'Overture — Think before you recast. 악보 해석, 편곡, 리허설, 합주 연습.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') || '';
+
   return (
     <html lang="ko">
       <head>
@@ -26,13 +29,14 @@ export default function RootLayout({
           rel="stylesheet"
           as="style"
           crossOrigin="anonymous"
+          integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap"
         />
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('overture-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.setAttribute('data-theme','dark')}}catch(e){}})()` }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('overture-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.setAttribute('data-theme','dark')}}catch(e){}})()` }} />
       </head>
       <body>
         <Providers>

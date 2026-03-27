@@ -32,6 +32,7 @@ interface TeamState {
   // Helpers
   getCurrentTeam: () => Team | undefined;
   isTeamOwner: () => boolean;
+  _isAdminOrOwner: () => Promise<boolean>;
 }
 
 export const useTeamStore = create<TeamState>((set, get) => ({
@@ -95,10 +96,16 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
+    // Client-side permission guard (RLS is the real enforcer)
+    if (!await get()._isAdminOrOwner()) return false;
+
+    // Validate role to prevent privilege escalation
+    const ALLOWED_INVITE_ROLES = ['member', 'admin'] as const;
+    const safeRole = ALLOWED_INVITE_ROLES.includes(role as typeof ALLOWED_INVITE_ROLES[number]) ? role : 'member';
 
     const { error } = await supabase
       .from('team_invites')
-      .insert({ team_id: teamId, email: email.toLowerCase().trim(), role, invited_by: userId });
+      .insert({ team_id: teamId, email: email.toLowerCase().trim(), role: safeRole, invited_by: userId });
 
     if (error) return false;
 
@@ -108,6 +115,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   removeMember: async (memberId: string) => {
+    // Client-side permission guard (RLS is the real enforcer)
+    if (!await get()._isAdminOrOwner()) return;
 
     await supabase.from('team_members').delete().eq('id', memberId);
     set({ members: get().members.filter(m => m.id !== memberId) });
@@ -128,7 +137,6 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
-
     // Get the invite
     const { data: invite } = await supabase
       .from('team_invites')
@@ -137,6 +145,12 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       .single();
 
     if (!invite) return false;
+
+    // Verify invite is addressed to current user's email (defense-in-depth; RLS also checks)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email || invite.email.toLowerCase() !== user.email.toLowerCase()) {
+      return false;
+    }
 
     // Add as team member
     const { error: memberError } = await supabase
@@ -181,10 +195,15 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   submitReviewInput: async (input) => {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    // Strip client-controlled fields; force user_id from auth, visible always starts false
+    const { user_id: _uid, visible: _vis, created_at: _ca, ...safeInput } = input as Record<string, unknown>;
 
     const { data, error } = await supabase
       .from('team_review_inputs')
-      .insert({ ...input, visible: false })
+      .insert({ ...safeInput, user_id: userId, visible: false })
       .select()
       .single();
 
@@ -194,6 +213,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   revealInputs: async (projectId: string, phase: string) => {
+    // Client-side permission guard (RLS is the real enforcer)
+    if (!await get()._isAdminOrOwner()) return;
 
     await supabase
       .from('team_review_inputs')
@@ -215,7 +236,16 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   isTeamOwner: () => {
     const { members, currentTeamId } = get();
     if (!currentTeamId) return false;
-    // This is checked client-side for UI, but server enforces via RLS
     return members.some(m => m.team_id === currentTeamId && m.role === 'owner');
+  },
+
+  /** Check if current user is admin or owner of current team (client-side guard, RLS is the real enforcer). */
+  _isAdminOrOwner: async () => {
+    const userId = await getCurrentUserId();
+    const { members, currentTeamId } = get();
+    if (!userId || !currentTeamId) return false;
+    return members.some(
+      m => m.team_id === currentTeamId && m.user_id === userId && (m.role === 'owner' || m.role === 'admin')
+    );
   },
 }));

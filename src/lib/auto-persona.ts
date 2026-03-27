@@ -9,6 +9,12 @@ import { callLLMJson } from './llm';
 import type { ReframeItem, RecastItem, Persona, SuggestedReviewer } from '@/stores/types';
 import { generateId } from './uuid';
 
+/** Strip XML-like tags from user input before embedding in prompts. */
+function sanitizeForPrompt(text: string): string {
+  if (!text) return '';
+  return text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+}
+
 export interface AutoPersona {
   name: string;
   role: string;
@@ -30,20 +36,21 @@ export async function extractPersonasFromContext(
   const analysis = recast.analysis;
   if (!analysis) return [];
 
-  // Build rich context from all available data
+  // Build rich context from all available data (sanitize user inputs)
+  const s = sanitizeForPrompt;
   const contextParts: string[] = [];
 
   // From reframe
   if (reframe) {
-    contextParts.push(`[원래 과제]\n${reframe.input_text}`);
+    contextParts.push(`[원래 과제]\n${s(reframe.input_text)}`);
     if (reframe.analysis) {
-      contextParts.push(`[재정의된 질문]\n${reframe.analysis.reframed_question || reframe.analysis.surface_task}`);
+      contextParts.push(`[재정의된 질문]\n${s(reframe.analysis.reframed_question || reframe.analysis.surface_task)}`);
     }
   }
 
   // From recast
-  contextParts.push(`[핵심 방향]\n${analysis.governing_idea}`);
-  contextParts.push(`[최종 목표]\n${analysis.goal_summary}`);
+  contextParts.push(`[핵심 방향]\n${s(analysis.governing_idea)}`);
+  contextParts.push(`[최종 목표]\n${s(analysis.goal_summary)}`);
 
   if (analysis.steps) {
     const stepsSummary = analysis.steps.map((s, i) =>
@@ -59,7 +66,7 @@ export async function extractPersonasFromContext(
     contextParts.push(`[핵심 가정]\n${assumptions}`);
   }
 
-  contextParts.push(`[편곡 입력 맥락]\n${recast.input_text}`);
+  contextParts.push(`[편곡 입력 맥락]\n${s(recast.input_text)}`);
 
   const context = contextParts.join('\n\n');
 
@@ -90,6 +97,108 @@ JSON 배열로만 응답하세요.`;
   } catch {
     return [];
   }
+}
+
+/* ────────────────────────────────────
+   Blind Spot Persona Recommendation
+   Phase 3: Active Adaptation — Axis Fingerprint 기반
+   ──────────────────────────────────── */
+
+import { getStorage, STORAGE_KEYS } from '@/lib/storage';
+
+/** Persona archetypes mapped to assumption axes they naturally cover */
+const AXIS_PERSONA_MAP: Record<string, { name: string; role: string; why: string }[]> = {
+  customer_value: [
+    { name: '고객 경험 담당자', role: 'CX 팀장', why: '고객 관점의 가정이 부족합니다. 고객 가치 축을 검증할 수 있습니다.' },
+    { name: '서비스 기획자', role: '프로덕트 매니저', why: '사용자 니즈를 대변하여 고객 가치 관점의 맹점을 보완합니다.' },
+  ],
+  feasibility: [
+    { name: '기술 리드', role: 'CTO / 개발팀장', why: '실현 가능성 관점의 가정이 부족합니다. 기술적 제약을 검증합니다.' },
+    { name: '운영 담당자', role: 'COO / 운영팀장', why: '실행 가능성과 운영 복잡도를 현실적으로 평가합니다.' },
+  ],
+  business: [
+    { name: '사업 전략가', role: 'CSO / 전략기획', why: '비즈니스 모델 관점의 가정이 부족합니다. 수익성과 시장성을 검증합니다.' },
+    { name: '재무 담당자', role: 'CFO / 재무팀장', why: '재무적 타당성과 투자 회수를 냉정하게 평가합니다.' },
+  ],
+  org_capacity: [
+    { name: '조직문화 담당자', role: 'CHRO / 인사팀장', why: '조직 역량 관점의 가정이 부족합니다. 인력과 문화적 준비도를 검증합니다.' },
+    { name: '변화관리 전문가', role: '조직개발 매니저', why: '조직의 변화 수용력과 실행 역량을 현실적으로 평가합니다.' },
+  ],
+};
+
+export interface BlindSpotRecommendation {
+  name: string;
+  role: string;
+  why: string;
+  axis: string;
+  axis_label: string;
+}
+
+/**
+ * Recommend a persona to cover the user's blind spot axis.
+ * Returns null if no significant gap exists or insufficient data.
+ *
+ * Uses Sliding Window (last 10 decisions) per T6 principle.
+ */
+export function recommendBlindSpotPersona(
+  existingPersonaRoles: string[],
+): BlindSpotRecommendation | null {
+  const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+  const doneItems = reframeItems.filter(d => d.status === 'done' && d.analysis);
+  const recentItems = doneItems.slice(-10);
+
+  if (recentItems.length < 3) return null; // Not enough data
+
+  const axisCounts: Record<string, number> = {
+    customer_value: 0, feasibility: 0, business: 0, org_capacity: 0,
+  };
+  let total = 0;
+
+  for (const item of recentItems) {
+    for (const a of item.analysis!.hidden_assumptions || []) {
+      if (a.axis && a.axis in axisCounts) {
+        axisCounts[a.axis]++;
+        total++;
+      }
+    }
+  }
+
+  if (total < 4) return null; // Not enough assumptions to determine pattern
+
+  const axisLabels: Record<string, string> = {
+    customer_value: '고객 가치', feasibility: '실현 가능성',
+    business: '비즈니스', org_capacity: '조직 역량',
+  };
+
+  // Find weakest axis (significantly below average)
+  const avgPct = 100 / Object.keys(axisCounts).length; // 25%
+  let weakestAxis: string | null = null;
+  let weakestPct = Infinity;
+
+  for (const [axis, count] of Object.entries(axisCounts)) {
+    const pct = (count / total) * 100;
+    if (pct < avgPct * 0.5 && pct < weakestPct) {
+      weakestPct = pct;
+      weakestAxis = axis;
+    }
+  }
+
+  if (!weakestAxis) return null;
+
+  // Pick a persona archetype that doesn't overlap with existing personas
+  const candidates = AXIS_PERSONA_MAP[weakestAxis] || [];
+  const existingLower = existingPersonaRoles.map(r => r.toLowerCase());
+  const pick = candidates.find(
+    c => !existingLower.some(r => r.includes(c.role.toLowerCase().split('/')[0].trim()))
+  ) || candidates[0];
+
+  if (!pick) return null;
+
+  return {
+    ...pick,
+    axis: weakestAxis,
+    axis_label: axisLabels[weakestAxis] || weakestAxis,
+  };
 }
 
 /**

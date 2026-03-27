@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { validateOrigin, validateContentType } from '@/lib/api-security';
 
 const MAX_TOKENS_CAP = 4096;
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
+const MAX_MESSAGES = 20;
+const MAX_TOTAL_BODY = 500_000; // 500KB
 const VALID_ROLES = new Set(['user', 'assistant']);
 
 function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
-  if (!Array.isArray(messages) || messages.length === 0) return false;
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false;
+  let totalSize = 0;
   return messages.every(
-    (m: unknown) =>
-      typeof m === 'object' && m !== null &&
-      'role' in m && VALID_ROLES.has((m as { role: unknown }).role as string) &&
-      'content' in m && typeof (m as { content: unknown }).content === 'string' &&
-      ((m as { content: string }).content.length <= MAX_MESSAGE_LENGTH)
+    (m: unknown) => {
+      if (typeof m !== 'object' || m === null) return false;
+      if (!('role' in m) || !VALID_ROLES.has((m as { role: unknown }).role as string)) return false;
+      if (!('content' in m) || typeof (m as { content: unknown }).content !== 'string') return false;
+      const content = (m as { content: string }).content;
+      if (content.length > MAX_MESSAGE_LENGTH) return false;
+      totalSize += content.length;
+      return totalSize <= MAX_TOTAL_BODY;
+    }
   );
 }
 
@@ -24,6 +32,12 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
  * The key is only used server-side and never stored.
  */
 export async function POST(req: NextRequest) {
+  // Request validation
+  const ctError = validateContentType(req);
+  if (ctError) return ctError;
+  const csrfError = validateOrigin(req);
+  if (csrfError) return csrfError;
+
   try {
     const body = await req.json();
     const { apiKey, messages, system } = body;

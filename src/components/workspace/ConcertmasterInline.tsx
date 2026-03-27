@@ -3,30 +3,22 @@
 import { useMemo } from 'react';
 import { Music2 } from 'lucide-react';
 import { getStepCoaching, buildConcertmasterProfile } from '@/lib/concertmaster';
-import type { CoachingStep } from '@/lib/concertmaster';
+import type { CoachingStep, StepCoaching } from '@/lib/concertmaster';
 
 interface ConcertmasterInlineProps {
   step: CoachingStep;
 }
 
-export function ConcertmasterInline({ step }: ConcertmasterInlineProps) {
-  const coaching = useMemo(() => {
-    const profile = buildConcertmasterProfile();
-    return getStepCoaching(step, profile);
-  }, [step]);
+const TONE_STYLES = {
+  neutral: { bg: 'bg-[var(--gold-muted)]', border: 'border-[var(--gold)]/20', icon: 'text-[var(--gold)]', pill: 'bg-[var(--gold-muted)] text-[var(--gold)]' },
+  positive: { bg: 'bg-emerald-500/5', border: 'border-emerald-500/20', icon: 'text-emerald-500', pill: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  counterfactual: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', icon: 'text-blue-500', pill: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  challenge: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', icon: 'text-amber-500', pill: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+};
 
-  if (!coaching) return null;
-
-  // Tone-based styling
+function CoachingItem({ coaching }: { coaching: StepCoaching }) {
   const tone = coaching.tone || 'neutral';
-  const toneStyles = {
-    neutral: { bg: 'bg-[var(--gold-muted)]', border: 'border-[var(--gold)]/20', icon: 'text-[var(--gold)]', pill: 'bg-[var(--gold-muted)] text-[var(--gold)]' },
-    positive: { bg: 'bg-emerald-500/5', border: 'border-emerald-500/20', icon: 'text-emerald-500', pill: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-    counterfactual: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', icon: 'text-blue-500', pill: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  };
-  const s = toneStyles[tone];
-
-  // Short tip → pill style, long coaching → card style
+  const s = TONE_STYLES[tone];
   const isLong = !!coaching.detail;
 
   if (!isLong) {
@@ -47,6 +39,23 @@ export function ConcertmasterInline({ step }: ConcertmasterInlineProps) {
           <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{coaching.detail}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ConcertmasterInline({ step }: ConcertmasterInlineProps) {
+  const coachingItems = useMemo(() => {
+    const profile = buildConcertmasterProfile();
+    return getStepCoaching(step, profile);
+  }, [step]);
+
+  if (coachingItems.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {coachingItems.map((item, i) => (
+        <CoachingItem key={`${step}-coaching-${i}`} coaching={item} />
+      ))}
     </div>
   );
 }

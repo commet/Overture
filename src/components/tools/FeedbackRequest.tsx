@@ -93,10 +93,19 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('파일이 너무 큽니다 (최대 5MB).');
+      return;
+    }
+    if (!file.type.startsWith('text/') && !file.name.match(/\.(txt|md|csv|json)$/i)) {
+      alert('텍스트 파일만 업로드할 수 있습니다 (.txt, .md, .csv, .json).');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (evt) => {
       setDocumentText(evt.target?.result as string);
-      setDocumentTitle(file.name.replace(/\.(txt|md)$/, ''));
+      setDocumentTitle(file.name.replace(/\.(txt|md|csv|json)$/i, ''));
       setUseCustomDoc(true);
     };
     reader.readAsText(file);

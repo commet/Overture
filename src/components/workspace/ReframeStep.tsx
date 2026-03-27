@@ -7,7 +7,7 @@ import { useReframeStore } from '@/stores/useReframeStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { ShareBar } from '@/components/ui/ShareBar';
 import { reframeToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
 import type { ReframeAnalysis, ReframeItem, ReframeHiddenQuestion, HiddenAssumption } from '@/stores/types';
@@ -1252,7 +1252,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                   <RotateCcw size={14} /> 가정 다시 평가
                 </Button>
                 <div className="flex gap-2">
-                  <CopyButton getText={() => reframeToMarkdown(current)} />
+                  <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => '악보 해석 | ' + (current.analysis?.surface_task || '')} />
                   <Button onClick={handleConfirm} disabled={!current.selected_question}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -1342,7 +1342,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 >
                   <Send size={14} /> 편곡으로 보내기
                 </Button>
-                <CopyButton getText={() => reframeToMarkdown(current)} label="마크다운 복사" />
+                <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => '악보 해석 | ' + (current.analysis?.surface_task || '')} />
               </div>
             </div>
 

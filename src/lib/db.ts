@@ -16,6 +16,27 @@ type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
   | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refine_loops'
   | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores';
 
+/**
+ * Strip fields that must only be set by the server/database.
+ * Prevents mass-assignment attacks where client data contains
+ * crafted user_id, timestamps, or other privileged fields.
+ *
+ * - user_id: always set by getCurrentUserId(), never from client
+ * - created_at/updated_at: set by DB triggers (update_updated_at),
+ *   stripping prevents merge-logic manipulation via future timestamps
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeItem(item: any): any {
+  if (!item || typeof item !== 'object') return item;
+  const {
+    user_id: _uid,
+    created_at: _ca,
+    updated_at: _ua,
+    ...rest
+  } = item;
+  return rest;
+}
+
 // ─── Merge Logic ───
 
 interface Timestamped {
@@ -90,7 +111,7 @@ export async function loadAndMerge<T extends Timestamped>(
     if (localOnly.length > 0) {
       await supabase
         .from(table)
-        .upsert(localOnly.map(item => ({ ...item, user_id: userId })), { onConflict: 'id' })
+        .upsert(localOnly.map(item => ({ ...sanitizeItem(item), user_id: userId })), { onConflict: 'id' })
         .then(({ error }) => { if (error) log.error(`push local-only to ${table}: ${error.message}`, { context: 'db' }); });
     }
 
@@ -112,7 +133,7 @@ export async function syncToSupabase(table: TableName, localItems: any[]): Promi
 
   try {
     const itemsWithUser = localItems.map((item) => ({
-      ...item,
+      ...sanitizeItem(item),
       user_id: userId,
     }));
 
@@ -164,7 +185,7 @@ export async function upsertToSupabase(table: TableName, item: any): Promise<voi
   try {
     const { error } = await supabase
       .from(table)
-      .upsert({ ...item, user_id: userId }, { onConflict: 'id' });
+      .upsert({ ...sanitizeItem(item), user_id: userId }, { onConflict: 'id' });
 
     if (error) {
       log.error(`upsert to ${table} failed: ${error.message}`, { context: 'db' });
@@ -226,7 +247,7 @@ export async function insertToSupabase(table: TableName, item: any): Promise<voi
   try {
     const { error } = await supabase
       .from(table)
-      .insert({ ...item, user_id: userId });
+      .insert({ ...sanitizeItem(item), user_id: userId });
 
     if (error) {
       log.error(`insert to ${table} failed: ${error.message}`, { context: 'db' });

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { CopyButton } from '@/components/ui/CopyButton';
+import { ShareBar } from '@/components/ui/ShareBar';
 import { callLLMJson } from '@/lib/llm';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
 import type { FeedbackRecord, RehearsalResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefineLoop } from '@/stores/types';
@@ -634,7 +635,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                 {latestIteration && (
                   <div className="mt-2">
                     <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서</p>
-                    <CopyButton getText={() => latestIteration.revised_plan} label="최종 문서 복사" />
+                    <ShareBar getText={() => latestIteration.revised_plan} getTitle={() => '합주 최종 결과'} />
                   </div>
                 )}
               </Card>

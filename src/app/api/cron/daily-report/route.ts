@@ -5,8 +5,31 @@ import { Resend } from 'resend';
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
-const REPORT_EMAIL = 'yclee913@gmail.com';
-const OWNER_EMAILS = ['yclee913@gmail.com', 'time22say@gmail.com'];
+const REPORT_EMAIL = process.env.REPORT_EMAIL || '';
+const OWNER_EMAILS = (process.env.OWNER_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+
+/** Escape HTML special characters to prevent injection in email templates. */
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Constant-time string comparison to prevent timing attacks (Edge-compatible). */
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // Still do a full comparison to avoid leaking length info via timing
+    b = a;
+  }
+  let mismatch = a.length !== b.length ? 1 : 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
 
 // KST = UTC+9
 function kstYesterday() {
@@ -17,9 +40,10 @@ function kstYesterday() {
 }
 
 export async function GET(req: Request) {
-  // Verify cron secret to prevent unauthorized access
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Verify cron secret to prevent unauthorized access (constant-time)
+  const authHeader = req.headers.get('authorization') || '';
+  const expected = `Bearer ${process.env.CRON_SECRET || ''}`;
+  if (!process.env.CRON_SECRET || !safeCompare(authHeader, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -196,7 +220,7 @@ export async function GET(req: Request) {
   <div style="background: white; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
     <h2 style="font-size: 14px; color: #78716c; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.05em;">신규 가입</h2>
     ${newSignups.length > 0
-      ? newSignups.map(u => `<p style="font-size: 13px; margin: 4px 0;"><strong>${u.name || '(이름 없음)'}</strong> — ${u.email}</p>`).join('')
+      ? newSignups.map(u => `<p style="font-size: 13px; margin: 4px 0;"><strong>${escHtml(u.name || '(이름 없음)')}</strong> — ${escHtml(u.email)}</p>`).join('')
       : '<p style="font-size: 13px; color: #a8a29e; margin: 0;">신규 가입자 없음</p>'
     }
   </div>
@@ -209,7 +233,7 @@ export async function GET(req: Request) {
         .sort(([,a], [,b]) => b - a)
         .slice(0, 8)
         .map(([path, count]) => `<tr>
-          <td style="padding: 4px 0; font-family: monospace; font-size: 12px;">${path}</td>
+          <td style="padding: 4px 0; font-family: monospace; font-size: 12px;">${escHtml(path)}</td>
           <td style="padding: 4px 0; text-align: right; font-weight: 600;">${count}</td>
         </tr>`).join('')}
     </table>
@@ -249,6 +273,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, date: kstDate, sessions: totalSessions, events: totalEvents });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error('[daily-report] email send error:', err);
+    return NextResponse.json({ error: 'Failed to send report' }, { status: 500 });
   }
 }

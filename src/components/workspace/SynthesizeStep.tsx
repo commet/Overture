@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Field } from '@/components/ui/Field';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { ShareBar } from '@/components/ui/ShareBar';
 import { synthesizeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
 import type { SynthesizeAnalysis, SynthesizeSource } from '@/stores/types';
@@ -469,7 +469,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
               <RotateCcw size={14} /> 새로 시작
             </Button>
             <div className="flex gap-2">
-              <CopyButton getText={() => synthesizeToMarkdown(current)} />
+              <ShareBar getText={() => synthesizeToMarkdown(current)} getTitle={() => '조율 결과'} />
               <Button onClick={handleConfirm}>
                 <Check size={14} /> 확정
               </Button>
@@ -522,7 +522,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
               >
                 <Send size={14} /> 리허설 받기
               </Button>
-              <CopyButton getText={() => synthesizeToMarkdown(current)} label="마크다운 복사" />
+              <ShareBar getText={() => synthesizeToMarkdown(current)} getTitle={() => '조율 결과'} />
             </div>
           </div>
 {/* NextStepGuide removed — synthesize is a standalone utility, not part of the core flow */}

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import {
   Play, Layers, Map, Users, RefreshCw, Sparkles,
-  Check, ArrowRight, ArrowLeft, Bot, Brain, Handshake,
+  Check, ArrowRight, ArrowLeft, Bot, Brain, Handshake, ChevronDown,
 } from 'lucide-react';
 import { track } from '@/lib/analytics';
+import { recordSignal } from '@/lib/signal-recorder';
 
 /* ═══════════════════════════════════════
    DEMO DATA
@@ -41,8 +42,22 @@ const DEMO = {
   },
 
   refine: [
-    { fixes: ['IT 보안 승인 병행 프로세스 추가', '팀원 온보딩 워크숍 설계'], score: 78, review: '워크숍은 좋은데, 실제 업무 데이터로 해봐야 감이 와.' },
-    { fixes: ['Before/After 측정 프레임 구체화', '팀원 불안감 관리 커뮤니케이션'], score: 92, review: '좋아. 데이터가 있으면 대표한테 보고할 수 있어.' },
+    {
+      fixes: [
+        { source: '2주 파일럿이면 남은 2주에 뭘 보여줄 수 있어?', action: 'IT 보안 승인 병행 프로세스 추가', delta: 45 },
+        { source: '팀원 심리적 저항 우려', action: '팀원 온보딩 워크숍 설계', delta: 33 },
+      ],
+      score: 78,
+      review: '워크숍은 좋은데, 실제 업무 데이터로 해봐야 감이 와.',
+    },
+    {
+      fixes: [
+        { source: '실제 업무 데이터로 해봐야 감이 온다', action: 'Before/After 측정 프레임 구체화', delta: 8 },
+        { source: '대표 보고 근거 필요', action: '팀원 불안감 관리 커뮤니케이션 추가', delta: 6 },
+      ],
+      score: 92,
+      review: '좋아. 데이터가 있으면 대표한테 보고할 수 있어.',
+    },
   ],
 };
 
@@ -56,51 +71,59 @@ const demoChoices = {
    REFRAMED QUESTION LOGIC
    ═══════════════════════════════════════ */
 
-function getReframed(doubted: Set<number>): { question: string; insight: string } {
+function getReframed(doubted: Set<number>): { bridge: string; question: string; insight: string } {
   const d0 = doubted.has(0);
   const d1 = doubted.has(1);
   const d2 = doubted.has(2);
   const count = doubted.size;
 
   if (count === 0) return {
-    question: '전제가 탄탄하다면 — "어떤 AI 도구"가 아니라 "어떤 업무부터 적용해서 가장 빠르게 성과를 증명할지"가 진짜 질문이다.',
-    insight: '실행 속도가 관건입니다. 파일럿 대상 업무 선정이 핵심 판단입니다.',
+    bridge: '실행 속도가 관건 — 전제가 맞다면 "무엇을"이 아니라 "어디부터"가 핵심이다.',
+    question: '"어떤 AI 도구"가 아니라 "어떤 업무부터 적용해서 가장 빠르게 성과를 증명할지"가 진짜 질문이다.',
+    insight: '파일럿 대상 업무 선정이 핵심 판단입니다.',
   };
 
   if (count === 3) return {
+    bridge: '세 전제 모두 흔들린다 — 계획보다 검증이 먼저다.',
     question: 'AI 도구를 도입하는 것이 아니라, 우리 팀의 어떤 업무가 AI로 실질적으로 나아질 수 있는지를 먼저 파악해야 하는 것 아닌가?',
-    insight: '세 전제 모두 흔들립니다. 계획보다 검증이 먼저입니다.',
+    insight: '"도입"이 아니라 "검증"이 진짜 과제입니다.',
   };
 
   if (d0 && !d1 && !d2) return {
-    question: '"AI 도입 = 효율 향상"이 흔들린다. 계획이 아니라, 우리 업무 중 AI가 실제로 시간을 줄여주는 게 있는지부터 검증해야 하지 않나?',
-    insight: '"정말 빨라지는가"가 불확실합니다. Before/After 데이터를 먼저 확보하세요.',
+    bridge: '"AI 도입 = 효율 향상"이 흔들린다 — 정말 빨라지는가?',
+    question: '계획이 아니라, 우리 업무 중 AI가 실제로 시간을 줄여주는 게 있는지부터 검증해야 하지 않나?',
+    insight: 'Before/After 데이터를 먼저 확보해야 합니다.',
   };
 
   if (!d0 && d1 && !d2) return {
-    question: 'AI가 효율적인 건 맞을 수 있다. 하지만 "팀원들이 쓸 것이다"가 흔들리면, 도구가 아니라 팀의 변화 수용력을 먼저 설계해야 하지 않나?',
+    bridge: '"팀원들이 쓸 것이다"가 흔들린다 — 도구보다 사람이 먼저다.',
+    question: 'AI가 효율적인 건 맞을 수 있다. 하지만 도구가 아니라 팀의 변화 수용력을 먼저 설계해야 하지 않나?',
     insight: '학습 비용과 심리적 저항을 먼저 다뤄야 합니다.',
   };
 
   if (!d0 && !d1 && d2) return {
+    bridge: '"경쟁사 성공 = 우리 성공"이 흔들린다 — 남의 답이 우리 답이 아니다.',
     question: '경쟁사를 따라가는 게 아니라, 우리 팀의 고유한 병목을 찾아서 거기에 AI를 쓰는 게 맞지 않나?',
-    insight: '외부 사례는 참고일 뿐입니다. 우리 팀만의 판단 기준이 필요합니다.',
+    insight: '우리 팀만의 판단 기준이 필요합니다.',
   };
 
   if (d0 && d1) return {
-    question: '"빨라지는지도 모르고, 팀이 쓸지도 모른다" — 계획이 아니라, 1명이 1개 업무로 1주일 써보는 최소 실험부터 해야 하지 않나?',
-    insight: '큰 계획은 위험합니다. 가장 작은 단위의 실험으로 두 가정을 동시에 검증하세요.',
+    bridge: '"빨라지는지도 모르고, 팀이 쓸지도 모른다" — 큰 계획은 위험하다.',
+    question: '계획이 아니라, 1명이 1개 업무로 1주일 써보는 최소 실험부터 해야 하지 않나?',
+    insight: '가장 작은 단위의 실험으로 두 가정을 동시에 검증하세요.',
   };
 
   if (d0 && d2) return {
-    question: '"정말 빨라지는지"도 의문이고 경쟁사 논리도 약하다면 — 우리 팀만의 효율 병목을 먼저 정의하는 게 선행 질문 아닌가?',
-    insight: '외부 사례와 일반론 모두 근거가 약합니다. 자체 데이터에서 시작하세요.',
+    bridge: '"정말 빨라지는지"도 의문이고 경쟁사 논리도 약하다.',
+    question: '우리 팀만의 효율 병목을 먼저 정의하는 게 선행 질문 아닌가?',
+    insight: '자체 데이터에서 시작해야 합니다.',
   };
 
   // d1 && d2
   return {
-    question: '"팀이 쓸지"와 "남의 성공이 우리 성공인지" 둘 다 흔들린다면 — 도구가 아니라 팀 내부 합의와 자체 기준을 먼저 만드는 게 순서 아닌가?',
-    insight: '기술은 준비돼도 사람과 맥락이 다르면 실패합니다. 내부 합의부터 세우세요.',
+    bridge: '"팀이 쓸지"와 "남의 성공이 우리 성공인지" 둘 다 흔들린다.',
+    question: '도구가 아니라 팀 내부 합의와 자체 기준을 먼저 만드는 게 순서 아닌가?',
+    insight: '사람과 맥락이 다르면 기술이 준비돼도 실패합니다.',
   };
 }
 
@@ -293,73 +316,103 @@ function ReframeSection() {
   const reframedKey = [...doubted].sort().join('-') || 'none';
 
   return (
-    <div className="space-y-5 phrase-entrance">
-      <div>
+    <div className="phrase-entrance">
+      {/* Header */}
+      <div className="mb-7">
         <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold tracking-wider uppercase mb-2">
-          <Layers size={14} /> 1악장 &middot; 악보 해석
+          <Layers size={14} /> 악보 해석
         </div>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+        <h2 className="text-[26px] md:text-[32px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           과제 뒤의 숨겨진 전제
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          의심되는 전제를 탭하세요. <strong className="text-[var(--text-primary)]">질문이 바뀝니다.</strong>
+        <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+          의심되는 전제를 탭하세요. <strong className="text-[var(--text-primary)]">질문이 실시간으로 바뀝니다.</strong>
         </p>
       </div>
 
-      {/* Surface task */}
-      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
-        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1">받은 과제</p>
-        <p className="text-[14px] font-semibold text-[var(--text-primary)]">{DEMO.surface_task}</p>
+      {/* ① Original Question — starting point */}
+      <div className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">원래 질문</p>
+        <p className="text-[16px] md:text-[17px] font-semibold text-[var(--text-primary)] leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          &ldquo;{DEMO.surface_task}&rdquo;
+        </p>
       </div>
 
-      {/* Premises — tappable toggle */}
-      <div className="space-y-2">
-        {DEMO.premises.map((text, i) => {
-          const isDoubted = doubted.has(i);
-          return (
-            <button
-              key={i}
-              onClick={() => toggleDoubt(i)}
-              className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
-                isDoubted
-                  ? 'border-red-300 bg-red-50/80 shadow-sm'
-                  : 'border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className={`text-[13px] font-medium leading-snug ${isDoubted ? 'text-red-700' : 'text-[var(--text-primary)]'}`}>
-                  &ldquo;{text}&rdquo;
-                </p>
-                <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors ${
-                  isDoubted ? 'bg-red-100 text-red-600' : 'bg-[var(--bg)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'
-                }`}>
-                  {isDoubted ? '의심' : '확인'}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+      {/* Connector ① → ② */}
+      <div className="flex justify-center py-1.5">
+        <div className="w-px h-5 bg-[var(--border)]" />
       </div>
 
-      {/* Before → After */}
-      <div className="space-y-3 pt-1">
-        <div className="rounded-lg bg-[var(--surface)] px-4 py-3 opacity-50">
-          <p className="text-[11px] font-bold text-[var(--text-tertiary)] mb-1">원래 질문</p>
-          <p className="text-[14px] text-[var(--text-tertiary)] line-through decoration-[var(--risk-critical)]/40">{DEMO.surface_task}</p>
+      {/* ② Hidden Premises — tappable toggle */}
+      <div>
+        <p className="text-[12px] font-bold text-[var(--text-tertiary)] tracking-[0.1em] uppercase mb-3">이 질문 속 숨겨진 전제</p>
+        <div className="space-y-2.5">
+          {DEMO.premises.map((text, i) => {
+            const isDoubted = doubted.has(i);
+            return (
+              <button
+                key={i}
+                onClick={() => toggleDoubt(i)}
+                className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                  isDoubted
+                    ? 'border-red-300 bg-red-50/80 shadow-sm'
+                    : 'border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className={`text-[15px] font-medium leading-snug ${isDoubted ? 'text-red-700' : 'text-[var(--text-primary)]'}`}>
+                    &ldquo;{text}&rdquo;
+                  </p>
+                  <span className={`shrink-0 text-[12px] font-bold px-3 py-1.5 rounded-full transition-colors ${
+                    isDoubted
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-transparent text-[var(--text-tertiary)] border border-dashed border-[var(--border)]'
+                  }`}>
+                    {isDoubted ? '의심' : '동의'}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        <div className="h-px mx-auto w-16 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent" />
+      {/* Connector ② → ③ */}
+      <div className="flex justify-center py-1.5">
+        <div className="w-px h-5 bg-[var(--border)]" />
+      </div>
 
-        <div
-          key={reframedKey}
-          className="rounded-xl bg-[var(--primary)] text-[var(--bg)] p-5 shadow-lg animate-crescendo"
-        >
-          <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/40 mb-2">재정의된 질문</p>
-          <p className="text-[16px] md:text-[18px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
-            {reframed.question}
-          </p>
-          <p className="text-[13px] text-white/60 mt-2">{reframed.insight}</p>
-        </div>
+      {/* ③ Bridge — reasoning connector */}
+      <div
+        key={`bridge-${reframedKey}`}
+        className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4 animate-fade-in"
+      >
+        <p className="text-[12px] font-bold text-[var(--accent)] tracking-[0.08em] uppercase mb-2">
+          {doubted.size === 0 ? '전제가 모두 탄탄하다면' : `전제 ${doubted.size}개가 흔들린다`}
+        </p>
+        <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-relaxed">
+          {reframed.bridge}
+        </p>
+        <p className="text-[14px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+          {reframed.insight}
+        </p>
+      </div>
+
+      {/* Arrow ③ → ④ */}
+      <div className="flex flex-col items-center py-1">
+        <div className="w-px h-3 bg-[var(--accent)]/30" />
+        <ChevronDown size={18} className="text-[var(--accent)] -mt-0.5" />
+      </div>
+
+      {/* ④ Reframed Question — destination */}
+      <div
+        key={reframedKey}
+        className="rounded-xl bg-[var(--primary)] text-[var(--bg)] p-6 shadow-lg animate-crescendo"
+      >
+        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/40 mb-2">재정의된 질문</p>
+        <p className="text-[18px] md:text-[21px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          {reframed.question}
+        </p>
       </div>
     </div>
   );
@@ -390,7 +443,7 @@ function RecastSection() {
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#8b6914] font-semibold tracking-wider uppercase mb-2">
-          <Map size={14} /> 2악장 &middot; 편곡
+          <Map size={14} /> 편곡
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           AI와 사람의 역할 설계
@@ -497,18 +550,50 @@ function PersonaSection() {
     observations.push({ label: '"AI=효율" 확인', text: '도입만 한다고 올라가? 어떤 업무에 쓸 건지 구체적으로 나와야지.' });
   }
 
+  // Strengths & improvements (dynamic based on user choices)
+  const strengths: string[] = [];
+  const improvements: string[] = [];
+
+  if (doubted.size > 0) {
+    strengths.push('전제를 의심해본 점 — 검증 없이 진행하는 위험을 줄였습니다.');
+  }
+  if (actors[3] === 'human' || actors[3] === 'both') {
+    strengths.push('최종 의사결정에 사람이 참여 — 책임 소재가 명확합니다.');
+  }
+  if (strengths.length === 0) {
+    strengths.push('파일럿 접근 — 단계적으로 검증하겠다는 방향이 설득력 있습니다.');
+  }
+
+  improvements.push('팀원들의 심리적 저항 — "AI가 내 일을 뺏는 거 아냐?"라는 우려를 아직 다루지 않고 있습니다.');
+  if (allConfirmed) {
+    improvements.push('모든 전제에 동의한 상태 — 하나라도 틀리면 계획 전체가 흔들릴 수 있습니다.');
+  }
+
   return (
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#6b4c9a] font-semibold tracking-wider uppercase mb-2">
-          <Users size={14} /> 3악장 &middot; 리허설
+          <Users size={14} /> 리허설
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          이해관계자가 반응합니다
+          이해관계자의 예상 반응
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          당신의 선택을 바탕으로 핵심 이해관계자를 시뮬레이션합니다.
+        <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+          당신의 선택을 바탕으로 핵심 이해관계자 페르소나를 시뮬레이션합니다.<br />
+          예상 피드백을 미리 받아보고, <strong className="text-[var(--text-primary)]">강점과 개선점</strong>을 확인하세요.
         </p>
+      </div>
+
+      {/* Extraction rationale */}
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-[0.08em] uppercase mb-2">이전 단계에서 추출된 핵심 이해관계자</p>
+        <div className="flex flex-wrap gap-2 text-[13px] text-[var(--text-secondary)]">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]">대표 지시 과제</span>
+          <span className="text-[var(--text-tertiary)]">&rarr;</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]">보고 라인 의사결정자</span>
+          <span className="text-[var(--text-tertiary)]">&rarr;</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#6b4c9a]/10 border border-[#6b4c9a]/20 text-[#6b4c9a] font-semibold">{DEMO.persona.name}</span>
+        </div>
       </div>
 
       {/* Persona card */}
@@ -539,12 +624,20 @@ function PersonaSection() {
         </div>
       )}
 
-      {/* Unspoken risk */}
-      <div className="rounded-xl bg-purple-50 border border-purple-200 px-4 py-3.5">
-        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 mb-2">침묵의 리스크</span>
-        <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-          {DEMO.persona.unspoken_risk}
-        </p>
+      {/* Strengths & improvements */}
+      <div className="space-y-2">
+        {strengths.map((s, i) => (
+          <div key={`s-${i}`} className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+            <span className="shrink-0 text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded mt-0.5">강점</span>
+            <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{s}</p>
+          </div>
+        ))}
+        {improvements.map((imp, i) => (
+          <div key={`i-${i}`} className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+            <span className="shrink-0 text-[11px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded mt-0.5">개선점</span>
+            <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{imp}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -571,7 +664,7 @@ function RefineSection() {
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#2d6b2d] font-semibold tracking-wider uppercase mb-2">
-          <RefreshCw size={14} /> 4악장 &middot; 합주
+          <RefreshCw size={14} /> 합주
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           피드백을 반영하고 수렴합니다
@@ -581,14 +674,14 @@ function RefineSection() {
         </p>
       </div>
 
-      {/* Convergence score */}
+      {/* Execution readiness score */}
       {score > 0 && (
         <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
           isConverged ? 'border-[#2d6b2d] bg-[#2d6b2d]' : 'border-[#2d6b2d]/20 bg-[#2d6b2d]/[0.06]'
         }`}>
           <div className="px-5 py-4 flex items-center justify-between">
             <div>
-              <p className={`text-[11px] font-medium mb-0.5 ${isConverged ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>수렴도</p>
+              <p className={`text-[11px] font-medium mb-0.5 ${isConverged ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>실행 준비도</p>
               <p className={`text-[32px] font-extrabold leading-none tabular-nums ${isConverged ? 'text-white' : 'text-[#2d6b2d]'}`}>{score}%</p>
             </div>
             {isConverged && (
@@ -606,14 +699,33 @@ function RefineSection() {
         </div>
       )}
 
-      {/* Start button */}
+      {/* Start — explanation + button */}
       {phase === 'ready' && (
-        <button
-          onClick={() => setPhase('r1-loading')}
-          className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#2d6b2d] text-white text-[15px] font-bold hover:bg-[#245524] transition-colors cursor-pointer active:scale-[0.98]"
-        >
-          합주 시작 <ArrowRight size={14} />
-        </button>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+            <p className="text-[12px] font-bold text-[#2d6b2d] tracking-[0.08em] uppercase mb-3">합주가 진행되면</p>
+            <ol className="space-y-2 text-[14px] text-[var(--text-secondary)] leading-relaxed">
+              <li className="flex items-start gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
+                리허설에서 나온 <strong className="text-[var(--text-primary)]">개선점을 계획에 자동 반영</strong>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
+                이해관계자가 수정된 계획을 <strong className="text-[var(--text-primary)]">다시 검토</strong>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
+                실행 준비도가 충분히 높아질 때까지 <strong className="text-[var(--text-primary)]">자동 반복</strong>
+              </li>
+            </ol>
+          </div>
+          <button
+            onClick={() => setPhase('r1-loading')}
+            className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#2d6b2d] text-white text-[15px] font-bold hover:bg-[#245524] transition-colors cursor-pointer active:scale-[0.98]"
+          >
+            합주 시작 <ArrowRight size={14} />
+          </button>
+        </div>
       )}
 
       {/* Loading */}
@@ -621,28 +733,43 @@ function RefineSection() {
         <div className="text-center py-8 animate-fade-in">
           <div className="w-8 h-8 rounded-full border-2 border-[#2d6b2d] border-t-transparent animate-spin mx-auto mb-3" />
           <p className="text-[14px] text-[var(--text-secondary)]">
-            {phase === 'r1-loading' ? '피드백을 반영하여 수정 중...' : '나머지 이슈를 반영 중...'}
+            {phase === 'r1-loading' ? '피드백을 반영하여 계획 수정 중...' : '추가 피드백을 반영 중...'}
           </p>
         </div>
       )}
 
       {/* Revision results */}
       {(phase === 'r1' || phase === 'r2-loading' || phase === 'r2') && (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-5 animate-fade-in">
           {DEMO.refine.slice(0, phase === 'r1' ? 1 : 2).map((r, idx) => (
-            <div key={idx} className="rounded-xl border border-[#2d6b2d]/15 bg-[#2d6b2d]/[0.03] px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[13px] font-bold text-[#2d6b2d]">{idx + 1}차 수정</span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] font-bold tabular-nums">{r.score}%</span>
+            <div key={idx} className="space-y-3">
+              <p className="text-[14px] font-bold text-[#2d6b2d]">{idx + 1}차 수정</p>
+
+              {/* Feedback → Fix cards */}
+              {r.fixes.map((f, fi) => (
+                <div key={fi} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[#6b4c9a]/[0.03]">
+                    <p className="text-[11px] font-bold text-[#6b4c9a] mb-0.5">김상무 피드백</p>
+                    <p className="text-[14px] text-[var(--text-primary)] italic">&ldquo;{f.source}&rdquo;</p>
+                  </div>
+                  <div className="px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <Check size={14} className="text-[#2d6b2d] shrink-0 mt-0.5" />
+                      <p className="text-[14px] font-medium text-[var(--text-primary)]">{f.action}</p>
+                    </div>
+                    <span className="shrink-0 text-[12px] font-bold text-[#2d6b2d] bg-[#2d6b2d]/10 px-2.5 py-1 rounded-full tabular-nums">+{f.delta}%</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Persona re-review */}
+              <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[12px] font-bold shrink-0 mt-0.5">김</div>
+                <div>
+                  <p className="text-[11px] font-bold text-[#6b4c9a] mb-1">수정 후 재검토</p>
+                  <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">&ldquo;{r.review}&rdquo;</p>
+                </div>
               </div>
-              <ul className="space-y-1 mb-2.5">
-                {r.fixes.map((f, fi) => (
-                  <li key={fi} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2">
-                    <Check size={12} className="text-[#2d6b2d] shrink-0 mt-0.5" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[13px] italic text-[var(--text-secondary)]">&ldquo;{r.review}&rdquo; — 김상무</p>
             </div>
           ))}
         </div>
@@ -651,8 +778,8 @@ function RefineSection() {
       {/* Converged banner */}
       {isConverged && (
         <div className="rounded-xl border-2 border-[#2d6b2d] bg-[#2d6b2d]/[0.04] px-5 py-4 text-center animate-fade-in">
-          <p className="text-[18px] font-extrabold text-[#2d6b2d]" style={{ fontFamily: 'var(--font-display)' }}>수렴 완료</p>
-          <p className="text-[13px] text-[var(--text-secondary)] mt-1">2회 반복으로 92%에 도달했습니다</p>
+          <p className="text-[18px] font-extrabold text-[#2d6b2d]" style={{ fontFamily: 'var(--font-display)' }}>합주 완료</p>
+          <p className="text-[13px] text-[var(--text-secondary)] mt-1">2회 반복으로 실행 준비도 92%에 도달했습니다</p>
         </div>
       )}
     </div>
@@ -664,24 +791,103 @@ function RefineSection() {
    ═══════════════════════════════════════ */
 
 function OutroSection() {
+  const reframed = getReframed(demoChoices.doubted);
+  const seedRecorded = useRef(false);
+
+  // Record demo seed signal — fires once when outro renders
+  useEffect(() => {
+    if (seedRecorded.current) return;
+    seedRecorded.current = true;
+
+    const aiOnlySteps = DEMO.steps.filter((_, i) => demoChoices.actors[i] === 'ai').length;
+    const humanOnlySteps = DEMO.steps.filter((_, i) => demoChoices.actors[i] === 'human').length;
+
+    recordSignal({
+      tool: 'reframe',
+      signal_type: 'demo_seed',
+      signal_data: {
+        doubted_count: demoChoices.doubted.size,
+        total_premises: DEMO.premises.length,
+        ai_only_steps: aiOnlySteps,
+        human_only_steps: humanOnlySteps,
+        total_steps: DEMO.steps.length,
+        completed: true,
+      },
+    });
+  }, []);
+
   return (
-    <div className="space-y-6 phrase-entrance text-center">
-      <div>
+    <div className="space-y-6 phrase-entrance">
+      <div className="text-center">
         <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--success)] font-semibold tracking-wider uppercase mb-3">
           <Sparkles size={14} /> 완료
         </div>
         <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          92% 수렴.<br />
-          <span className="text-[var(--text-secondary)]">이제 당신 차례입니다.</span>
+          이 과정을 통해<br />
+          <span className="text-[var(--accent)]">3가지 결과물</span>이 만들어졌습니다.
         </h2>
-        <p className="text-[15px] text-[var(--text-secondary)] mt-4 leading-relaxed max-w-md mx-auto">
-          전제를 점검하고, 역할을 설계하고,<br />
-          이해관계자 반응을 예측하고, 수렴할 때까지 반복했습니다.<br />
-          이제 당신의 과제로 해보세요.
-        </p>
       </div>
 
-      <Card variant="ai" className="!py-8">
+      {/* Deliverable 1: Reframed question */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
+          <Layers size={14} className="text-[#2d4a7c]" />
+          <span className="text-[13px] font-bold text-[var(--text-primary)]">재정의된 질문</span>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-[14px] text-[var(--text-tertiary)] line-through mb-2">&ldquo;{DEMO.surface_task}&rdquo;</p>
+          <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-relaxed">
+            &ldquo;{reframed.question}&rdquo;
+          </p>
+        </div>
+      </div>
+
+      {/* Deliverable 2: Thinking Summary */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
+          <Map size={14} className="text-[#8b6914]" />
+          <span className="text-[13px] font-bold text-[var(--text-primary)]">Thinking Summary</span>
+          <span className="text-[10px] font-bold text-[#8b6914] bg-[#8b6914]/10 px-2 py-0.5 rounded-full">팀 공유용</span>
+        </div>
+        <div className="px-5 py-4">
+          <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 text-[13px] text-[var(--text-secondary)] leading-relaxed space-y-2">
+            <p className="font-semibold text-[var(--text-primary)]">AI 활용 파일럿 계획 — 검토 요약</p>
+            <p>핵심 질문을 &ldquo;AI 도입&rdquo;에서 &ldquo;어떤 업무에 효과가 있는지 검증&rdquo;으로 재정의했습니다.</p>
+            <p>4단계 실행 계획 수립, AI/사람 역할 배분 완료. 김상무 피드백 2회 반영, 실행 준비도 92%.</p>
+            <p className="text-[var(--text-tertiary)]">다음 단계: 파일럿 대상 업무 선정 (담당: 팀장)</p>
+          </div>
+          <p className="text-[13px] text-[var(--text-tertiary)] mt-3">
+            복사해서 Slack · 이메일 · 보고서에 바로 사용. 비개발자도 맥락을 즉시 파악.
+          </p>
+        </div>
+      </div>
+
+      {/* Deliverable 3: Agent Harness */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
+          <Bot size={14} className="text-[var(--accent)]" />
+          <span className="text-[13px] font-bold text-[var(--text-primary)]">Agent Harness</span>
+          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full">CLAUDE.md</span>
+        </div>
+        <div className="px-5 py-4">
+          <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)] leading-relaxed space-y-1">
+            <p className="text-[var(--text-tertiary)]"># AI 활용 파일럿 — Agent 실행 지시서</p>
+            <p>- 검증된 전제: 3개 중 {demoChoices.doubted.size}개 재검증 완료</p>
+            <p>- 이해관계자 조건: 김상무 승인 기준 반영</p>
+            <p>- 실행 계획: 4단계 · 역할 배분 확정</p>
+            <p className="text-[var(--text-tertiary)]">...</p>
+          </div>
+          <p className="text-[13px] text-[var(--text-tertiary)] mt-3">
+            당신의 판단이 에이전트 instruction이 됩니다. 맥락 재설명 없이 바로 실행.
+          </p>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="text-center pt-2">
+        <p className="text-[15px] text-[var(--text-secondary)] mb-4">
+          당신의 과제로 직접 만들어보세요.
+        </p>
         <Link href="/workspace">
           <Button>
             워크스페이스에서 시작하기 <ArrowRight size={14} />
@@ -690,7 +896,7 @@ function OutroSection() {
         <p className="text-[11px] text-[var(--text-tertiary)] mt-3">
           로그인 없이 무료
         </p>
-      </Card>
+      </div>
     </div>
   );
 }

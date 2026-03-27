@@ -298,6 +298,8 @@ export interface Project {
   description: string;
   refs: ProjectRef[];
   meta_reflection?: MetaReflection;
+  /** Validation Chain: 완료 시 확신도 (1-5). outcome과 비교하여 보정 곡선 생성. */
+  confidence_at_completion?: number;
   team_id?: string;
   created_at: string;
   updated_at: string;

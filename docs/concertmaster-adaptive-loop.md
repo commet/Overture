@@ -159,18 +159,33 @@ Overture가 "이 사용자는 빠르고 대담한 결정을 선호합니다"를 
 
 대부분의 개인화 시스템은 1+2만 한다. **Overture는 네 가지를 모두 해야 한다.**
 
-#### 비율: Comfortable Discomfort
+#### 비율: Comfortable Discomfort, Measured
+
+**원칙: "편안하게 계속할 수 있을 만큼, 불편하게 성장할 수 있을 만큼."**
+
+고정 비율 대신 적응형 메커니즘을 사용한다. 출발점은:
 
 ```
-70% Leverage   — 사용자 스타일에 맞게 (생산적 느낌)
-20% Compensate — 사용자가 놓칠 것을 추가 (지원받는 느낌)
-10% Challenge  — 성장을 자극 (확장되는 느낌)
+80% Leverage   — 사용자 스타일에 맞게 (생산적 느낌)
+15% Compensate — 사용자가 놓칠 것을 추가 (지원받는 느낌)
+ 5% Challenge  — 성장을 자극 (확장되는 느낌)
 ```
+
+이 비율은 **가설**이다. 사용자 반응에 따라 조절된다:
+
+- **넛지 engagement가 높으면** (사용자가 compensate/challenge 코칭에 반응): challenge 비율 증가
+- **넛지 dismissal이 높으면** (사용자가 무시하거나 닫으면): leverage 비율로 복귀
+- **의사결정 중요도가 높으면**: challenge 비율 자연 증가
+
+**가드레일:**
+- Leverage는 50% 아래로 내려가지 않음 (사용자가 떠남)
+- Challenge는 3회 연속 의사결정에서 0%가 되지 않음 (시스템이 아첨꾼이 됨)
+
+비율의 적정성은 Phase 2의 넛지 효과 측정으로 검증한다. `StepCoaching.tone`에 `'challenge'`를 추가하여 각 코칭 메시지의 유형을 추적하고, 사용자의 반응(engagement vs dismissal)을 signal-recorder에 기록한다.
 
 항상 편안하면 → 필터 버블.
 항상 도전받으면 → 사용 중단.
-
-이 비율은 고정이 아니다. 의사결정의 중요도에 따라 조절된다 — 중요한 결정일수록 Challenge 비율을 높이는 것이 자연스럽다.
+**이 균형점은 사용자마다 다르다. 시스템이 찾아야 한다.**
 
 #### "약점"을 누가 정의하는가
 
@@ -395,16 +410,17 @@ demoChoices.actorSwaps       // Map<string, string> — 역할 재배치
                     (반복)
 ```
 
-### 현재 인프라와의 매핑
+### 현재 인프라와의 매핑 (2026-03-27 업데이트)
 
-| 적응형 루프 컴포넌트 | 현재 존재하는 인프라 | 필요한 확장 |
-|--------------------|--------------------|-----------|
-| Data Collection | `signal-recorder.ts`, `eval-engine.ts` | 데모 연결, 체류시간 추적, 편집 diff |
-| Pattern Inference | `analyzeStrategyPerformance()`, `getWorstPerformingEvals()` | 교차 결정 패턴 분석, 연구 기반선 비교 |
-| Prompt Injection | `context-chain.ts`의 `inject*Context()` | 사용자 패턴을 프롬프트에 주입하는 레이어 추가 |
-| UI Nudge | `concertmaster.ts`의 `getStepCoaching()` | 교차 결정 데이터 기반 코칭 메시지 |
-| Persona Recommendation | 없음 | blind spot 기반 페르소나 자동 추천 |
-| Dashboard | `ConcertmasterStrip.tsx` | 패턴 시각화, 트렌드 차트 |
+| 적응형 루프 컴포넌트 | 현재 존재하는 인프라 | 상태 | 필요한 확장 |
+|--------------------|--------------------|----|-----------|
+| Data Collection | `signal-recorder.ts`, `eval-engine.ts` (17 binary evals), `decision-quality.ts` (DQ 6요소) | ✅ 핵심 구현 완료 | 데모 연결, 체류시간 추적 |
+| Pattern Inference | `analyzeStrategyPerformance()`, `getWorstPerformingEvals()`, `analyzeDQTrend()`, `assessLearningHealth()` | ⚠️ 부분 연결 | Axis Fingerprint 분석, Sliding Windows 적용, 교차 결정 패턴 |
+| Prompt Injection | `context-chain.ts`의 `inject*Context()`, `prompt-mutation.ts`의 `applyPromptMutations()` | ⚠️ 프로세스 컨텍스트만 | `injectUserPatternContext()` — 사용자 패턴 주입 레이어 |
+| UI Nudge | `concertmaster.ts`의 `getStepCoaching()` (3-tier, 3-tone) | ⚠️ 읽기 전용 | `challenge` tone 추가, 배열 반환, 넛지 engagement 추적 |
+| Persona Recommendation | `auto-persona.ts`의 `extractAutoPersonas()` | ⚠️ 컨텍스트 기반만 | blind spot 기반 `recommendBlindSpotPersona()` |
+| Outcome Validation | `outcome-tracker.ts` (분석 함수), `correlateDQWithOutcomes()` | ⚠️ 함수만 존재 | Outcome 기록 UI, 확신도 보정 곡선, Validation Chain |
+| Dashboard | `ConcertmasterStrip.tsx`, `ConcertmasterInline.tsx` (tone 스타일링) | ✅ 기본 구현 | Learning Curve sparkline, 프로세스 요약 카드 |
 
 ---
 
@@ -414,10 +430,12 @@ demoChoices.actorSwaps       // Map<string, string> — 역할 재배치
 
 적응형 루프가 사용자의 기존 편향을 강화하지 않도록:
 
-1. **70-20-10 비율 모니터링**: leverage/compensate/challenge 비율이 극단으로 치우치면 자동 조정
+1. **Comfortable Discomfort 비율 모니터링**: leverage/compensate/challenge 비율이 극단으로 치우치면 자동 조정. 사용자별 적응형 비율 (Q3 참조)
 2. **연구 기반선 하한선**: 논문에서 도출된 최소 기준 이하로는 프로세스를 단축하지 않음
-3. **다양성 강제**: 페르소나 선택에서 최소 1개는 사용자의 일반적 선호와 다른 관점 포함
+3. **다양성 강제**: 페르소나 선택에서 최소 1개는 사용자의 일관적 blind spot 축을 커버하는 관점 포함 (Axis Fingerprint 기반)
 4. **자기 분산 알림**: 사용자의 평소 패턴과 크게 다른 행동 시 의식적 확인 유도
+5. **Comfortable Discomfort, Measured**: 넛지 engagement/dismissal 추적으로 코칭 비율 자동 조절. 고정 비율 대신 사용자 반응 기반 적응
+6. **Earned Recognition (아부 방지)**: 침묵 > 범용 칭찬. 과정을 칭찬하되 사람을 칭찬하지 않는다. 구체적이어야 하고 희소해야 한다. Anti-sycophancy 원칙과 보상 레이어의 일관성 보장
 
 ### 프라이버시
 
@@ -451,32 +469,52 @@ demoChoices.actorSwaps       // Map<string, string> — 역할 재배치
 
 ---
 
-## 9. 구현 우선순위
+## 9. 구현 우선순위 (2026-03-27 개정)
 
-### Phase 1: 시드 수집 (데모 연결)
-- [ ] 데모의 `demoChoices`를 signal-recorder에 연결
-- [ ] 데모 완료 시 초기 Concertmaster 프로필 생성
-- [ ] 데모에서 첫 사용으로의 전환 시 프로필 인계
+> 원칙: **"First Use Must Astonish"** — Inner loop(단일 의사결정 품질)이 리텐션 메커니즘이다. Outer loop(교차 의사결정 적응)은 5회차+ 보너스 가치다.
 
-### Phase 2: 맥락적 넛지 (Layer 2 적응)
-- [ ] `getStepCoaching()`에 교차 결정 패턴 데이터 추가
-- [ ] 판단 시점 넛지 메시지 설계 (Reframe/Rehearse/Refine 각각)
-- [ ] 넛지 효과 측정 (넛지 후 행동 변화 추적)
+### Phase 1: Close the Inner Loop — 단일 의사결정 품질 가시화
+**가장 높은 우선순위. 첫 사용 경험을 결정한다.**
+- [ ] `StepCoaching.tone`에 `'challenge'` 추가 (`concertmaster.ts`)
+- [ ] `getStepCoaching()` → `StepCoaching[]` 배열 반환 (최대 2개, comfort ratio 기반 우선순위)
+- [ ] `ConcertmasterInline.tsx` — 배열 수신, challenge tone amber 스타일링
+- [ ] `process-summary.ts` 신규 — `buildProcessSummary()`: 가정 수, 축 커버리지, 페르소나 수, 리스크, 수렴, DQ 스코어
+- [ ] 프로세스 요약 카드 UI (의사결정 완료 시 표시)
 
-### Phase 3: 프롬프트 주입 (LLM 적응)
-- [ ] `context-chain.ts`에 사용자 패턴 주입 레이어 추가
-- [ ] 페르소나 자동 추천 로직 구현
-- [ ] blind spot 보완 페르소나 생성
+### Phase 2: Learning Curve Visualization — 교차 의사결정 성장 가시화
+- [ ] `buildLearningCurve()` — DQ 추이, 요소별 트렌드, 가장 개선된 요소, 티어 진행률
+- [ ] `ConcertmasterStrip.tsx`에 SVG sparkline + 개선 배지 + 티어 진행 표시
+- [ ] `LearningHealth`에 axis_coverage + comfort_ratio 필드 추가
 
-### Phase 4: 결과 추적 (Gold Standard)
-- [ ] 결정 완료 후 확신도 슬라이더 추가
-- [ ] 1-2주 후 outcome 추적 알림 시스템
-- [ ] outcome 데이터와 프로세스 패턴의 상관 분석
+### Phase 3: Active Adaptation — 시스템이 사용자 패턴에 반응
+**핵심 차별화. 피드백 루프를 닫는다.**
+- [ ] `injectUserPatternContext()` — 축 갭, 수용 패턴, override 성향을 "참고: ..." 형식으로 LLM 프롬프트에 주입
+- [ ] `recommendBlindSpotPersona()` — Axis Fingerprint 기반 blind spot 페르소나 자동 추천
+- [ ] Sliding Windows by Signal Class 적용 (톤 3세션, 프로세스 10결정, blind spot 전체)
+- [ ] 넛지 engagement/dismissal 추적 → comfort ratio 자동 조절
 
-### Phase 5: 인지 개입 (Layer 4)
-- [ ] 사용자 선언 목표 설정 UI
-- [ ] 자기 분산 감지 및 의식적 확인 유도
-- [ ] Challenge 비율 동적 조절
+### Phase 4: Demo as Seed — 데모를 학습 데이터의 시작점으로
+**Phase 1과 병렬 가능 (독립적).**
+- [ ] `DemoWalkthrough.tsx` outro에서 `recordSignal('demo_seed')` 호출
+- [ ] `buildConcertmasterProfile()`에서 demo_seed 시그널 → 첫 사용 맞춤 코칭
+- [ ] 데모 행동 기반 코칭 메시지 (generic counterfactual 대체)
+
+### Phase 5: Validation Chain — Outcome 추적 + 프로세스-결과 상관관계
+**장기. 충분한 프로젝트 축적 후 가치 발현.**
+- [ ] `OutcomeTracker.tsx` — 결과 기록 UI (3-button → 구조화 폼 → 리스크 체크리스트)
+- [ ] `ValidationDashboard.tsx` — DQ-Outcome 상관, 페르소나 예측 정확도, 확신도 보정 곡선
+- [ ] `analyzeConfidenceCalibration()` + `validateEvalCriteria()` — 메타 검증
+- [ ] Project에 `confidence_at_completion` 필드 추가
+
+```
+실행 순서:
+문서 보강           → 즉시, Phase 1과 병렬
+Phase 1 (Inner)    → 최우선
+Phase 4 (Demo)     → Phase 1과 병렬
+Phase 2 (Learning) → Phase 1 완료 후
+Phase 3 (Adapt)    → Phase 1-2 데이터 기반
+Phase 5 (Validate) → 장기
+```
 
 ---
 
@@ -614,3 +652,165 @@ function injectUserPatternContext(profile: ConcertmasterProfile): string {
 ```
 
 `concertmaster.ts`가 이미 프로필을 구축하므로, 이 함수의 입력은 준비되어 있다. 연결만 하면 된다.
+
+---
+
+### 10.7 긴장 해소 원칙 참조표
+
+> 이하 내용은 2026-03-27 세션에서 추가. 전략 문서의 6가지 미해결 긴장을 식별하고, 각각에 대한 명명된 원칙으로 해소한 기록.
+
+이 문서의 설계 과정에서 6가지 개념적 긴장이 발견되었다. 각각은 "어느 쪽이 맞는가?"가 아니라 "어떻게 균형을 잡는가?"의 문제다.
+
+| # | 긴장 | 원칙 이름 | 해소 | 코드 앵커 |
+|---|------|---------|------|---------|
+| T1 | 투명성 vs 효과적 개입 | **Data Open, Design Quiet** | 데이터 소유권/수집은 100% 투명. 개입의 타이밍/방식은 효과를 위해 설계. "프로필 페이지"는 만들지 않되, drill-down은 항상 가능. | `ConcertmasterStrip` = 사실 공개, `getStepCoaching()` = 맥락적 삽입 |
+| T2 | Outcome 측정의 시간 지평 | **Validation Chain** | 3단계 검증: 즉각(DQ score) → 단기(확신도 보정) → 장기(outcome 추적). 프로세스 점수가 1차 시그널, outcome이 축적되면 승격. | `decision-quality.ts` → `confidence_at_completion` → `outcome-tracker.ts` |
+| T3 | 모든 의사결정을 단일 프로필로 | **Axis Fingerprint** | HiddenAssumption의 4축(customer/feasibility/business/org)을 암묵적 도메인 지문으로 사용. 명시적 도메인 분류 불필요. | `signal-recorder` 축 분포 집계 → `injectUserPatternContext()` |
+| T4 | 15회 사용까지의 리텐션 | **First Use Must Astonish** | Inner loop(단일 의사결정 품질)이 리텐션 메커니즘. Outer loop(적응)은 5회차+ 보너스. 각 사용이 독립적으로 가치 있어야 한다. | `buildProcessSummary()`, DQ 스코어카드 |
+| T5 | 70-20-10 비율의 근거 부재 | **Comfortable Discomfort, Measured** | 고정 비율 → 적응형 메커니즘. 시작 80/15/5, 넛지 engagement/dismissal로 조절. 가설로 명시, 측정으로 검증. | `StepCoaching.tone: 'challenge'`, comfort ratio 추적 |
+| T6 | 과거 데이터의 시간 가중치 | **Sliding Windows by Signal Class** | 톤(3세션), 프로세스(10결정), blind spot(전체, 최근 2x), outcome(감쇠 없음). 시그널 유형별 반감기가 다르다. | `getSignals()` 윈도우 쿼리 |
+
+**이 원칙들은 상호 보강적이다:**
+- T1(Data Open) + T5(Measured) = 사용자는 자기 데이터를 보면서, 시스템은 그 데이터로 코칭 비율을 조절한다
+- T3(Axis Fingerprint) + T6(Sliding Windows) = 축 커버리지 갭은 최근 10개 의사결정 기준으로 계산한다
+- T4(First Use Astonish) + T2(Validation Chain) = 첫 사용은 DQ 즉각 피드백, 반복 사용 시 validation chain이 자기 가치를 증명한다
+
+---
+
+### 10.8 Validation Chain 아키텍처
+
+Outcome 측정의 "gold standard" 문제를 해결하는 3단계 검증 체인:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    VALIDATION CHAIN                          │
+│                                                              │
+│  ① 즉각: DQ Score (프로세스 품질)                             │
+│     └ decision-quality.ts → 6요소 × 5점 = 0-100              │
+│     └ 측정 시점: 의사결정 완료 즉시                             │
+│     └ 성격: 프로세스가 좋았는가? (결과와 무관)                   │
+│                                                              │
+│  ② 단기: Confidence Calibration (보정 곡선)                   │
+│     └ 완료 시 확신도 (1-5) vs 1-4주 후 결과                    │
+│     └ 측정: 과신(high confidence + bad outcome)                │
+│             과소신(low confidence + good outcome)              │
+│     └ 성격: 나의 자기 평가가 정확한가?                          │
+│                                                              │
+│  ③ 장기: Outcome Tracking (결과 추적)                         │
+│     └ outcome-tracker.ts → hypothesis + success + risks       │
+│     └ 측정 시점: 의사결정 유형별 차등                           │
+│        - 운영 결정: 1-2주                                      │
+│        - 전략 결정: 1-3개월                                    │
+│        - 존재적 결정: 6-12개월                                 │
+│     └ 성격: 실제로 어떻게 됐는가?                               │
+│                                                              │
+│  ④ 메타 검증: Eval Criteria Validation                        │
+│     └ DQ 점수와 outcome의 상관관계 분석                        │
+│     └ 어떤 DQ 요소가 실제 결과를 예측하는가?                    │
+│     └ 예측력 없는 요소는 가중치 조절                            │
+│     └ 성격: 우리의 점수 매기기 자체가 맞는가?                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**핵심 통찰: 프로세스 점수(①)는 가설이다.** "가정을 다양한 축에서 발견하면 좋은 결정이다"는 40편 논문에서 도출한 가설이지, 이 사용자에게 검증된 사실이 아니다. Validation Chain의 목적은 이 가설을 사용자의 실제 데이터로 검증하는 것이다.
+
+**Annie Duke 반론에 대한 대응:** 개별 outcome은 의사결정 품질의 신뢰할 수 있는 proxy가 아니다 (좋은 결정 + 나쁜 운 = 나쁜 결과). 하지만 15+ 의사결정의 집계 패턴은 노이즈를 평균화한다. 이것이 Phase 5를 "장기"로 배치하는 이유 — 충분한 표본이 필요하다.
+
+---
+
+### 10.9 Anthropic Economic Index 통합
+
+> Anthropic, "Economic Index Report: Learning Curves" (2026). Claude 웹 사용자의 사용 패턴과 성과 분석.
+
+이 리포트의 세 가지 핵심 발견이 Overture의 적응형 루프 설계를 외부 데이터로 뒷받침한다:
+
+#### 발견 1: Learning-by-doing이 실재한다
+
+장기 사용자(6개월+)의 task success가 초보자보다 **10% 높았다**. 작업 유형, 사용 언어, 국가 등 변수를 통제한 후에도 **4%p 차이**가 유지되었다.
+
+**Overture에 대한 함의:** 적응형 루프의 근본 가정 — "반복 사용이 판단 품질을 개선한다" — 이 경험적으로 지지된다. 단, Anthropic 리포트는 **AI 사용 능력**의 학습 곡선이고, Overture가 측정하는 것은 **판단 품질**의 학습 곡선이다. 같은 메커니즘(learning-by-doing)이 다른 도메인에 적용될 수 있다는 간접 근거.
+
+중요한 설계 시사점: **학습 곡선이 존재한다면, 그것을 가시화하는 것이 리텐션의 동력이 된다.** Phase 2(Learning Curve Visualization)의 이론적 근거.
+
+#### 발견 2: Augmentation > Automation
+
+Claude 사용자들은 Automation("대신 해줘")보다 **Augmentation("같이 하자")** 패턴으로 이동하고 있다. 장기 사용자일수록 일방적 지시가 줄고, 반복·검증·학습하는 협업 패턴이 증가했다.
+
+**Overture에 대한 함의:** Overture는 본질적으로 Augmentation 도구다. 의사결정을 대신 내려주지 않고(automation), 사용자의 판단 프로세스를 강화한다(augmentation). 2절의 비교표에 이 축을 추가할 수 있다:
+
+| | GPT | Overture |
+|---|---|---|
+| 적응 방향 | Automation 최적화 (원하는 답을 더 빨리) | Augmentation (판단 능력 자체를 향상) |
+
+#### 발견 3: Skill-Biased Technological Change — Matthew Effect의 실증
+
+> "AI를 '잘 쓰는 사람'과 '못 쓰는 사람' 사이의 업무 효율성 격차가 벌어지면서, 기술이 오히려 노동 시장의 경제적 불평등을 가속화하는 요인이 될 수 있다."
+
+이것은 Q3의 Matthew Effect 경고의 외부 실증이다. Overture 맥락으로 번역하면:
+
+**이미 판단을 잘 하는 사람이 Overture를 찾을 가능성이 높고, 그들이 가장 빨리 학습 곡선을 타며, 판단 격차가 더 벌어진다.**
+
+이것은 시스템 내부의 설계("보완이 필요한 사용자에게 더 많은 넛지를")만으로는 해결할 수 없다. 시스템 외부의 접근성 문제 — **누가 이 제품을 발견하고 지속 사용하는가?** — 를 포함한다. 다만 시스템 내부에서 할 수 있는 것:
+
+- **Demo as Seed (Phase 4)**: 진입 장벽을 낮추고, 첫 사용부터 학습 데이터를 수집
+- **Counterfactual coaching (기존)**: 데이터 없이도 인지적 씨앗을 심어 다음 루프의 연료를 만듦
+- **First Use Must Astonish (T4)**: 첫 사용의 가치를 독립적으로 높여 이탈을 줄임
+
+---
+
+### 10.10 Autoresearch 패턴 적용
+
+> Karpathy (autoresearch), Ole Lehmann (landing page optimization), Shann Holmberg (ML-based A/B testing)의 접근을 의사결정 품질에 적용한 분석.
+
+#### "점수를 매길 수 있으면 autoresearch할 수 있다"
+
+autoresearch 루프가 작동하는 전제: **점수가 빠르고 신뢰할 수 있다.**
+
+| 도메인 | 점수 | 측정 속도 | 반복 속도 |
+|--------|------|----------|----------|
+| 랜딩 페이지 전환율 | 클릭률/전환율 | 초 단위 | 분 단위 |
+| 코드 성능 | ms/벤치마크 | 초 단위 | 분 단위 |
+| **의사결정 품질** | **DQ score** | **즉각** (프로세스) | **일 단위** (한 결정) |
+| | | **주-월** (결과) | |
+
+의사결정의 outcome은 느리지만, **프로세스 품질(DQ score)은 즉각적이다.** 이것이 Overture에 autoresearch 패턴을 적용할 수 있는 이유다.
+
+#### Overture의 autoresearch 구조
+
+```
+┌─── SCORE ──────────────────────────────────────────┐
+│ eval-engine.ts: 17 binary evals → pass_rate        │
+│ decision-quality.ts: 6 요소 → DQ 0-100             │
+│ = "이번 의사결정 프로세스는 73/100이었다"            │
+└────────────────────┬───────────────────────────────┘
+                     │
+                     ▼
+┌─── TWEAK ──────────────────────────────────────────┐
+│ prompt-mutation.ts: 최악 eval 자동 교정              │
+│ injectUserPatternContext(): 사용자 패턴 주입         │
+│ = "다음 LLM 호출에 교정 + 패턴 반영"                │
+└────────────────────┬───────────────────────────────┘
+                     │
+                     ▼
+┌─── SCORE (again) ──────────────────────────────────┐
+│ 다음 의사결정의 eval results                         │
+│ = "교정 후 pass_rate이 올랐는가?"                    │
+└────────────────────────────────────────────────────┘
+```
+
+이것이 Overture가 "auto"로 느껴지는 메커니즘의 정체다:
+1. **사용자는 의사결정을 할 뿐이다** — 추가 작업 없음
+2. **시스템은 매 결정에서 점수를 매기고, 자동으로 교정하고, 다음 결정에 반영한다**
+3. **사용자가 보는 것**: "이번에는 이전에 놓쳤던 축의 가정이 나왔네?" — 시스템이 학습하고 있다는 느낌
+
+#### 한계: 의사결정 autoresearch가 완전한 자동화가 될 수 없는 이유
+
+랜딩 페이지는 같은 것을 100번 반복해서 점수를 최적화할 수 있다. 의사결정은 **각각이 고유하다** — 같은 결정을 100번 반복할 수 없다.
+
+따라서 Overture의 autoresearch는 **두 가지 층위**에서 작동한다:
+
+1. **결정 내부 (Refine 루프)**: 같은 결정 안에서 반복 → 수렴. 이것은 autoresearch에 가깝다.
+2. **결정 간 (Adaptive Loop)**: 다른 결정들에서 축적된 패턴 → 다음 결정에 반영. 이것은 transfer learning에 가깝다.
+
+**Augmentation 경계**: Refine 루프의 자동화(스코어가 목표에 도달할 때까지 자동 반복)는 기술적으로 가능하지만, "사람이 판단하는 것"이 Overture의 핵심 가치다. 반복의 **생성**은 자동화하되, 반복의 **수용/거부**는 사람이 결정한다. 이것이 Augmentation과 Automation의 경계선이다.

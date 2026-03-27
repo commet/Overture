@@ -554,27 +554,27 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-semibold">이름 *</label>
-              <input type="text" value={form.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder="실명 또는 별칭"
+              <input type="text" value={form.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder="실명 또는 별칭" maxLength={50}
                 className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-semibold">역할 *</label>
-              <input type="text" value={form.role} onChange={(e) => handleFieldChange('role', e.target.value)} placeholder="직책/역할"
+              <input type="text" value={form.role} onChange={(e) => handleFieldChange('role', e.target.value)} placeholder="직책/역할" maxLength={80}
                 className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[13px] font-semibold">소속</label>
-            <input type="text" value={form.organization} onChange={(e) => handleFieldChange('organization', e.target.value)} placeholder="우리 회사 / 투자사 / 고객사"
+            <input type="text" value={form.organization} onChange={(e) => handleFieldChange('organization', e.target.value)} placeholder="우리 회사 / 투자사 / 고객사" maxLength={80}
               className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
           </div>
-          <Field label="우선순위 *" placeholder="이 사람이 가장 중요하게 보는 것"
+          <Field label="우선순위 *" placeholder="이 사람이 가장 중요하게 보는 것" maxLength={300}
             value={form.priorities} onChange={(e) => handleFieldChange('priorities', e.target.value)} />
-          <Field label="커뮤니케이션 스타일" placeholder="선호하는 보고/소통 방식"
+          <Field label="커뮤니케이션 스타일" placeholder="선호하는 보고/소통 방식" maxLength={300}
             value={form.communication_style} onChange={(e) => handleFieldChange('communication_style', e.target.value)} />
-          <Field label="최근 관심사/우려" placeholder="요즘 신경 쓰는 것"
+          <Field label="최근 관심사/우려" placeholder="요즘 신경 쓰는 것" maxLength={300}
             value={form.known_concerns} onChange={(e) => handleFieldChange('known_concerns', e.target.value)} />
-          <Field label="관계 메모" placeholder="나와의 관계, 보고 빈도 등"
+          <Field label="관계 메모" placeholder="나와의 관계, 보고 빈도 등" maxLength={300}
             value={form.relationship_notes} onChange={(e) => handleFieldChange('relationship_notes', e.target.value)} />
 
           {/* Structured persona fields */}
@@ -610,7 +610,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
                 >{opt.label}</button>
               ))}
             </div>
-            <Field label="OK 조건" placeholder="이 사람이 승인하려면 보여줘야 할 것 (예: ROI 데이터)"
+            <Field label="OK 조건" placeholder="이 사람이 승인하려면 보여줘야 할 것 (예: ROI 데이터)" maxLength={300}
               value={form.success_metric} onChange={(e) => handleFieldChange('success_metric', e.target.value)} />
           </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

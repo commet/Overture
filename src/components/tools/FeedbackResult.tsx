@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { ShareBar } from '@/components/ui/ShareBar';
 import { Button } from '@/components/ui/Button';
 import { FeedbackMessage, PersonaAvatar, getPersonaColor } from './FeedbackMessage';
 import { DiscussionThread } from './DiscussionThread';
@@ -140,7 +140,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-[16px] font-bold text-[var(--text-primary)]">피드백 결과</h3>
-        <CopyButton getText={getFullText} label="전체 복사" />
+        <ShareBar getText={getFullText} getTitle={() => '리허설 결과'} />
       </div>
 
       {/* ══════════════ OVERVIEW ══════════════ */}

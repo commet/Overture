@@ -1,5 +1,6 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getSignalsByType } from '@/lib/signal-recorder';
+import { getEvalSummary, getStageEvalSummary } from '@/lib/eval-engine';
 import type { JudgmentRecord, ReframeItem, RecastItem, SynthesizeItem, PersonaAccuracyRating, Project, RefineLoop, OutcomeRecord } from '@/stores/types';
 import { getActionableInsights } from '@/lib/retrospective';
 
@@ -56,6 +57,10 @@ export function buildEnhancedSystemPrompt(
   if (retroInsights.length > 0) {
     sections.push('## 이전 프로젝트 성찰 교훈\n' + retroInsights.map(i => `- "${i}"`).join('\n'));
   }
+
+  // 7. Axis Fingerprint + Eval-based adaptation (Phase 3: Active Adaptation)
+  const adaptiveCtx = buildAdaptiveContext();
+  if (adaptiveCtx) sections.push(adaptiveCtx);
 
   if (sections.length === 0) return basePrompt;
 
@@ -257,6 +262,90 @@ export function buildPersonaAccuracyContext(personaId: string): string {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Build adaptive context from user's decision-making patterns.
+ *
+ * Phase 3: Active Adaptation — 피드백 루프를 닫는 핵심 함수.
+ * Axis Fingerprint (T3) + Sliding Windows (T6) + eval 기반 약점을 주입한다.
+ *
+ * CLAUDE.md 가이드라인 준수:
+ * - "참고: ..." (reference only, not directive)
+ * - Content-based judgment is always primary
+ * - 최대 5줄
+ */
+function buildAdaptiveContext(): string | null {
+  const evalSummary = getEvalSummary();
+
+  // Gate: 5회 이상 사용 시에만 적응 시작 (premature adaptation 방지)
+  if (evalSummary.total_sessions < 5) return null;
+
+  const lines: string[] = ['## 적응형 컨텍스트 (이 사용자의 판단 패턴)'];
+
+  // ── Axis Fingerprint: 최근 10건의 가정 축 분포 (Sliding Window: process = last 10) ──
+  const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+  const doneItems = reframeItems.filter(d => d.status === 'done' && d.analysis);
+  const recentItems = doneItems.slice(-10);
+
+  if (recentItems.length >= 3) {
+    const axisCounts: Record<string, number> = {
+      customer_value: 0, feasibility: 0, business: 0, org_capacity: 0,
+    };
+    let total = 0;
+    for (const item of recentItems) {
+      for (const a of item.analysis!.hidden_assumptions || []) {
+        if (a.axis && a.axis in axisCounts) {
+          axisCounts[a.axis]++;
+          total++;
+        }
+      }
+    }
+
+    if (total > 0) {
+      const axisLabels: Record<string, string> = {
+        customer_value: '고객 가치', feasibility: '실현 가능성',
+        business: '비즈니스', org_capacity: '조직 역량',
+      };
+      const avgPct = 25; // 4 axes = 25% each is balanced
+      const gaps = Object.entries(axisCounts)
+        .filter(([, count]) => (count / total) * 100 < avgPct * 0.5) // below half of average
+        .map(([axis]) => axisLabels[axis] || axis);
+
+      if (gaps.length > 0) {
+        lines.push(`- 참고: 최근 ${recentItems.length}건 분석에서 ${gaps.join(', ')} 관점의 가정이 부족합니다. 이 축에서도 가정을 탐색해주세요.`);
+      }
+    }
+  }
+
+  // ── Reframe acceptance pattern (Sliding Window: process = last 10) ──
+  const recentDone = doneItems.slice(-8);
+  if (recentDone.length >= 5) {
+    const accepted = recentDone.filter(d => {
+      if (!d.analysis) return false;
+      return d.selected_question === d.analysis.reframed_question;
+    }).length;
+    const acceptRate = accepted / recentDone.length;
+    if (acceptRate > 0.8) {
+      lines.push(`- 참고: 이 사용자는 최근 ${recentDone.length}회 중 ${accepted}회에서 첫 reframe을 수락했습니다. 대안적 프레이밍을 더 강하게 제시해주세요.`);
+    }
+  }
+
+  // ── Eval 기반 약점 (전체 이력, blind spot = all-time) ──
+  const reframeSummary = getStageEvalSummary('reframe');
+  if (reframeSummary && reframeSummary.total_sessions >= 5) {
+    const rates = reframeSummary.per_eval_rates;
+    if (rates['assumptions_diverse'] !== undefined && rates['assumptions_diverse'] < 0.5) {
+      lines.push('- 참고: 가정의 다양성(다양한 축 커버)이 낮은 편입니다. 가정을 생성할 때 customer, feasibility, business, org 4축을 모두 고려하세요.');
+    }
+    if (rates['assumptions_engaged'] !== undefined && rates['assumptions_engaged'] < 0.5) {
+      lines.push('- 참고: 사용자가 가정 평가를 자주 건너뜁니다. 핵심 가정 2-3개를 특히 강조해서 평가를 유도하세요.');
+    }
+  }
+
+  // 최대 5줄 (header 제외)
+  if (lines.length <= 1) return null; // header만 있으면 의미 없음
+  return lines.slice(0, 6).join('\n'); // header + max 5 insight lines
 }
 
 /**

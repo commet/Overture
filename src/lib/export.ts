@@ -158,6 +158,15 @@ export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
 }
 
+const MAILTO_BODY_LIMIT = 1800;
+
+export function composeMailtoLink(subject: string, body: string): string {
+  const trimmed = body.length > MAILTO_BODY_LIMIT
+    ? body.slice(0, MAILTO_BODY_LIMIT) + '\n\n[...전체 내용은 Overture에서 확인]'
+    : body;
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(trimmed)}`;
+}
+
 export function downloadJson(data: unknown, filename: string): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

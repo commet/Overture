@@ -33,8 +33,10 @@ function LoginContent() {
 
   useEffect(() => {
     if (!loading && user) {
-      const redirect = searchParams.get('redirect') || '/workspace';
-      router.replace(redirect);
+      const raw = searchParams.get('redirect') || '/workspace';
+      // Prevent open redirect — only allow relative paths on the same origin
+      const safeRedirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/workspace';
+      router.replace(safeRedirect);
     }
   }, [user, loading, router, searchParams]);
 
@@ -155,10 +157,10 @@ function LoginContent() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="비밀번호 (6자 이상)"
+                  placeholder="비밀번호 (8자 이상)"
                   className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)] transition-all"
                 />
               </div>

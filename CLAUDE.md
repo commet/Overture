@@ -60,3 +60,13 @@ Compare against the TypeScript interface. Add missing columns.
 - Content-based judgment is always primary, user patterns are secondary
 - Keep injection concise — one line per insight, not paragraphs
 - Never inject blanket behavioral changes ("be conservative") — always scope to specific contexts
+- User data in system prompts MUST be wrapped in `<user-data>` tags and passed through `sanitizeForPrompt()` (see `persona-prompt.ts`)
+
+## XSS / User Input Security
+
+- **React JSX auto-escapes** — `{variable}` in JSX is safe. This is why we have NO XSS issues currently.
+- **NEVER use `dangerouslySetInnerHTML` with user data** unless it passes through `sanitizeHtml()` from `lib/sanitize.ts`
+- **If adding markdown rendering** (react-markdown, marked, etc.): MUST sanitize output HTML. Use `sanitizeHtml()` or install `isomorphic-dompurify`.
+- **All text inputs must have `maxLength`** — prevents oversized data in localStorage/Supabase
+- **Team-visible data** (comments, reviews, names) is highest priority for sanitization
+- **Supabase writes** must go through `db.ts` functions (which call `sanitizeItem`) — never call `supabase.from().insert()` directly in stores

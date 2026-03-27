@@ -10,9 +10,10 @@ import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain } from 'lucide-react';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink } from 'lucide-react';
 import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
+import { useSlackStore } from '@/stores/useSlackStore';
 
 const llmModes: { value: LLMMode; label: string; description: string; icon: React.ReactNode; available: boolean }[] = [
   {
@@ -43,9 +44,27 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const [resetModal, setResetModal] = useState(false);
 
+  // Slack
+  const slackConnections = useSlackStore(s => s.connections);
+  const loadSlack = useSlackStore(s => s.loadConnections);
+  const disconnectSlack = useSlackStore(s => s.disconnect);
+  const [slackStatus, setSlackStatus] = useState<string | null>(null);
+
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadSlack();
+    // Check for Slack OAuth callback status
+    const params = new URLSearchParams(window.location.search);
+    const slack = params.get('slack');
+    if (slack === 'connected') {
+      setSlackStatus('connected');
+      loadSlack();
+      window.history.replaceState({}, '', '/settings');
+    } else if (slack === 'error') {
+      setSlackStatus('error');
+      window.history.replaceState({}, '', '/settings');
+    }
+  }, [loadSettings, loadSlack]);
 
   const handleExport = () => {
     const data: Record<string, unknown> = {};
@@ -59,6 +78,11 @@ export default function SettingsPage() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_IMPORT_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_IMPORT_SIZE) {
+      alert('파일 크기가 10MB를 초과합니다. 올바른 백업 파일인지 확인해주세요.');
+      return;
+    }
     const allowedKeys: Set<string> = new Set(Object.values(STORAGE_KEYS).filter(k => k !== 'sot_settings'));
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -147,15 +171,22 @@ export default function SettingsPage() {
             <Key size={16} className="text-[var(--accent)]" />
             <h3 className="text-[15px] font-bold">Anthropic API Key</h3>
           </div>
-          <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-            키는 브라우저에 저장되며, LLM 호출 시 같은 서버를 통해 안전하게 전송됩니다. 외부로 직접 노출되지 않습니다.
-          </p>
+          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
+            <p>키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.</p>
+            <p className="text-[var(--warning)] font-medium">
+              ⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.
+            </p>
+          </div>
           <div className="relative">
             <input
               type={showKey ? 'text' : 'password'}
               value={settings.anthropic_api_key}
               onChange={(e) => updateSettings({ anthropic_api_key: e.target.value })}
               placeholder="sk-ant-..."
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              spellCheck={false}
               className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
             />
             <button
@@ -167,6 +198,59 @@ export default function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {/* Slack Integration */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[15px] font-bold">Slack 연동</h3>
+        </div>
+        {slackStatus === 'connected' && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--collab)] border border-[var(--success)]/20">
+            <p className="text-[13px] text-[var(--success)] font-medium flex items-center gap-1.5"><Check size={14} /> Slack에 연결되었습니다!</p>
+          </div>
+        )}
+        {slackStatus === 'error' && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+            <p className="text-[13px] text-red-600 font-medium">Slack 연결에 실패했습니다. 다시 시도해주세요.</p>
+          </div>
+        )}
+        {slackConnections.length > 0 ? (
+          <div className="space-y-2">
+            {slackConnections.map((conn: { id: string; team_name: string }) => (
+              <div key={conn.id} className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
+                <div>
+                  <p className="text-[14px] font-medium flex items-center gap-1.5">
+                    <Check size={14} className="text-[var(--success)]" /> {conn.team_name}
+                  </p>
+                  <p className="text-[12px] text-[var(--text-secondary)]">결과를 Slack 채널로 바로 보낼 수 있습니다</p>
+                </div>
+                <Button variant="danger" size="sm" onClick={() => disconnectSlack(conn.id)}>
+                  <Unlink size={14} /> 연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
+            <div>
+              <p className="text-[14px] font-medium">Slack에 연결하기</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">결과를 팀 Slack 채널로 직접 공유</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={async () => {
+              const { data } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+              const token = data.session?.access_token;
+              if (token) {
+                window.location.href = `/api/slack/oauth?token=${token}`;
+              } else {
+                window.location.href = '/login?redirect=/settings';
+              }
+            }}>
+              <MessageSquare size={14} /> 연결하기
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Data Management */}
       <Card>

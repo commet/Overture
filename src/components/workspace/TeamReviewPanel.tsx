@@ -373,6 +373,7 @@ export function TeamReviewPanel({
               value={generalConcern}
               onChange={(e) => setGeneralConcern(e.target.value)}
               placeholder="AI가 놓친 리스크나 관점이 있다면..."
+              maxLength={500}
               className="flex-1 px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]"
               onKeyDown={(e) => e.key === 'Enter' && handleSubmitConcern()}
             />

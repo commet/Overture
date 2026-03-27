@@ -179,6 +179,7 @@ export default function TeamsPage() {
               value={newTeamName}
               onChange={(e) => setNewTeamName(e.target.value)}
               placeholder="전략기획팀"
+              maxLength={50}
               className="w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreateTeam()}
@@ -238,6 +239,7 @@ export default function TeamsPage() {
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="teammate@company.com"
+                maxLength={254}
                 className="flex-1 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]"
                 onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
               />
