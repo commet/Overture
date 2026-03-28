@@ -112,9 +112,12 @@ export interface SynthesizeItem {
 
 // ─── Recast (편곡 | 실행 설계) ───
 
+/** Actor relationship: who initiates → who completes */
+export type ActorRelationship = 'human' | 'ai' | 'human→ai' | 'ai→human' | 'both';
+
 export interface RecastStep {
   task: string;
-  actor: 'ai' | 'human' | 'both';
+  actor: ActorRelationship;
   actor_reasoning: string;
   expected_output: string;
   judgment?: string;
@@ -243,6 +246,8 @@ export interface RehearsalResult {
   concerns: string[];
   wants_more: string[];
   approval_conditions: string[];
+  /** Phase 1: step-level translation of approval conditions */
+  translated_approvals?: TranslatedApproval[];
 }
 
 export interface DiscussionMessage {
@@ -598,4 +603,80 @@ export interface Settings {
   language: 'ko' | 'en';
   audio_enabled: boolean;
   audio_volume: number;
+}
+
+// ─── Judgment Vitality Engine ───
+// "서로를 지탱함을 통해서 얻은 안정감과 체계화 때문에 이들은 경직되어 간다"
+// Monitors whether the judgment process is alive (producing genuine novelty) or dead (performing compliance).
+
+/** Tracks where an insight originated and how far it traveled */
+export interface ProvenanceTag {
+  phase: 'reframe' | 'recast' | 'rehearse' | 'refine';
+  source_id: string;
+  source_field: string;
+  created_at: string;
+}
+
+/** Approval condition translated to specific plan elements */
+export interface TranslatedApproval {
+  persona_id: string;
+  persona_name: string;
+  influence: 'high' | 'medium' | 'low';
+  condition: string;
+  translated_to_plan: string | null;
+  affected_steps: number[];
+  met: boolean;
+  met_at_iteration?: number;
+}
+
+/** Structural snapshot of a stage's output — used to measure γ (genuine novelty) */
+export interface StageFingerprint {
+  phase: 'reframe' | 'recast' | 'rehearse' | 'refine';
+  item_id: string;
+  timestamp: string;
+  fingerprint: {
+    // Reframe
+    assumption_count?: number;
+    assumption_axes?: string[];
+    reframed_vs_surface_different?: boolean;
+    // Recast
+    step_count?: number;
+    step_actors?: ActorRelationship[];
+    checkpoint_count?: number;
+    critical_path_length?: number;
+    // Rehearsal
+    risk_count?: number;
+    critical_risk_count?: number;
+    unspoken_risk_count?: number;
+    approval_condition_count?: number;
+    unique_concern_ratio?: number;
+    // Refine
+    iteration_count?: number;
+    issues_resolved?: number;
+    conditions_met_ratio?: number;
+  };
+}
+
+export type RigidityCategory = 'user_ai' | 'user_persona' | 'user_system' | 'system_self';
+
+export interface RigiditySignal {
+  id: string;
+  category: RigidityCategory;
+  signal_type: string;
+  severity: number;
+  evidence: string;
+  recommendation?: string;
+}
+
+/** Vitality = γ × (1 - rigidity). Alive or dead? */
+export interface VitalityAssessment {
+  id: string;
+  project_id?: string;
+  gamma: number;
+  rigidity_score: number;
+  vitality_score: number;
+  signals: RigiditySignal[];
+  fingerprints: StageFingerprint[];
+  tier: 'alive' | 'coasting' | 'performing' | 'dead';
+  created_at: string;
 }

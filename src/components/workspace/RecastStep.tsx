@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { ShareBar } from '@/components/ui/ShareBar';
 import { recastToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
-import type { RecastAnalysis, RecastItem, ReframeItem, Persona } from '@/stores/types';
+import type { RecastAnalysis, RecastItem, ReframeItem, Persona, ActorRelationship } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -67,16 +67,20 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
 3. goal_summary: 최종 목표를 명확한 한 문장으로 정리
 4. steps: 3~5개의 단계 (최대 5개. 더 많으면 합치세요). 각 단계에 대해:
    - task: 할 일 (구체적으로)
-   - actor: "ai" | "human" | "both"
+   - actor: "ai" | "human" | "human→ai" | "ai→human"
+     * "human→ai": 사람이 방향/판단을 먼저 잡고, AI가 실행/생산 (예: 전략 방향 결정 → AI가 초안 작성)
+     * "ai→human": AI가 생성/분석한 후, 사람이 결정/수정 (예: AI가 옵션 3개 제시 → 사람이 선택)
+     * "human": 사람만 (이해관계자 미팅, 최종 의사결정 등)
+     * "ai": AI만 (데이터 수집, 분석 자동화 등)
    - actor_reasoning: 왜 이 담당인지. 위 4가지 판단 근거를 포함하여 1-2문장
    - expected_output: 이 단계의 구체적 기대 산출물 (예: "3개년 매출 시나리오 3개 + 민감도 분석")
-   - judgment: actor가 "human" 또는 "both"일 때, 사람이 결정할 사항을 "질문: 선택지A vs 선택지B vs 선택지C" 형태로 작성. 예: "시장 진입 전략: 국내 우선 vs 글로벌 동시 vs 단계적 확장". actor가 "ai"면 빈 문자열
+   - judgment: actor가 "human", "human→ai", "ai→human"일 때, 사람이 결정할 사항을 "질문: 선택지A vs 선택지B vs 선택지C" 형태로 작성. actor가 "ai"면 빈 문자열
    - checkpoint: true/false (사람이 반드시 확인해야 하는 단계인지)
    - checkpoint_reason: checkpoint가 true일 때 이유
    - estimated_time: 예상 소요시간 (예: "30분", "2시간", "1일")
-   - ai_direction_options: actor가 "ai" 또는 "both"일 때, 사용자가 AI에게 줄 수 있는 방향 옵션 2-4개 (사용자가 클릭으로 선택). 예: ["국내 시장 중심", "글로벌 시장 포함", "최근 3년 데이터 기준"]. actor가 "human"이면 빈 배열
-   - ai_scope: actor가 "both"일 때, AI가 구체적으로 하는 것. 예: "3개 시나리오별 12개월 P&L 시뮬레이션 생성". actor가 "both"가 아니면 빈 문자열
-   - human_scope: actor가 "both"일 때, 사람이 구체적으로 하는 것. 예: "시나리오 전제 조건 설정 + 결과 해석 + 추천안 선택". actor가 "both"가 아니면 빈 문자열
+   - ai_direction_options: actor가 "ai", "human→ai", "ai→human"일 때, 사용자가 AI에게 줄 수 있는 방향 옵션 2-4개. actor가 "human"이면 빈 배열
+   - ai_scope: actor가 "human→ai" 또는 "ai→human"일 때, AI가 구체적으로 하는 것. 그 외엔 빈 문자열
+   - human_scope: actor가 "human→ai" 또는 "ai→human"일 때, 사람이 구체적으로 하는 것. 그 외엔 빈 문자열
 5. key_assumptions: 이 계획이 성립하려면 참이어야 하는 핵심 가정 2~4개. 각 가정에 대해:
    - assumption: 가정 내용
    - importance: "high" | "medium" | "low"
@@ -105,10 +109,11 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
 
 반드시 JSON만 응답하세요.`;
 
-const actorOptions: { value: 'ai' | 'human' | 'both'; label: string; icon: string }[] = [
+const actorOptions: { value: ActorRelationship; label: string; icon: string }[] = [
   { value: 'ai', label: 'AI', icon: '🤖' },
+  { value: 'ai→human', label: 'AI→사람', icon: '🔄' },
+  { value: 'human→ai', label: '사람→AI', icon: '🔀' },
   { value: 'human', label: '사람', icon: '🧠' },
-  { value: 'both', label: '협업', icon: '🤝' },
 ];
 
 const RECAST_ENTRY_STEPS = [
@@ -409,7 +414,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
 
   const steps = current?.steps || [];
 
-  const handleStepActorChange = (stepIndex: number, newActor: 'ai' | 'human' | 'both') => {
+  const handleStepActorChange = (stepIndex: number, newActor: ActorRelationship) => {
     if (!currentId) return;
     const step = steps[stepIndex];
     if (step && step.actor !== newActor) {

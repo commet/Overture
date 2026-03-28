@@ -22,11 +22,13 @@ import type {
   RefineLoop,
   JudgmentRecord,
   Persona,
+  VitalityAssessment,
 } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from './storage';
 import { insertToSupabase } from './db';
 import { generateId } from './uuid';
 import { recordSignal } from './signal-recorder';
+import { assessVitality } from './judgment-vitality';
 
 /* ────────────────────────────────────
    DQ Score Computation
@@ -235,6 +237,22 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
     },
     project_id: projectId,
   });
+
+  // Vitality: assess and persist
+  try {
+    const pastFeedback = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
+    const va = assessVitality(reframe, recast, feedbackRecords, refineLoop, score.overall_dq, pastFeedback);
+    const vaList = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
+    vaList.push(va);
+    if (vaList.length > 50) vaList.splice(0, vaList.length - 50);
+    setStorage(STORAGE_KEYS.VITALITY_ASSESSMENTS, vaList);
+    recordSignal({
+      tool: 'refine',
+      signal_type: 'vitality_assessment',
+      signal_data: { gamma: va.gamma, rigidity_score: va.rigidity_score, vitality_score: va.vitality_score, tier: va.tier, signal_count: va.signals.length },
+      project_id: projectId,
+    });
+  } catch { /* non-critical — vitality failure should never block DQ */ }
 
   return score;
 }

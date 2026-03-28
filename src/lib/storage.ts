@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   OUTCOME_RECORDS:   'sot_outcome_records',
   RETROSPECTIVE_ANSWERS: 'sot_retrospective_answers',
   DQ_SCORES: 'sot_dq_scores',
+  VITALITY_ASSESSMENTS: 'sot_vitality_assessments',
   SETTINGS: 'sot_settings',
 } as const;
 

@@ -23,6 +23,7 @@ import type { ReframingStrategy, InterviewSignals } from '@/lib/reframing-strate
 import { getStorage, setStorage } from '@/lib/storage';
 import { extractInterviewSignals as extractSignals } from '@/lib/context-chain';
 import { recordSignal } from '@/lib/signal-recorder';
+import { buildStageFingerprint } from '@/lib/judgment-vitality';
 
 const EVAL_STORAGE_KEY = 'overture_eval_results';
 const RECAST_EVAL_KEY = 'overture_eval_recast';
@@ -161,6 +162,12 @@ export function recordReframeEval(
     },
   });
 
+  // Vitality: record stage fingerprint
+  try {
+    const fp = buildStageFingerprint('reframe', item);
+    recordSignal({ tool: 'reframe', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: item.project_id });
+  } catch { /* non-critical */ }
+
   return evalResult;
 }
 
@@ -187,6 +194,7 @@ export function recordRecastEval(item: RecastItem, actorOverrideCount: number): 
   const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: item.id, tool: 'recast', strategy: null, interview_signals: null, evals, pass_rate: passed / RECAST_EVALS.length, recorded_at: new Date().toISOString() };
   const history = getStorage<EvalResult[]>(RECAST_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(RECAST_EVAL_KEY, history);
   recordSignal({ tool: 'recast', signal_type: 'eval_result', signal_data: { item_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate }, project_id: item.project_id });
+  try { const fp = buildStageFingerprint('recast', item); recordSignal({ tool: 'recast', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: item.project_id }); } catch { /* non-critical */ }
   return evalResult;
 }
 
@@ -210,6 +218,7 @@ export function recordRehearsalEval(record: FeedbackRecord, personas: Persona[],
   const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: record.id, tool: 'rehearse', strategy: null, interview_signals: null, evals, pass_rate: passed / REHEARSAL_EVALS.length, recorded_at: new Date().toISOString() };
   const history = getStorage<EvalResult[]>(REHEARSAL_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REHEARSAL_EVAL_KEY, history);
   recordSignal({ tool: 'rehearse', signal_type: 'eval_result', signal_data: { record_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, persona_count: record.results.length }, project_id: record.project_id });
+  try { const fp = buildStageFingerprint('rehearse', record); recordSignal({ tool: 'rehearse', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: record.project_id }); } catch { /* non-critical */ }
   return evalResult;
 }
 
@@ -231,6 +240,7 @@ export function recordRefineEval(loop: RefineLoop): EvalResult {
   const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: loop.id, tool: 'refine', strategy: null, interview_signals: null, evals, pass_rate: passed / REFINE_EVALS.length, recorded_at: new Date().toISOString() };
   const history = getStorage<EvalResult[]>(REFINE_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REFINE_EVAL_KEY, history);
   recordSignal({ tool: 'refine', signal_type: 'eval_result', signal_data: { loop_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, iteration_count: loop.iterations.length, final_status: loop.status }, project_id: loop.project_id });
+  try { const fp = buildStageFingerprint('refine', loop); recordSignal({ tool: 'refine', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: loop.project_id }); } catch { /* non-critical */ }
   return evalResult;
 }
 

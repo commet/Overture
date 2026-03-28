@@ -25,6 +25,7 @@ import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildReframeContext, buildRecastContext, injectRecastContext } from '@/lib/context-chain';
 import { recordRehearsalEval } from '@/lib/eval-engine';
+import { translateApprovalsToPlan } from '@/lib/judgment-vitality';
 import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
@@ -234,6 +235,23 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       });
       // Phase 0: Record rehearsal eval
       if (record) { recordRehearsalEval(record, usePersonaStore.getState().personas, useAccuracyStore.getState().ratings); }
+      // Vitality: translate approval conditions to plan-level references
+      if (record) {
+        try {
+          const relRecast = recastItems.find(r => r.project_id === pendingProjectId);
+          const steps = relRecast?.analysis?.steps || [];
+          if (steps.length > 0) {
+            const translated = translateApprovalsToPlan(record, steps, usePersonaStore.getState().personas);
+            if (translated.length > 0) {
+              const updatedResults = record.results.map(r => ({
+                ...r,
+                translated_approvals: translated.filter(ta => ta.persona_id === r.persona_id),
+              }));
+              updateFeedbackRecord(record.id, { results: updatedResults });
+            }
+          }
+        } catch { /* non-critical */ }
+      }
       const { settings } = useSettingsStore.getState();
       if (settings.audio_enabled) {
         resumeAudioContext();

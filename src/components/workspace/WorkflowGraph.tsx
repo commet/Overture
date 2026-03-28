@@ -1,24 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { RecastStep as StepType, RecastAnalysis } from '@/stores/types';
-import { Bot, Brain, Handshake, Flag, Clock, Package, Zap, Trash2 } from 'lucide-react';
+import type { RecastStep as StepType, RecastAnalysis, ActorRelationship } from '@/stores/types';
+import { Bot, Brain, Handshake, ArrowRight, Flag, Clock, Package, Zap, Trash2 } from 'lucide-react';
 
 interface WorkflowGraphProps {
   steps: StepType[];
   analysis: RecastAnalysis | null;
   editable?: boolean;
-  onUpdateActor?: (index: number, actor: 'ai' | 'human' | 'both') => void;
+  onUpdateActor?: (index: number, actor: ActorRelationship) => void;
   onToggleCheckpoint?: (index: number) => void;
   onRemoveStep?: (index: number) => void;
   onUpdateField?: (index: number, updates: Partial<StepType>) => void;
 }
 
-const ACTORS = {
+const ACTORS: Record<string, { label: string; color: string; bg: string; text: string; Icon: typeof Bot }> = {
   ai: { label: 'AI', color: '#3b6dcc', bg: '#eaeff8', text: '#2d4a7c', Icon: Bot },
   human: { label: '사람', color: '#b8860b', bg: '#fef4e4', text: '#8b6914', Icon: Brain },
   both: { label: '협업', color: '#2d6b2d', bg: '#eaf5ea', text: '#2d6b2d', Icon: Handshake },
-} as const;
+  'human→ai': { label: '사람→AI', color: '#6b4fa0', bg: '#f3eef9', text: '#5a3d8a', Icon: ArrowRight },
+  'ai→human': { label: 'AI→사람', color: '#2d6b6b', bg: '#eaf5f5', text: '#1e5050', Icon: ArrowRight },
+};
 
 /** Strip Korean particles from end of option text */
 function stripParticles(text: string): string {
@@ -83,9 +85,10 @@ function extractOptions(judgment?: string): string[] {
 
 function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; checkpoints?: number; totalTime?: string }) {
   const total = steps.length || 1;
-  const counts = { ai: 0, human: 0, both: 0 };
+  const counts: Record<string, number> = { ai: 0, human: 0, both: 0, 'human→ai': 0, 'ai→human': 0 };
   steps.forEach(s => { counts[s.actor] = (counts[s.actor] || 0) + 1; });
-  const humanPct = Math.round(((counts.human + counts.both) / total) * 100);
+  const collaborativeCnt = counts.both + counts['human→ai'] + counts['ai→human'];
+  const humanPct = Math.round(((counts.human + collaborativeCnt) / total) * 100);
 
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 mb-5">
@@ -97,6 +100,22 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
             style={{ width: `${(counts.ai / total) * 100}%`, backgroundColor: ACTORS.ai.color }}
           >
             AI {counts.ai}
+          </div>
+        )}
+        {counts['ai→human'] > 0 && (
+          <div
+            className="transition-all duration-500 flex items-center justify-center gap-1"
+            style={{ width: `${(counts['ai→human'] / total) * 100}%`, backgroundColor: ACTORS['ai→human'].color }}
+          >
+            AI→사람 {counts['ai→human']}
+          </div>
+        )}
+        {counts['human→ai'] > 0 && (
+          <div
+            className="transition-all duration-500 flex items-center justify-center gap-1"
+            style={{ width: `${(counts['human→ai'] / total) * 100}%`, backgroundColor: ACTORS['human→ai'].color }}
+          >
+            사람→AI {counts['human→ai']}
           </div>
         )}
         {counts.both > 0 && (
@@ -145,14 +164,17 @@ function ActorToggle({
   current,
   onChange,
 }: {
-  current: 'ai' | 'human' | 'both';
-  onChange: (actor: 'ai' | 'human' | 'both') => void;
+  current: ActorRelationship;
+  onChange: (actor: ActorRelationship) => void;
 }) {
+  const options: ActorRelationship[] = ['ai', 'ai→human', 'human→ai', 'human'];
+  // Legacy 'both' → highlight 'human→ai' as closest match
+  const effectiveCurrent = current === 'both' ? 'human→ai' : current;
   return (
     <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]/80 p-0.5">
-      {(['ai', 'both', 'human'] as const).map((actor) => {
+      {options.map((actor) => {
         const a = ACTORS[actor];
-        const active = current === actor;
+        const active = effectiveCurrent === actor;
         const AIcon = a.Icon;
         return (
           <button
@@ -238,7 +260,7 @@ export function WorkflowGraph({
               ? 'md:mr-[52%]'                    // left lane
               : step.actor === 'human'
               ? 'md:ml-[52%]'                    // right lane
-              : '';                               // full width (collaboration)
+              : '';                               // full width (collaboration / directional)
 
             const isExpanded = expandedSteps.has(i);
             const hasInput = !!(step.user_ai_guide?.trim() || step.user_decision?.trim());
