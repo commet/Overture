@@ -1,8 +1,5 @@
 /**
- * Live Skill Quality Eval — .overture/ 실제 출력물 채점
- *
- * 실제 스킬 실행 결과를 eval framework로 채점한다.
- * .overture/ 폴더에 파일이 있을 때만 실행됨.
+ * Live Skill Quality Eval v2 — .overture/ 실제 출력물 채점
  */
 
 import { existsSync, readFileSync } from 'fs';
@@ -10,6 +7,7 @@ import { join } from 'path';
 import {
   evaluateSkillOutput,
   evaluatePipelineChaining,
+  buildBatchJudgePrompt,
   formatEvalReport,
   type SkillName,
 } from '@/lib/skill-quality-eval';
@@ -18,91 +16,66 @@ const OVERTURE_DIR = join(process.cwd(), '.overture');
 
 function readIfExists(filename: string): string | undefined {
   const filepath = join(OVERTURE_DIR, filename);
-  if (existsSync(filepath)) return readFileSync(filepath, 'utf-8');
-  return undefined;
+  return existsSync(filepath) ? readFileSync(filepath, 'utf-8') : undefined;
 }
 
-// Read actual outputs
-const reframeOutput = readIfExists('reframe.md');
-const recastOutput = readIfExists('recast.md');
-const rehearseOutput = readIfExists('rehearse.md');
-const refineOutput = readIfExists('refine.md');
+const files = {
+  reframe: readIfExists('reframe.md'),
+  recast: readIfExists('recast.md'),
+  rehearse: readIfExists('rehearse.md'),
+  refine: readIfExists('refine.md'),
+};
 
-/* ────────────────────────────────────
-   Per-stage structural eval
-   ──────────────────────────────────── */
+/* ── Per-stage eval ── */
 
 const stages: [SkillName, string | undefined][] = [
-  ['reframe', reframeOutput],
-  ['recast', recastOutput],
-  ['rehearse', rehearseOutput],
-  ['refine', refineOutput],
+  ['reframe', files.reframe],
+  ['recast', files.recast],
+  ['rehearse', files.rehearse],
+  ['refine', files.refine],
 ];
 
 for (const [skill, output] of stages) {
-  const describeOrSkip = output ? describe : describe.skip;
+  const block = output ? describe : describe.skip;
 
-  describeOrSkip(`Live eval: /${skill}`, () => {
+  block(`Live: /${skill}`, () => {
     const result = evaluateSkillOutput(skill, output!);
 
-    it('structural pass rate 보고', () => {
+    it('structural 100%', () => {
       const report = formatEvalReport(result);
       console.log(report);
-      // 보고 목적 — 항상 pass. 실패 항목은 report에서 확인.
-      expect(result.structural).toBeDefined();
+      expect(result.structural.every(s => s.passed)).toBe(true);
     });
 
-    it('structural pass rate >= 50% (최소 기준)', () => {
-      expect(result.structural_pass_rate).toBeGreaterThanOrEqual(0.5);
-    });
-
-    it('content judge prompt 생성됨', () => {
-      expect(result.content_judge_prompt.length).toBeGreaterThan(100);
-      // 실제 judge prompt를 출력해서 수동으로 LLM에 보낼 수 있게
-      console.log('\n--- Content Judge Prompt (first 500 chars) ---');
-      console.log(result.content_judge_prompt.slice(0, 500) + '...');
+    it('batch judge prompt 생성', () => {
+      const prompt = buildBatchJudgePrompt(skill, output!);
+      expect(prompt.length).toBeGreaterThan(200);
+      // Print first section for manual review
+      console.log(`\n--- /${skill} Judge (${result.content_evals.length}개 기준) ---`);
+      console.log(prompt.slice(0, 300) + '...');
     });
   });
 }
 
-/* ────────────────────────────────────
-   Pipeline chaining eval
-   ──────────────────────────────────── */
+/* ── Pipeline chaining ── */
 
-const hasFullPipeline = reframeOutput && recastOutput && rehearseOutput && refineOutput;
-const describeChaining = hasFullPipeline ? describe : describe.skip;
+const hasAll = Object.values(files).every(Boolean);
+const chainBlock = hasAll ? describe : describe.skip;
 
-describeChaining('Live eval: Pipeline Chaining (4단계 전체)', () => {
-  const files = {
-    reframe: reframeOutput!,
-    recast: recastOutput!,
-    rehearse: rehearseOutput!,
-    refine: refineOutput!,
-  };
-  const chainingResults = evaluatePipelineChaining(files);
+chainBlock('Live: Pipeline Chaining', () => {
+  const chaining = evaluatePipelineChaining(files as Record<string, string>);
 
-  it('체이닝 결과 보고', () => {
-    console.log('\n# Pipeline Chaining Results');
-    console.log(`Pass: ${chainingResults.filter(e => e.passed).length}/${chainingResults.length}`);
-    for (const e of chainingResults) {
+  it('결과 보고', () => {
+    console.log(`\nPipeline: ${chaining.filter(e => e.passed).length}/${chaining.length}`);
+    for (const e of chaining) {
       console.log(`  ${e.passed ? '✓' : '✗'} ${e.id}`);
-      if (!e.passed) console.log(`    → ${e.description}`);
     }
-    expect(chainingResults).toBeDefined();
+    expect(chaining).toBeDefined();
   });
 
-  it('모든 파일에 Context Contract 존재', () => {
-    const contractChecks = chainingResults.filter(e => e.id.endsWith('_has_context_contract'));
-    const allPresent = contractChecks.every(e => e.passed);
-    if (!allPresent) {
-      const missing = contractChecks.filter(e => !e.passed).map(e => e.id);
-      console.log('Missing Context Contract:', missing);
-    }
-    expect(allPresent).toBe(true);
-  });
-
-  it('chaining pass rate >= 60%', () => {
-    const passRate = chainingResults.filter(e => e.passed).length / chainingResults.length;
-    expect(passRate).toBeGreaterThanOrEqual(0.6);
+  it('전체 통과', () => {
+    const failures = chaining.filter(e => !e.passed);
+    if (failures.length > 0) console.log('Failures:', failures.map(f => f.id));
+    expect(failures.length).toBe(0);
   });
 });
