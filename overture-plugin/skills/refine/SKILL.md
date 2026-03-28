@@ -205,37 +205,50 @@ Max 3 rounds for decide context. Max 1 round for build context (with deferred op
 **Single card** — one code block per round. Auto-save to `.overture/refine.md`.
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  🔧 Overture · Refine · Round [N]       │
-  ╰──────────────────────────────────────────╯
+  🔧 Refine · Round [N] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [Changes label]:
-  - Step 2: [old] → [new]
-    [Reason]: [feedback addressed]
-  - Step 4: [old] → [new]
-    [Reason]: [feedback addressed]
+  [변경 label] ─────────────────────────────────────────────
 
-  [Not addressed]: [issue] — [why]
+   #  │ 변경                          │ 이유
+  ════╪═══════════════════════════════╪══════════════════
+   1  │ [old → new]                   │ [feedback]
+  ────┼───────────────────────────────┼──────────────────
+   2  │ [old → new]                   │ [feedback]
+  ────┼───────────────────────────────┼──────────────────
+   3  │ [old → new]                   │ [feedback]
 
-  ─────────────────────────────────────────
+  [미해결 label]: [issue] — [why]
 
-  [Results label]:
-    ✗ [Critical]:  ██░░░ [N] → ░░░░░ [M]  ✓
-    ? [Manageable]: ███░░ [N]   ██░░░ [M]
-    ✓ [Conditions]: █░░░░ [N/M] ███░░ [K/M]
+  [재검증 label] ───────────────────────────────────────────
 
-  [Status]: ✓ [Converged after N rounds]
-       or:  ✗ [N critical remaining — iterating]
+  ┌ 🎯 [Name] · [prev verdict] → [new verdict]
+  └ "[key reaction — one sentence]"
 
-  ─────────────────────────────────────────
+  ┌ 🤨 [Name] · [prev verdict] → [new verdict]
+  └ "[key reaction — one sentence]"
 
-  [Final Plan — compact revised version]
+  [수렴 label] ─────────────────────────────────────────────
 
-  다음?  1 → /rehearse (재검증)  2 → 수정  3 → 저장
-  ← 0   /recast 다시 (근본 수정 필요 시)
+  ✗ Critical    ███░░ [N] → █░░░░ [M]
+  ? Manageable  █░░░░ [N] → █░░░░ [M]
+  ✓ Conditions  ░░░░░ [N] → █░░░░ [M]
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [Status]: ✓ Converged / ✗ [N] critical remaining
+
+  █████ ✓정의 ✓계획 ✓테스트 ✓해결 ·수렴
+  다음?  1 /rehearse · 2 수정 · 3 저장 · ← 0
 ```
 
-**Quick action:** `0`, `1`, `2`, or `3`. `1` saves and launches /rehearse for re-verification. `2` lets user adjust. `3` saves and stops. `0` goes back to /recast (or /reframe if the problem is fundamental). Adapt labels to user's language.
+**Layout rules:**
+- **Header:** 1-line, emoji + name + round + ━━━.
+- **Changes table:** Pipe table with row separators. `#` | `변경` (old → new inline) | `이유`. Short cells — abbreviate if needed.
+- **Re-test:** Card blocks (`┌└`). Each persona: prev→new verdict on header, one-sentence reaction on body. 2 lines per persona.
+- **Convergence:** Bar chart stays (works well for before/after comparison). One line per metric.
+- **Footer:** ━━━ → status → readiness → actions.
+
+**Quick action:** `0`, `1`, `2`, or `3`. `1` saves and launches /rehearse for re-verification. `2` lets user adjust. `3` saves and stops. `0` goes back to /recast (or /reframe if fundamental). Adapt labels to user's language.
 
 **Going back (`0`):** When refinement reveals the plan needs more than surgical fixes:
 > 💡 Refine에서 발견한 것:

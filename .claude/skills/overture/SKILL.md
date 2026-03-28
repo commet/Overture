@@ -409,19 +409,27 @@ This is the last thing the user reads. Make it count.
 
 Append to `.overture/journal.md` in the project root (the directory containing `.git`, or the current working directory):
 
+**Header uniqueness rule:** Include date + skill + short topic slug. Example: `## 2026-03-27 /overture — SEA 확장`
+
 ```
-## [date] /overture — full pipeline
+## [date] /overture — [short topic, ≤5 words]
 - Context: [build|decide]
 - Problem: "[original]"
 - Reframed: "[new question / product thesis]"
 - Score: DQ [N] · [four notes, e.g. ░▓█▒]
 - Scores by element: F[n] A[n] I[n] P[n] R[n] Act[n]
+- Assumptions: [N] confident, [N] uncertain, [N] doubtful
+  - ✗/? [each doubtful/uncertain — 1 line, max 4]
 - Rehearsal: [N] personas, [M] critical, [K] unspoken
+  - Critical: [each — 1 line]
+  - Unspoken: [each — 1 line]
 - Convergence: [N] rounds | [converged/not]
 - Sharpest critique: "[quote]" — [persona]
+- Critique resolved: [yes/no — how, or "not resolved"]
 - Strength: [what the user did well — specific, earned]
 - Growth edge: [area where improvement would have the most impact]
 - Blind spots: [which assumption dimensions were missed]
+- Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ✓
 ```
 
 The `Strength` and `Growth edge` fields are critical for growth tracking. They must be specific and honest — "good framing" is useless, "named the regulatory risk before any prompt" is useful. These fields power the returning-user insights in the "Before starting" section.

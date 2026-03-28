@@ -64,7 +64,53 @@ Check if `.overture/journal.md` exists in the project root.
 
 **If it does NOT exist (first use):** Briefly say this is the first time, then show the overview + Q1.
 
-**If it exists:** Read the last 10 entries. If you see patterns from previous runs, mention them briefly before the overview.
+**If it exists:** Read the last 10 entries and apply the **adaptive rules** below. Then show the overview + Q1.
+
+### Adaptive rules (journal → behavior)
+
+Scan the last 10 journal entries for these patterns. Apply ALL that match — they stack:
+
+**Pattern: Recurring blind spot (same growth edge 2+ times)**
+If the same blind spot category appears 2+ times (e.g., "timing", "capacity", "competitive response"):
+→ In Phase 2, **force-add one assumption about that blind spot area**, even if LLM analysis wouldn't naturally surface it. Label it: `[패턴 감지: 이전 실행에서 반복적으로 놓친 영역]`
+
+**Pattern: Chronic low confidence (0 confident in 2+ consecutive runs)**
+→ Before Phase 2, add a one-line note: `이전 2회 연속 확신 있는 가정이 없었습니다. 이번에는 가정 평가를 더 신중히 — "정말 불확실한가, 아니면 확인하지 않았을 뿐인가?" 자문해보세요.`
+
+**Pattern: Strategy repetition (same strategy 3+ times)**
+→ After selecting strategy in Phase 3, add: `참고: 최근 [N]회 연속 [strategy] 전략을 사용했습니다. 다른 관점도 고려해볼까요?` — This is informational, not a blocker.
+
+**Pattern: DQ score trend (3+ /overture entries with rising scores)**
+→ Push harder on blind spots. The `💡` insight must be genuinely uncomfortable, not just reframing the user's own concern back at them.
+
+### Complexity calibration
+
+After receiving the user's problem (but before the interview), assess complexity:
+
+- **Simple** (clear action item, low ambiguity, familiar domain from journal): Add a note after the header:
+  `💡 이 문제는 /reframe만으로 충분할 수 있습니다. 풀 파이프라인이 필요하면 이어서 /recast.`
+- **Complex** (high ambiguity, multiple stakeholders, uncertain "why"): No extra note — the full pipeline is expected.
+
+This is a one-line hint, not a gate. Always proceed with the interview regardless.
+
+### Topic linking
+
+If any of the last 10 journal entries share keywords or domain with the current input (e.g., both about "뉴스레터", both about "코드 리뷰", both about the same market):
+```
+  💭 관련 이전 실행:
+  ▸ [date] "[topic]" — blind spot: "[key insight]"
+```
+Max 1 link. If the previous run had unresolved critiques or 0 confident assumptions, mention that specifically.
+
+### Assumption follow-up
+
+If a related previous run (same topic area) had uncertain or doubtful assumptions, surface the most critical one:
+```
+  📋 미검증 가정 (이전 실행):
+  · ? "[assumption text]" ([date])
+  → 그 후 검증했나요? [y/n/skip]
+```
+If user answers `y`, mark it as context for this run. If `n` or `skip`, proceed normally. **Only ask for 1 assumption, max.** This must not slow the flow.
 
 ## Handling edge cases
 
@@ -310,6 +356,12 @@ Count the evaluations from Phase 2:
 - Hidden questions should include fundamental alternatives.
 - It's valid to suggest "don't do this" as a direction.
 
+**⚠️ ZERO CONFIDENT (0 confirmed, regardless of doubtful/uncertain split)** → Add a warning line in the card output, between the assumptions table and the blind spot:
+```
+  ⚠️ 확인된 가정이 없습니다. /recast 전에 최소 1개는 검증하거나, 현 상태로 진행 시 탐색적 계획이 됩니다.
+```
+This is NOT a blocker — the user may proceed. But it must be visible. The warning adapts to the user's language.
+
 **MIXED (anything else)** → MIXED pattern
 - Direction stands. Integrate the doubtful/uncertain items as CONDITIONS, not direction changes.
 - **CRITICAL ANTI-PATTERN:** Do NOT flip the entire direction based on one doubtful assumption. The confirmed assumptions support the current direction — respect that.
@@ -350,40 +402,61 @@ The **hidden questions** CAN point to focused experiments or first steps.
 
 **Output — single card. Everything the user sees in ONE code block.**
 
-**Card template:**
+**Card template (76-char content width, all in ONE code block):**
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  🎯 Overture · Reframe                   │
-  ╰──────────────────────────────────────────╯
+  🎯 Reframe ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ┌──────────────────────────────────────┐
-  │  [original problem]                  │
-  └──────────────────┬───────────────────┘
-                     ↓
-  ╔══════════════════════════════════════╗
-  ║  [reframed question]                ║
-  ╚══════════════════════════════════════╝
+  [물어본 것 label]
+  "[original problem]"
 
-  ─────────────────────────────────────────
+  ▸ [진짜 질문 label]
+  [reframed question — wrap at 74 chars, ~36 Korean chars per line]
 
-  [Assumption label]                   [Eval]
-  ─────────────────────────────────────────
-  [assumption full text]                 ✓
-  [assumption full text]                 ?
-  [assumption full text]                 ?
-  [assumption full text]                 ✗
+  [왜 더 날카로운가 — 1-2 sentences, same wrap width]
 
-  [Check First label]
-  · [question — concrete, one line]
-  · [question — bake AI limitation naturally]
+  [가정 label] ────────────────────────────────────────────────────────────────
 
-  ─────────────────────────────────────────
+  ✓ │ [confirmed assumption — aim for single line at 76-char width]
+  ✓ │ [confirmed assumption]
+  ──┼───────────────────────────────────────────────────────────────────────
+  ? │ [uncertain assumption]
+  ? │ [uncertain assumption]
 
-  💡 [blind spot — 1-2 lines max]
+  [먼저 확인 label] ──────────────────────────────────────────────────────────
 
-  /recast · /rehearse                📄 saved
+  1  [question — aim for single line with → reason inline]
+  2  [question → reason]
+  3  [question → reason]
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  💡 [blind spot — 1-2 lines at 76-char width]
+
+  ██░░░ ✓정의 ✓가정 ·검증 ·계획 ·테스트
+  다음?  1 /recast · 2 수정 · 3 저장
 ```
+
+**Layout rules:**
+- **Width:** 76 chars content (80-char terminal with 2-char indent each side). Korean ≈ 36 chars/line. All ━━━ and ──── lines fill to 76 chars.
+- **Header:** 1-line with emoji + name + ━━━ fill. No 3-line box.
+- **Question comparison:** "물어본 것" + "▸ 진짜 질문" — labels create contrast, no decorative boxes.
+- **Assumptions:** Left-pipe only (`✓ │` / `? │`). No right border. `──┼──` separator between confirmed and uncertain groups. Doubtful assumptions (✗) go below uncertain with another separator.
+- **Check First:** Numbered list, no bullets. Aim for one line per question with → reason inline.
+- **Footer:** ━━━ heavy line → 💡 insight → readiness bar + actions on separate lines.
+- **Readiness:** `██░░░ ✓item ·item` — bar + items, `·` for pending. One line.
+- **Quick actions:** `1 /next · 2 수정 · 3 저장` — dot-separated, one line. No arrows.
+
+**Quick action:** The user can type `1`, `2`, or `3`. `1` saves and launches the next skill. `2` shows editable items (see below). `3` saves and stops. If the user types anything else, respond naturally. Adapt labels to user's language.
+
+**When user picks `2` (수정):** Show numbered items they can modify:
+```
+  수정할 항목?
+  a · 리프레임 질문
+  b · 가정 평가 변경
+  c · 기타 (직접 입력)
+```
+After adjustment, re-output the card and show quick actions again.
 
 **Visual shift boxes:** Original question in thin box (`┌┐`), reframed in bold box (`╔═╗`). The visual weight difference immediately shows the upgrade. `↓` arrow connects them.
 
@@ -462,8 +535,10 @@ The `💡` line in the card is Overture's signature — the uncomfortable truth.
 
 After completing, append to `.overture/journal.md` in the project root (directory with `.git`, or current working directory):
 
+**Header uniqueness rule:** The journal heading MUST include the date, skill name, AND a short topic slug (≤5 words from the original question). This prevents duplicate headings when the same skill runs multiple times on the same day. Example: `## 2026-03-27 /reframe — 뉴스레터 수익화 도구`
+
 ```
-## [date] /reframe
+## [date] /reframe — [short topic, ≤5 words]
 - Context: [build|decide]
 - Original: "[original question]"
 - Reframed: "[new question]"
@@ -471,6 +546,9 @@ After completing, append to `.overture/journal.md` in the project root (director
 - Pattern: [confirmed | mixed | mostly_doubtful]
 - Strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle | sharpen_wedge | validate_first]
 - Assumptions: [N] confident, [N] uncertain, [N] doubtful
+  - ✗/? [each doubtful/uncertain assumption — 1 line, max 4. Omit confident ones.]
+- Blind spot: "[the 💡 insight — 1 line]"
+- Pipeline: reframe ✓ → recast · rehearse · refine
 ```
 
 Read only the **last 10 entries** at the start of future runs. If the journal exceeds 50 entries, mention to the user that they can archive older ones.

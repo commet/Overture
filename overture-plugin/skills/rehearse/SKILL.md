@@ -224,116 +224,101 @@ These are recommendations, not blockers. Show them inline, then show the normal 
 
 **Single card** — one code block. Auto-save to `.overture/rehearse.md`.
 
-### Decide context: Output card
+### Decide context: Output card (76-char width, ONE code block)
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  👥 Overture · Rehearse                  │
-  ╰──────────────────────────────────────────╯
+  👥 Rehearse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [Bottom line label]:
-  1. [action]
-  2. [action]
-  3. [action]
+  [바꿔야 할 것 label]
+  1  [action — specific]
+  2  [action — specific]
+  3  [action — specific]
 
-  ─────────────────────────────────────────
+  [페르소나 label] ─────────────────────────────────────────
 
-  [Name]       [Risk]        [Unspoken]      [Approve if]
-  ──────────────────────────────────────────────────────
-  [name]       ✗ [risk]      🔇 [risk]       [condition]
-  [name]       ✗ [risk]      🔇 [risk]       [condition]
-  [name]       ? [risk]                       [condition]
+  ┌ [Name] — [Role] — [primary concern]      [판정]
+  │ ✗  [critical risk — one line]
+  │ 🔇 [unspoken risk — one line]
+  └ ▸ "[sharpest quote]"
 
-  ▸ [name]: "[sharpest quote — their voice]"
-  ▸ [name]: "[sharpest quote]"
-  ▸ [name]: "[sharpest quote]"
+  ┌ [Name] — [Role] — [primary concern]      [판정]
+  │ ✗  [critical risk — one line]
+  │ 🔇 [unspoken risk — one line]
+  └ ▸ "[sharpest quote]"
 
-  ─────────────────────────────────────────
+  ┌ [Name] — [Role] — [primary concern]      [판정]
+  │ ?  [manageable risk — one line]
+  └ ▸ "[sharpest quote]"
 
-  ⚡ Devil's Advocate
-  ✗ [realistic failure]
-  🔇 [silent problem]
-  ⏳ [regret in 1 year]
+  Devil's Advocate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ─────────────────────────────────────────
+  ✗  [realistic failure — one line]
+  🔇 [silent problem — one line]
+  ⏳ [regret in 1 year — one line]
 
-  💡 [key tension or insight]
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /refine                          📄 saved
+  💡 [key tension or insight — 1-2 lines]
+
+  ████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴
+  [severity + quick actions — see below]
 ```
 
-### Build context: Output card
-
-**Readability rules for build rehearse card:**
-- **No multi-column tables.** They break with long text. Use per-persona blocks instead.
-- **Each persona = 5 lines:** header, ✗ risk, 🔇 unspoken, ▸ quote, → verdict. ALL on single lines.
-- **Quotes must be punchy** — one sentence max. If it wraps, cut it.
-- **Devil's Advocate: 1 line per point.** Not paragraphs.
-- **Blank line between personas** for visual separation.
+### Build context: Output card (76-char width, ONE code block)
 
 ```
-  ╭──────────────────────────────────────────────╮
-  │  👥 Overture · Rehearse                      │
-  ╰──────────────────────────────────────────────╯
+  👥 Rehearse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [What to change]:
-  1. [action — specific]
-  2. [action — specific]
+  [바꿔야 할 것 label]
+  1  [action — specific]
+  2  [action — specific]
 
-  ─────────────────────────────────────────────────
+  [페르소나 label] ─────────────────────────────────────────
 
-  🎯 [Name] — [role/context] · [current solution]
-     ✗ [critical risk — one line]
-     🔇 [unspoken risk — one line]
-     ▸ "[sharpest quote — one sentence]"
-     → [would use? yes/no/conditional + reason]
+  ┌ 🎯 [Name] · [role/context] · [current solution]
+  │ ✗  [critical risk — one line]
+  │ 🔇 [unspoken risk — one line]
+  └ → [verdict: 조건부/거부/사용]
 
-  🤨 [Name] — [role/context] · [alternative]
-     ✗ [critical risk — one line]
-     🔇 [unspoken risk — one line]
-     ▸ "[why not just use X? — one sentence]"
-     → [would use? no + reason]
+  ┌ 🤨 [Name] · [role/context] · [alternative]
+  │ ✗  [critical risk — one line]
+  │ 🔇 [unspoken risk — one line]
+  └ → [verdict]
 
-  ─────────────────────────────────────────────────
+  [핵심 발언 label] ────────────────────────────────────────
 
-  ✗ [most likely death — one line]
+  [Name]  "[sharpest quote — one sentence]"
+  [Name]  "[sharpest quote — one sentence]"
+
+  Devil's Advocate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✗  [most likely death — one line]
   🔇 [what nobody says — one line]
   ⏳ [6-month regret — one line]
 
-  ─────────────────────────────────────────────────
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   💡 [product blind spot — 1-2 lines max]
+
+  ████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴
+  [severity + quick actions — see below]
 ```
 
-**Readiness score (add after the 💡 line, inside the card):**
-```
-  Readiness  [████░]
-  · ✓ 문제 정의  ✓ 실행 계획  ✓ 스트레스 테스트  ? 이슈 해결
-```
-Count: problem defined ✓, plan exists ✓, stress-tested ✓, issues resolved ? (depends on critical count). If 0 criticals: `█████`.
+**Layout rules:**
+- **Header:** 1-line, emoji + name + ━━━.
+- **Personas:** Card blocks (`┌│└`). Header line includes name + context + verdict (right-aligned). Body: ✗ critical, 🔇 unspoken, ▸ quote OR → verdict. Max 4 lines per persona.
+- **Quotes (build context):** Extracted to separate "핵심 발언" section. `[Name]  "[quote]"` — one line each.
+- **Devil's Advocate:** Own section with ━━━ separator (heavier weight = different voice). 3 items, 1 line each.
+- **Footer:** ━━━ → 💡 → readiness → severity + actions.
+- **Readiness:** `████░ ✓item ·item` — one line.
 
-**After the card, guide the next step based on severity:**
+**Severity-based quick actions (after the card, outside code block if needed):**
 
-**If critical risks ≥ 1:**
-```
-  ⚠️ Critical [N]개 미해결
-  다음?  1 → /refine (권장)  2 → 수정  3 → 저장
-  ← 0   /recast 다시
-```
+If critical ≥ 1: `⚠️ Critical [N]개 · 다음? 1 /refine 권장 · 2 수정 · 3 저장 · ← 0`
+If critical = 0, unspoken ≥ 2: `🔇 Unspoken [N]개 · 다음? 1 /refine · 2 수정 · 3 저장 · ← 0`
+If none: `✓ 리스크 없음 · 다음? 1 저장 · 2 수정 · 3 /refine · ← 0`
 
-**If critical risks = 0 but unspoken ≥ 2:**
-```
-  🔇 Unspoken [N]개 — 무시 가능하지만 후회할 수 있음
-  다음?  1 → /refine  2 → 수정  3 → 저장
-  ← 0   /recast 다시
-```
-
-**If no critical or unspoken risks:**
-```
-  ✓ 주요 리스크 없음
-  다음?  1 → 저장  2 → 수정  3 → /refine (optional)
-  ← 0   /recast 다시
-```
+All on one line. Adapt to user's language.
 
 **Quick action:** The user can type `0`, `1`, `2`, or `3`. `1` saves and launches the recommended next action. `2` shows editable items (see below). `3` saves (or launches optional refine). `0` goes back to /recast with rehearsal insights. If the user types anything else, respond naturally. Adapt labels to user's language.
 
