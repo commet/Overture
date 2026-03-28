@@ -2,7 +2,18 @@
 name: reframe
 description: "Sharpen your question before asking AI. Finds hidden assumptions in your problem and reframes it so you get breakthrough answers instead of generic ones. Use when AI gives predictable answers, when starting a strategic decision, or when something feels off about a problem."
 argument-hint: "[problem or question to reframe]"
+allowed-tools: Read, Write, AskUserQuestion
 ---
+
+## When to use
+
+- ✓ Starting a strategic decision — before committing time or resources
+- ✓ Building a product — before asking AI to code it
+- ✓ AI keeps giving predictable, generic answers to your question
+- ✓ Something feels off about the problem but you can't articulate why
+- ✓ Before a big meeting where you need to present a sharp question
+- ✗ Tactical questions with obvious answers (just do them)
+- ✗ When you already know the real question and just need execution (use /recast)
 
 Most strategic failures start with the wrong question, not the wrong answer. Your job is to find the hidden assumptions in the user's problem and reframe it into a sharper question.
 
@@ -19,6 +30,33 @@ Ask ONLY this — nothing else, no overview, no interview yet:
 Wait for their response. Only AFTER receiving the problem, proceed to the overview + interview.
 
 **If an argument IS provided** (e.g., `/reframe "expand into SEA"`), proceed immediately.
+
+## Context detection
+
+After receiving the problem, determine the context. This shapes the entire flow — interview questions, assumption dimensions, reframing strategy, and output.
+
+**Build context** — user wants to CREATE something:
+- Signal words: build, make, create, develop, app, tool, SaaS, service, platform, MVP, ship, 만들다, 개발, 앱, 서비스, 플랫폼, 도구, 사이트, 웹앱
+- Pattern: describes a product, tool, or app idea — something to be built and used
+- Examples: "할 일 관리 앱", "AI 블로그 자동화 SaaS", "프리랜서용 인보이스 도구"
+
+**Decide context** (default) — user wants to DECIDE or ANALYZE:
+- Signal words: decide, strategy, expand, invest, hire, restructure, adopt, should we, 결정, 전략, 도입, 투자, 확장, 채용, 구조, 해야 할지
+- Pattern: describes an organizational, strategic, or career challenge
+- Examples: "AI 도입 전략", "동남아 진출 여부", "팀 구조 개편"
+
+**Ambiguous?** If unclear, ask ONE routing question before proceeding:
+
+```
+  [What are you doing?]
+
+    1 · [Building something — app, tool, service]
+    2 · [Making a decision — strategy, direction, action]
+
+  ▸
+```
+
+Record in Context Contract as `context: build` or `context: decide`. This field propagates to all downstream skills (/recast, /rehearse, /refine).
 
 ## Before starting (after you have the problem)
 
@@ -88,6 +126,69 @@ The overview and Q1 go in a SINGLE code block. The box header (`Overture · Refr
 
 After Q1, show a brief text confirmation (e.g., "✓ Top-down directive" / "✓ 위에서 지시") outside the code block, then Q2 in a new code block. This creates visual separation.
 
+#### Build context: Interview questions
+
+If `context: build`, replace the standard Q1-Q3 with product-focused questions. Same rendering rules (code blocks, one at a time, confirmations between).
+
+**Q1 (replaces "nature"):**
+```
+  ■ [Interview]                        1 / 3
+
+  [Who is this for?]
+
+    1 · [Just me — personal tool]
+    2 · [Specific group — who?]
+    3 · [Anyone — mass market]
+    4 · [Don't know yet]
+
+  ▸
+```
+Maps to `audience`: 1=personal, 2=niche, 3=mass, 4=unknown
+
+**Q2 (replaces "goal"):**
+```
+  ■ [Interview]                        2 / 3
+
+  [What does success look like?]
+
+    1 · [Users — people actually use it]
+    2 · [Validation — proves the idea works]
+    3 · [Revenue — makes money]
+    4 · [Learning — build skills / portfolio]
+
+  ▸
+```
+Maps to `success_model`: 1=users, 2=validation, 3=revenue, 4=learning
+
+**Q3 (replaces "stakes"):**
+```
+  ■ [Interview]                        3 / 3
+
+  [How big is the first version?]
+
+    1 · [Weekend project — quick and scrappy]
+    2 · [Side project — a few weeks]
+    3 · [Full product — months of work]
+    4 · [Not sure yet]
+
+  ▸
+```
+Maps to `scale`: 1=weekend, 2=side_project, 3=full_product, 4=unknown
+
+#### Build context: Interview signal mapping
+
+- audience=personal → "is this worth building vs. using existing tools?"
+- audience=niche → "do these people actually need this? have you talked to them?"
+- audience=mass → "differentiation is everything"
+- audience=unknown → MUST include assumption "you don't know who wants this"
+- success_model=users → include distribution/discovery assumption
+- success_model=revenue → include business model assumption
+- success_model=learning → lighter assumptions, focus on scope control
+- scale=weekend → feasibility = "can you do this in a weekend?"
+- scale=full_product → "is ambition matched to resources?"
+
+#### Decide context: Interview questions (default, unchanged below)
+
 **Q2 template:**
 ```
   ■ [Interview]                        2 / 3
@@ -132,14 +233,26 @@ These signals influence BOTH assumption extraction (Phase 2) AND reframing strat
 
 ### Phase 2: Assumption discovery + evaluation
 
-After the interview, analyze the problem using interview signals to find 3-4 hidden assumptions. Check across these dimensions (at least one from each):
+After the interview, analyze the problem using interview signals to find 3-4 hidden assumptions.
 
+#### Decide context: Assumption dimensions (default)
+
+Check across these dimensions (at least one from each):
 - **Value**: Is this actually valuable to someone?
 - **Feasibility**: Can this realistically be done?
 - **Viability**: Does the economics work?
 - **Capacity**: Can the team/org actually handle this?
 
 For personal decisions, adapt: Personal growth / Financial impact / Opportunity cost / Readiness.
+
+#### Build context: Assumption dimensions
+
+If `context: build`, use product dimensions instead (3 assumptions, not 4 — lighter):
+- **Value**: Does someone actually want this enough to switch from what they're doing now?
+- **Differentiation**: Why wouldn't they just use [specific existing tool]? (MUST name a plausible alternative)
+- **Feasibility**: Can this actually be built as imagined, by this person/team, in this timeframe?
+
+Shape emphasis using build interview signals (see mapping above).
 
 **Interview signals shape what assumptions to look for:**
 - nature=no_answer → find **existential** assumptions ("this direction has value", "this problem actually exists")
@@ -207,7 +320,7 @@ Count the evaluations from Phase 2:
 
 #### Step 3b: Select reframing STRATEGY based on interview signals
 
-Within the chosen pattern, use the strategy that fits the signal combination:
+**Decide context (default):**
 - nature=on_fire → **Diagnose Root Cause** (separate immediate response from structural fix)
 - nature=no_answer + mostly doubtful → **Challenge Existence** (the problem may not need solving)
 - nature=needs_analysis + mostly confident → **Narrow Scope** (find the smallest experiment)
@@ -215,6 +328,15 @@ Within the chosen pattern, use the strategy that fits the signal combination:
 - Otherwise → **Redirect Angle** (find the perspective shift)
 
 See `references/reframing-strategies.md` for strategy details and examples.
+
+**Build context:**
+- CONFIRMED → **Sharpen Wedge** — idea is sound, specify the exact MVP and first user
+  - "할 일 관리 앱" → "GTD를 아는 프리랜서가 Notion 대신 쓸 만큼 빠르고 가벼운 태스크 도구"
+- MIXED → **Narrow Scope** — maintain direction, add constraint from the doubtful assumption
+  - Don't flip the idea. Constrain it. "앱 만들되, [doubtful assumption]을 먼저 검증할 수 있는 최소 버전부터"
+- MOSTLY DOUBTFUL → **Validate First** — reframe toward validation, not building
+  - "만들기 전에 확인할 것: [specific question to answer with 5 potential users]"
+  - It's valid to suggest "don't build this yet"
 
 #### Step 3c: Strategic thinking frame (mental checklist before reframing)
 
@@ -294,10 +416,14 @@ After outputting the card, save to `.overture/reframe.md` (create `.overture/` d
 ---
 
 ## Context Contract
+context: [build|decide]
 reframed_question: [question]
 assumption_pattern: [confirmed|mixed|mostly_doubtful]
 strategy: [strategy name]
+# decide context:
 interview_signals: nature=[X] goal=[X] stakes=[X]
+# build context:
+build_signals: audience=[X] success_model=[X] scale=[X]
 assumptions_doubtful:
   - [assumption] | reason: [reason]
 assumptions_uncertain:
@@ -338,11 +464,12 @@ After completing, append to `.overture/journal.md` in the project root (director
 
 ```
 ## [date] /reframe
+- Context: [build|decide]
 - Original: "[original question]"
 - Reframed: "[new question]"
-- Interview: nature=[answer] goal=[answer] stakes=[answer]
+- Interview: [decide: nature/goal/stakes] [build: audience/success_model/scale]
 - Pattern: [confirmed | mixed | mostly_doubtful]
-- Strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle]
+- Strategy: [challenge_existence | narrow_scope | diagnose_root | redirect_angle | sharpen_wedge | validate_first]
 - Assumptions: [N] confident, [N] uncertain, [N] doubtful
 ```
 

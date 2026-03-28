@@ -3,13 +3,40 @@ name: overture
 description: "Full decision harness. Runs the complete pipeline: reframe your question, design execution, stress-test with stakeholders, refine until solid, score your thinking. Produces 3 deliverables: a sharpened prompt, a team-shareable summary, and an agent-ready harness document. Use for important decisions. Takes 5-10 minutes."
 argument-hint: "[important decision or problem]"
 effort: high
+allowed-tools: Read, Write, Agent, AskUserQuestion
 ---
 
-This is the full pipeline. Like running a complete test suite before deploying — but for decisions.
+## When to use
+
+- ✓ Important decisions that affect your team, product, or career
+- ✓ Building a product — get a sharp spec before asking AI to code
+- ✓ When the cost of a wrong decision is high (irreversible, expensive, political)
+- ✓ Before a board meeting, product launch, or strategic pivot
+- ✓ When you want the full analysis: reframe → plan → stress-test → refine → score
+- ✗ Quick tactical questions (use /reframe alone)
+- ✗ When you only need one step (use /reframe, /recast, /rehearse, or /refine individually)
+
+This is the full pipeline. Like running a complete test suite before deploying — but for decisions and product ideas.
 
 You will run 4 stages autonomously, then score the quality of the thinking process. Keep moving between stages, but after Stage 1 (Reframe), briefly pause to show the reframed question — if the user wants to adjust it, use their correction.
 
-**Always respond in the same language the user uses. All three deliverables must be in the user's language.**
+**Always respond in the same language the user uses. All deliverables must be in the user's language.**
+
+## Context-adaptive pipeline
+
+The pipeline auto-detects context from the user's input using /reframe's context detection logic:
+
+**Build context** (product/app idea detected):
+- Lighter: ~5 min total (vs 5-10 for decide)
+- Reframe: build interview (audience/success/scale), product assumptions (3, not 4)
+- Recast: product spec (features P0/P1/P2 + scope cuts) instead of execution steps
+- Rehearse: 2 user personas instead of 3 stakeholders, lighter Devil's Advocate
+- Refine: max 1 round
+- Deliverables adapt (see Stage 5 below)
+
+**Decide context** (default): full pipeline unchanged.
+
+The `context` field flows through all stages via the Context Contract.
 
 ## Before starting
 
@@ -134,25 +161,65 @@ Run `/refine` — use its full process, design system, and output format.
 
 ## Stage 5: Score and deliver
 
-Evaluate the entire pipeline and produce 3 deliverables. **Lead with the most actionable item (Sharpened Prompt), then the summary, then the full harness.**
+Evaluate the entire pipeline and produce 3 deliverables. Save all deliverables plus DQ scorecard to `.overture/last-run.md`.
 
-Also save the 3 deliverables (Sharpened Prompt, Thinking Summary, Agent Harness) plus the DQ scorecard to `.overture/last-run.md` in the project root (directory containing `.git`, or current working directory). This lets users reference the results later without scrolling through conversation history.
+### Context-dependent deliverables
 
-### ■ Deliverable 1: Sharpened Prompt
+| # | Decide context | Build context |
+|---|---|---|
+| 1 | Sharpened Prompt | **Implementation Prompt** |
+| 2 | Thinking Summary | **Product Brief** |
+| 3 | Agent Harness | Agent Harness (same) |
+
+### ■ Deliverable 1
+
+**Decide: Sharpened Prompt**
 
 A ready-to-use prompt the user can paste into any AI conversation. It should incorporate the reframed question, key constraints discovered, and what to watch out for.
-
-**Render as blockquote** — feels immediately copy-pasteable:
 
 > **✦ Sharpened Prompt** — paste into your next AI conversation:
 >
 > *[reframed question with context, constraints, and guardrails baked in. Include what AI should focus on and what it should flag for human review.]*
 
-### ■ Deliverable 2: Thinking Summary
+**Build: Implementation Prompt**
+
+A ready-to-use prompt the user can paste into Cursor, Claude Code, Bolt, or any AI coding tool. Incorporates the product thesis, features, constraints, and scope cuts.
+
+> **✦ Implementation Prompt** — paste into Cursor, Claude Code, or any AI coding tool:
+>
+> Build a [type] that [thesis].
+>
+> Target user: [who — one line]
+>
+> Core features (build these first):
+> - [P0]: [specific behavior]
+> - [P0]: [specific behavior]
+>
+> Then add:
+> - [P1]: [specific behavior]
+>
+> Do NOT build: [specific scope cuts]
+>
+> Constraints:
+> - [from assumptions/persona feedback]
+>
+> Success = [metric]
+
+Every line must earn its place. Features describe behavior, not labels. A developer should know what to build with zero follow-up questions.
+
+### ■ Deliverable 2
+
+**Decide: Thinking Summary**
 
 A team-shareable summary. Written like an email you'd send to your team — not a consulting document. Keep it under 3000 characters (Slack-friendly).
 
+**Build: Product Brief**
+
+A shareable product brief. Same format as Thinking Summary but product-framed:
+
 **Render as markdown bold/italic** — reads like an email, not a report:
+
+**Decide context format:**
 
 **TL;DR:** [one sentence: what changed in our thinking and what to do next]
 
@@ -178,6 +245,37 @@ A team-shareable summary. Written like an email you'd send to your team — not 
 1. [concrete action + who]
 2. [concrete action + who]
 3. [concrete action + who]
+
+**Decision Quality:** [N]/100
+
+**Build context format:**
+
+**TL;DR:** [one sentence: what you're building and the one thing that changed]
+
+**Original idea vs. real product:**
+
+```diff
+- Idea: [original]
++ Product: [thesis]
+```
+
+**Why the shift:** [one sentence]
+
+**MVP scope:** P0: [features] | Cut: [what NOT to build]
+
+**Reality check:**
+
+```diff
+- [critical] [user risk — one line]
+- [unspoken] [market risk — one line]
+```
+
+**Sharpest pushback:** *"[skeptic's core objection]"*
+
+**Before you build:**
+1. [validate this assumption first]
+2. [build this P0 feature first]
+3. [measure this metric]
 
 **Decision Quality:** [N]/100
 
@@ -313,8 +411,9 @@ Append to `.overture/journal.md` in the project root (the directory containing `
 
 ```
 ## [date] /overture — full pipeline
+- Context: [build|decide]
 - Problem: "[original]"
-- Reframed: "[new question]"
+- Reframed: "[new question / product thesis]"
 - Score: DQ [N] · [four notes, e.g. ░▓█▒]
 - Scores by element: F[n] A[n] I[n] P[n] R[n] Act[n]
 - Rehearsal: [N] personas, [M] critical, [K] unspoken

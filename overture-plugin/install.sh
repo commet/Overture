@@ -31,11 +31,21 @@ cat << 'WELCOME'
 
  ─────────────────────────────────────────────────────────────────────
 
-  ✓ Installed
+  ✓ Installed (v0.3.0)
 
+    Core:
     /reframe "your problem here"       sharpen your question
-    /overture "important decision"      full pipeline
-    /overture-help                      all commands
+    /recast "goal or question"         design execution plan
+    /rehearse "plan to stress-test"    simulate stakeholders
+    /refine "plan with feedback"       iterate until solid
+    /overture "important decision"     full pipeline
+
+    Utility:
+    /overture:setup                    verify installation
+    /overture:doctor                   diagnose issues
+    /overture:configure                set preferences
+    /overture:patterns                 analyze your thinking patterns
+    /overture-help                     all commands
 
   Restart Claude Code to start.
 

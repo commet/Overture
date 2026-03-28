@@ -2,7 +2,17 @@
 name: rehearse
 description: "Stress-test your plan with simulated stakeholders before the real meeting. Creates 2-3 personas who critique your strategy from different angles — finding risks, blind spots, and approval conditions. Use before presenting to leadership, launching products, or making irreversible decisions."
 argument-hint: "[plan or strategy to stress-test]"
+allowed-tools: Read, Write, Agent, AskUserQuestion
 ---
+
+## When to use
+
+- ✓ Before presenting a plan to leadership or stakeholders
+- ✓ Before making an irreversible decision (hiring, launch, investment)
+- ✓ When you suspect your plan has blind spots but can't find them
+- ✓ After /recast — stress-test the execution plan you just designed
+- ✗ When the plan is still too vague (run /recast first)
+- ✗ For quick, low-stakes decisions (overkill)
 
 If you ask AI directly, it will agree with you. That's the problem.
 
@@ -57,7 +67,13 @@ Every persona MUST see: the governing idea, the step summary with actors/checkpo
 ### If no contracts exist:
 Generate personas from the user's input. Follow the diversity rule below.
 
+## Context detection
+
+Read `context` from /recast or /reframe Contract. If no contracts exist, detect from user input (same signals as /reframe).
+
 ## Step 1: Create personas
+
+### Decide context: Stakeholders (3 personas)
 
 If `/recast` provided personas in its Contract, use those exactly — reproduce all fields.
 
@@ -74,7 +90,17 @@ Each persona needs ALL fields: name, role, influence, decision_style (analytical
 
 See `references/persona-design.md` for detailed guidance.
 
+### Build context: User personas (2 personas)
+
+If `/recast` provided user personas in its Contract, use those exactly.
+
+Otherwise, create 2 user personas:
+1. **Target User** — daily user. Fields: name, context, current_solution (specific!), switch_threshold, dealbreaker
+2. **Skeptic** — has seen similar products. Fields: name, context, alternative (specific product!), objection
+
 ## Step 2: Independent reviews
+
+### Decide context reviews
 
 Each persona reviews the plan INDEPENDENTLY. For each, generate:
 
@@ -83,15 +109,38 @@ Each persona reviews the plan INDEPENDENTLY. For each, generate:
 - **Risks** — classified as [critical], [manageable], [unspoken]
 - **Approval conditions** — what they need to see to say "yes"
 
+### Build context reviews
+
+Each persona reviews the product spec INDEPENDENTLY:
+
+**Target User:**
+- **First reaction** — in their voice ("Oh this is..." — authentic)
+- **Would I switch?** — honest answer referencing their current_solution
+- **What's missing?** — the one thing that would actually make them use it daily
+- **Risks** — [critical]: what makes them delete it / [unspoken]: what nobody says about products like this
+
+**Skeptic:**
+- **First reaction** — skeptical, referencing their known alternative
+- **"Why not just use [alternative]?"** — the core objection, fully argued
+- **What would change my mind?** — specific evidence or demo that would convince them
+- **Risks** — [critical]: most likely failure mode / [unspoken]: the market reality nobody admits
+
 **You MUST find at least one [unspoken] risk.** This is Overture's core value.
 See `references/risk-classification.md` for the three categories.
 
 ## Step 3: Devil's Advocate
 
+### Decide context
 Run the `devils-advocate` agent to attack the plan through 3 lenses:
 1. Most realistic failure
 2. The silent problem (what nobody will say)
 3. The regret test (what you'll wish you'd considered in 1 year)
+
+### Build context
+Lighter version — integrated as a final section (no separate agent needed):
+1. **Most realistic failure**: How this product most likely dies (not worst-case, MOST LIKELY)
+2. **The thing nobody says**: The market/user reality that builders avoid acknowledging
+3. **6-month regret**: What you'll wish you'd built differently after 6 months of users
 
 ## Step 4: Synthesis
 
@@ -110,6 +159,8 @@ If no → the rehearsal was too soft. Make at least one persona harsher.
 ## Output
 
 **Single card** — one code block. Auto-save to `.overture/rehearse.md`.
+
+### Decide context: Output card
 
 ```
   ╭──────────────────────────────────────────╮
@@ -146,6 +197,56 @@ If no → the rehearsal was too soft. Make at least one persona harsher.
 
   /refine                          📄 saved
 ```
+
+### Build context: Output card
+
+**Readability rules for build rehearse card:**
+- **No multi-column tables.** They break with long text. Use per-persona blocks instead.
+- **Each persona = 5 lines:** header, ✗ risk, 🔇 unspoken, ▸ quote, → verdict. ALL on single lines.
+- **Quotes must be punchy** — one sentence max. If it wraps, cut it.
+- **Devil's Advocate: 1 line per point.** Not paragraphs.
+- **Blank line between personas** for visual separation.
+
+```
+  ╭──────────────────────────────────────────────╮
+  │  👥 Overture · Rehearse                      │
+  ╰──────────────────────────────────────────────╯
+
+  [What to change]:
+  1. [action — specific]
+  2. [action — specific]
+
+  ─────────────────────────────────────────────────
+
+  🎯 [Name] — [role/context] · [current solution]
+     ✗ [critical risk — one line]
+     🔇 [unspoken risk — one line]
+     ▸ "[sharpest quote — one sentence]"
+     → [would use? yes/no/conditional + reason]
+
+  🤨 [Name] — [role/context] · [alternative]
+     ✗ [critical risk — one line]
+     🔇 [unspoken risk — one line]
+     ▸ "[why not just use X? — one sentence]"
+     → [would use? no + reason]
+
+  ─────────────────────────────────────────────────
+
+  ✗ [most likely death — one line]
+  🔇 [what nobody says — one line]
+  ⏳ [6-month regret — one line]
+
+  ─────────────────────────────────────────────────
+
+  💡 [product blind spot — 1-2 lines max]
+```
+
+**After the card, ask before saving:**
+
+> [Next step?]
+> `/refine` [to fix issues] · [adjust] · [save and continue]
+
+Only save `.overture/rehearse.md` after user confirms. Full persona reviews (detailed reactions, failure scenarios, all risks) go in the saved file — the card is the summary.
 
 **Persona comparison table:** Header row + `─` separator. Each persona is ONE row: name, critical risk, unspoken risk, approval condition. Instant cross-comparison.
 

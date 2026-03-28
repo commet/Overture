@@ -1,13 +1,27 @@
 {
   "name": "overture",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Decision harness for AI. Sharpen your thinking before asking AI to execute. Find hidden assumptions, stress-test with stakeholders, refine until solid. Like running tests before deploying — but for decisions.",
   "author": {
     "name": "Overture",
-    "email": "yclee913@gmail.com"
+    "email": "yclee913@gmail.com",
+    "url": "https://github.com/commet"
   },
+  "homepage": "https://github.com/commet/Overture",
   "license": "MIT",
   "repository": "https://github.com/commet/Overture",
+  "commands": [
+    "./skills/reframe/SKILL.md",
+    "./skills/recast/SKILL.md",
+    "./skills/rehearse/SKILL.md",
+    "./skills/refine/SKILL.md",
+    "./skills/overture/SKILL.md",
+    "./skills/help/SKILL.md",
+    "./skills/setup/SKILL.md",
+    "./skills/doctor/SKILL.md",
+    "./skills/configure/SKILL.md",
+    "./skills/patterns/SKILL.md"
+  ],
   "keywords": [
     "decision-making",
     "strategy",
@@ -16,6 +30,8 @@
     "harness",
     "structured-thinking",
     "stakeholder-simulation",
-    "decision-quality"
+    "decision-quality",
+    "4R-framework",
+    "meta-cognition"
   ]
 }

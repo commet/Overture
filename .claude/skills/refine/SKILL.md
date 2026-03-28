@@ -2,7 +2,16 @@
 name: refine
 description: "Iterate on a plan using stakeholder feedback until critical issues are resolved. Revises, re-tests with personas, checks convergence. Use after /rehearse when issues need fixing."
 argument-hint: "[plan with rehearsal feedback to refine]"
+allowed-tools: Read, Write, Agent, AskUserQuestion
 ---
+
+## When to use
+
+- ✓ After /rehearse — stakeholders found critical issues to fix
+- ✓ You received real feedback on a plan and want to iterate systematically
+- ✓ Need to verify that fixes actually resolved the issues (convergence check)
+- ✗ Before running /rehearse (you need feedback to refine against)
+- ✗ When the plan needs a complete rethink (go back to /reframe)
 
 No plan survives first contact with stakeholders. This skill takes rehearsal feedback, fixes what matters, re-tests, and repeats until the critical issues are gone.
 
@@ -52,13 +61,22 @@ Use the `persona_profiles` from the /rehearse Contract to reproduce the exact sa
 - DO NOT soften personas between rounds (this defeats the purpose)
 - DO NOT add new personas (stability needed for convergence measurement)
 
+## Context detection
+
+Read `context` from upstream Contracts (/recast, /reframe). Build context adapts:
+- Max **1 round** (instead of 3) — keep it fast for builders
+- Revise the **spec/features**, not an execution plan
+- Re-test with the same **user personas** (target user + skeptic)
+- Focus: "Did the spec get tighter and more buildable?"
+- Update the **Implementation Prompt** with refinements
+
 ## How it works
 
 1. Extract issues from `/rehearse` results (using Contract data)
 2. Ask the user which to address (or auto-address all critical ones)
-3. Revise the plan — surgically, not wholesale, respecting design constraints
-4. Re-run stakeholder review on the revised version (same personas)
-5. Check if issues are converging. If not, repeat. Max 3 rounds.
+3. Revise the plan/spec — surgically, not wholesale, respecting design constraints
+4. Re-run stakeholder/user review on the revised version (same personas)
+5. Check if issues are converging. If not, repeat. Max 3 rounds (1 round for build context).
 
 ## Step 1: Extract and prioritize issues
 
