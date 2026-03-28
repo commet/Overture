@@ -35,6 +35,12 @@ vi.mock('@/lib/signal-recorder', () => ({
   getSignals: vi.fn(() => []),
 }));
 
+vi.mock('@/lib/judgment-vitality', () => ({
+  analyzeVitalityTrend: vi.fn(() => ({ trend: 'not_enough_data', avg_gamma: 0, avg_vitality: 0 })),
+  getVitalityCoaching: vi.fn(() => []),
+  generateInterventions: vi.fn(() => []),
+}));
+
 // i18n: passthrough — return key with params interpolated
 vi.mock('@/lib/i18n', () => ({
   t: vi.fn((key: string, params?: Record<string, unknown>) => {
@@ -58,6 +64,7 @@ vi.mock('@/lib/storage', () => ({
     REFRAME_LIST: 'sot_reframe_list',
     RECAST_LIST: 'sot_recast_list',
     DQ_SCORES: 'sot_dq_scores',
+    VITALITY_ASSESSMENTS: 'sot_vitality_assessments',
   },
 }));
 

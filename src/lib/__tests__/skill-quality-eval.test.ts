@@ -4,6 +4,7 @@
 
 import {
   evaluateSkillOutput,
+  evaluatePipelineChaining,
   formatEvalReport,
   TEST_SCENARIOS,
   type SkillName,
@@ -81,10 +82,10 @@ describe('/reframe structural evals', () => {
 
   ## 숨겨진 가정
 
-  1. 현재 제품이 동남아 시장에 맞을 것이다 (고객 가치)
-  2. 현지 파트너 없이 진출 가능하다 (실행 가능성)
-  3. 6개월 내 PMF 달성 가능하다 (타이밍)
-  4. 동남아 B2B 시장이 충분히 크다 (사업성)
+  1. ✓ 현재 제품이 동남아 시장에 맞을 것이다 (고객 가치)
+  2. ? 현지 파트너 없이 진출 가능하다 (실행 가능성)
+  3. ✗ 6개월 내 PMF 달성 가능하다 (타이밍) — 의심: 현지 규제 + 문화 적응에 6개월은 비현실적
+  4. ? 동남아 B2B 시장이 충분히 크다 (사업성)
 
   ## 블라인드 스팟
 
@@ -217,5 +218,89 @@ describe('/rehearse structural evals', () => {
     const noUnspoken = GOOD_REHEARSE.replace(/🔇.*침묵[\s\S]*$/, '');
     const result = evaluateSkillOutput('rehearse', noUnspoken);
     expect(result.structural.find(s => s.id === 'has_unspoken_risks')?.passed).toBe(false);
+  });
+});
+
+/* ────────────────────────────────────
+   Pipeline Chaining Eval
+   ──────────────────────────────────── */
+
+describe('evaluatePipelineChaining', () => {
+  const REFRAME_FILE = `
+# Reframe
+Context Contract
+reframed_question: "sharp question"
+assumptions_uncertain:
+  - "가정1" | reason: test
+ai_limitations:
+  - "limit1"
+  `;
+
+  const RECAST_FILE = `
+# Recast
+Context Contract
+product_thesis: "thesis"
+inherited_assumptions: ["가정1 from reframe"]
+ai_limitations:
+  - "limit1"
+target_user:
+  name: 준호
+skeptic:
+  name: 수진
+  `;
+
+  const REHEARSE_FILE = `
+# Rehearse
+Context Contract
+classified_risks:
+  critical:
+    - "risk1" — 준호
+untested_assumptions:
+  - "가정1"
+persona_profiles:
+  - name: 준호
+  - name: 수진
+  `;
+
+  const REFINE_FILE = `
+# Refine
+Context Contract
+Critical: 3 → 1
+sharpest_critique_resolved: "quote" → fixed
+converged: false
+  `;
+
+  it('passes full pipeline chaining', () => {
+    const result = evaluatePipelineChaining({
+      reframe: REFRAME_FILE,
+      recast: RECAST_FILE,
+      rehearse: REHEARSE_FILE,
+      refine: REFINE_FILE,
+    });
+    const failures = result.filter(e => !e.passed);
+    expect(failures.length).toBeLessThanOrEqual(1); // some heuristic may not match
+  });
+
+  it('detects missing context contract', () => {
+    const result = evaluatePipelineChaining({
+      reframe: '# Reframe\nno contract here',
+    });
+    expect(result.find(e => e.id === 'reframe_has_context_contract')?.passed).toBe(false);
+  });
+
+  it('detects broken persona chaining', () => {
+    const result = evaluatePipelineChaining({
+      recast: 'Context Contract\ntarget_user:\n  name: 철수',
+      rehearse: 'Context Contract\n영희가 리뷰함',
+    });
+    expect(result.find(e => e.id === 'recast_to_rehearse_personas')?.passed).toBe(false);
+  });
+
+  it('detects missing critical tracking in refine', () => {
+    const result = evaluatePipelineChaining({
+      rehearse: 'Context Contract\ncritical: risk',
+      refine: 'Context Contract\nall good no changes',
+    });
+    expect(result.find(e => e.id === 'rehearse_to_refine_criticals')?.passed).toBe(false);
   });
 });

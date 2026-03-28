@@ -16,7 +16,8 @@ import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getDQScores, analyzeDQTrend } from '@/lib/decision-quality';
 import { getSignals } from '@/lib/signal-recorder';
 import { t } from '@/lib/i18n';
-import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore, RefineLoop } from '@/stores/types';
+import { analyzeVitalityTrend, getVitalityCoaching as getVitalityStepCoaching, generateInterventions } from '@/lib/judgment-vitality';
+import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore, RefineLoop, VitalityAssessment } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
 /* ────────────────────────────────────
@@ -266,6 +267,38 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
     }
   }
 
+  // ── Tier 2+: Vitality Engine insights ──
+  if (profile.tier >= 2) {
+    const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
+    if (vitalityAssessments.length >= 3) {
+      const trend = analyzeVitalityTrend(vitalityAssessments);
+      if (trend.trend === 'declining') {
+        insights.push({
+          id: 'vitality_declining',
+          category: 'warning',
+          message: trend.insight,
+          tier: 2,
+          priority: priority++,
+        });
+      }
+      // Latest assessment warnings
+      const latest = vitalityAssessments[vitalityAssessments.length - 1];
+      if (latest && (latest.tier === 'performing' || latest.tier === 'dead')) {
+        const interventions = generateInterventions(latest.signals, vitalityAssessments.slice(0, -1));
+        for (const intervention of interventions.slice(0, 2)) {
+          insights.push({
+            id: `vitality_${intervention.target_signal}`,
+            category: 'warning',
+            message: intervention.message,
+            detail: intervention.detail,
+            tier: Math.min(intervention.tier, 3) as 1 | 2 | 3,
+            priority: priority++,
+          });
+        }
+      }
+    }
+  }
+
   // Filter by tier and sort by priority
   return insights
     .filter((i) => i.tier <= profile.tier)
@@ -298,6 +331,18 @@ export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfil
     default:
       candidates = [];
   }
+  // Vitality coaching — max 1, only if vitality concerns exist (tier 2+)
+  if (profile.tier >= 2) {
+    const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
+    const latest = vitalityAssessments[vitalityAssessments.length - 1];
+    if (latest && latest.signals?.length > 0) {
+      const vc = getVitalityStepCoaching(step, latest.signals, vitalityAssessments.slice(0, -1));
+      if (vc) {
+        candidates.push({ message: vc.message, detail: vc.detail, tone: vc.tone });
+      }
+    }
+  }
+
   // Max 2 coaching messages per step to avoid overwhelming the user
   return candidates.slice(0, 2);
 }

@@ -57,6 +57,18 @@ vi.mock('@/lib/signal-recorder', () => ({
   recordSignal: vi.fn(),
 }));
 
+vi.mock('@/lib/judgment-vitality', () => ({
+  assessVitality: vi.fn(() => ({
+    gamma: 0.5,
+    rigidity_score: 0.3,
+    vitality_score: 0.7,
+    tier: 'alive',
+    signals: [],
+    coaching: [],
+    created_at: new Date().toISOString(),
+  })),
+}));
+
 import {
   computeDecisionQuality,
   getDQScores,
@@ -317,8 +329,9 @@ describe('Decision Quality Simulation', () => {
 
     it('localStorage와 Supabase에 저장되어야 한다', () => {
       computeDecisionQuality(buildInput());
-      expect(mockSetStorage).toHaveBeenCalledOnce();
-      expect(mockRecordSignal).toHaveBeenCalledOnce();
+      // DQ score + vitality assessment 각각 setStorage/recordSignal 호출
+      expect(mockSetStorage).toHaveBeenCalled();
+      expect(mockRecordSignal).toHaveBeenCalled();
     });
   });
 
@@ -768,10 +781,12 @@ describe('Decision Quality Simulation', () => {
         force: true,
       }));
 
-      // setStorage should have been called with replaced entry, not appended
-      const setStorageMock = mockSetStorage;
-      const lastCall = setStorageMock.mock.calls[setStorageMock.mock.calls.length - 1];
-      const savedScores = lastCall[1] as DecisionQualityScore[];
+      // Find the DQ_SCORES setStorage call (first one stores DecisionQualityScore[])
+      const dqCall = mockSetStorage.mock.calls.find(
+        (call) => Array.isArray(call[1]) && call[1].length > 0 && call[1][0]?.project_id
+      );
+      expect(dqCall).toBeDefined();
+      const savedScores = dqCall![1] as DecisionQualityScore[];
       const projectScores = savedScores.filter(s => s.project_id === projectId);
       expect(projectScores).toHaveLength(1); // replaced, not duplicated
     });

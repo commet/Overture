@@ -86,6 +86,11 @@ const REFRAME_STRUCTURAL: StructuralEval[] = [
     check: (o) => /블라인드|blind\s*spot|놓치|AI.*한계|limitation/i.test(o),
   },
   {
+    id: 'has_doubtful_or_challenge',
+    description: '의심(doubtful) 가정이 1개 이상이거나, 인터뷰에서 도전적 질문이 있었음',
+    check: (o) => /✗|doubtful|의심|도전|challenge/i.test(o),
+  },
+  {
     id: 'not_too_short',
     description: '출력이 최소 500자 이상',
     check: (o) => o.length >= 500,
@@ -181,6 +186,15 @@ const REHEARSE_STRUCTURAL: StructuralEval[] = [
   },
 ];
 
+const REHEARSE_STEP_REFERENCE: StructuralEval = {
+  id: 'references_recast_steps',
+  description: '/recast 실행 스텝을 구체적으로 참조 (Step N, 스텝명 등)',
+  check: (o) => /Step\s*\d|스텝\s*\d|단계\s*\d|P0|P1|MVP/i.test(o),
+};
+
+// Add to REHEARSE after existing evals
+REHEARSE_STRUCTURAL.push(REHEARSE_STEP_REFERENCE);
+
 const REFINE_STRUCTURAL: StructuralEval[] = [
   {
     id: 'has_header',
@@ -201,6 +215,21 @@ const REFINE_STRUCTURAL: StructuralEval[] = [
     id: 'has_plan_revision',
     description: '계획 수정 또는 개선 제안',
     check: (o) => /수정|revision|개선|변경|update|반영/i.test(o),
+  },
+  {
+    id: 'has_not_addressed',
+    description: '해결 안 된 이슈 + 이유 섹션 존재',
+    check: (o) => /not\s*address|미해결|해결.*안|남은.*이슈|deferred/i.test(o),
+  },
+  {
+    id: 'has_results_bar',
+    description: 'Results bar 시각화 (█░ 또는 진행률)',
+    check: (o) => /[█░▓▒]|→\s*\d|critical.*\d.*→.*\d/i.test(o),
+  },
+  {
+    id: 'preserves_root_question',
+    description: 'reframed_question 보존 확인 명시',
+    check: (o) => /governing.*preserved|근본.*질문.*보존|reframed.*question.*preserved|root.*question/i.test(o),
   },
 ];
 
@@ -389,6 +418,96 @@ ${output.slice(0, 8000)}
 ${criteria.map(c => `    { "id": "${c.id}", "passed": true/false, "reason": "..." }`).join(',\n')}
   ]
 }`;
+}
+
+/* ────────────────────────────────────
+   Pipeline Chaining Eval
+   ──────────────────────────────────── */
+
+export interface ChainingEval {
+  id: string;
+  description: string;
+  passed: boolean;
+}
+
+/**
+ * Evaluate chaining between saved .overture/ files.
+ * Checks that each stage's output properly feeds the next.
+ */
+export function evaluatePipelineChaining(files: {
+  reframe?: string;
+  recast?: string;
+  rehearse?: string;
+  refine?: string;
+}): ChainingEval[] {
+  const evals: ChainingEval[] = [];
+
+  // Context Contract exists in each file
+  for (const [stage, content] of Object.entries(files)) {
+    if (content) {
+      evals.push({
+        id: `${stage}_has_context_contract`,
+        description: `/${stage}: Context Contract 섹션 존재`,
+        passed: /Context Contract/i.test(content),
+      });
+    }
+  }
+
+  // reframe → recast chaining
+  if (files.reframe && files.recast) {
+    // reframe assumptions appear in recast
+    const reframeAssumptions = files.reframe.match(/assumptions_(?:uncertain|doubtful):\s*\n([\s\S]*?)(?=\nassumptions_|ai_limitations|$)/);
+    const hasInherited = /inherited|from reframe|\[from reframe\]/i.test(files.recast);
+    evals.push({
+      id: 'reframe_to_recast_assumptions',
+      description: 'reframe 가정이 recast에 inherited로 표시',
+      passed: hasInherited || !reframeAssumptions,
+    });
+
+    // ai_limitations carried forward
+    const hasAiLimitations = /ai_limitations/i.test(files.recast);
+    evals.push({
+      id: 'reframe_to_recast_ai_limitations',
+      description: 'reframe ai_limitations가 recast에 전달',
+      passed: hasAiLimitations,
+    });
+  }
+
+  // recast → rehearse chaining
+  if (files.recast && files.rehearse) {
+    // personas match
+    const recastPersonas = files.recast.match(/(?:target_user|skeptic):\s*\n\s*name:\s*(\S+)/g);
+    const rehearseHasPersonas = recastPersonas?.some(p => {
+      const name = p.match(/name:\s*(\S+)/)?.[1];
+      return name && files.rehearse!.includes(name);
+    });
+    evals.push({
+      id: 'recast_to_rehearse_personas',
+      description: 'recast 페르소나가 rehearse에서 재사용',
+      passed: rehearseHasPersonas ?? false,
+    });
+  }
+
+  // rehearse → refine chaining
+  if (files.rehearse && files.refine) {
+    // critical risks addressed
+    const hasCriticalTracking = /critical.*→|→.*\d|3.*→.*1|해결|resolved/i.test(files.refine);
+    evals.push({
+      id: 'rehearse_to_refine_criticals',
+      description: 'rehearse critical 이슈가 refine에서 추적',
+      passed: hasCriticalTracking,
+    });
+
+    // sharpest critique referenced
+    const hasSharpestCritique = /sharpest.*critique|가장.*날카로운/i.test(files.refine);
+    evals.push({
+      id: 'rehearse_to_refine_sharpest_critique',
+      description: 'rehearse sharpest critique가 refine에서 참조',
+      passed: hasSharpestCritique,
+    });
+  }
+
+  return evals;
 }
 
 /* ────────────────────────────────────
