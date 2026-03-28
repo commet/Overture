@@ -2,8 +2,9 @@
 
 ## 개요
 
-Loop 1 (시뮬레이션 테스트) + Loop 2 (스킬 점검/정리) 수행.
-기존 309개 테스트 → **290개 신규 추가** → 총 ~599개 테스트.
+Loop 1-2 (이전 세션) + Loop 3-8 (이번 세션) 수행.
+기존 309개 → 최종 **993개 테스트, 40개 파일, 0 failures.**
+버그 3건 수정, eval 프레임워크 v2 구축, SKILL.md 보강.
 
 ---
 
@@ -247,8 +248,174 @@ makeReframe, makeRecast, makeStep, makePersona, makeFeedbackRecord, makeLoop, ma
 | 신규 테스트 | — | **292개** (13 파일) |
 | 버그 수정 | — | DQ 캐시 무효화 + safeCompare bypass |
 
-### 남은 영역 (미래 세션)
+---
 
-- **E2E 통합 테스트** — 실제 API route handler 호출 (Next.js test utils)
-- **UI 컴포넌트 테스트** — ReframeStep, RecastStep 등 (React Testing Library)
-- **Supabase 통합** — rate limiting RPC, Slack OAuth flow (테스트 DB 필요)
+## Loop 6: 미테스트 lib 모듈 9개 커버 (2026-03-28)
+
+기존 29개 파일 739 tests → **37개 파일 931 tests**.
+
+### 미테스트 lib 분석
+
+12개 미테스트 모듈 중 9개 커버 (HIGH+MEDIUM priority).
+3개 스킵: audio.ts (Web Audio), logger.ts (console 래퍼), output-helpers.ts (25줄) — LOW.
+
+| 파일 | 테스트 수 | 커버 대상 |
+|------|----------|----------|
+| `api-security-simulation.test.ts` | 16 | validateContentType (6), validateOrigin (10) — CSRF/Content-Type |
+| `outcome-tracker-simulation.test.ts` | 30 | 3 pure 분석 함수, buildRiskChecklist, save/get, division-by-zero 방어 |
+| `document-generators-simulation.test.ts` | 22 | decision-rationale (7), project-brief (7), agent-spec (8) |
+| `error-prompt-checklist-simulation.test.ts` | 25 | classifyError/withRetry (14), prompt-mutation (5), checklist (6) |
+
+---
+
+## Loop 7: Skill Quality Eval 프레임워크 v1 (2026-03-28)
+
+### skill-quality-eval.ts 생성
+
+2단계 평가 프레임워크:
+- **Structural evals (자동)**: 포맷, 섹션 존재, 필수 요소 — 37개
+- **Content evals (LLM judge)**: 깊이, 구체성, 자연스러움 — 23개
+- **Pipeline chaining (자동)**: 단계 간 데이터 흐름 검증 — 9개
+- 3개 테스트 시나리오 + golden output 테스트
+
+### 풀 파이프라인 QA 리포트: "AI 코드 리뷰 어시스턴트"
+
+4개 .overture/ 파일(reframe, recast, rehearse, refine)을 SKILL.md 사양 대비 대조.
+
+**발견:**
+1. **HIGH** — 저널 엔트리 전 단계 누락
+2. **MEDIUM** — /refine Results bar 시각화 누락, Not addressed 섹션 누락
+3. **LOW** — /rehearse가 recast 스텝 직접 참조 안 함
+4. **INFO** — reframe doubtful 가정 0개 (인터뷰 강도 문제)
+
+**가장 인상적인 체이닝:**
+```
+reframe: 💡 "자동화의 경쟁자는 멘토링 욕구"
+  → rehearse: 🔇 "시니어에게 리뷰는 영향력 행사"
+  → refine: thesis 피벗 "시간 절약 → 영향력 확장"
+```
+
+---
+
+## Loop 8: Eval 수정 + SKILL.md 보강 + 버그 수정 (2026-03-28)
+
+### 버그 수정 3건
+
+| # | 위치 | 문제 | 수정 |
+|---|------|------|------|
+| 1 | `concertmaster.ts:338` | `latest.signals.length` — signals undefined일 때 crash | `latest.signals?.length` optional chaining |
+| 2 | `decision-quality-simulation.test.ts` | judgment-vitality import 추가로 mock 누락 | vi.mock 추가 + setStorage 호출 횟수 조정 |
+| 3 | `concertmaster.test.ts` | judgment-vitality import 추가로 mock 누락 | vi.mock + VITALITY_ASSESSMENTS 키 추가 |
+
+### Eval 오탐 제거 (6건)
+
+| eval | 문제 | 수정 |
+|------|------|------|
+| has_header | 저장 파일에 카드 크롬 없음 | `# 🎯 Reframe` 형식도 인식 |
+| has_quick_actions | 저장 파일에 메뉴 없음 | Context Contract 존재로 대체 |
+| has_human_checkpoint | build context에 actor 없음 | success_metric으로 대체 |
+| references_recast_steps | build에 Step N 없음 | P0/기능명으로 대체 |
+| has_not_addressed | 표현 다양성 | "빌드 후 증명" 등 포함 |
+| blind_spot_tracked | 키워드 변형 | semantic pair matching 추가 |
+
+### SKILL.md 보강
+
+- `/refine` self-check: 미해결 이슈 있으면 Not addressed 섹션 필수
+- `/rehearse` self-check: 각 리스크가 recast 구체적 요소 인용 필수
+- CLI + Plugin 동기화
+
+### Live Eval 결과 (수정 후)
+
+| 단계 | Structural | Content (내가 직접 채점) | 주요 FAIL |
+|------|-----------|----------------------|----------|
+| /reframe | 100% | 6/6 PASS | — |
+| /recast | 100% | 5/5 PASS | — |
+| /rehearse | 100% | 5/6 | recast 스텝 직접 참조 미흡 |
+| /refine | 100% | 5/5 PASS | — |
+| Pipeline | 100% (12/12) | — | — |
+
+---
+
+## Loop 9: Eval v2 리팩토링 (2026-03-28)
+
+### 설계 전환: 69개 → 33개
+
+autoresearch 원칙 (3-6개/단계) 적용. "있느냐 없느냐" structural 대량 제거.
+
+| | v1 | v2 |
+|---|---|---|
+| Structural | 37개 | **8개** |
+| Content | 23개 (exemplar 없음) | **20개** (PASS/FAIL exemplar + decision_line) |
+| Chaining | 9개 | **5개** |
+| 총 | 69개 | **33개** |
+
+### Content Eval 설계 원칙
+
+**1 eval = 1 prompt** (single-aspect judging, Zheng et al.)
+각 eval에 4개 필드:
+- `question`: 무엇을 판단하나
+- `decision_line`: **어떻게** 판단하나 (judge의 사고 도구)
+- `pass_example`: 이 수준이면 통과
+- `fail_example`: 이 수준이면 탈락
+
+### LLM Judge 2가지 모드
+
+- `buildContentJudgePrompts()`: 1eval = 1prompt (정확도 우선)
+- `buildBatchJudgePrompt()`: 전체 1prompt (비용 우선)
+
+---
+
+## Eval 고도화 논의 (미구현, 방향 정리)
+
+### near-miss exemplar 검토 → 보류
+
+- 경계선 예시를 추가하면 judge가 기준을 과도하게 올리거나 흐려지는 위험
+- "하위 질문 교체", "도메인 포장", "깊이 1단계 부족", "가짜 구체성", "교과서 정답" 5가지 패턴 식별
+- 결론: **decision_line을 더 날카롭게 다듬는 게 near-miss 추가보다 ROI 높음**
+
+### 기술적 보완 가능성 (embedding)
+
+| 방법 | 용도 | LLM 대체 여부 |
+|------|------|-------------|
+| 원본↔재정의 유사도 | frame_shift 자동 측정 | ✓ 완전 대체 가능 |
+| generic assumption bank | 뻔한 가정 사전 비교 | ✓ 완전 대체 가능 |
+| cross-stage embedding | 블라인드 스팟 추적 | ✓ keyword matching 대체 |
+
+→ embedding으로 **수치화 가능한 기준은 LLM judge에서 빼고**, judge는 진짜 판단이 필요한 것만 맡기기.
+
+### 품질 측정의 근본 한계
+
+생성 시점에 품질을 완벽히 측정하는 건 불가능. 진짜 품질 신호는 **사용자 반응 후**에 생김.
+
+해결 방향: eval-engine.ts의 사용자 행동 데이터(question_accepted, assumptions_engaged 등)를 content eval의 calibration 입력으로 연결. **시간이 갈수록 정확해지는 eval.**
+
+---
+
+## 전체 세션 최종 수치
+
+| 항목 | 시작 | 최종 |
+|------|------|------|
+| Test files | 20 (3 broken) | **40 (0 broken)** |
+| Tests | 480 (+66 failing) | **993 (all pass)** |
+| 신규 테스트 | — | ~435개 |
+| 버그 수정 | — | 3건 (DQ 캐시, safeCompare, concertmaster) |
+| Eval 기준 | 0 | 33개 (structural 8 + content 20 + chaining 5) |
+| SKILL.md 보강 | — | /refine, /rehearse self-check 추가 |
+
+### 커밋 이력 (이번 세션)
+
+1. `0d02036` — 292 new tests + DQ cache fix + safeCompare fix
+2. `...` — 93 more tests (api-security, outcome-tracker, doc-generators, error/mutation)
+3. `...` — skill quality eval framework v1
+4. `...` — vitality integration fix + eval QA improvements
+5. `...` — eval false positive fix + SKILL.md self-check
+6. `...` — comprehensive eval upgrade (69→33 + exemplar)
+7. `301c95b` — eval v2 (final)
+
+### 다음 세션 TODO
+
+1. **decision_line 다듬기** — 약한 것 골라서 더 날카롭게
+2. **embedding layer 구현** — frame_shift, generic bank, cross-stage
+3. **eval↔signal-recorder 연결** — 사용자 행동으로 eval calibration
+4. **테스트 케이스 확장** — 5개 시나리오로 실제 스킬 돌리기
+5. **E2E/UI 테스트** — React Testing Library, API route handler
