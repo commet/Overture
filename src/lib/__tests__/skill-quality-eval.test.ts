@@ -25,10 +25,12 @@ describe('evaluateSkillOutput', () => {
     }
   });
 
-  it('empty output fails all structural evals', () => {
+  it('empty output fails almost all structural evals', () => {
     const result = evaluateSkillOutput('reframe', '');
-    expect(result.structural_pass_rate).toBe(0);
-    expect(result.structural.every(s => !s.passed)).toBe(true);
+    // no_flattery_opening passes on empty (absence of flattery = pass)
+    const meaningfulEvals = result.structural.filter(s => s.id !== 'no_flattery_opening');
+    expect(meaningfulEvals.every(s => !s.passed)).toBe(true);
+    expect(result.structural_pass_rate).toBeLessThanOrEqual(0.1);
   });
 
   it('generates content judge prompt with output', () => {
@@ -87,10 +89,17 @@ describe('/reframe structural evals', () => {
   3. ✗ 6개월 내 PMF 달성 가능하다 (타이밍) — 의심: 현지 규제 + 문화 적응에 6개월은 비현실적
   4. ? 동남아 B2B 시장이 충분히 크다 (사업성)
 
-  ## 블라인드 스팟
+  ## 먼저 답해야 할 질문
+
+  - 현지 B2B SaaS 시장에서 유사 제품 사용 현황 조사 (3곳 인터뷰)
+  - 현지 규제 전문가에게 데이터 이전 규정 확인
+  - 기존 고객 중 동남아 지사 있는 곳에 수요 여부 직접 확인
+
+  ## 💡 블라인드 스팟
 
   "진출"이라는 프레임 자체가 의문. 현지 기업과 파트너십이 아닌 직접 진출만 고려하고 있는가?
-  AI가 현지 규제 환경을 정확히 판단하기 어려움 — 현지 전문가 확인 필수.
+
+  다음?  1 → /recast  2 → 수정  3 → 저장
   `;
 
   it('good output passes all structural evals', () => {
@@ -158,6 +167,13 @@ describe('/recast structural evals', () => {
   ## 핵심 가정
   1. 현지 파트너가 협력 의향이 있다
   2. 3개월 내 파일럿 가능하다
+
+  ## Scope Cuts ✂
+  - 다국어 앱 현지화 (1차에서 제외)
+  - 현지 결제 연동
+
+  ## Success Metric
+  성공 = 파일럿 3개월 후 현지 고객 5곳 유료 전환
   `;
 
   it('good output passes all structural evals', () => {
@@ -207,6 +223,16 @@ describe('/rehearse structural evals', () => {
   ## 🔇 침묵의 리스크
   - "대표가 동남아 출장을 좋아해서 추진하는 건 아닌가" — 의사결정 동기의 순수성
   - 현지 팀 구성원들이 한국 본사와의 커뮤니케이션 갈등을 예상하고 있음
+
+  ## Bottom Line — 먼저 해야 할 것
+  1. Step 1 파트너 인터뷰를 5곳으로 확대
+  2. 현지 법률 검토를 투자 결정 전 완료
+  3. 기회비용 분석 (기존 시장 대비)
+
+  ## Devil's Advocate ⚡
+  - Realistic failure: 파일럿 3개월 후 현지화 비용이 예산의 3배 — PMF 이전에 자금 소진
+  - Silent problem: 팀 내 동남아 경험자 0명인데 아무도 이걸 문제라고 말하지 않음
+  - 1-year regret: 동남아에 1년 투자 후, 그 자원으로 기존 시장 20% 성장 가능했음을 깨달음
   `;
 
   it('good output passes all structural evals', () => {
