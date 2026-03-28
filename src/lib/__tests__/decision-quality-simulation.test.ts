@@ -737,6 +737,44 @@ describe('Decision Quality Simulation', () => {
       expect(secondScore.overall_dq).toBe(75);
       expect(secondScore.project_id).toBe(projectId);
     });
+
+    it('force: true이면 캐시를 무시하고 재계산해야 한다', () => {
+      const projectId = 'force-project';
+      const staleScore = makeDQScore({ project_id: projectId, overall_dq: 45 });
+
+      // Return stale cached score
+      mockGetStorage.mockReturnValueOnce([staleScore]);
+      const result = computeDecisionQuality(buildInput({
+        projectId,
+        reframe: makeReframe(),
+        recast: makeRecast(),
+        force: true,
+      }));
+
+      // Should NOT be 45 (stale) — should be freshly computed
+      expect(result.project_id).toBe(projectId);
+      expect(result.overall_dq).not.toBe(45);
+      expect(result.overall_dq).toBeGreaterThan(0);
+    });
+
+    it('force: true이면 캐시의 기존 엔트리를 교체해야 한다', () => {
+      const projectId = 'replace-project';
+      const staleScore = makeDQScore({ project_id: projectId, overall_dq: 30 });
+
+      mockGetStorage.mockReturnValueOnce([staleScore]);
+      computeDecisionQuality(buildInput({
+        projectId,
+        reframe: makeReframe(),
+        force: true,
+      }));
+
+      // setStorage should have been called with replaced entry, not appended
+      const setStorageMock = mockSetStorage;
+      const lastCall = setStorageMock.mock.calls[setStorageMock.mock.calls.length - 1];
+      const savedScores = lastCall[1] as DecisionQualityScore[];
+      const projectScores = savedScores.filter(s => s.project_id === projectId);
+      expect(projectScores).toHaveLength(1); // replaced, not duplicated
+    });
   });
 
   // ═══════════════════════════════════════

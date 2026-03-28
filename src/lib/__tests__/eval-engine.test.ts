@@ -15,6 +15,10 @@ vi.mock('@/lib/context-chain', () => ({
   extractInterviewSignals: vi.fn(() => null),
 }));
 
+vi.mock('@/lib/db', () => ({
+  insertToSupabase: vi.fn(),
+}));
+
 // Must import after mocks are declared
 import {
   REFRAME_EVALS,
@@ -56,8 +60,8 @@ beforeEach(() => {
    ──────────────────────────────────── */
 
 describe('REFRAME_EVALS', () => {
-  it('has exactly 4 evals', () => {
-    expect(REFRAME_EVALS).toHaveLength(4);
+  it('has exactly 5 evals', () => {
+    expect(REFRAME_EVALS).toHaveLength(5);
   });
 
   it('has the expected ids', () => {
@@ -67,6 +71,7 @@ describe('REFRAME_EVALS', () => {
       'assumptions_engaged',
       'no_immediate_reanalyze',
       'has_useful_assumptions',
+      'assumptions_diverse',
     ]);
   });
 
@@ -119,7 +124,7 @@ describe('REFRAME_EVALS', () => {
   describe('assumptions_engaged', () => {
     const eval_ = REFRAME_EVALS.find(e => e.id === 'assumptions_engaged')!;
 
-    it('returns true when at least one assumption is verified', () => {
+    it('returns true when at least one assumption has evaluation', () => {
       const item = makeItem({
         analysis: {
           surface_task: 'test',
@@ -127,7 +132,7 @@ describe('REFRAME_EVALS', () => {
           why_reframing_matters: '',
           reasoning_narrative: '',
           hidden_assumptions: [
-            { assumption: 'A1', risk_if_false: 'R1', verified: true },
+            { assumption: 'A1', risk_if_false: 'R1', verified: false, evaluation: 'likely_true' },
             { assumption: 'A2', risk_if_false: 'R2', verified: false },
           ],
           hidden_questions: [],
@@ -137,7 +142,7 @@ describe('REFRAME_EVALS', () => {
       expect(eval_.measure(item)).toBe(true);
     });
 
-    it('returns false when no assumptions are verified', () => {
+    it('returns false when no assumptions have evaluation', () => {
       const item = makeItem({
         analysis: {
           surface_task: 'test',
@@ -225,8 +230,9 @@ describe('REFRAME_EVALS', () => {
 
 describe('recordReframeEval', () => {
   it('creates an EvalResult with correct pass_rate', () => {
-    // Item passes: no_immediate_reanalyze (done), has_useful_assumptions (one unverified)
-    // Fails: question_accepted (no match), assumptions_engaged (none verified)
+    // Item passes: no_immediate_reanalyze (done), has_useful_assumptions (one unverified),
+    //   assumptions_diverse (< 2 assumptions → true)
+    // Fails: question_accepted (no match), assumptions_engaged (no evaluation field)
     const item = makeItem({
       selected_question: 'unmatched',
       analysis: {
@@ -252,7 +258,8 @@ describe('recordReframeEval', () => {
     expect(result.evals.assumptions_engaged).toBe(false);
     expect(result.evals.no_immediate_reanalyze).toBe(true);
     expect(result.evals.has_useful_assumptions).toBe(true);
-    expect(result.pass_rate).toBe(2 / 4);
+    expect(result.evals.assumptions_diverse).toBe(true);
+    expect(result.pass_rate).toBe(3 / 5);
   });
 
   it('persists result to storage', () => {
@@ -432,8 +439,8 @@ describe('getEvalSummary', () => {
 
     const summary = getEvalSummary();
     expect(summary.total_sessions).toBe(3);
-    // Each item passes no_immediate_reanalyze + has_useful_assumptions = 2/4 = 0.5
-    expect(summary.avg_pass_rate).toBe(0.5);
+    // Each item passes no_immediate_reanalyze + has_useful_assumptions + assumptions_diverse = 3/5 = 0.6
+    expect(summary.avg_pass_rate).toBe(0.6);
     expect(summary.worst_eval).toBeDefined();
     expect(summary.best_strategy).toBe('narrow_scope');
   });

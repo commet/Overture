@@ -1,3 +1,13 @@
+vi.mock('@/lib/db', () => ({
+  insertToSupabase: vi.fn(),
+}));
+
+vi.mock('@/lib/storage', () => ({
+  getStorage: vi.fn((_key: string, fallback: unknown) => fallback),
+  setStorage: vi.fn(),
+  STORAGE_KEYS: { SETTINGS: 'sot_settings' },
+}));
+
 import type { InterviewSignals, ReframingStrategy } from '@/lib/reframing-strategy';
 import { selectReframingStrategy, applyReframingStrategy } from '@/lib/reframing-strategy';
 

@@ -184,7 +184,8 @@ describe('injectReframeContext', () => {
     };
 
     const result = injectReframeContext(basePrompt, ctx);
-    expect(result).toContain('미확인 전제');
+    // No evaluation field → lands in "전제 (평가 미완료)" bucket
+    expect(result).toContain('전제');
     expect(result).toContain('가정1');
     expect(result).toContain('만약 아니라면: 위험1');
     expect(result).toContain('가정2');
@@ -295,7 +296,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
     ];
     const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result).toHaveLength(0);
   });
 
@@ -307,7 +308,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
       { assumption: '중복 가정', importance: 'medium', certainty: 'medium', if_wrong: '기존' },
     ];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result).toHaveLength(1);
     expect(result[0].if_wrong).toBe('기존');
   });
@@ -318,7 +319,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
     ];
     const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result).toHaveLength(1);
     expect(result[0].if_wrong).toBe('큰 위험');
   });
@@ -329,7 +330,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
     ];
     const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result[0].importance).toBe('high');
     expect(result[0].certainty).toBe('low');
   });
@@ -340,7 +341,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
     ];
     const recast: KeyAssumption[] = [];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result[0].if_wrong).toBe('영향 미확인');
   });
 
@@ -352,7 +353,7 @@ describe('mergeAssumptionsIntoKeyAssumptions', () => {
       { assumption: '기존 가정', importance: 'medium', certainty: 'high', if_wrong: '기존 위험' },
     ];
 
-    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast?);
+    const result = mergeAssumptionsIntoKeyAssumptions(reframeAssumptions, recast);
     expect(result).toHaveLength(2);
     expect(result[0].assumption).toBe('기존 가정');
     expect(result[1].assumption).toBe('새 가정');

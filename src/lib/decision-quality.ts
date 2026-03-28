@@ -40,6 +40,8 @@ export interface DQInput {
   judgments: JudgmentRecord[];
   personas: Persona[];
   projectId: string;
+  /** Force recalculation even if a cached score exists */
+  force?: boolean;
 }
 
 /**
@@ -49,13 +51,13 @@ export interface DQInput {
 export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   const {
     reframe, recast, feedbackRecords, refineLoop,
-    judgments, personas, projectId,
+    judgments, personas, projectId, force,
   } = input;
 
   // Idempotency: return cached score if already computed for this project
   const cachedScores = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
-  const cached = cachedScores.find(s => s.project_id === projectId);
-  if (cached) return cached;
+  const cachedIndex = cachedScores.findIndex(s => s.project_id === projectId);
+  if (cachedIndex !== -1 && !force) return cachedScores[cachedIndex];
 
   // ── DQ Element 1: Appropriate Frame (적절한 프레이밍) ──
   // Did the reframing produce a meaningfully different question?
@@ -200,9 +202,13 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
     created_at: new Date().toISOString(),
   };
 
-  // Persist to localStorage
-  cachedScores.push(score);
-  if (cachedScores.length > 100) cachedScores.splice(0, cachedScores.length - 100);
+  // Persist to localStorage (replace existing entry if force-recalculated)
+  if (cachedIndex !== -1) {
+    cachedScores[cachedIndex] = score;
+  } else {
+    cachedScores.push(score);
+    if (cachedScores.length > 100) cachedScores.splice(0, cachedScores.length - 100);
+  }
   setStorage(STORAGE_KEYS.DQ_SCORES, cachedScores);
 
   // Persist to Supabase

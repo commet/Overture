@@ -130,8 +130,125 @@ overture-plugin/agents/
 
 ## 다음 세션 TODO
 
-1. **테스트 확장** — 위 "테스트되지 않은 영역" 참고
-2. **테스트 factory 추출** — 파일 수가 10개 넘어가면 shared helpers로 분리
+1. ~~**테스트 확장**~~ ✅ Loop 3에서 완료 (7개 신규 파일, 154개 테스트 추가)
+2. ~~**테스트 factory 추출**~~ ✅ `__tests__/helpers/factories.ts` 생성 (13개 factory)
 3. **DQ 캐시 무효화** — `computeDecisionQuality` 재계산 메커니즘 설계 검토
-4. **기존 깨진 테스트 수정** — context-chain.test.ts (TypeScript 파싱 에러), eval-engine.test.ts / reframing-strategy.test.ts (Supabase URL 누락)
+4. ~~**기존 깨진 테스트 수정**~~ ✅ 3개 모두 수정 완료
 5. **스킬 실행 테스트** — 각 스킬을 실제로 돌려보면서 출력 품질 확인 (Loop 2의 나머지)
+
+---
+
+## Loop 3: 핵심 lib 시뮬레이션 테스트 확장 (2026-03-27)
+
+기존 20개 테스트 파일 546 tests → **27개 파일 700 tests**.
+
+### 깨진 테스트 수정
+
+| 파일 | 원인 | 수정 |
+|------|------|------|
+| `context-chain.test.ts` | `recast?` — 6곳에 stray `?` (TS 파싱 에러) + `미확인 전제` → `전제` (소스 변경 반영) | 구문 수정 + 기대값 업데이트 |
+| `eval-engine.test.ts` | Supabase URL 누락 (import chain) + REFRAME_EVALS 4→5개 변경 미반영 | `vi.mock('@/lib/db')` 추가 + eval 개수/pass_rate/assumptions_engaged 기대값 업데이트 |
+| `reframing-strategy.test.ts` | Supabase URL 누락 (reframing-strategy→eval-engine→signal-recorder→db→supabase chain) | `vi.mock('@/lib/db')` + `vi.mock('@/lib/storage')` 추가 |
+
+### 신규 시뮬레이션 테스트
+
+| 파일 | 테스트 수 | 커버 대상 | 비고 |
+|------|----------|----------|------|
+| `llm-simulation.test.ts` | 27 | parseJSON (fences, size limit, non-object 거부, unicode), validateShape (스키마 검증, 옵셔널 필드, 에러 메시지) | 순수 함수만 테스트, callLLM 등 네트워크 의존 함수 제외 |
+| `learning-health-simulation.test.ts` | 19 | signal_count, eval_coverage, override_trend (improving/stable/not_enough_data), convergence_trend, learning_tier (1/2/3), recommendations (6개 분기) | 전 분기 커버 |
+| `sanitize-simulation.test.ts` | 53 | escapeHtml (5개 엔티티, mixed, Korean), sanitizeHtml server-side fallback (tag strip, XSS 벡터, script/iframe/SVG), 조합 테스트 | DOM 기반 테스트는 jsdom 필요 (미포함) |
+| `retrospective-simulation.test.ts` | 23 | generateRetrospectiveQuestions (5개 신호 분기, 카테고리 중복제거, max 4), saveRetrospectiveAnswer (저장+Supabase+200개 제한), getRetrospectiveAnswers, getActionableInsights | 깨끗 |
+| `slack-blocks-simulation.test.ts` | 15 | markdownToSlackBlocks (헤더 150자 truncate, 헤딩→bold, 마크다운 변환, 3000자 chunking, 50블록 상한, footer) | 순수 함수, 모킹 불필요 |
+| `workflow-review-simulation.test.ts` | 7 | countBySeverity, getStepWarnings (0-based→1-based 인덱스 매핑) | selectDomainType 미export로 간접 테스트만 |
+| `prompt-chain-simulation.test.ts` | 10 | generatePromptChain (null 프로젝트, 헤더, AI/human/checkpoint 스텝, footer, reframe context, feedback constraints, decompose-only fallback) | 깨끗 |
+
+### Factory 추출
+
+`src/lib/__tests__/helpers/factories.ts` 생성 — 13개 factory:
+makeReframe, makeRecast, makeStep, makePersona, makeFeedbackRecord, makeLoop, makeJudgment, makeSignal, makeAssumption, makeKeyAssumption, makeProject, makeAnswer, makeRating
+
+기존 테스트는 변경 없이 유지. 신규 테스트에서 import하여 사용.
+
+### 테스트되지 않은 영역 (다음 세션)
+
+**DOM 기반 sanitize:**
+- `sanitizeHtml` DOM path — jsdom 환경 필요 (tag whitelist, attribute filtering, URL validation, rel/target 강제)
+
+**Store mutation 테스트:**
+- updatePersona, deletePersona, addFeedbackLog 등 mutation 검증
+- Store 간 데이터 정합성
+
+**API Route 테스트:**
+- `/api/llm/route.ts`, `/api/slack/*`
+
+**LLM 의존 함수:**
+- ~~`callLLM`, `callLLMStream`~~ ✅ llm-network-simulation.test.ts로 커버
+- `runWorkflowReview` — 3 lens 병렬 실행, 실패 처리 (callLLMJson mock 필요)
+
+---
+
+## Loop 4: LLM 네트워크 + Store Mutation + DQ 캐시 수정 (2026-03-27)
+
+기존 27개 파일 702 tests → **29개 파일 739 tests**.
+
+### DQ 캐시 무효화 버그 수정
+
+**문제:** `computeDecisionQuality`가 projectId만으로 캐시하고 무효화 메커니즘 없음. 파이프라인 진행 후 재호출해도 옛날 점수(예: 45) 반환.
+
+**수정:**
+- `DQInput`에 `force?: boolean` 옵션 추가
+- `force: true`일 때 캐시 무시하고 재계산, 기존 엔트리 replace (중복 방지)
+- `RefineStep.tsx`에서 `force: true`로 호출하여 항상 최신 데이터 반영
+- 기존 idempotency 동작은 `force` 미지정 시 보존
+
+**테스트:** 2개 추가 (force 재계산 + 캐시 엔트리 교체 검증)
+
+### 신규 테스트
+
+| 파일 | 테스트 수 | 커버 대상 |
+|------|----------|----------|
+| `llm-network-simulation.test.ts` | 19 | callLLM (proxy/direct 라우팅, 인증 헤더, LOGIN_REQUIRED), callLLMJson (파싱+shape), callLLMStream (SSE 누적, onComplete, onError, [DONE] 스킵, malformed 방어), fetchWithRetry (429 재시도) |
+| `store-mutations-simulation.test.ts` | 18 | PersonaStore (CRUD + feedbackLog), ReframeStore (CRUD + setCurrentId), RecastStore (step CRUD + reorder), ProjectStore (CRUD + addRef dedup + getProject) |
+
+### 다음 세션 TODO
+
+1. ~~**runWorkflowReview 통합 테스트**~~ ✅ Loop 5에서 완료
+2. ~~**API Route 테스트**~~ ✅ Loop 5에서 완료 (validation 패턴 49개)
+3. ~~**RefineStore 특수 테스트**~~ ✅ Loop 5에서 완료
+4. ~~**DOM 기반 sanitize**~~ ✅ Loop 5에서 완료 (jsdom 설치 + 28개)
+
+---
+
+## Loop 5: 마무리 — 통합 테스트 + DOM + API + 보안 수정 (2026-03-27)
+
+기존 29개 파일 739 tests → **33개 파일 838 tests**.
+
+### 보안 버그 수정: `safeCompare` (daily-report cron)
+
+**문제:** `b = a` 재할당 후 `a.length !== b.length`가 항상 false → 길이가 다른 문자열도 `true` 반환.
+**수정:** `lengthMismatch` 플래그를 재할당 전에 캡처. 비교 대상을 `compareTarget`으로 분리.
+**영향:** cron 엔드포인트의 CRON_SECRET 인증이 길이가 다른 토큰에 대해 bypass 가능했음.
+
+### 신규 테스트
+
+| 파일 | 테스트 수 | 커버 대상 |
+|------|----------|----------|
+| `workflow-review-integration.test.ts` | 10 | runWorkflowReview (3 lens 병렬, domain selection 4종, partial/total failure, findings 매핑) |
+| `refine-store-simulation.test.ts` | 12 | createLoop, addIteration (auto created_at, 순서 보존), checkConvergence (위임+빈 loop), getLoopsByProject, getActiveLoop, deleteLoop (activeId 정리) |
+| `sanitize-dom-simulation.test.ts` | 28 | jsdom 환경: tag whitelist 6종, 금지 태그 5종, 속성 필터링 7종, 보안 강제 3종, 이벤트 핸들러 2종, 엣지 케이스 5종 |
+| `api-validation-simulation.test.ts` | 49 | Channel ID regex, API key format, message validation (20개/50K 제한), system prompt 10K, Content-Type, 입력 truncation, HTML escaping, safeCompare |
+
+### 전체 세션 최종 결과
+
+| 항목 | 시작 | 최종 |
+|------|------|------|
+| Test files | 20 (3 broken) | **33 (0 broken)** |
+| Tests | 480 (+66 failing) | **838 (all pass)** |
+| 신규 테스트 | — | **292개** (13 파일) |
+| 버그 수정 | — | DQ 캐시 무효화 + safeCompare bypass |
+
+### 남은 영역 (미래 세션)
+
+- **E2E 통합 테스트** — 실제 API route handler 호출 (Next.js test utils)
+- **UI 컴포넌트 테스트** — ReframeStep, RecastStep 등 (React Testing Library)
+- **Supabase 통합** — rate limiting RPC, Slack OAuth flow (테스트 DB 필요)

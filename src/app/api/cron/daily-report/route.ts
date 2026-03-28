@@ -20,13 +20,12 @@ function escHtml(s: string): string {
 
 /** Constant-time string comparison to prevent timing attacks (Edge-compatible). */
 function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    // Still do a full comparison to avoid leaking length info via timing
-    b = a;
-  }
-  let mismatch = a.length !== b.length ? 1 : 0;
+  const lengthMismatch = a.length !== b.length ? 1 : 0;
+  // Pad to same length to avoid leaking length info via timing
+  const compareTarget = lengthMismatch ? a : b;
+  let mismatch = lengthMismatch;
   for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    mismatch |= a.charCodeAt(i) ^ compareTarget.charCodeAt(i);
   }
   return mismatch === 0;
 }
