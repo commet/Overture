@@ -23,7 +23,22 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 **If no `/rehearse` results exist in the conversation**, tell the user: "I need stakeholder feedback to refine against. Run `/rehearse` first, or paste the feedback you've received and I'll work with that."
 
-Check if `.overture/journal.md` exists. Note any patterns from previous refinements.
+Check if `.overture/journal.md` exists. Apply adaptive rules below.
+
+### Adaptive rules (journal → behavior)
+
+Scan last 10 journal entries:
+
+**Pattern: Previous refine didn't converge (Converged: no in 2+ entries)**
+→ Be more aggressive with changes in Round 1. Don't make incremental tweaks — make structural revisions. Add note: `이전 refine이 수렴 실패했습니다. 이번에는 수술적 수정 대신 구조적 변경을 시도합니다.`
+
+**Pattern: Previous refine's "key change" was always about positioning/thesis (2+ times)**
+→ The underlying issue is likely in /recast, not /refine. After Round 1, if thesis change is needed again, proactively recommend `← /recast`.
+
+**Topic linking:** If journal has related entries, surface what worked before:
+```
+  💭 관련 이전 실행: [date] — key change: "[what worked]"
+```
 
 Show the header:
 
@@ -32,6 +47,21 @@ Show the header:
   │  🔧 Overture · Refine                   │
   ╰──────────────────────────────────────────╯
 ```
+
+### Reflection block (show FIRST, before heavy analysis)
+
+If continuing from `/rehearse`, output a brief reflection block immediately after the header. Surface the core tension from the rehearsal:
+
+```
+  💭 해결해야 할 핵심:
+  ▸ "[sharpest critique from rehearse — the exact quote]"
+
+  이 피드백이 맞다면:
+  · [what changes in the plan]
+  · [what stays the same despite the critique]
+```
+
+**Rules:** Max 4 lines. Quote the sharpest critique verbatim — this is what the user needs to confront. The "what stays" line is equally important: it prevents over-correction. Output this block first, then proceed to revision.
 
 ## Context extraction — design constraints (DO NOT violate)
 
@@ -53,6 +83,11 @@ Read `.overture/recast.md`, `.overture/reframe.md`, and `.overture/rehearse.md` 
 - `risks_manageable` → can-fix (add mitigation)
 - `approval_conditions` → convergence targets
 - `persona_profiles` → reproduce EXACTLY for re-testing (see below)
+
+### Critique tracking (from /rehearse journal or Contract):
+- Read the **sharpest critique** from the most recent `/rehearse` entry in `.overture/journal.md` (or from the rehearse Contract's `devils_advocate` section).
+- This critique is the **primary resolution target**. After each refinement round, explicitly check: was this critique addressed? How?
+- In the journal entry, record the resolution status. This creates a traceable link between rehearse feedback and refine outcomes.
 
 ### Persona continuity:
 Use the `persona_profiles` from the /rehearse Contract to reproduce the exact same personas for re-testing:
@@ -110,7 +145,28 @@ If the user skips, auto-fix all critical issues.
 - Never declare an issue resolved by adding "we'll monitor this."
 - If after 3 rounds still critical, suggest going back to `/reframe`.
 
-**Self-check:** Did the revised plan actually change in substance, or did you just reword concerns as "considerations"?
+### Engine-driven backward recommendation
+
+After each round's re-test, check these conditions. If triggered, show the recommendation in the card **above** the quick action menu:
+
+**Condition A: Zero critical reduction after round 1**
+If critical count didn't decrease at all (e.g., 3 → 3, or 2 → 2), surgical fixes aren't working:
+```
+  💡 엔진 추천: 수술적 수정으로 critical이 줄지 않았습니다.
+     ← /recast에서 스펙 재설계를 권장합니다.
+```
+
+**Condition B: Fix requires thesis change**
+If the only way to resolve a critical is to change the governing idea / product thesis (which /refine is constrained to preserve):
+```
+  💡 엔진 추천: 이 critical을 해결하려면 thesis 변경이
+     필요합니다 — /refine 범위를 초과합니다.
+     ← /recast에서 thesis부터 재설계를 권장합니다.
+```
+
+These are recommendations, not blockers. The user can override with `1` (continue refining) or follow with `0`.
+
+**Self-check:** Did the revised plan actually change in substance, or did you just reword concerns as "considerations"? If any critical issue remains unresolved, is the `[Not addressed]` section present with a concrete reason (e.g., "requires build to validate") — not just omitted?
 
 ## Step 4: Re-test
 
@@ -122,11 +178,27 @@ After re-testing, verify: does the revised plan still answer the `reframed_quest
 
 | Metric | Converged | Not yet |
 |--------|-----------|---------|
-| Critical issues | 0 | 1+ remaining |
+| Critical issues | 0 (or all deferred) | 1+ actionable remaining |
 | Total issues | Decreased | Same or increased |
 | Approval conditions | Key ones met | Key ones unmet |
 
-Max 3 rounds (2 when inside `/overture`).
+### Deferred validation (build context)
+
+Some critical issues can only be resolved by building and testing (e.g., "does the AI actually learn reviewer judgment?"). These are NOT failures — they're **deferred validations**. Mark them explicitly:
+
+```
+  ✗ Critical:    ███░░ 3 → █░░░░ 1 (deferred: 빌드 후 증명)
+```
+
+**Deferred rules:**
+- Only criticals that are literally impossible to resolve without shipping code qualify
+- "We'll think about it later" does NOT qualify — only "we need real user data"
+- Deferred items MUST have a specific validation plan (what to build, what to measure, pass/fail criteria)
+- In the journal, mark as `Converged: yes (1 deferred)` — not `no`
+
+**Build context:** Max 1 round of refinement (keep it fast for builders). If critical issues remain after 1 round, classify each as either `actionable` (go to round 2 or back to /recast) or `deferred` (needs build to validate). This prevents the pipeline from blocking on issues that only real users can answer.
+
+Max 3 rounds for decide context. Max 1 round for build context (with deferred option).
 
 ## Output
 
@@ -159,8 +231,17 @@ Max 3 rounds (2 when inside `/overture`).
 
   [Final Plan — compact revised version]
 
-  /rehearse ([re-verify])          📄 saved
+  다음?  1 → /rehearse (재검증)  2 → 수정  3 → 저장
+  ← 0   /recast 다시 (근본 수정 필요 시)
 ```
+
+**Quick action:** `0`, `1`, `2`, or `3`. `1` saves and launches /rehearse for re-verification. `2` lets user adjust. `3` saves and stops. `0` goes back to /recast (or /reframe if the problem is fundamental). Adapt labels to user's language.
+
+**Going back (`0`):** When refinement reveals the plan needs more than surgical fixes:
+> 💡 Refine에서 발견한 것:
+> - [why surgical fixes aren't enough, e.g., "thesis 자체를 바꿔야 한다"]
+> - [what to redesign]
+Then launch `/recast`. If the issue is even more fundamental (the reframed question itself was wrong), suggest `/reframe` instead.
 
 **After the card**, save to `.overture/refine.md`:
 - Top: changes, results, final plan (clean markdown)
@@ -169,9 +250,13 @@ Max 3 rounds (2 when inside `/overture`).
 ## Learning journal
 
 Append to `.overture/journal.md` in the project root (directory with `.git`, or current working directory):
+**Header uniqueness rule:** Include date + skill + short topic slug (≤5 words). Example: `## 2026-03-27 /refine — AI 코드 리뷰 어시스턴트`
+
 ```
-## [date] /refine
+## [date] /refine — [short topic, ≤5 words]
 - Rounds: [N] | Converged: [yes/no]
 - Critical issues: [N] → [M]
 - Key change: [biggest revision in one line]
+- Sharpest critique resolved: "[original critique from /rehearse]" → [how addressed, or "not resolved" if still open]
+- Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ✓
 ```

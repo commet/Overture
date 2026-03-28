@@ -30,7 +30,25 @@ If the user just types `/rehearse` without a plan, and there's no previous `/rec
 
 ## Before starting
 
-Check if `.overture/journal.md` exists. If previous rehearsals show patterns, keep those in mind.
+Check if `.overture/journal.md` exists. If previous rehearsals exist, apply adaptive rules below.
+
+### Adaptive rules (journal → behavior)
+
+Scan last 10 journal entries:
+
+**Pattern: Previous rehearse had only 2 personas and critique was weak**
+→ Consider adding a 3rd persona with a fundamentally different perspective (e.g., end-user vs buyer vs competitor).
+
+**Pattern: Previous rehearse's unspoken risks later proved most important (visible in /refine or /outcome entries)**
+→ Push harder on unspoken risks this time. Allocate more depth to the Devil's Advocate section.
+
+**Pattern: User always picks `1 → /refine` after rehearse (3+ times)**
+→ Personas might be too soft. Increase harshness threshold.
+
+**Topic linking:** If journal has entries in the same domain, surface the most relevant critique:
+```
+  💭 관련 이전 실행: [date] — sharpest critique: "[quote]"
+```
 
 Show the header:
 
@@ -39,6 +57,21 @@ Show the header:
   │  👥 Overture · Rehearse                  │
   ╰──────────────────────────────────────────╯
 ```
+
+### Reflection block (show FIRST, before heavy analysis)
+
+If continuing from `/recast`, output a brief reflection block immediately after the header. This gives the user something to think about while the full persona reviews generate:
+
+```
+  💭 스트레스 테스트 전에:
+  ▸ "[the product thesis or governing idea being tested]"
+
+  이 계획의 가장 약한 고리:
+  · [the lowest-certainty assumption — name it explicitly]
+  · [a "what if the opposite is true?" question]
+```
+
+**Rules:** Max 4 lines of content. Surface the assumption the user is LEAST confident about — that's what personas will attack hardest. This block is output first, then persona generation and reviews follow.
 
 ## Context extraction from /recast and /reframe
 
@@ -156,6 +189,37 @@ After all persona reviews and Devil's Advocate, produce a structured synthesis:
 "Is there anything in this feedback that would make the user uncomfortable?"
 If no → the rehearsal was too soft. Make at least one persona harsher.
 
+"Does each risk cite a specific element from /recast — a feature name (P0/P1), step number, assumption, or metric?"
+If no → the critique is generic. Tie each risk to a concrete part of the plan.
+
+### Engine-driven backward recommendation
+
+After synthesis, before rendering the card, check these conditions. If triggered, show the recommendation in the card **above** the quick action menu:
+
+**Condition A: All personas flat reject (no conditional)**
+If every persona says "사용 안 함" or equivalent WITHOUT conditions (not "would use if X"), the thesis itself is broken:
+```
+  💡 엔진 추천: 전원 거부 — thesis 자체 재설계 필요.
+     ← /recast에서 product thesis를 다시 세우는 걸 권장합니다.
+```
+
+**Condition B: Sharpest critique attacks the thesis, not features**
+If the most damaging feedback targets the governing idea/product thesis directly (e.g., "이 제품이 존재할 이유가 없다", "feature이지 product가 아니다") rather than specific features or execution:
+```
+  💡 엔진 추천: 핵심 비판이 개별 기능이 아닌 제품 방향 자체를
+     겨냥합니다. /refine으로 수술적 수정보다 ← /recast에서
+     thesis 재설계를 권장합니다.
+```
+
+**Condition C: Devil's Advocate questions problem existence**
+If the Devil's Advocate "silent problem" or "realistic failure" concludes that the target users don't actually have this problem, or the market doesn't exist:
+```
+  💡 엔진 추천: 문제 존재 여부 자체가 의심됩니다.
+     ← /reframe에서 문제 정의부터 재검증을 권장합니다.
+```
+
+These are recommendations, not blockers. Show them inline, then show the normal quick action menu below. The user decides.
+
 ## Output
 
 **Single card** — one code block. Auto-save to `.overture/rehearse.md`.
@@ -241,10 +305,53 @@ If no → the rehearsal was too soft. Make at least one persona harsher.
   💡 [product blind spot — 1-2 lines max]
 ```
 
-**After the card, ask before saving:**
+**Readiness score (add after the 💡 line, inside the card):**
+```
+  Readiness  [████░]
+  · ✓ 문제 정의  ✓ 실행 계획  ✓ 스트레스 테스트  ? 이슈 해결
+```
+Count: problem defined ✓, plan exists ✓, stress-tested ✓, issues resolved ? (depends on critical count). If 0 criticals: `█████`.
 
-> [Next step?]
-> `/refine` [to fix issues] · [adjust] · [save and continue]
+**After the card, guide the next step based on severity:**
+
+**If critical risks ≥ 1:**
+```
+  ⚠️ Critical [N]개 미해결
+  다음?  1 → /refine (권장)  2 → 수정  3 → 저장
+  ← 0   /recast 다시
+```
+
+**If critical risks = 0 but unspoken ≥ 2:**
+```
+  🔇 Unspoken [N]개 — 무시 가능하지만 후회할 수 있음
+  다음?  1 → /refine  2 → 수정  3 → 저장
+  ← 0   /recast 다시
+```
+
+**If no critical or unspoken risks:**
+```
+  ✓ 주요 리스크 없음
+  다음?  1 → 저장  2 → 수정  3 → /refine (optional)
+  ← 0   /recast 다시
+```
+
+**Quick action:** The user can type `0`, `1`, `2`, or `3`. `1` saves and launches the recommended next action. `2` shows editable items (see below). `3` saves (or launches optional refine). `0` goes back to /recast with rehearsal insights. If the user types anything else, respond naturally. Adapt labels to user's language.
+
+**When user picks `2` (수정):** Show numbered items they can modify:
+```
+  수정할 항목?
+  a · 페르소나 교체/추가
+  b · 특정 리스크 재평가
+  c · Devil's Advocate 다시
+  d · 기타 (직접 입력)
+```
+After adjustment, re-output the affected section and show quick actions again.
+
+**Going back (`0`):** When the user chooses to go back, summarize what rehearsal revealed that requires spec changes too large for /refine:
+> 💡 Rehearse에서 발견한 것:
+> - [fundamental issue, e.g., "product thesis 자체가 틀렸다 — /refine으로 안 고쳐짐"]
+> - [what to redesign in recast]
+Then launch `/recast` with the original reframed question + these insights. If the issue is even more fundamental (questioning whether the problem exists), suggest going back to `/reframe` instead.
 
 Only save `.overture/rehearse.md` after user confirms. Full persona reviews (detailed reactions, failure scenarios, all risks) go in the saved file — the card is the summary.
 
@@ -263,9 +370,15 @@ Detailed persona reviews (full reactions, failure scenarios, all risks) go into 
 ## Learning journal
 
 Append to `.overture/journal.md` in the project root (directory with `.git`, or current working directory):
+**Header uniqueness rule:** Include date + skill + short topic slug (≤5 words). Example: `## 2026-03-27 /rehearse — AI 코드 리뷰 어시스턴트`
+
 ```
-## [date] /rehearse
-- Personas: [names]
-- Critical risks: [N] | Unspoken: [N]
-- Sharpest critique: "[quote]"
+## [date] /rehearse — [short topic, ≤5 words]
+- Context: [build|decide]
+- Personas: [names with roles]
+- Critical: [each critical risk — 1 line per item]
+- Unspoken: [each unspoken risk — 1 line per item]
+- Sharpest critique: "[quote]" — [persona]
+- Unresolved: yes
+- Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ·
 ```

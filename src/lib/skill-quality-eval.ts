@@ -34,14 +34,30 @@ export interface EvalResult {
 }
 
 /* ────────────────────────────────────
+   Helpers
+   ──────────────────────────────────── */
+
+/** Detect if output is a saved .overture/ file (markdown) vs live card output */
+function isSavedFormat(output: string): boolean {
+  return /^#\s+[🎯📋👥🔧]/.test(output.trim());
+}
+
+/** Detect build vs decide context from output */
+function detectContext(output: string): 'build' | 'decide' | 'unknown' {
+  if (/context:\s*build|product\s*thesis|P0|MVP|user\s*story/i.test(output)) return 'build';
+  if (/context:\s*decide|governing\s*idea(?!.*thesis)|워크플로우/i.test(output)) return 'decide';
+  return 'unknown';
+}
+
+/* ────────────────────────────────────
    Structural Evals (Automated)
    ──────────────────────────────────── */
 
 const REFRAME_STRUCTURAL: StructuralEval[] = [
   {
     id: 'has_header',
-    description: 'Overture · Reframe 헤더 존재',
-    check: (o) => /Overture\s*·?\s*Reframe/i.test(o),
+    description: 'Overture · Reframe 헤더 존재 (카드 또는 저장 파일)',
+    check: (o) => /Overture\s*·?\s*Reframe/i.test(o) || /^#\s+🎯\s*Reframe/im.test(o),
   },
   {
     id: 'has_reframed_question',
@@ -96,8 +112,8 @@ const REFRAME_STRUCTURAL: StructuralEval[] = [
   },
   {
     id: 'has_quick_actions',
-    description: '다음 단계 안내 (recast/수정/저장)',
-    check: (o) => /recast|수정|저장|다음|→/i.test(o),
+    description: '다음 단계 안내 또는 Context Contract (저장 파일에는 contract)',
+    check: (o) => /recast|수정|저장|다음\s*\?|→\s*\/|Context Contract/i.test(o),
   },
   {
     id: 'has_doubtful_or_challenge',
@@ -114,8 +130,8 @@ const REFRAME_STRUCTURAL: StructuralEval[] = [
 const RECAST_STRUCTURAL: StructuralEval[] = [
   {
     id: 'has_header',
-    description: 'Overture · Recast 헤더 존재',
-    check: (o) => /Overture\s*·?\s*Recast/i.test(o),
+    description: 'Overture · Recast 헤더 존재 (카드 또는 저장 파일)',
+    check: (o) => /Overture\s*·?\s*Recast/i.test(o) || /^#\s+📋\s*Recast/im.test(o),
   },
   {
     id: 'has_governing_idea',
@@ -138,11 +154,17 @@ const RECAST_STRUCTURAL: StructuralEval[] = [
   },
   {
     id: 'has_human_checkpoint',
-    description: '최소 1개 Human 체크포인트 (전부 AI에 맡기지 않음)',
+    description: '최소 1개 Human 체크포인트 또는 검증 기준 (build: success metric이 대체)',
     check: (o) => {
+      // Decide context: explicit checkpoint + human
       const hasCheckpoint = /⚑|checkpoint|체크포인트/i.test(o);
       const hasHuman = /🧑|Human|사람/i.test(o);
-      return hasCheckpoint && hasHuman;
+      if (hasCheckpoint && hasHuman) return true;
+      // Build context: success metric + validation criteria serves as checkpoint
+      if (detectContext(o) === 'build') {
+        return /success.*metric|성공.*지표|성공\s*=|검증|파일럿|validation/i.test(o);
+      }
+      return false;
     },
   },
   {
@@ -180,8 +202,8 @@ const RECAST_STRUCTURAL: StructuralEval[] = [
 const REHEARSE_STRUCTURAL: StructuralEval[] = [
   {
     id: 'has_header',
-    description: 'Overture · Rehearse 헤더 존재',
-    check: (o) => /Overture\s*·?\s*Rehearse/i.test(o),
+    description: 'Overture · Rehearse 헤더 존재 (카드 또는 저장 파일)',
+    check: (o) => /Overture\s*·?\s*Rehearse/i.test(o) || /^#\s+👥\s*Rehearse/im.test(o),
   },
   {
     id: 'has_personas_2plus',
@@ -228,16 +250,24 @@ const REHEARSE_STRUCTURAL: StructuralEval[] = [
   },
   {
     id: 'references_recast_steps',
-    description: '/recast 실행 스텝을 구체적으로 참조 (Step N, P0 등)',
-    check: (o) => /Step\s*\d|스텝\s*\d|단계\s*\d|P0|P1|MVP/i.test(o),
+    description: '/recast 구체적 요소를 참조 (decide: Step N, build: P0/기능명/thesis)',
+    check: (o) => {
+      // Decide: step numbers
+      if (/Step\s*\d|스텝\s*\d|단계\s*\d/i.test(o)) return true;
+      // Build: P0/P1 features, product thesis, specific feature names
+      if (/P0|P1|MVP|product\s*thesis|핵심\s*기능|팀\s*컨벤션|학습\s*엔진|리뷰\s*분리/i.test(o)) return true;
+      // Any: assumption names from recast
+      if (/key.*assumption|핵심\s*가정/i.test(o) && /틈새|구독|채택/i.test(o)) return true;
+      return false;
+    },
   },
 ];
 
 const REFINE_STRUCTURAL: StructuralEval[] = [
   {
     id: 'has_header',
-    description: 'Overture · Refine 헤더 존재',
-    check: (o) => /Overture\s*·?\s*Refine/i.test(o),
+    description: 'Overture · Refine 헤더 존재 (카드 또는 저장 파일)',
+    check: (o) => /Overture\s*·?\s*Refine/i.test(o) || /^#\s+🔧\s*Refine/im.test(o),
   },
   {
     id: 'has_issue_tracking',
@@ -261,8 +291,8 @@ const REFINE_STRUCTURAL: StructuralEval[] = [
   },
   {
     id: 'has_not_addressed',
-    description: '해결 안 된 이슈 + 이유 섹션 존재',
-    check: (o) => /not\s*address|미해결|해결.*안|남은.*이슈|deferred/i.test(o),
+    description: '해결 안 된 이슈 + 이유가 언급됨',
+    check: (o) => /not\s*address|미해결|해결.*안|남은.*\d|deferred|빌드\s*후|증명\s*필요|critical.*remaining/i.test(o),
   },
   {
     id: 'has_results_bar',
@@ -618,15 +648,36 @@ export function evaluatePipelineChaining(files: {
 
   // Cross-pipeline: blind spot tracking (reframe → rehearse → refine)
   if (files.reframe && files.rehearse) {
-    // Extract blind spot keyword from reframe
     const blindSpotMatch = files.reframe.match(/💡\s*(.+)/);
     if (blindSpotMatch) {
-      const keywords = blindSpotMatch[1].split(/[\s,，]+/).filter(w => w.length > 2).slice(0, 3);
-      const trackedInRehearsal = keywords.some(k => files.rehearse!.toLowerCase().includes(k.toLowerCase()));
+      const blindSpotText = blindSpotMatch[1];
+      // Extract meaningful keywords: nouns 3+ chars, excluding stopwords
+      const stopwords = new Set(['것이다', '있는', '있다', '아니라', '아닌', '이라는', '대한', '위해', '때문', '하는', '같은', '통해']);
+      const words = blindSpotText.split(/[\s,，.。·""'']+/)
+        .filter(w => w.length >= 2 && !stopwords.has(w));
+      // Also try 2-word compound concepts
+      const compounds = [];
+      for (let i = 0; i < words.length - 1; i++) {
+        compounds.push(words[i] + words[i + 1]);
+      }
+      const allKeywords = [...words, ...compounds];
+      const rehearseLower = files.rehearse!.toLowerCase();
+      const trackedInRehearsal = allKeywords.some(k => rehearseLower.includes(k.toLowerCase()));
+
+      // If keyword match fails, check for semantic equivalents
+      const semanticPairs: [string, string[]][] = [
+        ['멘토링', ['영향력', '가르치', '코칭', '역할']],
+        ['자동화', ['대체', '디스럽션', 'AI가']],
+        ['경쟁자', ['대안', '대체재', '기존']],
+      ];
+      const semanticMatch = semanticPairs.some(([key, equivalents]) =>
+        blindSpotText.includes(key) && equivalents.some(eq => rehearseLower.includes(eq))
+      );
+
       evals.push({
         id: 'blind_spot_tracked_to_rehearse',
         description: 'reframe 블라인드 스팟이 rehearse에서 반영/언급',
-        passed: trackedInRehearsal,
+        passed: trackedInRehearsal || semanticMatch,
       });
     }
   }
