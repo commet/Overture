@@ -21,7 +21,13 @@ Your job is to design an execution plan where every step has a clear owner (AI, 
 
 **Always respond in the same language the user uses.**
 
-**Rendering:** Final output in ONE code block (the "card"). Use emoji markers for actor types (`🧑 Human`, `🤖 AI`, `⚡ Both`), `⚑` for checkpoints, `★` for critical path. Interview/interaction phases use separate code blocks.
+**Rendering:** Final output in markdown sections separated by `---`. NOT a single code block. Use diff blocks for assumptions/thesis, bold for section labels, blockquotes for insights, markdown tables for execution steps/features.
+
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
+**No fixed width.** Do NOT enforce 76-char width. Markdown auto-wraps.
+
+**diff blocks = color tool.** `+` lines = confirmed/positive (green). `-` lines = uncertain/risk (red). Use sparingly (max 2-3 per output).
 
 ## If no argument is provided
 
@@ -44,30 +50,23 @@ Scan last 10 journal entries:
 → Add a note: `이전에 이 단계에서 thesis를 바꿔야 했습니다. thesis가 충분히 차별화되었는지 확인하세요.`
 
 **Topic linking:** If journal has entries in the same domain, show:
-```
-  💭 관련 이전 실행: [date] "[topic]" — [key learning, 1 line]
-```
 
-Show the header:
+> 💭 관련 이전 실행: [date] "[topic]" — [key learning, 1 line]
 
-```
-  ╭──────────────────────────────────────────╮
-  │  📋 Overture · Recast                    │
-  ╰──────────────────────────────────────────╯
-```
+Show the header as markdown bold:
+
+**📋 Overture · Recast**
 
 ### Reflection block (show FIRST, before heavy analysis)
 
 If continuing from `/reframe`, output a brief reflection block immediately after the header. This gives the user something to think about while the full card generates. Pick the most provocative element from the previous step:
 
-```
-  💭 이전 단계에서:
-  ▸ "[the blind spot insight or sharpest reframed question]"
-
-  생각해볼 것:
-  · [1 question that deepens their thinking — tied to the uncertain assumptions]
-  · [1 relevant external reference: competing product, market trend, or analogous case — be specific with names]
-```
+> 💭 **이전 단계에서:**
+> "[the blind spot insight or sharpest reframed question]"
+>
+> **생각해볼 것:**
+> - [1 question that deepens their thinking — tied to the uncertain assumptions]
+> - [1 relevant external reference: competing product, market trend, or analogous case — be specific with names]
 
 **Rules:** Max 4 lines of content. Be specific, not generic. The external reference should name a real product, company, or trend. This block is a "thinking appetizer" — not a summary of what's coming. Output this block, then proceed to the full analysis.
 
@@ -87,10 +86,9 @@ If a `/reframe` result exists, read `.overture/reframe.md` and locate the `## Co
 - `confirmed` → be execution-focused. Optimize for speed and specificity.
 - `mixed` → maintain direction but add verification checkpoints for doubtful items.
 
-**⚠️ If 0 confirmed assumptions from reframe:** All assumptions are doubtful or uncertain — the foundation is unvalidated. Add a note at the top of the card output:
-```
-  ⚠️ Reframe에서 확인된 가정 0개 — 이 계획은 탐색적(exploratory)입니다. 검증 단계를 실행 앞에 배치합니다.
-```
+**⚠️ If 0 confirmed assumptions from reframe:** All assumptions are doubtful or uncertain — the foundation is unvalidated. Add a note at the top of the output:
+
+> ⚠️ Reframe에서 확인된 가정 0개 — 이 계획은 탐색적(exploratory)입니다. 검증 단계를 실행 앞에 배치합니다.
 In decide context: place the FIRST step as a validation/experiment step (actor: Human or Both). In build context: add "가정 검증" as a mandatory pre-P0 step in the feature spec. Adapt language to match user's language.
 
 ### Engine-driven backward recommendation
@@ -99,11 +97,8 @@ After generating the card, before showing quick actions, check these conditions.
 
 **Condition: 0 confirmed + thesis makes a specific bet (not exploratory)**
 If all assumptions are uncertain/doubtful AND the product thesis commits to a specific solution (not a validation-first approach), the engine recommends going back:
-```
-  💡 엔진 추천: 모든 가정이 미검증인데 thesis가 구체적 bet을
-     잡고 있습니다. ← /reframe에서 최소 1개 가정을 검증하거나,
-     thesis를 탐색형으로 바꾸는 걸 권장합니다.
-```
+
+> 💡 **엔진 추천:** 모든 가정이 미검증인데 thesis가 구체적 bet을 잡고 있습니다. ← /reframe에서 최소 1개 가정을 검증하거나, thesis를 탐색형으로 바꾸는 걸 권장합니다.
 This is a recommendation, not a blocker. The user can proceed with `1` or go back with `0`.
 
 ### Interview signal → execution style (from `interview_signals`):
@@ -268,130 +263,126 @@ Generate 2 user personas for `/rehearse`. These are USERS, not stakeholders.
 
 ## Output
 
-**Single card** — one code block. Auto-save to `.overture/recast.md`.
+**Markdown sections** — separated by `---`. Auto-save to `.overture/recast.md`.
 
-### Decide context: Output card (76-char width, ONE code block)
+### Decide context: Output template
 
-```
-  📋 Recast ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**📋 Recast**
 
-  ▸ [governing idea — one sentence]
+**▸** [governing idea — one sentence]
 
-  [situation] → [complication]
-  [approach]: [resolution]
+[situation] → [complication]
+[approach]: [resolution]
 
-  [실행 label] ────────────────────────────────────────────────────────────────
+---
 
-   #  │ Actor │ Task           │ Deliverable        │
-  ════╪═══════╪════════════════╪════════════════════╪═══
-   1  │ 🧑   │ [task]         │ [deliverable]      │ ⚑
-  ────┼───────┼────────────────┼────────────────────┼───
-   2  │ 🤖   │ [task]         │ [deliverable]      │
-  ────┼───────┼────────────────┼────────────────────┼───
-   3  │ ⚡   │ [task]         │ [deliverable]      │ ★
-  ────┼───────┼────────────────┼────────────────────┼───
-   4  │ 🧑   │ [task]         │ [deliverable]      │ ⚑
+**[실행 label]**
 
-  ⚑ checkpoint  ★ critical
+| # | Actor | Task | Deliverable | |
+|---|-------|------|-------------|-|
+| 1 | 🧑 | [task] | [deliverable] | ⚑ |
+| 2 | 🤖 | [task] | [deliverable] | |
+| 3 | ⚡ | [task] | [deliverable] | ★ |
+| 4 | 🧑 | [task] | [deliverable] | ⚑ |
 
-  [가정 label] ─────────────────────────────────────────────
+⚑ checkpoint · ★ critical
 
-     │ [assumption]                          │ Imp │ Conf
-  ═══╪═══════════════════════════════════════╪═════╪══════
-  ✓  │ [assumption]                          │  H  │  H
-  ───┼───────────────────────────────────────┼─────┼──────
-  ?  │ [assumption]                          │  M  │  L
-  ───┼───────────────────────────────────────┼─────┼──────
-  ?  │ [assumption]               ← reframe │  H  │  L
+For `⚡ Both` steps: add a line below the table: `> AI: [scope] / Human: [scope]`
 
-  [페르소나 label] → /rehearse ─────────────────────────────
+---
 
-  ┌ 1 · [Name] — [Role]
-  └ [primary concern]
-  ┌ 2 · [Name] — [Role]
-  └ [primary concern]
-  ┌ 3 · [Name] — [Role]
-  └ [primary concern]
+**[가정 label]**
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ███░░ ✓정의 ✓계획 ·가정 ·테스트 ·해결
-  다음?  1 /rehearse · 2 수정 · 3 저장 · ← 0
+```diff
++ ✓ [confirmed assumption] — Imp: H, Conf: H
+- ? [uncertain assumption] — Imp: M, Conf: L
+- ? [assumption] — Imp: H, Conf: L  ← reframe
 ```
 
-**Step table:** Pipe table with row separators (`────┼────`). `═══` for header separator. Each step = one row.
-- For `⚡ Both` steps: add `AI: [scope] / Human: [scope]` on next indented line.
-**Assumption table:** Left-pipe with eval symbol. Imp/Conf as right columns. `← reframe` inline when inherited.
-**Personas:** Card blocks (`┌└`), 2 lines each.
+---
 
-### Build context: Output card (76-char width, ONE code block)
+**[페르소나 label]** → /rehearse
 
+1. **[Name]** — [Role]: [primary concern]
+2. **[Name]** — [Role]: [primary concern]
+3. **[Name]** — [Role]: [primary concern]
+
+---
+
+`███░░ ✓정의 ✓계획 ·가정 ·테스트 ·해결`
+
+`다음? 1 /rehearse · 2 수정 · 3 저장 · ← 0`
+
+**Step table:** Standard markdown table. Actor emoji (🧑/🤖/⚡) + task + deliverable. ⚑/★ as last column.
+**Assumptions:** Single diff block. `+` = confirmed, `-` = uncertain/doubtful. Imp/Conf inline. `← reframe` when inherited.
+**Personas:** Numbered bold list, 1 line each.
+
+### Build context: Output template
+
+**📋 Recast**
+
+```diff
++ ▸ [product thesis]
 ```
-  📋 Recast ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ▸ [product thesis — wrap at 74 chars, ~36 Korean chars per line]
+**User Story:** [As a ... I want ... so that ...]
 
-  User Story ────────────────────────────────────────────────
+---
 
-  [As a ... I want ... so that ...]
+**MVP**
 
-  MVP ───────────────────────────────────────────────────────
+| Pri | 기능 | 동작 |
+|-----|------|------|
+| P0 | [feature] | [behavior — one line] |
+| P0 | [feature] | [behavior] |
+| P1 | [feature] | [behavior] |
+| P2 | [feature] | [behavior] |
 
-      │ 기능         │ 동작
-  ════╪══════════════╪═════════════════════════════════
-  P0  │ [feature]    │ [behavior — one line]
-  ────┼──────────────┼─────────────────────────────────
-  P0  │ [feature]    │ [behavior]
-  ────┼──────────────┼─────────────────────────────────
-  P1  │ [feature]    │ [behavior]
-  ────┼──────────────┼─────────────────────────────────
-  P2  │ [feature]    │ [behavior]
+**✂ Scope Cuts:** [cut] · [cut] · [cut] · [cut]
 
-  ✂ [cut] · [cut] · [cut] · [cut]
+---
 
-  [가정 label] ──────────────────────────────────────────────
+**[가정 label]**
 
-  ✓ │ [assumption]
-  ──┼──────────────────────────────────────────────────────
-  ? │ [assumption]                            ← reframe
-  ? │ [assumption]                            ← reframe
-  ? │ [assumption]                            ← new
-
-  [페르소나 label] → /rehearse ──────────────────────────────
-
-  ┌ 🎯 [Name]  [role/context]
-  └ [current_solution or key trait]
-
-  ┌ 🤨 [Name]  [role/context]
-  └ "[core objection — one sentence]"
-
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  [성공 label] = [metric]
-
-  ███░░ ✓정의 ✓계획 ·가정 ·테스트 ·해결
-  다음?  1 /rehearse · 2 수정 · 3 저장 · ← 0
+```diff
++ ✓ [confirmed assumption]
+- ? [uncertain assumption]  ← reframe
+- ? [uncertain assumption]  ← reframe
+- ? [new assumption]  ← new
 ```
+
+---
+
+**[페르소나 label]** → /rehearse
+
+- 🎯 **[Name]** — [role/context]: [current_solution or key trait]
+- 🤨 **[Name]** — [role/context]: "[core objection — one sentence]"
+
+---
+
+**[성공 label]** = [metric]
+
+`███░░ ✓정의 ✓계획 ·가정 ·테스트 ·해결`
+
+`다음? 1 /rehearse · 2 수정 · 3 저장 · ← 0`
 
 **Layout rules:**
-- **Header:** 1-line, emoji + name + ━━━.
-- **MVP table:** Pipe table with `════` header separator and `────` row separators. Feature names should be short (≤6 Korean chars). If the name is longer, abbreviate.
-- **Assumptions:** Left-pipe only. `──┼──` separator between confirmed (✓) and unverified (?/✗) groups. `← reframe` / `← new` inline.
-- **Personas:** Card blocks (`┌└`). Target user gets `🎯`, skeptic gets `🤨`. 2 lines each.
-- **Footer:** ━━━ → success metric → readiness bar → quick actions.
-- **Width:** 76 chars content (80-char terminal, 2-char indent each side). Korean ≈ 36 chars/line. All ━━━ and ──── lines fill to 76 chars.
+- **Sections:** Separated by `---` horizontal rules.
+- **Product thesis:** diff block (green highlight for emphasis).
+- **MVP:** Standard markdown table. Feature names short. One behavior per line.
+- **Assumptions:** Single diff block. `+` = confirmed, `-` = uncertain/doubtful. `← reframe`/`← new` inline.
+- **Personas:** Bullet list with emoji + bold name. 1 line each.
+- **No fixed width.** Markdown auto-wraps.
 
 **Quick action:** The user can type `0`, `1`, `2`, or `3`. `1` saves and launches the next skill. `2` shows editable items (see below). `3` saves and stops. `0` goes back to /reframe with current insights as context. If the user types anything else, respond naturally. Adapt labels to user's language.
 
 **When user picks `2` (수정):** Show numbered items they can modify:
-```
-  수정할 항목?
-  a · Product thesis
-  b · 기능 (P0/P1/P2)
-  c · 페르소나
-  d · Scope cuts
-  e · 기타 (직접 입력)
-```
+
+> a. Product thesis
+> b. 기능 (P0/P1/P2)
+> c. 페르소나
+> d. Scope cuts
+> e. 기타 (직접 입력)
 After adjustment, re-output the card and show quick actions again.
 
 **Going back (`0`):** When the user chooses to go back, summarize what was learned in recast that should inform the redo:

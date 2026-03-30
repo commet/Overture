@@ -84,12 +84,7 @@ If running in a long conversation or constrained context, adapt: reduce to 2 per
 
 Show the pipeline header at the start:
 
-```
-  ╭──────────────────────────────────────────────╮
-  │  Overture · 4R Pipeline                     │
-  │  reframe → recast → rehearse → refine       │
-  ╰──────────────────────────────────────────────╯
-```
+**Overture · 4R Pipeline** — reframe → recast → rehearse → refine
 
 ## Stage 1 of 4: Reframe (~2 min)
 
@@ -344,20 +339,17 @@ Anti-sycophancy check:
 - Were blind spots surfaced? (unspoken risks found)
 - Was the plan actually changed after rehearsal?
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Decision Quality Score
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Framing        ████░  4/5
-  Alternatives   ███░░  3/5
-  Information    ████░  4/5
-  Perspectives   █████  5/5
-  Reasoning      ████░  4/5
-  Actionability  ███░░  3/5
-  ────────────────────────
-  Overall        77/100
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+**Decision Quality Score**
+
+| Element | Score |
+|---------|-------|
+| Framing | ████░ 4/5 |
+| Alternatives | ███░░ 3/5 |
+| Information | ████░ 4/5 |
+| Perspectives | █████ 5/5 |
+| Reasoning | ████░ 4/5 |
+| Actionability | ███░░ 3/5 |
+| **Overall** | **77/100** |
 
 Anti-sycophancy checks — render as diff (green = passed):
 

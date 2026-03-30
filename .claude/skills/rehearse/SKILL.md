@@ -20,7 +20,13 @@ Rehearsal creates simulated stakeholders who react to your plan the way real peo
 
 **Always respond in the same language the user uses.**
 
-**Rendering:** Final output in ONE code block (the "card"). Use risk symbols: `✗` critical, `?` manageable, `🔇` unspoken. Persona sections within the card separated by blank lines. Devil's Advocate gets `⚡` marker.
+**Rendering:** Final output in markdown sections separated by `---`. NOT a single code block. Risk symbols stay: `✗` critical, `?` manageable, `🔇` unspoken. Devil's Advocate gets `⚡` marker.
+
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
+**No fixed width.** Do NOT enforce 76-char width. Markdown auto-wraps.
+
+**diff blocks = color tool.** Use for risk/critique summaries. `-` lines = critical/unspoken risks (red). `+` lines = resolved/positive (green). Max 2-3 diff blocks per output.
 
 ## If no argument is provided
 
@@ -46,30 +52,23 @@ Scan last 10 journal entries:
 → Personas might be too soft. Increase harshness threshold.
 
 **Topic linking:** If journal has entries in the same domain, surface the most relevant critique:
-```
-  💭 관련 이전 실행: [date] — sharpest critique: "[quote]"
-```
 
-Show the header:
+> 💭 관련 이전 실행: [date] — sharpest critique: "[quote]"
 
-```
-  ╭──────────────────────────────────────────╮
-  │  👥 Overture · Rehearse                  │
-  ╰──────────────────────────────────────────╯
-```
+Show the header as markdown bold:
+
+**👥 Overture · Rehearse**
 
 ### Reflection block (show FIRST, before heavy analysis)
 
-If continuing from `/recast`, output a brief reflection block immediately after the header. This gives the user something to think about while the full persona reviews generate:
+If continuing from `/recast`, output a brief reflection block immediately after the header:
 
-```
-  💭 스트레스 테스트 전에:
-  ▸ "[the product thesis or governing idea being tested]"
-
-  이 계획의 가장 약한 고리:
-  · [the lowest-certainty assumption — name it explicitly]
-  · [a "what if the opposite is true?" question]
-```
+> 💭 **스트레스 테스트 전에:**
+> "[the product thesis or governing idea being tested]"
+>
+> **이 계획의 가장 약한 고리:**
+> - [the lowest-certainty assumption — name it explicitly]
+> - [a "what if the opposite is true?" question]
 
 **Rules:** Max 4 lines of content. Surface the assumption the user is LEAST confident about — that's what personas will attack hardest. This block is output first, then persona generation and reviews follow.
 
@@ -198,119 +197,142 @@ After synthesis, before rendering the card, check these conditions. If triggered
 
 **Condition A: All personas flat reject (no conditional)**
 If every persona says "사용 안 함" or equivalent WITHOUT conditions (not "would use if X"), the thesis itself is broken:
-```
-  💡 엔진 추천: 전원 거부 — thesis 자체 재설계 필요.
-     ← /recast에서 product thesis를 다시 세우는 걸 권장합니다.
-```
+
+> 💡 **엔진 추천:** 전원 거부 — thesis 자체 재설계 필요. ← /recast에서 product thesis를 다시 세우는 걸 권장합니다.
 
 **Condition B: Sharpest critique attacks the thesis, not features**
 If the most damaging feedback targets the governing idea/product thesis directly (e.g., "이 제품이 존재할 이유가 없다", "feature이지 product가 아니다") rather than specific features or execution:
-```
-  💡 엔진 추천: 핵심 비판이 개별 기능이 아닌 제품 방향 자체를
-     겨냥합니다. /refine으로 수술적 수정보다 ← /recast에서
-     thesis 재설계를 권장합니다.
-```
+
+> 💡 **엔진 추천:** 핵심 비판이 개별 기능이 아닌 제품 방향 자체를 겨냥합니다. /refine으로 수술적 수정보다 ← /recast에서 thesis 재설계를 권장합니다.
 
 **Condition C: Devil's Advocate questions problem existence**
 If the Devil's Advocate "silent problem" or "realistic failure" concludes that the target users don't actually have this problem, or the market doesn't exist:
-```
-  💡 엔진 추천: 문제 존재 여부 자체가 의심됩니다.
-     ← /reframe에서 문제 정의부터 재검증을 권장합니다.
-```
+
+> 💡 **엔진 추천:** 문제 존재 여부 자체가 의심됩니다. ← /reframe에서 문제 정의부터 재검증을 권장합니다.
 
 These are recommendations, not blockers. Show them inline, then show the normal quick action menu below. The user decides.
 
 ## Output
 
-**Single card** — one code block. Auto-save to `.overture/rehearse.md`.
+**Markdown sections** — separated by `---`. Auto-save to `.overture/rehearse.md`.
 
-### Decide context: Output card (76-char width, ONE code block)
+### Decide context: Output template
 
-```
-  👥 Rehearse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**👥 Rehearse**
 
-  [바꿔야 할 것 label]
-  1  [action — specific]
-  2  [action — specific]
-  3  [action — specific]
+**[바꿔야 할 것 label]**
 
-  [페르소나 label] ─────────────────────────────────────────
+1. [action — specific]
+2. [action — specific]
+3. [action — specific]
 
-  ┌ [Name] — [Role] — [primary concern]      [판정]
-  │ ✗  [critical risk — one line]
-  │ 🔇 [unspoken risk — one line]
-  └ ▸ "[sharpest quote]"
+---
 
-  ┌ [Name] — [Role] — [primary concern]      [판정]
-  │ ✗  [critical risk — one line]
-  │ 🔇 [unspoken risk — one line]
-  └ ▸ "[sharpest quote]"
+**[페르소나 label]**
 
-  ┌ [Name] — [Role] — [primary concern]      [판정]
-  │ ?  [manageable risk — one line]
-  └ ▸ "[sharpest quote]"
+**[Name]** — [Role] — [primary concern] → **[판정]**
 
-  Devil's Advocate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ✗  [realistic failure — one line]
-  🔇 [silent problem — one line]
-  ⏳ [regret in 1 year — one line]
-
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  💡 [key tension or insight — 1-2 lines]
-
-  ████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴
-  [severity + quick actions — see below]
+```diff
+- ✗ [critical risk — one line]
+- 🔇 [unspoken risk — one line]
 ```
 
-### Build context: Output card (76-char width, ONE code block)
+> "[sharpest quote]"
 
+**[Name]** — [Role] — [primary concern] → **[판정]**
+
+```diff
+- ✗ [critical risk — one line]
+- 🔇 [unspoken risk — one line]
 ```
-  👥 Rehearse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [바꿔야 할 것 label]
-  1  [action — specific]
-  2  [action — specific]
+> "[sharpest quote]"
 
-  [페르소나 label] ─────────────────────────────────────────
+**[Name]** — [Role] — [primary concern] → **[판정]**
 
-  ┌ 🎯 [Name] · [role/context] · [current solution]
-  │ ✗  [critical risk — one line]
-  │ 🔇 [unspoken risk — one line]
-  └ → [verdict: 조건부/거부/사용]
-
-  ┌ 🤨 [Name] · [role/context] · [alternative]
-  │ ✗  [critical risk — one line]
-  │ 🔇 [unspoken risk — one line]
-  └ → [verdict]
-
-  [핵심 발언 label] ────────────────────────────────────────
-
-  [Name]  "[sharpest quote — one sentence]"
-  [Name]  "[sharpest quote — one sentence]"
-
-  Devil's Advocate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ✗  [most likely death — one line]
-  🔇 [what nobody says — one line]
-  ⏳ [6-month regret — one line]
-
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  💡 [product blind spot — 1-2 lines max]
-
-  ████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴
-  [severity + quick actions — see below]
+```diff
+- ? [manageable risk — one line]
 ```
+
+> "[sharpest quote]"
+
+---
+
+**Devil's Advocate**
+
+```diff
+- ✗ [realistic failure — one line]
+- 🔇 [silent problem — one line]
+- ⏳ [regret in 1 year — one line]
+```
+
+---
+
+> 💡 [key tension or insight — 1-2 lines]
+
+`████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴`
+
+`[severity + quick actions — see below]`
+
+### Build context: Output template
+
+**👥 Rehearse**
+
+**[바꿔야 할 것 label]**
+
+1. [action — specific]
+2. [action — specific]
+
+---
+
+**[페르소나 label]**
+
+🎯 **[Name]** · [role/context] · [current solution] → **[verdict: 조건부/거부/사용]**
+
+```diff
+- ✗ [critical risk — one line]
+- 🔇 [unspoken risk — one line]
+```
+
+🤨 **[Name]** · [role/context] · [alternative] → **[verdict]**
+
+```diff
+- ✗ [critical risk — one line]
+- 🔇 [unspoken risk — one line]
+```
+
+---
+
+**[핵심 발언 label]**
+
+> **[Name]:** "[sharpest quote — one sentence]"
+
+> **[Name]:** "[sharpest quote — one sentence]"
+
+---
+
+**Devil's Advocate**
+
+```diff
+- ✗ [most likely death — one line]
+- 🔇 [what nobody says — one line]
+- ⏳ [6-month regret — one line]
+```
+
+---
+
+> 💡 [product blind spot — 1-2 lines max]
+
+`████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴`
+
+`[severity + quick actions — see below]`
 
 **Layout rules:**
-- **Header:** 1-line, emoji + name + ━━━.
-- **Personas:** Card blocks (`┌│└`). Header line includes name + context + verdict (right-aligned). Body: ✗ critical, 🔇 unspoken, ▸ quote OR → verdict. Max 4 lines per persona.
-- **Quotes (build context):** Extracted to separate "핵심 발언" section. `[Name]  "[quote]"` — one line each.
-- **Devil's Advocate:** Own section with ━━━ separator (heavier weight = different voice). 3 items, 1 line each.
-- **Footer:** ━━━ → 💡 → readiness → severity + actions.
-- **Readiness:** `████░ ✓item ·item` — one line.
+- **Sections:** Separated by `---` horizontal rules.
+- **Personas:** Bold name + role + verdict on one line. diff block for risks (red). Blockquote for sharpest quote.
+- **Devil's Advocate:** Single diff block, 3 items.
+- **Insight:** `> blockquote` with 💡.
+- **Readiness + actions:** Inline code.
 
 **Severity-based quick actions (after the card, outside code block if needed):**
 
@@ -323,13 +345,11 @@ All on one line. Adapt to user's language.
 **Quick action:** The user can type `0`, `1`, `2`, or `3`. `1` saves and launches the recommended next action. `2` shows editable items (see below). `3` saves (or launches optional refine). `0` goes back to /recast with rehearsal insights. If the user types anything else, respond naturally. Adapt labels to user's language.
 
 **When user picks `2` (수정):** Show numbered items they can modify:
-```
-  수정할 항목?
-  a · 페르소나 교체/추가
-  b · 특정 리스크 재평가
-  c · Devil's Advocate 다시
-  d · 기타 (직접 입력)
-```
+
+> a. 페르소나 교체/추가
+> b. 특정 리스크 재평가
+> c. Devil's Advocate 다시
+> d. 기타 (직접 입력)
 After adjustment, re-output the affected section and show quick actions again.
 
 **Going back (`0`):** When the user chooses to go back, summarize what rehearsal revealed that requires spec changes too large for /refine:

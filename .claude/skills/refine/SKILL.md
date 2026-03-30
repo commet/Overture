@@ -17,7 +17,13 @@ No plan survives first contact with stakeholders. This skill takes rehearsal fee
 
 **Always respond in the same language the user uses.**
 
-**Rendering:** Final output in ONE code block (the "card"). Changes shown as `- old → + new` inline. Convergence bars (`█░`) for progress visualization.
+**Rendering:** Final output in markdown sections separated by `---`. NOT a single code block. Changes shown as markdown tables. Convergence as diff blocks.
+
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
+**No fixed width.** Do NOT enforce 76-char width. Markdown auto-wraps.
+
+**diff blocks = color tool.** `+` = improved/resolved (green). `-` = worsened/remaining (red). Max 2-3 per output.
 
 ## Before starting
 
@@ -36,30 +42,23 @@ Scan last 10 journal entries:
 → The underlying issue is likely in /recast, not /refine. After Round 1, if thesis change is needed again, proactively recommend `← /recast`.
 
 **Topic linking:** If journal has related entries, surface what worked before:
-```
-  💭 관련 이전 실행: [date] — key change: "[what worked]"
-```
 
-Show the header:
+> 💭 관련 이전 실행: [date] — key change: "[what worked]"
 
-```
-  ╭──────────────────────────────────────────╮
-  │  🔧 Overture · Refine                   │
-  ╰──────────────────────────────────────────╯
-```
+Show the header as markdown bold:
+
+**🔧 Overture · Refine**
 
 ### Reflection block (show FIRST, before heavy analysis)
 
-If continuing from `/rehearse`, output a brief reflection block immediately after the header. Surface the core tension from the rehearsal:
+If continuing from `/rehearse`, output a brief reflection block immediately after the header:
 
-```
-  💭 해결해야 할 핵심:
-  ▸ "[sharpest critique from rehearse — the exact quote]"
-
-  이 피드백이 맞다면:
-  · [what changes in the plan]
-  · [what stays the same despite the critique]
-```
+> 💭 **해결해야 할 핵심:**
+> "[sharpest critique from rehearse — the exact quote]"
+>
+> **이 피드백이 맞다면:**
+> - [what changes in the plan]
+> - [what stays the same despite the critique]
 
 **Rules:** Max 4 lines. Quote the sharpest critique verbatim — this is what the user needs to confront. The "what stays" line is equally important: it prevents over-correction. Output this block first, then proceed to revision.
 
@@ -151,18 +150,13 @@ After each round's re-test, check these conditions. If triggered, show the recom
 
 **Condition A: Zero critical reduction after round 1**
 If critical count didn't decrease at all (e.g., 3 → 3, or 2 → 2), surgical fixes aren't working:
-```
-  💡 엔진 추천: 수술적 수정으로 critical이 줄지 않았습니다.
-     ← /recast에서 스펙 재설계를 권장합니다.
-```
+
+> 💡 **엔진 추천:** 수술적 수정으로 critical이 줄지 않았습니다. ← /recast에서 스펙 재설계를 권장합니다.
 
 **Condition B: Fix requires thesis change**
 If the only way to resolve a critical is to change the governing idea / product thesis (which /refine is constrained to preserve):
-```
-  💡 엔진 추천: 이 critical을 해결하려면 thesis 변경이
-     필요합니다 — /refine 범위를 초과합니다.
-     ← /recast에서 thesis부터 재설계를 권장합니다.
-```
+
+> 💡 **엔진 추천:** 이 critical을 해결하려면 thesis 변경이 필요합니다 — /refine 범위를 초과합니다. ← /recast에서 thesis부터 재설계를 권장합니다.
 
 These are recommendations, not blockers. The user can override with `1` (continue refining) or follow with `0`.
 
@@ -186,9 +180,7 @@ After re-testing, verify: does the revised plan still answer the `reframed_quest
 
 Some critical issues can only be resolved by building and testing (e.g., "does the AI actually learn reviewer judgment?"). These are NOT failures — they're **deferred validations**. Mark them explicitly:
 
-```
-  ✗ Critical:    ███░░ 3 → █░░░░ 1 (deferred: 빌드 후 증명)
-```
+**✗ Critical:** 3 → 1 (deferred: 빌드 후 증명)
 
 **Deferred rules:**
 - Only criticals that are literally impossible to resolve without shipping code qualify
@@ -202,51 +194,58 @@ Max 3 rounds for decide context. Max 1 round for build context (with deferred op
 
 ## Output
 
-**Single card** — one code block per round. Auto-save to `.overture/refine.md`.
+**Markdown sections** per round — separated by `---`. Auto-save to `.overture/refine.md`.
 
+### Output template
+
+**🔧 Refine · Round [N]**
+
+**[변경 label]**
+
+| # | 변경 | 이유 |
+|---|------|------|
+| 1 | [old → new] | [feedback] |
+| 2 | [old → new] | [feedback] |
+| 3 | [old → new] | [feedback] |
+
+**[미해결]:** [issue] — [why]
+
+---
+
+**[재검증 label]**
+
+```diff
+- 🎯 [Name] · [prev verdict] → [new verdict]
++ 🤨 [Name] · [prev verdict] → [new verdict]
 ```
-  🔧 Refine · Round [N] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [변경 label] ─────────────────────────────────────────────
+> **🎯 [Name]:** "[key reaction — one sentence]"
 
-   #  │ 변경                          │ 이유
-  ════╪═══════════════════════════════╪══════════════════
-   1  │ [old → new]                   │ [feedback]
-  ────┼───────────────────────────────┼──────────────────
-   2  │ [old → new]                   │ [feedback]
-  ────┼───────────────────────────────┼──────────────────
-   3  │ [old → new]                   │ [feedback]
+> **🤨 [Name]:** "[key reaction — one sentence]"
 
-  [미해결 label]: [issue] — [why]
+---
 
-  [재검증 label] ───────────────────────────────────────────
+**[수렴 label]**
 
-  ┌ 🎯 [Name] · [prev verdict] → [new verdict]
-  └ "[key reaction — one sentence]"
-
-  ┌ 🤨 [Name] · [prev verdict] → [new verdict]
-  └ "[key reaction — one sentence]"
-
-  [수렴 label] ─────────────────────────────────────────────
-
-  ✗ Critical    ███░░ [N] → █░░░░ [M]
-  ? Manageable  █░░░░ [N] → █░░░░ [M]
-  ✓ Conditions  ░░░░░ [N] → █░░░░ [M]
-
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  [Status]: ✓ Converged / ✗ [N] critical remaining
-
-  █████ ✓정의 ✓계획 ✓테스트 ✓해결 ·수렴
-  다음?  1 /rehearse · 2 수정 · 3 저장 · ← 0
+```diff
+- ✗ Critical:   [N] → [M]
++ ✓ Conditions: [N] → [M]
 ```
+
+---
+
+**[Status]:** ✓ Converged / ✗ [N] critical remaining
+
+`█████ ✓정의 ✓계획 ✓테스트 ✓해결 ·수렴`
+
+`다음? 1 /rehearse · 2 수정 · 3 저장 · ← 0`
 
 **Layout rules:**
-- **Header:** 1-line, emoji + name + round + ━━━.
-- **Changes table:** Pipe table with row separators. `#` | `변경` (old → new inline) | `이유`. Short cells — abbreviate if needed.
-- **Re-test:** Card blocks (`┌└`). Each persona: prev→new verdict on header, one-sentence reaction on body. 2 lines per persona.
-- **Convergence:** Bar chart stays (works well for before/after comparison). One line per metric.
-- **Footer:** ━━━ → status → readiness → actions.
+- **Sections:** Separated by `---`.
+- **Changes:** Standard markdown table. `#` | `변경` (old → new) | `이유`.
+- **Re-test:** diff block for verdict changes (green = improved, red = worsened). Blockquotes for reactions.
+- **Convergence:** diff block for before/after. `-` for remaining criticals, `+` for resolved conditions.
+- **No fixed width.** Markdown auto-wraps.
 
 **Quick action:** `0`, `1`, `2`, or `3`. `1` saves and launches /rehearse for re-verification. `2` lets user adjust. `3` saves and stops. `0` goes back to /recast (or /reframe if fundamental). Adapt labels to user's language.
 

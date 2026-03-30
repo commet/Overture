@@ -120,45 +120,53 @@ If user answers `y`, mark it as context for this run. If `n` or `skip`, proceed 
 
 ## Rendering rules
 
-**Interview phase (Phase 1-2):** Each question/assumption in its own code block — interactive, one at a time. Confirmations (`✓ 분석 필요`) outside code blocks as plain text.
+**Markdown first.** Output uses standard markdown — bold, blockquote, list, diff blocks. Code blocks are ONLY for interview questions (alignment needed) and structured data (tables, contracts).
 
-**Final output (Phase 3):** ONE code block (the "card"). Internal hierarchy through spacing, `─` separators, symbols, and emojis. No multiple blocks, no markdown between sections.
+**Interview phase (Phase 1-2):** Each question in its own code block (selection alignment). Confirmations (`**✓ 분석 필요**`) outside code blocks as bold text.
 
-**Critical:** ALL designed output MUST be inside fenced code blocks so Claude Code preserves monospace formatting.
+**Final output (Phase 3):** Markdown sections separated by `---`. NOT a single code block.
+- Section labels: `**bold**` (e.g., `**가정**`, `**먼저 확인**`)
+- Assumptions: ` ```diff ` block — `+` lines = confirmed (green), `-` lines = uncertain/doubtful (red)
+- Check first: numbered list (`1. 2. 3.`)
+- Blind spot insight: `> blockquote` with 💡
+- Quick actions: inline code (`` `다음? 1 /recast · 2 수정 · 3 저장` ``)
+
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
+**No fixed width.** Do NOT enforce 76-char width. Markdown auto-wraps. Let it.
+
+**diff blocks = color tool.** Use sparingly (max 2-3 per output). `+` = confirmed/positive/key point (green). `-` = uncertain/risk/doubtful (red).
 
 ## The flow
 
 The reframe process has 3 phases. Show the overview first, then walk through each phase one question at a time.
 
-### Overview + First question (combined in ONE code block)
+### Overview + First question
 
-The overview and Q1 go in a SINGLE code block. The box header (`Overture · Reframe`) and progress dots ALWAYS stay in English. All other text (phase labels, question text, options) is in the user's language.
+The overview and Q1 go together. `Overture · Reframe` stays in English. All other text in user's language.
 
-**Template — translate text content to the user's language, keep UI chrome identical:**
+**Template:**
+
+Show this as markdown header + code block for the question:
+
+**Overture · Reframe** — ● Interview · ○ Assumptions · ○ Reframe
+
+① [Interview] (3) → ② [Assumptions] (3-4) → ③ [Reframe]
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ○ Assumptions  ○ Reframe   │
-  ╰──────────────────────────────────────────╯
+■ [Interview]                        1 / 3
 
-  ① [Interview] (3)  ② [Assumptions] (3-4)  ③ [Reframe]
+[What best describes this task?]
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1 · [Clear path — we know what to do]
+  2 · [Needs analysis — right answer exists but unclear]
+  3 · [No clear answer — must explore and learn]
+  4 · [On fire — urgent, need to act now]
 
-  ■ [Interview]                        1 / 3
-
-  [What best describes this task?]
-
-    1 · [Clear path — we know what to do]
-    2 · [Needs analysis — right answer exists but unclear]
-    3 · [No clear answer — must explore and learn]
-    4 · [On fire — urgent, need to act now]
-
-  ▸
+▸
 ```
 
-`[brackets]` = translate to user's language. Everything else (╭╮, ●○, ■, ▸, numbers, separators) stays exactly the same.
+The bold header line and progress dots are outside the code block as markdown. Only the question with numbered options goes in the code block (for alignment). `[brackets]` = translate to user's language.
 
 **Example in Korean:**
 - `[Interview]` → `인터뷰`
@@ -310,26 +318,23 @@ Shape emphasis using build interview signals (see mapping above).
 
 Then present each assumption ONE AT A TIME for evaluation. Same template rules: UI chrome in English, content in user's language.
 
-**First assumption includes the updated progress header. Subsequent ones omit the box header.**
+**First assumption includes the updated progress header. Subsequent ones omit the header.**
+
+**Overture · Reframe** — ✓ Interview · ● Assumptions · ○ Reframe
 
 ```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Reframe                      │
-  │  ● Interview  ● Assumptions  ○ Reframe   │
-  ╰──────────────────────────────────────────╯
+■ [Assumptions]                      1 / 4
 
-  ■ [Assumptions]                      1 / 4
+"[assumption text in user's language]"
 
-  "[assumption text in user's language]"
+  1 · [Confident] ✓
+  2 · [Uncertain] ?
+  3 · [Doubtful] ✗
 
-    1 · [Confident] ✓
-    2 · [Uncertain] ?
-    3 · [Doubtful] ✗
-
-  ▸
+▸
 ```
 
-For assumptions 2-4, omit the box header — just the section header + assumption + options.
+For assumptions 2-4, omit the bold header — just the code block with section header + assumption + options.
 
 Repeat for each assumption (3-4 total). Each is one number.
 
@@ -400,67 +405,69 @@ See `references/reframing-strategies.md` for strategy details and examples.
 
 The **hidden questions** CAN point to focused experiments or first steps.
 
-**Output — single card. Everything the user sees in ONE code block.**
+**Output — markdown sections, NOT a single code block.**
 
-**Card template (76-char content width, all in ONE code block):**
+**Template:**
 
+---
+
+**🎯 Reframe**
+
+**[물어본 것 label]:** "[original problem]"
+
+**[진짜 질문 label]:**
+[reframed question]
+
+[왜 더 날카로운가 — 1-2 sentences]
+
+---
+
+**[가정 label]**
+
+```diff
++ ✓ [confirmed assumption]
++ ✓ [confirmed assumption]
+- ? [uncertain assumption]
+- ? [uncertain assumption]
+- ✗ [doubtful assumption]
 ```
-  🎯 Reframe ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  [물어본 것 label]
-  "[original problem]"
+---
 
-  ▸ [진짜 질문 label]
-  [reframed question — wrap at 74 chars, ~36 Korean chars per line]
+**[먼저 확인 label]**
 
-  [왜 더 날카로운가 — 1-2 sentences, same wrap width]
+1. [question] — [reason]
+2. [question] — [reason]
+3. [question] — [reason]
 
-  [가정 label] ────────────────────────────────────────────────────────────────
+---
 
-  ✓ │ [confirmed assumption — aim for single line at 76-char width]
-  ✓ │ [confirmed assumption]
-  ──┼───────────────────────────────────────────────────────────────────────
-  ? │ [uncertain assumption]
-  ? │ [uncertain assumption]
+> 💡 [blind spot — the uncomfortable insight, 1-2 sentences]
 
-  [먼저 확인 label] ──────────────────────────────────────────────────────────
+`██░░░ ✓정의 ✓가정 ·검증 ·계획 ·테스트`
 
-  1  [question — aim for single line with → reason inline]
-  2  [question → reason]
-  3  [question → reason]
+`다음? 1 /recast · 2 수정 · 3 저장`
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  💡 [blind spot — 1-2 lines at 76-char width]
-
-  ██░░░ ✓정의 ✓가정 ·검증 ·계획 ·테스트
-  다음?  1 /recast · 2 수정 · 3 저장
-```
+---
 
 **Layout rules:**
-- **Width:** 76 chars content (80-char terminal with 2-char indent each side). Korean ≈ 36 chars/line. All ━━━ and ──── lines fill to 76 chars.
-- **Header:** 1-line with emoji + name + ━━━ fill. No 3-line box.
-- **Question comparison:** "물어본 것" + "▸ 진짜 질문" — labels create contrast, no decorative boxes.
-- **Assumptions:** Left-pipe only (`✓ │` / `? │`). No right border. `──┼──` separator between confirmed and uncertain groups. Doubtful assumptions (✗) go below uncertain with another separator.
-- **Check First:** Numbered list, no bullets. Aim for one line per question with → reason inline.
-- **Footer:** ━━━ heavy line → 💡 insight → readiness bar + actions on separate lines.
-- **Readiness:** `██░░░ ✓item ·item` — bar + items, `·` for pending. One line.
-- **Quick actions:** `1 /next · 2 수정 · 3 저장` — dot-separated, one line. No arrows.
+- **No fixed width.** Markdown auto-wraps. No 76-char enforcement.
+- **Sections:** Separated by `---` horizontal rules.
+- **Question comparison:** `**[물어본 것]:**` + `**[진짜 질문]:**` — bold labels create contrast.
+- **Assumptions:** Single `diff` block. `+` lines (green) = confirmed (✓). `-` lines (red) = uncertain (?), doubtful (✗). Group confirmed first, then uncertain, then doubtful.
+- **Check First:** Standard numbered list (`1. 2. 3.`). Each item: question — reason.
+- **Blind spot:** `> blockquote` with 💡. This is the uncomfortable insight.
+- **Readiness + quick actions:** Inline code on separate lines.
 
 **Quick action:** The user can type `1`, `2`, or `3`. `1` saves and launches the next skill. `2` shows editable items (see below). `3` saves and stops. If the user types anything else, respond naturally. Adapt labels to user's language.
 
 **When user picks `2` (수정):** Show numbered items they can modify:
-```
-  수정할 항목?
-  a · 리프레임 질문
-  b · 가정 평가 변경
-  c · 기타 (직접 입력)
-```
+
+> a. 리프레임 질문
+> b. 가정 평가 변경
+> c. 기타 (직접 입력)
+
 After adjustment, re-output the card and show quick actions again.
-
-**Visual shift boxes:** Original question in thin box (`┌┐`), reframed in bold box (`╔═╗`). The visual weight difference immediately shows the upgrade. `↓` arrow connects them.
-
-**Assumption table:** Each assumption gets its own row with evaluation symbol (`✓ ? ✗`) right-aligned. Full text, not abbreviated — the table format makes it readable without compression.
 
 **`[Check First]` absorbs AI limitations** — phrase questions to naturally show what needs human investigation (e.g., "직원 AI 수준 — 직접 파악" instead of separate section).
 
