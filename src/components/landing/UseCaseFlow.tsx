@@ -1,9 +1,8 @@
 'use client';
 
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-import { DynamicMark, StaffLines } from '@/components/ui/MusicalElements';
 
-function RevealCardX({ children, delay }: { children: React.ReactNode; delay: number }) {
+function RevealCard({ children, delay }: { children: React.ReactNode; delay: number }) {
   const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ delay });
   return (
     <div ref={ref} className={`h-full ${isVisible ? 'scroll-visible-x' : 'scroll-hidden-x'}`}>
@@ -12,10 +11,28 @@ function RevealCardX({ children, delay }: { children: React.ReactNode; delay: nu
   );
 }
 
-const cardDynamics: Array<{ mark: 'mp' | 'mf' | 'ff'; color: string }> = [
-  { mark: 'mp', color: '#2d4a7c' },
-  { mark: 'mf', color: '#6b4c9a' },
-  { mark: 'ff', color: '#2d6b2d' },
+const scenarios = [
+  {
+    emoji: '💻',
+    headline: '백엔드 개발자인데\n대표님이 기획안을 써오라고 했다',
+    before: '뭘 써야 할지 모르겠다. 기획은 내 전문이 아닌데.',
+    after: '기획안 구조가 잡혔다. 대표님이 뭘 보고 싶은지도 파악됐다.',
+    color: '#2d4a7c',
+  },
+  {
+    emoji: '📋',
+    headline: 'PM인데 전략 제안서를\n2시간 안에 내야 한다',
+    before: '시간이 없다. 어디서부터 시작해야 하지.',
+    after: '핵심만 뽑아서 설득력 있게 정리됐다. 약점도 미리 파악했다.',
+    color: '#6b4c9a',
+  },
+  {
+    emoji: '🎨',
+    headline: '디자이너인데\n비즈니스 케이스를 만들라고 했다',
+    before: '비즈니스 언어를 모르겠다. ROI가 뭐지.',
+    after: '숫자와 논리로 번역됐다. 경영진이 이해하는 언어로.',
+    color: '#2d6b2d',
+  },
 ];
 
 export function UseCaseFlow() {
@@ -25,126 +42,57 @@ export function UseCaseFlow() {
       <div className="relative max-w-5xl mx-auto px-5 md:px-6 py-12 md:py-16">
         <div className="text-center mb-8 md:mb-10">
           <h2 className="text-display-lg text-[var(--text-primary)]">
-            AI 시대, 실행 전의 판단을 설계합니다
+            내 전문 분야가 아닌 걸 해야 하는 사람들
           </h2>
+          <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)]">
+            막막한 상태에서 구조화된 결과물을 만들어 드립니다
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-          {/* ── Feature 1: 질문 재정의 ── */}
-          <RevealCardX delay={0}>
-            <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg)] p-5 md:p-6 flex flex-col shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300" style={{ borderTop: '2px solid #2d4a7c' }}>
-              <div className="flex items-center justify-between mb-1">
-                <div />
-                <DynamicMark level={cardDynamics[0].mark} className="text-[12px]" />
-              </div>
-              <div className="relative mb-4 md:mb-5 rounded-xl bg-[var(--surface)] p-3.5 md:p-4 min-h-[100px] md:min-h-[120px] flex flex-col justify-center shadow-inner overflow-hidden">
-                <StaffLines opacity={0.03} spacing={8} />
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center text-[8px] text-red-500 font-bold">&times;</span>
-                    <span className="text-[12px] md:text-[13px] text-[var(--text-secondary)] line-through decoration-red-300">&ldquo;경쟁사 대응 전략 세워줘&rdquo;</span>
+          {scenarios.map((s, i) => (
+            <RevealCard key={i} delay={i * 120}>
+              <div
+                className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg)] p-5 md:p-6 flex flex-col shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300"
+                style={{ borderTop: `2px solid ${s.color}` }}
+              >
+                {/* Emoji + headline */}
+                <div className="mb-4">
+                  <span className="text-[28px] md:text-[32px] block mb-2">{s.emoji}</span>
+                  <h3 className="text-[15px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug whitespace-pre-line">
+                    {s.headline}
+                  </h3>
+                </div>
+
+                {/* Before / After */}
+                <div className="flex-1 space-y-3">
+                  <div className="rounded-lg bg-[var(--surface)] p-3">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-3.5 h-3.5 rounded-full bg-red-100 flex items-center justify-center text-[7px] text-red-500 font-bold">&times;</span>
+                      <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">Before</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                      {s.before}
+                    </p>
                   </div>
-                  <div className="flex justify-center my-1.5">
+
+                  <div className="flex justify-center">
                     <svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 0v12M2 8l4 4 4-4" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] text-[#3b6dcc] font-bold">&#x2713;</span>
-                    <span className="text-[12px] md:text-[13px] font-semibold text-[var(--text-primary)]">&ldquo;우리만의 판은 어디인가?&rdquo;</span>
+
+                  <div className="rounded-lg bg-[var(--surface)] p-3 border border-[var(--accent)]/20">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-3.5 h-3.5 rounded-full bg-blue-100 flex items-center justify-center text-[7px] text-[#3b6dcc] font-bold">&#x2713;</span>
+                      <span className="text-[11px] font-semibold" style={{ color: s.color }}>After</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">
+                      {s.after}
+                    </p>
                   </div>
                 </div>
               </div>
-
-              <h3 className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
-                질문을 재정의합니다
-              </h3>
-              <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
-                과제 뒤에 숨은 전제를 찾아내고, 진짜 물어야 할 질문을 발견합니다.
-              </p>
-              <p className="mt-auto pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                CIA 정보분석에서 쓰이는 전제 점검 기법을 AI에 적용. 숨은 가정을 발견하면 확증편향이 감소합니다.
-              </p>
-            </div>
-          </RevealCardX>
-
-          {/* ── Feature 2: 이해관계자 시뮬레이션 ── */}
-          <RevealCardX delay={120}>
-            <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg)] p-5 md:p-6 flex flex-col shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300" style={{ borderTop: '2px solid #6b4c9a' }}>
-              <div className="flex items-center justify-between mb-1">
-                <div />
-                <DynamicMark level={cardDynamics[1].mark} className="text-[12px]" />
-              </div>
-              <div className="relative mb-4 md:mb-5 rounded-xl bg-[var(--surface)] p-3.5 md:p-4 min-h-[100px] md:min-h-[120px] flex flex-col justify-center shadow-inner overflow-hidden">
-                <StaffLines opacity={0.03} spacing={8} />
-                <div className="relative flex items-center justify-center gap-3">
-                  {[
-                    { initial: 'C', role: 'CEO', q: '시장 규모는?', color: '#E24B4A' },
-                    { initial: 'F', role: 'CFO', q: 'ROI 근거는?', color: '#EF9F27' },
-                    { initial: 'T', role: 'CTO', q: 'API 호환?', color: '#7F77DD' },
-                  ].map((p) => (
-                    <div key={p.role} className="flex flex-col items-center gap-1.5">
-                      <div className="w-8 md:w-9 h-8 md:h-9 rounded-full flex items-center justify-center text-white text-[11px] md:text-[12px] font-bold shadow-[var(--shadow-sm)]" style={{ backgroundColor: p.color }}>
-                        {p.initial}
-                      </div>
-                      <span className="text-[10px] md:text-[11px] font-semibold text-[var(--text-secondary)]">{p.role}</span>
-                      <span className="text-[10px] md:text-[11px] text-[var(--text-primary)] bg-[var(--bg)] rounded px-1.5 py-0.5 border border-[var(--border-subtle)] font-medium shadow-[var(--shadow-xs)]">
-                        {p.q}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <h3 className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
-                이해관계자를 시뮬레이션합니다
-              </h3>
-              <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
-                주요 이해관계자의 관점에서 반응과 리스크를 미리 시뮬레이션합니다.
-              </p>
-              <p className="mt-auto pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                다관점 AI 토론은 단일 AI 대비 추론 정확도를 8%p 향상시킵니다. <span className="opacity-60">— MIT, ICML 2024</span>
-              </p>
-            </div>
-          </RevealCardX>
-
-          {/* ── Feature 3: 가중 수렴 루프 ── */}
-          <RevealCardX delay={240}>
-            <div className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg)] p-5 md:p-6 flex flex-col shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300" style={{ borderTop: '2px solid #2d6b2d' }}>
-              <div className="flex items-center justify-between mb-1">
-                <div />
-                <DynamicMark level={cardDynamics[2].mark} className="text-[12px]" />
-              </div>
-              <div className="relative mb-4 md:mb-5 rounded-xl bg-[var(--surface)] p-3.5 md:p-4 min-h-[100px] md:min-h-[120px] flex flex-col justify-center shadow-inner overflow-hidden">
-                <StaffLines opacity={0.03} spacing={8} />
-                <div className="relative">
-                  <svg viewBox="0 0 140 65" className="w-full" style={{ height: '80px' }}>
-                    <line x1="20" y1="55" x2="130" y2="55" stroke="var(--border)" strokeWidth="0.5" />
-                    <line x1="20" y1="15" x2="130" y2="15" stroke="var(--success)" strokeWidth="0.7" strokeDasharray="3,2" />
-                    <text x="17" y="18" textAnchor="end" fontSize="7" fill="var(--success)" fontWeight="bold">80%</text>
-                    <polyline points="40,32 75,17 110,10" fill="none" stroke="#3b6dcc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="40" cy="32" r="3.5" fill="#3b6dcc" />
-                    <circle cx="75" cy="17" r="3.5" fill="#3b6dcc" />
-                    <circle cx="110" cy="10" r="4" fill="var(--success)" />
-                    <text x="40" y="44" textAnchor="middle" fontSize="8" fill="var(--text-secondary)" fontWeight="bold">45%</text>
-                    <text x="75" y="28" textAnchor="middle" fontSize="8" fill="var(--text-secondary)" fontWeight="bold">78%</text>
-                    <text x="110" y="22" textAnchor="middle" fontSize="9" fill="var(--success)" fontWeight="bold">92%</text>
-                    <text x="40" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">1차</text>
-                    <text x="75" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">2차</text>
-                    <text x="110" y="62" textAnchor="middle" fontSize="7" fill="var(--text-tertiary)">3차</text>
-                  </svg>
-                </div>
-              </div>
-
-              <h3 className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] mb-2 leading-snug">
-                피드백을 반영하며 수렴합니다
-              </h3>
-              <p className="text-[13px] md:text-[14px] text-[var(--text-primary)]/80 leading-relaxed">
-                매 반복마다 맥락이 누적되고, 충분히 수렴하면 실행에 옮깁니다.
-              </p>
-              <p className="mt-auto pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                60년간 검증된 델파이 기법의 디지털 구현. 반복 수렴은 비구조적 토론보다 정확합니다. <span className="opacity-60">— RAND Corporation</span>
-              </p>
-            </div>
-          </RevealCardX>
+            </RevealCard>
+          ))}
         </div>
       </div>
     </section>

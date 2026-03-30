@@ -15,6 +15,8 @@ allowed-tools: Read, Bash, Glob, Grep
 
 **Always respond in the same language the user uses.**
 
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
 ## Diagnostic Flow
 
 Run ALL checks, collect all results, then present a unified report. Never stop at the first issue.
@@ -91,32 +93,30 @@ Check if reference/support files exist in the skill directories:
 
 Present a unified diagnostic report:
 
-```
-  ╭──────────────────────────────────────────╮
-  │  🔍 Overture · Doctor                   │
-  ╰──────────────────────────────────────────╯
+**🔍 Overture · Doctor**
 
-  Skills          10/10  ✓
-  Agents           1/1   ✓
-  Data dir         ✓     .overture/
-  Journal          ✓     [N] entries ([date] → [date])
-  Config           [✓/✗] .overture/config.json
-  Contract chain   [✓/⚠/✗] [status]
-  References       [N]/4  [✓/⚠]
+| Check | Status | Detail |
+|-------|--------|--------|
+| Skills | 10/10 ✓ | |
+| Agents | 1/1 ✓ | |
+| Data dir | ✓ | .overture/ |
+| Journal | ✓ | [N] entries ([date] → [date]) |
+| Config | [✓/✗] | .overture/config.json |
+| Contract chain | [✓/⚠/✗] | [status] |
+| References | [N]/4 | [✓/⚠] |
 
-  ─────────────────────────────────────────
+---
 
-  Journal breakdown:
-    /reframe   [N] runs
-    /recast    [N] runs
-    /rehearse  [N] runs
-    /refine    [N] runs
-    /overture  [N] runs
+**Journal breakdown:**
+- /reframe — [N] runs
+- /recast — [N] runs
+- /rehearse — [N] runs
+- /refine — [N] runs
+- /overture — [N] runs
 
-  ─────────────────────────────────────────
+---
 
-  [Issues found / All clear]
-```
+[Issues found / All clear]
 
 ### If issues found:
 

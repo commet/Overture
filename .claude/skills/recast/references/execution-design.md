@@ -125,11 +125,9 @@ The critical path is the longest chain of dependent steps. Mark these steps in t
 
 When a step is assigned to "both", always specify the boundary:
 
-```
-Step: Competitive pricing analysis
-├─ AI scope: Collect pricing data from 10 competitor websites, generate comparison table
-├─ Human scope: Interpret which pricing model fits our positioning, decide our price point
-└─ Handoff: AI delivers table → Human makes decision → Decision recorded as checkpoint
-```
+**Step: Competitive pricing analysis**
+- **AI scope:** Collect pricing data from 10 competitor websites, generate comparison table
+- **Human scope:** Interpret which pricing model fits our positioning, decide our price point
+- **Handoff:** AI delivers table → Human makes decision → Decision recorded as checkpoint
 
 The handoff point must be explicit. "AI and human collaborate" is never acceptable.

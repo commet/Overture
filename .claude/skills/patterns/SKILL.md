@@ -15,6 +15,8 @@ allowed-tools: Read
 
 **Always respond in the same language the user uses.**
 
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
 ## Pattern Analysis Flow
 
 ### Step 0: Read journal
@@ -23,19 +25,14 @@ Read `.overture/journal.md` from the project root.
 
 **If journal doesn't exist or has < 3 entries:**
 
-```
-  ╭──────────────────────────────────────────╮
-  │  📊 Overture · Patterns                 │
-  ╰──────────────────────────────────────────╯
+**📊 Overture · Patterns**
 
-  Not enough data yet. You have [N] run(s).
+Not enough data yet. You have [N] run(s).
 
-  Run /overture or /reframe at least 3 times
-  to start seeing patterns.
+Run `/overture` or `/reframe` at least 3 times to start seeing patterns.
 
-  Current history:
-  [list entries if any]
-```
+Current history:
+[list entries if any]
 
 **If journal has 3+ entries:** Proceed with full analysis.
 
@@ -108,50 +105,63 @@ One specific, actionable suggestion for their next run. Not generic advice but t
 
 ## Output
 
-```
-  ╭──────────────────────────────────────────╮
-  │  📊 Overture · Patterns                 │
-  │  [N] runs · [date range]                │
-  ╰──────────────────────────────────────────╯
+**📊 Overture · Patterns** — [N] runs · [date range]
 
-  ━━━ Your strengths ━━━━━━━━━━━━━━━━━━━━━━
-  1. [specific strength with evidence]
-  2. [specific strength with evidence]
-  3. [specific strength with evidence]
+---
 
-  ━━━ Blind spots ━━━━━━━━━━━━━━━━━━━━━━━━━
-  ⚠ [pattern 1 — specific, with run count]
-  ⚠ [pattern 2 — specific, with run count]
+**Your strengths**
 
-  ━━━ Decision Quality ━━━━━━━━━━━━━━━━━━━━
-  Trend: [↑ improving / → stable / ↓ declining]
+1. [specific strength with evidence]
+2. [specific strength with evidence]
+3. [specific strength with evidence]
 
-  [score1] → [score2] → [score3] → [scoreN]
-  ████░  ████░  █████  █████
+---
 
-  Best:  [element] — [why]
-  Worst: [element] — [why]
+**Blind spots**
 
-  ━━━ Your thinking profile ━━━━━━━━━━━━━━
-  [one paragraph characterization]
+- ⚠ [pattern 1 — specific, with run count]
+- ⚠ [pattern 2 — specific, with run count]
 
-  ━━━ Next run ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  💡 [specific, actionable recommendation]
+---
 
-  ─────────────────────────────────────────
+**Decision Quality**
 
-  Skill usage:
-    /reframe  [N]  ██████░░░░
-    /recast   [N]  ████░░░░░░
-    /rehearse [N]  ████░░░░░░
-    /refine   [N]  ███░░░░░░░
-    /overture [N]  ██░░░░░░░░
+Trend: [↑ improving / → stable / ↓ declining]
 
-  Assumption tendency:
-    ✓ Confident  [N]%  ██████░░░░
-    ? Uncertain  [N]%  ████░░░░░░
-    ✗ Doubtful   [N]%  ██░░░░░░░░
-```
+| Run | Score | Change |
+|-----|-------|--------|
+| 1 | [score1] | |
+| 2 | [score2] | [+/-] |
+| 3 | [score3] | [+/-] |
+
+Best: [element] — [why]
+Worst: [element] — [why]
+
+---
+
+**Your thinking profile**
+
+[one paragraph characterization]
+
+---
+
+**Next run**
+
+> 💡 [specific, actionable recommendation]
+
+---
+
+**Skill usage:**
+- /reframe — [N] runs
+- /recast — [N] runs
+- /rehearse — [N] runs
+- /refine — [N] runs
+- /overture — [N] runs
+
+**Assumption tendency:**
+- ✓ Confident — [N]%
+- ? Uncertain — [N]%
+- ✗ Doubtful — [N]%
 
 ## Rules
 

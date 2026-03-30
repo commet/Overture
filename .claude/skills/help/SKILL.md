@@ -6,47 +6,52 @@ allowed-tools: Read
 
 **Always respond in the same language the user uses.**
 
-Display using hybrid rendering — description in markdown, commands in code blocks:
+**No box drawing.** Use `---`, `**bold**`, and whitespace for structure.
 
-**Overture — Decision Harness for AI**
+Display using hybrid rendering:
 
-AI gives generic answers when you ask generic questions. Overture sharpens your thinking before you ask — whether you're building a product or making a strategic decision.
+**Overture — 막막할 때 쓰는 구조화 도구**
+
+내 전문 분야가 아닌 걸 해야 할 때. 질문 하나 던지면 30초 안에 뼈대가 나옵니다.
+기획안, 전략 제안서, 비즈니스 케이스... 채울수록 날카로워집니다.
 
 ---
 
-**Quick start** — same commands, auto-adapts to what you're doing:
+**Quick start:**
 
 ```
-  /reframe "expand into SEA"        → strategy mode (decide)
-  /reframe "할 일 관리 앱"            → product mode (build)
+  /overture "개발자인데 대표님이 기획안 짜오라고 했어"
 
-  The framework detects your context and adapts:
-  interview questions, assumptions, personas, output format.
+  → 30초 안에 기획안 뼈대 + 숨겨진 전제
+  → 질문 2-3개에 답하면 더 날카로워짐
+  → "대표님은 뭐라고 할까?" 시뮬레이션
+  → 최종 결과물 + 바로 쓸 수 있는 프롬프트
 ```
 
 ```
-  The 4R Framework:
+  개별 스킬 (각각 독립적으로 사용 가능):
 
-  /reframe       Find hidden assumptions, sharpen your question
-  /recast        Design execution plan (decide) or product spec (build)
-  /rehearse      Stress-test with stakeholders or user personas
-  /refine        Fix issues, iterate until solid
-  /overture      Full pipeline — all 4 stages + score + deliverables
+  /reframe       문제 재정의 — 숨겨진 전제 발견, 진짜 질문 도출
+  /recast        실행 설계 — AI/사람 역할 분배, 기획안 구조화
+  /rehearse      사전 검증 — 판단자 반응 시뮬레이션, 약점 발견
+  /refine        수정 반영 — 피드백 반영, 수렴까지 반복
+
+  /overture      전체 파이프라인 — 위 4단계를 한 번에
 
   /reframe → /recast → /rehearse → /refine
-  Each step works independently, or chain them. /overture runs all.
+  각 스킬은 독립 사용 가능. /overture는 전체를 순차 실행.
 
-  Utility:
+  유틸리티:
 
-  /overture:setup       Verify installation, detect issues
-  /overture:doctor      Diagnose problems in detail
-  /overture:configure   Set language, presets, journal
-  /overture:patterns    Analyze your thinking patterns
+  /overture:setup       설치 확인
+  /overture:doctor      문제 진단
+  /overture:configure   설정 (언어, 프리셋, 저널)
+  /overture:patterns    사고 패턴 분석 (3회 이상 사용 후)
 ```
 
-**Context-adaptive output:**
+**결과물:**
 
-Building something? → Implementation Prompt (paste into Cursor/Claude Code) + Product Brief
-Making a decision? → Sharpened Prompt + Thinking Summary + Agent Harness
+만드는 것? → Implementation Prompt (Cursor/Claude Code에 바로 붙여넣기) + Product Brief
+판단하는 것? → Sharpened Prompt + Thinking Summary + Agent Harness
 
 \+ Decision Quality score (0-100) on every `/overture` run

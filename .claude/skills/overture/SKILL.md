@@ -1,427 +1,430 @@
 ---
 name: overture
-description: "Full decision harness. Runs the complete pipeline: reframe your question, design execution, stress-test with stakeholders, refine until solid, score your thinking. Produces 3 deliverables: a sharpened prompt, a team-shareable summary, and an agent-ready harness document. Use for important decisions. Takes 5-10 minutes."
-argument-hint: "[important decision or problem]"
+description: "Structured thinking tool for decisions and plans. Input a problem, get an instant first draft. Answer a few questions, it gets sharper. Simulate your boss's reaction. Get a final deliverable. Progressive — each step adds value, stop anytime."
+argument-hint: "[problem, decision, or task you need to figure out]"
 effort: high
 allowed-tools: Read, Write, Agent, AskUserQuestion
 ---
 
 ## When to use
 
-- ✓ Important decisions that affect your team, product, or career
-- ✓ Building a product — get a sharp spec before asking AI to code
-- ✓ When the cost of a wrong decision is high (irreversible, expensive, political)
-- ✓ Before a board meeting, product launch, or strategic pivot
-- ✓ When you want the full analysis: reframe → plan → stress-test → refine → score
+- ✓ You need to produce something outside your expertise (dev asked to write a plan, PM asked for strategy)
+- ✓ Important decisions — before committing time, money, or reputation
+- ✓ Building a product — get a sharp spec before coding
+- ✓ You're stuck and need structure, not more brainstorming
 - ✗ Quick tactical questions (use /reframe alone)
-- ✗ When you only need one step (use /reframe, /recast, /rehearse, or /refine individually)
+- ✗ You already know exactly what to do (just do it)
 
-This is the full pipeline. Like running a complete test suite before deploying — but for decisions and product ideas.
-
-You will run 4 stages autonomously, then score the quality of the thinking process. Keep moving between stages, but after Stage 1 (Reframe), briefly pause to show the reframed question — if the user wants to adjust it, use their correction.
-
-**Always respond in the same language the user uses. All deliverables must be in the user's language.**
-
-## Context-adaptive pipeline
-
-The pipeline auto-detects context from the user's input using /reframe's context detection logic:
-
-**Build context** (product/app idea detected):
-- Lighter: ~5 min total (vs 5-10 for decide)
-- Reframe: build interview (audience/success/scale), product assumptions (3, not 4)
-- Recast: product spec (features P0/P1/P2 + scope cuts) instead of execution steps
-- Rehearse: 2 user personas instead of 3 stakeholders, lighter Devil's Advocate
-- Refine: max 1 round
-- Deliverables adapt (see Stage 5 below)
-
-**Decide context** (default): full pipeline unchanged.
-
-The `context` field flows through all stages via the Context Contract.
-
-## Before starting
-
-Check if `.overture/journal.md` exists.
-
-**If it does NOT exist (first use):** Before starting, say:
-
-> First time running the full pipeline! Here's what'll happen:
-> 1. I'll find hidden assumptions in your problem and reframe it (~2 min)
-> 2. Design an execution plan with clear AI/human roles (~2 min)
-> 3. Simulate 3 stakeholders who'll stress-test your plan (~3 min)
-> 4. Fix the issues they find and re-verify (~2-5 min)
-> 5. Score your thinking quality and give you 3 deliverables
->
-> Let's go.
-
-Then, after analyzing the user's initial problem statement, offer one **counterfactual insight** — a concrete suggestion framed as possibility, not criticism:
-
-> ▸ Tip: if you had [specific action, e.g. "separated the timeline constraint from the market question"], [specific benefit, e.g. "the assumptions would have been clearer from the start"]. Something to try next time.
-
-This plants a seed. Even on a first run, the user walks away with something they can consciously try next time.
-
-**If it exists (2-4 entries):** Read all entries. Surface one specific improvement AND one area to watch:
-
-> ▸ Growth: [specific observation, e.g. "Last time you missed the regulatory angle — this time you named it upfront."]
-> ▸ Watch: [recurring pattern, e.g. "You tend to skip stakeholder concerns about timeline. Worth probing this time."]
-
-**If it exists (5+ entries):** Read last 10 entries. Surface a **strength profile** alongside weak patterns:
-
-> ▸ Your pattern (N runs): You consistently [strength, e.g. "reframe questions sharply — your reframing scores average 4.2/5"]. Your growth edge is [area, e.g. "exploring alternatives — you tend to commit to your first direction quickly"].
-
-The tone is a coach who has watched you over time — not a scorecard, but a "here's what I've noticed."
+**Always respond in the same language the user uses.** All output in user's language.
 
 ## If no argument is provided
 
-If the user just types `/overture` without a problem, ask:
+Ask ONLY this:
 
-> What important decision or problem should we think through?
+> What problem or decision are you working on?
 
-Wait for their response, then proceed with the full pipeline.
+Wait for response. Then proceed.
 
-## Context constraints
+## Core principle: Progressive Value
 
-If running in a long conversation or constrained context, adapt: reduce to 2 personas (instead of 3), limit to 1 refinement round, but always produce all 3 deliverables.
+Every step produces a **usable result**. The user can stop at any point and walk away with something valuable. Don't make them wait through a long pipeline before seeing output.
 
-Show the pipeline header at the start:
+```
+Input → Instant draft (~30 sec)
+     → Interview sharpens it (~1 min)
+     → "What would [judge] say?" (~1 min)
+     → Final deliverable (~1 min)
+```
 
-**Overture · 4R Pipeline** — reframe → recast → rehearse → refine
+## Context detection
 
-## Stage 1 of 4: Reframe (~2 min)
+After receiving the problem, detect context from input:
 
-Run `/reframe` in fast mode — use its full process, its design system, and its output format. The only difference:
-- Skip the interactive interview. Infer signals from the user's input instead. Mark inferred signals with `[inferred]` in the Context Contract.
-- If the user's input contains confidence signals ("we've validated X"), reflect those. Otherwise treat all assumptions as "uncertain."
-- **MUST produce the `■ Context Contract — /reframe` block.** This is the input for Stage 2.
+**Build context** — creating something:
+- Signals: build, make, create, app, tool, SaaS, MVP, ship, 만들다, 개발, 앱, 서비스, 플랫폼
+- Deliverable adapts: product spec, implementation prompt
 
-After the reframe output, show the breadcrumb — completed steps in diff `+` (green):
+**Decide context** (default) — making a decision or plan:
+- Signals: decide, strategy, plan, expand, hire, should we, 결정, 전략, 기획, 기획안, 제안서, 보고서
+- Deliverable adapts: execution plan, sharpened prompt
+
+If ambiguous, use AskUserQuestion:
+- question: "이건 뭘 만드는 건가요, 아니면 판단/기획하는 건가요?"
+- header: "컨텍스트"
+- options:
+  - label: "만드는 것", description: "앱, 서비스, 도구 등을 만들려는 상황"
+  - label: "판단/기획", description: "전략, 기획안, 제안서 등을 만들거나 결정하는 상황"
+
+Record as `context: build` or `context: decide`.
+
+## Step 1: Instant First Draft
+
+**Do this IMMEDIATELY after receiving input. No interview. No preamble.**
+
+Analyze the input and produce a first draft in ~30 seconds:
+
+### Output format:
+
+---
+
+**Overture** · {context label}
+
+**상황 정리**
+[2-3줄. 사용자가 처한 상황을 명확히 정리. 입력에서 추론.]
+
+**진짜 질문**
+[리프레이밍된 핵심 질문. 사용자가 물어본 것과 실제로 해결해야 할 것의 차이를 짚는다. 1-2문장.]
+
+**{기획안 뼈대 / 제품 뼈대 / 실행 구조}** (context에 따라 레이블)
+
+```
+1. [첫 번째 항목 — 구체적]
+2. [두 번째 항목]
+3. [세 번째 항목]
+4. [네 번째 항목] (있다면)
+5. [다섯 번째 항목] (있다면)
+```
+
+**숨겨진 전제**
 
 ```diff
-+ reframe ●  done
-```
-```
-  recast  ○  next
-  rehearse ○
-  refine   ○
+- ? [전제 1 — 맞는지 확인 필요]
+- ? [전제 2 — 맞는지 확인 필요]
+- ? [전제 3 — 맞는지 확인 필요]
 ```
 
-**Micro-acknowledgment (if earned):** Did the user's original input already contain a sharp insight — an assumption they named, a risk they anticipated, a nuance most people miss? If so, acknowledge it in one specific line: `▸ [what they did well and why it matters]`. If nothing stands out, say nothing — silence is better than generic praise.
+---
 
-Ask: **"Does this capture the real question? Correct me if not — otherwise I'll continue."** Wait for a response. If the user confirms or says nothing, proceed. If they correct, use the correction.
+> 이건 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.
 
-## Stage 2 of 4: Recast (~2 min)
+---
 
-Run `/recast` — use its full process, design system, and output format.
-- **Extract the `■ Context Contract — /reframe` from Stage 1 output above.** Apply the full context extraction protocol (assumption merge, risk stance, signal mapping, AI limitation validation).
-- Use the reframed question as the goal
-- Incorporate uncertain/doubtful assumptions as validation steps
-- Generate 3 stakeholder personas for review
-- **MUST produce the `■ Context Contract — /recast` block.** This is the input for Stage 3.
+**Tone rules for Step 1:**
+- Direct. No hedging. "이건 초안이다" not "이건 초안일 수 있습니다."
+- Name what you DON'T know yet, don't pretend to know.
+- The draft must be concrete enough to be useful AS-IS. "기획안 구조" not "기획안에 대해 생각해볼 점".
 
-After the recast output, show breadcrumb:
+## Step 2: Interview (AskUserQuestion)
+
+**Use the AskUserQuestion tool.** Do NOT present questions as code blocks or numbered lists. Call the AskUserQuestion tool directly.
+
+Ask 2-3 questions depending on what's missing from the input. Skip questions whose answers are already clear from input.
+
+### Decide context questions:
+
+**Q1 (always ask):**
+- question: "이 결과물을 누가 최종 판단해?"
+- header: "판단자"
+- options:
+  - label: "대표/CEO", description: "대표님이 직접 검토하고 판단"
+  - label: "팀장/이사", description: "중간 관리자가 검토"
+  - label: "투자자/외부", description: "외부 이해관계자가 대상"
+  - label: "아직 모름", description: "판단자가 불명확하거나 나 자신"
+
+→ Record as `judge`. This determines the persona in Step 3.
+
+**Q2 (ask if not clear from input):**
+- question: "가장 걱정되는 건?"
+- header: "핵심 걱정"
+- options:
+  - label: "뭘 해야 할지 모름", description: "방향 자체가 안 잡힘"
+  - label: "구조화가 안 됨", description: "내용은 있는데 정리가 안 됨"
+  - label: "설득력 부족", description: "논리나 근거가 약할 것 같음"
+  - label: "시간 부족", description: "급해서 빠르게 결과를 내야 함"
+
+### Build context questions:
+
+**Q1 (always ask):**
+- question: "이걸 누가 쓸 건가요?"
+- header: "사용자"
+- options:
+  - label: "나만 쓸 것", description: "개인 도구나 프로젝트"
+  - label: "특정 그룹", description: "정해진 사용자층이 있음"
+  - label: "누구나", description: "대중을 대상으로"
+  - label: "아직 모름", description: "사용자가 불명확"
+
+→ Record as `audience`.
+
+**Q2 (ask if not clear):**
+- question: "성공이 뭔가요?"
+- header: "성공 기준"
+- options:
+  - label: "사람들이 쓴다", description: "실제 사용자 확보"
+  - label: "아이디어 검증", description: "가설이 맞는지 확인"
+  - label: "돈을 번다", description: "매출/수익 발생"
+  - label: "배움/포트폴리오", description: "실력 향상이 목적"
+
+## Step 2 Output: Updated Draft
+
+Interview 답변을 반영해서 Step 1의 결과물을 **즉시 업데이트**한다.
+
+### Output format:
+
+---
+
+**상황 업데이트**: [인터뷰에서 새로 파악된 것 1줄]
+
+**진짜 질문 (수정)**
+[인터뷰 반영해서 더 날카로워진 질문. 변한 부분을 diff로:]
+
 ```diff
-+ reframe ●  done
-+ recast  ●  done
-```
-```
-  rehearse ○  next
-  refine   ○
+- [이전 질문]
++ [업데이트된 질문]
 ```
 
-**Micro-acknowledgment (if earned):** Did the reframed question lead to an unusually clear role separation, or did the user's context make checkpoint placement obvious? Acknowledge one specific strength if genuine. Say nothing if nothing stands out.
+**{기획안 뼈대 / 제품 뼈대} (수정)**
+[인터뷰 반영 업데이트. 판단자·대상·약점이 반영됨.]
 
-## Stage 3 of 4: Rehearse (~3 min)
+```
+1. [수정된 항목 — 변경 이유 간단히]
+2. [항목]
+3. [항목]
+...
+```
 
-Run `/rehearse` — use its full process, design system, and output format.
-- **Extract BOTH Contract blocks** from Stage 1 (/reframe) and Stage 2 (/recast). Inject into each persona's review per /rehearse's context extraction protocol.
-- Use the personas from Stage 2's Contract
-- **MUST produce the `■ Context Contract — /rehearse` block.** This is the input for Stage 4.
+**전제 업데이트**
 
-After the rehearse output, show breadcrumb:
 ```diff
-+ reframe  ●  done
-+ recast   ●  done
-+ rehearse ●  done
-```
-```
-  refine   ○  next
++ ✓ [확인된 전제]
+- ✗ [의심되는 전제 — 인터뷰로 드러남]
+- ? [아직 불확실한 전제]
 ```
 
-**Micro-acknowledgment (if earned):** Did a persona raise an issue the user had already flagged? Did the user's initial framing make the stress-test sharper than usual? Acknowledge if genuine.
+**확인하면 좋은 것**
+1. [구체적 질문 — 이유]
+2. [구체적 질문 — 이유]
 
-## Stage 4 of 4: Refine (~2-5 min)
+---
 
-Run `/refine` — use its full process, design system, and output format.
-- Auto-address all critical issues (no user confirmation needed)
-- Maximum 2 refinement rounds (reduced from default 3 to keep total time under 10 minutes)
+## Step 3: Curiosity Trigger — "XX은 뭐라고 할까?"
 
-## Stage 5: Score and deliver
+After showing the updated draft, trigger curiosity:
 
-Evaluate the entire pipeline and produce 3 deliverables. Save all deliverables plus DQ scorecard to `.overture/last-run.md`.
+Based on the `judge` from Q1:
+- 대표/CEO → "**대표님은 이걸 보고 뭐라고 할까?**"
+- 팀장/이사 → "**팀장님은 뭐라고 할까?**"
+- 투자자/외부 → "**투자자는 뭐라고 할까?**"
+- 모름/자신 → "**가장 까다로운 사람이라면 뭐라고 할까?**"
+- Build context → "**실제 사용자는 이걸 보고 뭐라고 할까?**"
 
-### Context-dependent deliverables
+Show this as a prompt, then **automatically proceed** (don't wait for user to say "yes"):
 
-| # | Decide context | Build context |
-|---|---|---|
-| 1 | Sharpened Prompt | **Implementation Prompt** |
-| 2 | Thinking Summary | **Product Brief** |
-| 3 | Agent Harness | Agent Harness (same) |
+> **[판단자]는 이걸 보고 뭐라고 할까?**
 
-### ■ Deliverable 1
+Then run the simulation:
 
-**Decide: Sharpened Prompt**
+### Simulation rules:
+- Create a persona based on `judge` + context. Infer role, priorities, communication style from the situation.
+- The persona reviews the updated draft (Step 2 output).
+- Be SPECIFIC and UNCOMFORTABLE. Not "좋은 방향이지만 보완이 필요합니다" but "이 기획안은 실행 타임라인이 없다. 2주 안에 뭘 언제까지 하겠다는 건지 안 보인다."
+- Must surface at least 1 unspoken concern (what they think but won't say directly).
 
-A ready-to-use prompt the user can paste into any AI conversation. It should incorporate the reframed question, key constraints discovered, and what to watch out for.
+### Devil's Advocate (runs simultaneously):
+Use the devils-advocate agent with 3 lenses:
+1. **가장 현실적인 실패**: 6개월 뒤 이게 망했다면, 뭐 때문이었을까? (평범한 이유)
+2. **아무도 말 안 하는 문제**: 모두가 알지만 회의에서 안 꺼내는 것
+3. **1년 후 후회**: 돌아보면 이걸 고려했어야 했는데
 
-> **✦ Sharpened Prompt** — paste into your next AI conversation:
+### Step 3 Output format:
+
+---
+
+**{판단자 이름/역할}의 반응**
+
+> "[핵심 한마디 — 직접 인용 스타일, 날카롭게]"
+
+**약점 3가지:**
+1. [구체적 약점 + 왜 문제인지]
+2. [구체적 약점]
+3. [구체적 약점]
+
+**이렇게 고치면 OK할 가능성 높아짐:**
+1. [구체적 수정 방향]
+2. [구체적 수정 방향]
+3. [구체적 수정 방향]
+
+```diff
+- ✗ [critical — 이게 안 되면 전체가 안 됨]
+- 🔇 [unspoken — 다들 알지만 안 말하는 것]
+```
+
+---
+
+**Devil's Advocate**
+
+```diff
+- ✗ [가장 현실적인 실패 — 1줄]
+- 🔇 [아무도 말 안 하는 문제 — 1줄]
+- ⏳ [1년 후 후회 — 1줄]
+```
+
+---
+
+## Step 4: Final Deliverable
+
+Combine everything into the final output. Apply the fixes from Step 3.
+
+### Output format:
+
+---
+
+**Overture · 최종 정리**
+
+**진짜 질문**
+[최종 리프레이밍]
+
+**{최종 기획안 / 제품 스펙 / 실행 계획}**
+
+[Step 2의 구조를 Step 3의 피드백으로 수정한 최종본.
+각 항목에 구체적 내용이 있어야 함. 뼈대가 아니라 살이 붙은 결과물.]
+
+```
+1. [항목] — [구체적 내용/설명]
+2. [항목] — [구체적 내용/설명]
+3. [항목] — [구체적 내용/설명]
+...
+```
+
+**핵심 전제 (최종)**
+
+```diff
++ ✓ [확인된 것]
+- ✗ [위험한 전제 — 반드시 확인 필요]
+- ? [불확실 — 진행하면서 확인]
+```
+
+---
+
+### ■ Deliverable: Sharpened Prompt
+
+> **✦ 이 프롬프트를 AI에 바로 붙여넣으세요:**
 >
-> *[reframed question with context, constraints, and guardrails baked in. Include what AI should focus on and what it should flag for human review.]*
+> [리프레이밍된 질문 + 제약 조건 + 주의할 점이 녹아든 프롬프트.
+>  AI가 바로 작업할 수 있을 정도로 구체적이어야 함.]
 
-**Build: Implementation Prompt**
+**Build context → Implementation Prompt:**
 
-A ready-to-use prompt the user can paste into Cursor, Claude Code, Bolt, or any AI coding tool. Incorporates the product thesis, features, constraints, and scope cuts.
-
-> **✦ Implementation Prompt** — paste into Cursor, Claude Code, or any AI coding tool:
+> **✦ 이 프롬프트를 Cursor/Claude Code에 붙여넣으세요:**
 >
 > Build a [type] that [thesis].
->
-> Target user: [who — one line]
->
-> Core features (build these first):
-> - [P0]: [specific behavior]
-> - [P0]: [specific behavior]
->
-> Then add:
-> - [P1]: [specific behavior]
->
-> Do NOT build: [specific scope cuts]
->
-> Constraints:
-> - [from assumptions/persona feedback]
->
+> Target user: [who]
+> Core features: [P0 — specific behavior]
+> Do NOT build: [scope cuts]
 > Success = [metric]
 
-Every line must earn its place. Features describe behavior, not labels. A developer should know what to build with zero follow-up questions.
+### ■ Deliverable: Thinking Summary
 
-### ■ Deliverable 2
+Team-shareable. Slack/email에 바로 붙여넣을 수 있는 분량 (3000자 이내).
 
-**Decide: Thinking Summary**
-
-A team-shareable summary. Written like an email you'd send to your team — not a consulting document. Keep it under 3000 characters (Slack-friendly).
-
-**Build: Product Brief**
-
-A shareable product brief. Same format as Thinking Summary but product-framed:
-
-**Render as markdown bold/italic** — reads like an email, not a report:
-
-**Decide context format:**
-
-**TL;DR:** [one sentence: what changed in our thinking and what to do next]
-
-**Original question vs. the real question:**
+**TL;DR:** [한 문장]
 
 ```diff
-- Asked: [original]
-+ Real question: [reframed]
+- 물어본 것: [original]
++ 진짜 질문: [reframed]
 ```
 
-**Why:** [one sentence]
-
-**Key risks found:**
-
+**핵심 리스크:**
 ```diff
-- [critical] [risk — one line]
-- [unspoken] [risk — one line]
+- [critical risk — 1줄]
+- [unspoken risk — 1줄]
 ```
 
-**Sharpest critique:** *"[direct quote from the most challenging persona]"* — [persona name]
+**날카로운 한마디:** *"[판단자의 핵심 피드백]"*
 
-**Next steps:**
-1. [concrete action + who]
-2. [concrete action + who]
-3. [concrete action + who]
+**다음 단계:**
+1. [구체적 행동 + 누가]
+2. [구체적 행동 + 누가]
 
-**Decision Quality:** [N]/100
+---
 
-**Build context format:**
+### ■ Decision Quality Score (선택적)
 
-**TL;DR:** [one sentence: what you're building and the one thing that changed]
-
-**Original idea vs. real product:**
-
-```diff
-- Idea: [original]
-+ Product: [thesis]
-```
-
-**Why the shift:** [one sentence]
-
-**MVP scope:** P0: [features] | Cut: [what NOT to build]
-
-**Reality check:**
-
-```diff
-- [critical] [user risk — one line]
-- [unspoken] [market risk — one line]
-```
-
-**Sharpest pushback:** *"[skeptic's core objection]"*
-
-**Before you build:**
-1. [validate this assumption first]
-2. [build this P0 feature first]
-3. [measure this metric]
-
-**Decision Quality:** [N]/100
-
-### ■ Deliverable 3: Agent Harness
-
-A structured instruction document for AI agents — ready to paste into a CLAUDE.md, project brief, or any agent configuration tool. This gives an AI agent everything it needs to execute the plan with the right constraints and checkpoints.
-
-**Render as `yaml` code block** — structured document with syntax highlighting:
-
-```yaml
-mission: "[reframed question — this is what we're solving]"
-
-success_criteria:
-  - "[from recast: what 'done' looks like for each step]"
-
-steps:
-  - name: "[step]"
-    owner: human
-    deliverable: "[specific output]"
-    checkpoint: true
-
-  - name: "[step]"
-    owner: ai
-    deliverable: "[specific output]"
-
-  - name: "[step]"
-    owner: both
-    ai_scope: "[what AI does]"
-    human_scope: "[what human does]"
-    deliverable: "[specific output]"
-
-constraints:
-  - "[uncertain assumption → must validate before proceeding]"
-  - "[AI limitation → human must handle this]"
-  - "[stakeholder requirement → must satisfy before delivery]"
-
-risks:
-  critical: "[risk + mitigation]"
-  unspoken: "[risk + how to surface it]"
-
-stakeholders:
-  - name: "[Name]"
-    needs: "[specific deliverable/metric to approve]"
-    will_block_if: "[specific concern isn't addressed]"
-```
-
-### ■ Decision Quality Scorecard
-
-Score the thinking process (not the outcome — outcomes aren't known yet).
-
-6 elements, each 0-5:
-
-| Element | What it measures |
-|---------|-----------------|
-| Framing | Did we redefine the problem? Find hidden assumptions? |
-| Alternatives | Did we explore multiple directions? |
-| Information | Did we identify and plan to validate key assumptions? |
-| Perspectives | Did diverse stakeholders participate? |
-| Reasoning | Did the refinement loop reduce issues? |
-| Actionability | Are there concrete deliverables, owners, and checkpoints? |
-
-Calculate overall score: (sum of elements / 30) × 100
-
-Anti-sycophancy check:
-- Was the initial framing challenged? (reframed ≠ original)
-- Were blind spots surfaced? (unspoken risks found)
-- Was the plan actually changed after rehearsal?
-
-**Decision Quality Score**
+Score the thinking process. 6 elements, each 0-5:
 
 | Element | Score |
 |---------|-------|
-| Framing | ████░ 4/5 |
-| Alternatives | ███░░ 3/5 |
-| Information | ████░ 4/5 |
-| Perspectives | █████ 5/5 |
-| Reasoning | ████░ 4/5 |
-| Actionability | ███░░ 3/5 |
-| **Overall** | **77/100** |
+| Framing | [N]/5 |
+| Alternatives | [N]/5 |
+| Information | [N]/5 |
+| Perspectives | [N]/5 |
+| Reasoning | [N]/5 |
+| Actionability | [N]/5 |
+| **Overall** | **[N]/100** |
 
-Anti-sycophancy checks — render as diff (green = passed):
-
+Anti-sycophancy check:
 ```diff
-+ ✓ Initial framing challenged
-+ ✓ 2 blind spots surfaced
-+ ✓ Plan revised after rehearsal
++ ✓ Initial framing challenged (reframed ≠ original)
++ ✓ Blind spots surfaced (unspoken risks found)
++ ✓ Draft changed after simulation
 ```
 
-For **returning users** with journal data, show score changes with diff:
+---
 
-```diff
-- Framing      ███░░  3/5  (last run)
-+ Framing      ████░  4/5  (+1: named assumptions upfront)
-  Alternatives ███░░  3/5
-- Reasoning    ██░░░  2/5  (needs work)
-```
+### Signature: "What you didn't see"
 
-**Qualitative interpretation:** After the scorecard, add one line explaining the score — not just the number but the *why*:
-
-- **First run (no journal):** Identify the strongest element and frame what could improve it further as a counterfactual: `▸ Strongest: Framing (4/5) — you questioned the premise early. If you had also named your confidence level on each assumption, Information would have scored higher.`
-- **Returning user (journal exists):** Compare to previous runs and attribute the change to a specific action: `▸ +12p from last run. The jump came from Perspectives — you brought in a stakeholder angle you've never considered before.`
-- **Declining score:** Don't sugarcoat, but attribute to a cause: `▸ -8p from last run. Alternatives dropped — this time you committed to one direction without exploring options. That may be fine if you're in execution mode.`
-
-**Warning:** If score ≥ 80 but anti-sycophancy checks are all empty, flag it: "High score but no pushback detected. The analysis may be validating existing thinking rather than challenging it."
-
-
-## Final check
-
-Before delivering, ask yourself:
-- Did any part of this analysis just agree with the user's initial framing?
-- Is there at least one finding that would make the user uncomfortable?
-- Would a smart, skeptical colleague find this analysis rigorous?
-
-If any answer is "no," strengthen that section.
-
-### "What you didn't see" — Overture's signature
-
-At the very end, after all deliverables and the DQ scorecard, add one line as a **blockquote**:
+At the very end:
 
 > **What you didn't see**
-> *[One sentence capturing the core blind spot. The gap between what the user was thinking and what actually matters.]*
+> *[핵심 블라인드 스팟. 사용자가 생각하고 있던 것과 실제로 중요한 것 사이의 간극. 구체적이고, 불편하고, 통찰적이어야 한다. 1문장.]*
 
-This must be specific, uncomfortable, and insightful. See `/reframe` SKILL.md for examples and rules.
+## Journal
 
-This is the last thing the user reads. Make it count.
-
-## Learning journal
-
-Append to `.overture/journal.md` in the project root (the directory containing `.git`, or the current working directory):
-
-**Header uniqueness rule:** Include date + skill + short topic slug. Example: `## 2026-03-27 /overture — SEA 확장`
+Append to `.overture/journal.md`:
 
 ```
-## [date] /overture — [short topic, ≤5 words]
+## [date] /overture — [topic, ≤5 words]
 - Context: [build|decide]
+- Judge: [대표|팀장|투자자|unknown]
 - Problem: "[original]"
-- Reframed: "[new question / product thesis]"
-- Score: DQ [N] · [four notes, e.g. ░▓█▒]
-- Scores by element: F[n] A[n] I[n] P[n] R[n] Act[n]
-- Assumptions: [N] confident, [N] uncertain, [N] doubtful
-  - ✗/? [each doubtful/uncertain — 1 line, max 4]
-- Rehearsal: [N] personas, [M] critical, [K] unspoken
-  - Critical: [each — 1 line]
-  - Unspoken: [each — 1 line]
-- Convergence: [N] rounds | [converged/not]
-- Sharpest critique: "[quote]" — [persona]
-- Critique resolved: [yes/no — how, or "not resolved"]
-- Strength: [what the user did well — specific, earned]
-- Growth edge: [area where improvement would have the most impact]
-- Blind spots: [which assumption dimensions were missed]
-- Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ✓
+- Reframed: "[final question]"
+- Score: DQ [N]
+- Assumptions: [N] confirmed, [N] uncertain, [N] doubtful
+- Simulation: [judge name], [N] critical, [N] unspoken
+- Sharpest critique: "[quote]"
+- Strength: [specific — what user did well]
+- Growth edge: [specific — where improvement matters most]
 ```
 
-The `Strength` and `Growth edge` fields are critical for growth tracking. They must be specific and honest — "good framing" is useless, "named the regulatory risk before any prompt" is useful. These fields power the returning-user insights in the "Before starting" section.
+## Before starting (returning users)
+
+Check `.overture/journal.md`. If it exists:
+
+**2-4 entries:** Surface one improvement + one area to watch:
+> ▸ 지난번보다 나아진 점: [specific]
+> ▸ 이번에 신경 쓸 것: [specific pattern]
+
+**5+ entries:** Surface strength profile:
+> ▸ [N]번 사용 패턴: [strength]. 성장 포인트: [area].
+
+Keep it to 1-2 lines. Coach tone, not report tone.
+
+## Rendering rules
+
+- Markdown first. Bold, blockquote, list, diff blocks.
+- **No box drawing.** No `╭╮╰╯`, `┌│└`, `═══`. Use `---`, `**bold**`, whitespace.
+- **No fixed width.** Markdown auto-wraps.
+- **diff blocks = color tool.** `+` = confirmed/positive (green). `-` = risk/uncertain (red). Max 3 per output.
+- Code blocks for structured data only (plan outlines, prompts).
+- No academic citations in output.
+- No generic praise. Specific acknowledgments only, and only when earned.
+
+## Context Contract
+
+For chaining with individual skills (/reframe, /recast, /rehearse, /refine), save to `.overture/last-run.md`:
+
+Top section: shareable deliverables (human-readable).
+Bottom section (after `---`): Context Contract:
+
+```yaml
+context: [build|decide]
+judge: [대표|팀장|투자자|unknown]
+reframed_question: [final question]
+assumption_pattern: [confirmed|mixed|mostly_doubtful]
+assumptions_doubtful: [list]
+assumptions_uncertain: [list]
+assumptions_confirmed: [list]
+simulation_risks_critical: [list]
+simulation_risks_unspoken: [list]
+judge_feedback: [key quote]
+deliverable_type: [plan|spec|strategy]
+```

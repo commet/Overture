@@ -1,257 +1,160 @@
 ---
 name: rehearse
-description: "Stress-test your plan with simulated stakeholders before the real meeting. Creates 2-3 personas who critique your strategy from different angles — finding risks, blind spots, and approval conditions. Use before presenting to leadership, launching products, or making irreversible decisions."
+description: "Simulate how your boss, stakeholders, or users would react to your plan. Finds weak spots, unspoken risks, and what needs to change for approval. No persona setup needed — auto-generated from context."
 argument-hint: "[plan or strategy to stress-test]"
 allowed-tools: Read, Write, Agent, AskUserQuestion
 ---
 
 ## When to use
 
-- ✓ Before presenting a plan to leadership or stakeholders
-- ✓ Before making an irreversible decision (hiring, launch, investment)
-- ✓ When you suspect your plan has blind spots but can't find them
-- ✓ After /recast — stress-test the execution plan you just designed
+- ✓ After /recast — see how stakeholders would react
+- ✓ Before presenting to leadership or stakeholders
+- ✓ When you suspect blind spots but can't find them
+- ✓ Triggered as "XX은 뭐라고 할까?" from /overture
 - ✗ When the plan is still too vague (run /recast first)
-- ✗ For quick, low-stakes decisions (overkill)
+- ✗ Quick, low-stakes decisions
 
-If you ask AI directly, it will agree with you. That's the problem.
-
-Rehearsal creates simulated stakeholders who react to your plan the way real people would — with skepticism, competing priorities, and uncomfortable questions nobody else will ask.
+If you ask AI directly, it'll agree with you. That's the problem. Rehearsal creates simulated critics who react the way real people would.
 
 **Always respond in the same language the user uses.**
 
-**Rendering:** Final output in markdown sections separated by `---`. NOT a single code block. Risk symbols stay: `✗` critical, `?` manageable, `🔇` unspoken. Devil's Advocate gets `⚡` marker.
+## If no argument
 
-**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+If no `/recast` result and no argument:
 
-**No fixed width.** Do NOT enforce 76-char width. Markdown auto-wraps.
+> What plan or strategy do you want tested? (Paste it, or run /recast first)
 
-**diff blocks = color tool.** Use for risk/critique summaries. `-` lines = critical/unspoken risks (red). `+` lines = resolved/positive (green). Max 2-3 diff blocks per output.
+## Context extraction
 
-## If no argument is provided
+Read `.overture/recast.md` and `.overture/reframe.md` for contracts.
 
-If the user just types `/rehearse` without a plan, and there's no previous `/recast` or `/reframe` result in the conversation, ask:
+**From /recast:** governing_idea, steps, key_assumptions (attack surface), personas (use exactly)
+**From /reframe:** assumptions_doubtful (probe FIRST and HARDEST), reframed_question
 
-> What plan or strategy do you want to stress-test? (Paste it here, or run /recast first)
+### Who reviews:
+- If `/recast` provided personas → use exactly
+- If `/overture` set a `judge` → create persona matching that judge + 1-2 additional
+- Otherwise → auto-generate based on context (see below)
 
-## Before starting
+## Step 1: Auto-generate personas (no setup needed)
 
-Check if `.overture/journal.md` exists. If previous rehearsals exist, apply adaptive rules below.
+### Decide context: 3 stakeholders
 
-### Adaptive rules (journal → behavior)
-
-Scan last 10 journal entries:
-
-**Pattern: Previous rehearse had only 2 personas and critique was weak**
-→ Consider adding a 3rd persona with a fundamentally different perspective (e.g., end-user vs buyer vs competitor).
-
-**Pattern: Previous rehearse's unspoken risks later proved most important (visible in /refine or /outcome entries)**
-→ Push harder on unspoken risks this time. Allocate more depth to the Devil's Advocate section.
-
-**Pattern: User always picks `1 → /refine` after rehearse (3+ times)**
-→ Personas might be too soft. Increase harshness threshold.
-
-**Topic linking:** If journal has entries in the same domain, surface the most relevant critique:
-
-> 💭 관련 이전 실행: [date] — sharpest critique: "[quote]"
-
-Show the header as markdown bold:
-
-**👥 Overture · Rehearse**
-
-### Reflection block (show FIRST, before heavy analysis)
-
-If continuing from `/recast`, output a brief reflection block immediately after the header:
-
-> 💭 **스트레스 테스트 전에:**
-> "[the product thesis or governing idea being tested]"
->
-> **이 계획의 가장 약한 고리:**
-> - [the lowest-certainty assumption — name it explicitly]
-> - [a "what if the opposite is true?" question]
-
-**Rules:** Max 4 lines of content. Surface the assumption the user is LEAST confident about — that's what personas will attack hardest. This block is output first, then persona generation and reviews follow.
-
-## Context extraction from /recast and /reframe
-
-Read `.overture/recast.md` and `.overture/reframe.md` for contract data. If files don't exist, scan the conversation for contract blocks.
-
-### From /recast Contract (primary — the plan being stress-tested):
-- `governing_idea` → the core thesis each persona evaluates
-- `storyline` → the strategic logic (situation/complication/resolution)
-- `design_rationale` → why this approach was chosen
-- `steps` → the execution flow. Present to each persona as a compact summary:
-  `1. [task] [AI] / 2. [task] [Human] ⚑ / 3. [task] [Both] ★`
-  (⚑ = checkpoint, ★ = critical path)
-- `key_assumptions` → personas' **primary attack surface**
-- `inherited_assumptions` → **prioritize these for scrutiny** (already flagged as uncertain/doubtful by the user in /reframe)
-- `personas` → use these EXACTLY as persona seeds. Reproduce all fields: name, role, influence, decision_style, risk_tolerance, primary_concern, blocking_condition
-
-### From /reframe Contract (secondary — the user's known doubts):
-- `assumptions_doubtful` → the user ALREADY suspects these are wrong. Personas should probe these **first and hardest**.
-- `assumptions_uncertain` → secondary attack surface
-- `ai_limitations` → persona should flag if any AI step touches these
-- `reframed_question` → the root question the plan is supposed to answer
-
-### What each persona receives in their review:
-Every persona MUST see: the governing idea, the step summary with actors/checkpoints, the key assumptions (especially inherited ones), and the AI limitations. Without this context, personas produce generic feedback.
-
-### If no contracts exist:
-Generate personas from the user's input. Follow the diversity rule below.
-
-## Context detection
-
-Read `context` from /recast or /reframe Contract. If no contracts exist, detect from user input (same signals as /reframe).
-
-## Step 1: Create personas
-
-### Decide context: Stakeholders (3 personas)
-
-If `/recast` provided personas in its Contract, use those exactly — reproduce all fields.
-
-Otherwise, build 3 stakeholder personas from context:
+Generate from context — **no user setup required:**
 1. **Reporting audience** — receives the deliverable
-2. **Gatekeeper** — controls resources or approval
-3. **Domain expert** — knows if this is realistic
+2. **Gatekeeper** — controls approval
+3. **Domain expert** — knows if it's realistic
 
-Each persona needs ALL fields: name, role, influence, decision_style (analytical/intuitive/consensus/directive), risk_tolerance (low/medium/high), primary_concern, blocking_condition, success_metric.
+Each: name, role, influence, decision_style, risk_tolerance, primary_concern, blocking_condition.
 
-**Diversity rule:** Personas MUST differ on decision_style and risk_tolerance.
+**Diversity:** Must differ on decision_style and risk_tolerance.
 
-**If the user names specific people**, build personas around those people. Ask clarifying questions if needed.
+### Build context: 2 user personas
+
+1. **Target User** — name, context, current_solution (specific!), switch_threshold, dealbreaker
+2. **Skeptic** — name, alternative (specific product!), objection
 
 See `references/persona-design.md` for detailed guidance.
 
-### Build context: User personas (2 personas)
+## Step 2: Reviews (auto, no user input needed)
 
-If `/recast` provided user personas in its Contract, use those exactly.
+### Decide context — each persona independently:
 
-Otherwise, create 2 user personas:
-1. **Target User** — daily user. Fields: name, context, current_solution (specific!), switch_threshold, dealbreaker
-2. **Skeptic** — has seen similar products. Fields: name, context, alternative (specific product!), objection
+- **First reaction** — in their voice (1-2 sentences)
+- **Failure scenario** — most LIKELY way this fails
+- **Risks** — [critical] / [manageable] / [unspoken]
+- **Approval conditions** — what they need to say "yes"
 
-## Step 2: Independent reviews
-
-### Decide context reviews
-
-Each persona reviews the plan INDEPENDENTLY. For each, generate:
-
-- **First reaction** — in their voice, their style (1-2 sentences)
-- **Failure scenario** — most LIKELY way this fails (not worst-case)
-- **Risks** — classified as [critical], [manageable], [unspoken]
-- **Approval conditions** — what they need to see to say "yes"
-
-### Build context reviews
-
-Each persona reviews the product spec INDEPENDENTLY:
+### Build context:
 
 **Target User:**
-- **First reaction** — in their voice ("Oh this is..." — authentic)
-- **Would I switch?** — honest answer referencing their current_solution
-- **What's missing?** — the one thing that would actually make them use it daily
-- **Risks** — [critical]: what makes them delete it / [unspoken]: what nobody says about products like this
+- First reaction (authentic)
+- Would I switch? (honest, referencing current_solution)
+- What's missing? (one thing for daily use)
+- Risks: [critical] = what makes them delete it / [unspoken] = market reality
 
 **Skeptic:**
-- **First reaction** — skeptical, referencing their known alternative
-- **"Why not just use [alternative]?"** — the core objection, fully argued
-- **What would change my mind?** — specific evidence or demo that would convince them
-- **Risks** — [critical]: most likely failure mode / [unspoken]: the market reality nobody admits
+- First reaction (skeptical)
+- "Why not just [alternative]?" (full argument)
+- What would change my mind?
+- Risks: [critical] = likely death / [unspoken] = what nobody admits
 
-**You MUST find at least one [unspoken] risk.** This is Overture's core value.
-See `references/risk-classification.md` for the three categories.
+**MUST find at least 1 [unspoken] risk.** This is core value.
+See `references/risk-classification.md`.
 
 ## Step 3: Devil's Advocate
 
-### Decide context
-Run the `devils-advocate` agent to attack the plan through 3 lenses:
-1. Most realistic failure
-2. The silent problem (what nobody will say)
-3. The regret test (what you'll wish you'd considered in 1 year)
+Run `devils-advocate` agent:
+1. **Most realistic failure**: 6 months from now, this stalled. What happened? (mundane, likely)
+2. **Silent problem**: What everyone suspects but won't say in a meeting
+3. **Regret test**: 1 year later, what's the one thing you wish you'd considered?
 
-### Build context
-Lighter version — integrated as a final section (no separate agent needed):
-1. **Most realistic failure**: How this product most likely dies (not worst-case, MOST LIKELY)
-2. **The thing nobody says**: The market/user reality that builders avoid acknowledging
-3. **6-month regret**: What you'll wish you'd built differently after 6 months of users
+Build context uses lighter version (no agent, inline):
+1. How this product most likely dies
+2. Market reality builders avoid
+3. 6-month regret
 
 ## Step 4: Synthesis
 
-After all persona reviews and Devil's Advocate, produce a structured synthesis:
+1. **Priority actions** — top 3 changes, ordered: critical risks → multi-persona concerns → unspoken risks
+2. **Key conflicts** — where personas disagree
+3. **Untested assumptions** — what no persona could verify
 
-1. **Common agreements** — where 2+ personas flagged the same concern
-2. **Key conflicts** — where personas disagree (e.g., one says "move fast", another says "validate first"). State each persona's position.
-3. **Priority actions** — the 3 most impactful changes, ordered by: critical risks first → items satisfying multiple approval conditions → unspoken risks
-4. **Untested assumptions** — assumptions from /recast that NO persona could confirm or deny (information gaps that need real-world validation)
+## Backward recommendations
 
-## Self-check
+Check after synthesis:
 
-"Is there anything in this feedback that would make the user uncomfortable?"
-If no → the rehearsal was too soft. Make at least one persona harsher.
+**All reject without conditions** → thesis broken:
+> 💡 전체 거부 — /recast에서 재설계 필요
 
-"Does each risk cite a specific element from /recast — a feature name (P0/P1), step number, assumption, or metric?"
-If no → the critique is generic. Tie each risk to a concrete part of the plan.
+**Sharpest critique attacks thesis itself** → can't fix with refinement:
+> 💡 핵심 비판이 방향 자체를 겨냥 — /recast 재설계 권장
 
-### Engine-driven backward recommendation
+**Devil's Advocate questions problem existence** → go to /reframe:
+> 💡 문제 자체의 존재가 의심됨 — /reframe 재검토 권장
 
-After synthesis, before rendering the card, check these conditions. If triggered, show the recommendation in the card **above** the quick action menu:
-
-**Condition A: All personas flat reject (no conditional)**
-If every persona says "사용 안 함" or equivalent WITHOUT conditions (not "would use if X"), the thesis itself is broken:
-
-> 💡 **엔진 추천:** 전원 거부 — thesis 자체 재설계 필요. ← /recast에서 product thesis를 다시 세우는 걸 권장합니다.
-
-**Condition B: Sharpest critique attacks the thesis, not features**
-If the most damaging feedback targets the governing idea/product thesis directly (e.g., "이 제품이 존재할 이유가 없다", "feature이지 product가 아니다") rather than specific features or execution:
-
-> 💡 **엔진 추천:** 핵심 비판이 개별 기능이 아닌 제품 방향 자체를 겨냥합니다. /refine으로 수술적 수정보다 ← /recast에서 thesis 재설계를 권장합니다.
-
-**Condition C: Devil's Advocate questions problem existence**
-If the Devil's Advocate "silent problem" or "realistic failure" concludes that the target users don't actually have this problem, or the market doesn't exist:
-
-> 💡 **엔진 추천:** 문제 존재 여부 자체가 의심됩니다. ← /reframe에서 문제 정의부터 재검증을 권장합니다.
-
-These are recommendations, not blockers. Show them inline, then show the normal quick action menu below. The user decides.
+These are recommendations, not blockers.
 
 ## Output
 
-**Markdown sections** — separated by `---`. Auto-save to `.overture/rehearse.md`.
+### Decide context:
 
-### Decide context: Output template
+---
 
-**👥 Rehearse**
+**Overture · Rehearse** — 사전 검증
 
-**[바꿔야 할 것 label]**
-
+**바꿔야 할 것**
 1. [action — specific]
 2. [action — specific]
 3. [action — specific]
 
 ---
 
-**[페르소나 label]**
-
-**[Name]** — [Role] — [primary concern] → **[판정]**
+**[Name]** — [Role] → **[verdict]**
 
 ```diff
-- ✗ [critical risk — one line]
-- 🔇 [unspoken risk — one line]
++ ✓ [strength/approval condition]
+- ✗ [critical risk]
+- 🔇 [unspoken risk]
 ```
 
 > "[sharpest quote]"
 
-**[Name]** — [Role] — [primary concern] → **[판정]**
+**[Name]** — [Role] → **[verdict]**
 
 ```diff
-- ✗ [critical risk — one line]
-- 🔇 [unspoken risk — one line]
++ ✓ [strength/approval condition]
+- ✗ [critical risk]
+- 🔇 [unspoken risk]
 ```
 
 > "[sharpest quote]"
 
-**[Name]** — [Role] — [primary concern] → **[판정]**
+**[Name]** — [Role] → **[verdict]**
 
 ```diff
-- ? [manageable risk — one line]
++ ✓ [strength/approval condition]
+- ? [manageable risk]
 ```
 
 > "[sharpest quote]"
@@ -261,129 +164,103 @@ These are recommendations, not blockers. Show them inline, then show the normal 
 **Devil's Advocate**
 
 ```diff
-- ✗ [realistic failure — one line]
-- 🔇 [silent problem — one line]
-- ⏳ [regret in 1 year — one line]
+- ✗ [realistic failure]
+- 🔇 [silent problem]
+- ⏳ [1-year regret]
 ```
 
 ---
 
-> 💡 [key tension or insight — 1-2 lines]
+> 💡 [key insight — 1-2 lines]
 
-`████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴`
-
-`[severity + quick actions — see below]`
-
-### Build context: Output template
-
-**👥 Rehearse**
-
-**[바꿔야 할 것 label]**
-
-1. [action — specific]
-2. [action — specific]
+Severity-based actions:
+- Critical ≥ 1: `⚠️ Critical [N] · 1 /refine 권장 · 2 edit · 3 save · ← 0`
+- Critical = 0: `✓ 1 save · 2 edit · 3 /refine · ← 0`
 
 ---
 
-**[페르소나 label]**
+### Build context:
 
-🎯 **[Name]** · [role/context] · [current solution] → **[verdict: 조건부/거부/사용]**
+---
+
+**Overture · Rehearse** — 사전 검증
+
+**바꿔야 할 것**
+1. [action]
+2. [action]
+
+---
+
+🎯 **[Name]** · [context] · [current_solution] → **[verdict]**
 
 ```diff
-- ✗ [critical risk — one line]
-- 🔇 [unspoken risk — one line]
++ ✓ [strength]
+- ✗ [critical — what makes them delete it]
+- 🔇 [unspoken]
 ```
 
-🤨 **[Name]** · [role/context] · [alternative] → **[verdict]**
+🤨 **[Name]** · [alternative] → **[verdict]**
 
 ```diff
-- ✗ [critical risk — one line]
-- 🔇 [unspoken risk — one line]
++ ✓ [strength]
+- ✗ [critical]
+- 🔇 [unspoken]
 ```
 
----
-
-**[핵심 발언 label]**
-
-> **[Name]:** "[sharpest quote — one sentence]"
-
-> **[Name]:** "[sharpest quote — one sentence]"
+> **[Name]:** "[quote]"
+> **[Name]:** "[quote]"
 
 ---
 
 **Devil's Advocate**
 
 ```diff
-- ✗ [most likely death — one line]
-- 🔇 [what nobody says — one line]
-- ⏳ [6-month regret — one line]
+- ✗ [most likely death]
+- 🔇 [what nobody says]
+- ⏳ [6-month regret]
 ```
 
 ---
 
-> 💡 [product blind spot — 1-2 lines max]
+> 💡 [blind spot]
 
-`████░ ✓정의 ✓계획 ✓테스트 ·해결 ·수렴`
+`⚠️/✓ [severity] · 1 /refine · 2 edit · 3 save · ← 0`
 
-`[severity + quick actions — see below]`
+---
 
-**Layout rules:**
-- **Sections:** Separated by `---` horizontal rules.
-- **Personas:** Bold name + role + verdict on one line. diff block for risks (red). Blockquote for sharpest quote.
-- **Devil's Advocate:** Single diff block, 3 items.
-- **Insight:** `> blockquote` with 💡.
-- **Readiness + actions:** Inline code.
+## Quick actions
 
-**Severity-based quick actions (after the card, outside code block if needed):**
+- `1` → save + recommended next
+- `2` → edit (a. swap personas, b. re-evaluate, c. redo DA)
+- `3` → save and stop
+- `0` → back to /recast with insights
 
-If critical ≥ 1: `⚠️ Critical [N]개 · 다음? 1 /refine 권장 · 2 수정 · 3 저장 · ← 0`
-If critical = 0, unspoken ≥ 2: `🔇 Unspoken [N]개 · 다음? 1 /refine · 2 수정 · 3 저장 · ← 0`
-If none: `✓ 리스크 없음 · 다음? 1 저장 · 2 수정 · 3 /refine · ← 0`
+## Rendering rules
 
-All on one line. Adapt to user's language.
+- Markdown sections separated by `---`.
+- No box drawing. No fixed width.
+- diff = color tool. Max 3 per output.
+- Risk symbols: `✗` critical, `?` manageable, `🔇` unspoken
 
-**Quick action:** The user can type `0`, `1`, `2`, or `3`. `1` saves and launches the recommended next action. `2` shows editable items (see below). `3` saves (or launches optional refine). `0` goes back to /recast with rehearsal insights. If the user types anything else, respond naturally. Adapt labels to user's language.
+## Auto-save
 
-**When user picks `2` (수정):** Show numbered items they can modify:
+Save to `.overture/rehearse.md`:
+- Top: actions + persona summaries + DA
+- Bottom: Context Contract (risks by category, approval_conditions, persona_profiles with ALL fields for /refine)
 
-> a. 페르소나 교체/추가
-> b. 특정 리스크 재평가
-> c. Devil's Advocate 다시
-> d. 기타 (직접 입력)
-After adjustment, re-output the affected section and show quick actions again.
-
-**Going back (`0`):** When the user chooses to go back, summarize what rehearsal revealed that requires spec changes too large for /refine:
-> 💡 Rehearse에서 발견한 것:
-> - [fundamental issue, e.g., "product thesis 자체가 틀렸다 — /refine으로 안 고쳐짐"]
-> - [what to redesign in recast]
-Then launch `/recast` with the original reframed question + these insights. If the issue is even more fundamental (questioning whether the problem exists), suggest going back to `/reframe` instead.
-
-Only save `.overture/rehearse.md` after user confirms. Full persona reviews (detailed reactions, failure scenarios, all risks) go in the saved file — the card is the summary.
-
-**Persona comparison table:** Header row + `─` separator. Each persona is ONE row: name, critical risk, unspoken risk, approval condition. Instant cross-comparison.
-
-**Sharpest quotes:** After the table, each persona's most distinctive reaction in one `▸` line. Gives VOICE without the full vertical review sections.
-
-**Risk symbols:** `✗` critical, `?` manageable, `🔇` unspoken.
-
-Detailed persona reviews (full reactions, failure scenarios, all risks) go into the saved `.overture/rehearse.md` file — the card is the summary, the file has the full analysis.
-
-**After the card**, save to `.overture/rehearse.md`:
-- Top: bottom-line actions, persona summaries, devil's advocate (clean markdown)
-- Bottom after `---`: full Context Contract with all fields (risks by category with source, untested_assumptions, approval_conditions per persona, persona_profiles with ALL fields for /refine reuse, devils_advocate summary)
-
-## Learning journal
-
-Append to `.overture/journal.md` in the project root (directory with `.git`, or current working directory):
-**Header uniqueness rule:** Include date + skill + short topic slug (≤5 words). Example: `## 2026-03-27 /rehearse — AI 코드 리뷰 어시스턴트`
+## Journal
 
 ```
-## [date] /rehearse — [short topic, ≤5 words]
+## [date] /rehearse — [topic, ≤5 words]
 - Context: [build|decide]
 - Personas: [names with roles]
-- Critical: [each critical risk — 1 line per item]
-- Unspoken: [each unspoken risk — 1 line per item]
+- Critical: [each — 1 line]
+- Unspoken: [each — 1 line]
 - Sharpest critique: "[quote]" — [persona]
-- Unresolved: yes
 - Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ·
 ```
+
+## Self-check
+
+- Is there anything here that would make the user uncomfortable? If not → too soft.
+- Does each risk cite a specific element from /recast? If not → too generic.

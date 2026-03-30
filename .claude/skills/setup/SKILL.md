@@ -15,6 +15,8 @@ allowed-tools: Read, Write, Bash, Glob, AskUserQuestion
 
 **Always respond in the same language the user uses.**
 
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
 ## Setup Flow
 
 ### Step 0: Detect environment
@@ -48,32 +50,28 @@ If ghost installations found:
 
 Check each required skill file exists and is readable:
 
-```
-  ╭──────────────────────────────────────────╮
-  │  Overture · Setup                        │
-  ╰──────────────────────────────────────────╯
+**Overture · Setup**
 
-  Checking installation...
+Checking installation...
 
-  Skills:
-    ✓ /reframe        ~/.claude/skills/reframe/SKILL.md
-    ✓ /recast         ~/.claude/skills/recast/SKILL.md
-    ✓ /rehearse       ~/.claude/skills/rehearse/SKILL.md
-    ✓ /refine         ~/.claude/skills/refine/SKILL.md
-    ✓ /overture       ~/.claude/skills/overture/SKILL.md
-    ✓ /overture-help  ~/.claude/skills/help/SKILL.md
-    ✓ /overture:setup ~/.claude/skills/setup/SKILL.md
-    ✓ /overture:doctor ~/.claude/skills/doctor/SKILL.md
-    ✓ /overture:configure ~/.claude/skills/configure/SKILL.md
-    ✓ /overture:patterns  ~/.claude/skills/patterns/SKILL.md
+**Skills:**
+- ✓ /reframe — `~/.claude/skills/reframe/SKILL.md`
+- ✓ /recast — `~/.claude/skills/recast/SKILL.md`
+- ✓ /rehearse — `~/.claude/skills/rehearse/SKILL.md`
+- ✓ /refine — `~/.claude/skills/refine/SKILL.md`
+- ✓ /overture — `~/.claude/skills/overture/SKILL.md`
+- ✓ /overture-help — `~/.claude/skills/help/SKILL.md`
+- ✓ /overture:setup — `~/.claude/skills/setup/SKILL.md`
+- ✓ /overture:doctor — `~/.claude/skills/doctor/SKILL.md`
+- ✓ /overture:configure — `~/.claude/skills/configure/SKILL.md`
+- ✓ /overture:patterns — `~/.claude/skills/patterns/SKILL.md`
 
-  Agents:
-    ✓ devils-advocate  ~/.claude/agents/devils-advocate.md
+**Agents:**
+- ✓ devils-advocate — `~/.claude/agents/devils-advocate.md`
 
-  Data:
-    [✓/✗] .overture/ directory
-    [✓/✗] .overture/journal.md
-```
+**Data:**
+- [✓/✗] .overture/ directory
+- [✓/✗] .overture/journal.md
 
 Use `✓` for found, `✗` for missing, `⚠` for found but possibly outdated.
 
@@ -117,21 +115,17 @@ Read the installed `plugin.json` version and compare with the repo version. If o
 
 ### Step 7: Summary
 
-```
-  ╭──────────────────────────────────────────╮
-  │  ✓ Overture · Ready                     │
-  ╰──────────────────────────────────────────╯
+**✓ Overture · Ready**
 
-  10 skills  ·  1 agent  ·  journal ready
+10 skills · 1 agent · journal ready
 
-  Quick start:
-    /reframe "your problem"       sharpen your question
-    /overture "your problem"      full pipeline
-    /overture:configure           set preferences
-    /overture-help                all commands
+**Quick start:**
+- `/reframe "your problem"` — sharpen your question
+- `/overture "your problem"` — full pipeline
+- `/overture:configure` — set preferences
+- `/overture-help` — all commands
 
-  Restart Claude Code if this is a fresh install.
-```
+> Restart Claude Code if this is a fresh install.
 
 ## Error Recovery
 
