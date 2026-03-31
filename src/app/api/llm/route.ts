@@ -4,8 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { validateOrigin, validateContentType } from '@/lib/api-security';
 
 const MAX_TOKENS_CAP = 4096;
-const DAILY_LIMIT = 5;
-const ANON_LIMIT = 3;
+const DAILY_LIMIT = 10; // ~2 progressive sessions per day
+const ANON_LIMIT = 8; // Progressive flow uses 4-6 calls per session; allow 1 full session
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
 const MAX_MESSAGES = 20;
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
     const allowed = await checkRateLimit(auth.userId, auth.token);
     if (!allowed) {
       return NextResponse.json(
-        { error: '일일 무료 사용량을 초과했습니다. 설정에서 직접 API 키를 입력하면 제한 없이 사용할 수 있습니다.' },
+        { error: '오늘의 무료 사용량(10회)을 모두 사용했습니다. 설정에서 직접 API 키를 입력하면 제한 없이 사용할 수 있어요.' },
         { status: 429 }
       );
     }
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
     const allowed = await checkAnonRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
-        { error: '무료 체험 3회를 모두 사용했습니다. 로그인하면 하루 5회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
+        { error: '무료 체험을 모두 사용했습니다. 로그인하면 하루 10회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
         { status: 429 }
       );
     }

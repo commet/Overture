@@ -1068,10 +1068,25 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">
-            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
+          error.startsWith('LOGIN_REQUIRED') ? (
+            <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-5 phrase-entrance">
+              <p className="text-[15px] font-bold text-[var(--text-primary)] mb-1">무료 체험을 모두 사용했어요</p>
+              <p className="text-[13px] text-[var(--text-secondary)] mb-4">로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.</p>
+              <a
+                href="/login"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-[14px] font-semibold"
+                style={{ background: 'var(--gradient-gold)' }}
+              >
+                로그인 / 회원가입
+                <ChevronRight size={14} />
+              </a>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )
         )}
       </div>
     </div>

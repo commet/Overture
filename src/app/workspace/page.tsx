@@ -138,7 +138,7 @@ function WorkspaceContent() {
               <div className="flex items-center gap-2 text-[13px]">
                 <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
                 <span className="text-[var(--text-primary)]">
-                  로그인 없이 <strong>3회 무료</strong> · 로그인하면 하루 5회
+                  로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회
                 </span>
               </div>
               <Link
