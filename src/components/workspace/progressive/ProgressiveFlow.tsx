@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import {
   runDeepening,
@@ -98,7 +98,9 @@ function AnalysisCard({
   const [collapsed, setCollapsed] = useState(!isLatest);
 
   // Auto-expand when becoming latest
-  if (isLatest && collapsed) setCollapsed(false);
+  useEffect(() => {
+    if (isLatest && collapsed) setCollapsed(false);
+  }, [isLatest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Collapsed view for old snapshots — just show the real question one-liner
   if (!isLatest && collapsed) {
@@ -219,9 +221,11 @@ function QuestionCard({
 }) {
   const [inputValue, setInputValue] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [selectedValue, setSelectedValue] = useState<string | null>(null);
 
   const handleOptionClick = (opt: string) => {
     if (disabled || submitted) return;
+    setSelectedValue(opt);
     setSubmitted(true);
     onAnswer(opt);
   };
@@ -256,7 +260,13 @@ function QuestionCard({
               key={i}
               onClick={() => handleOptionClick(opt)}
               disabled={disabled || submitted}
-              className="w-full text-left px-4 py-3 rounded-xl text-[14px] transition-all duration-200 border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)] active:scale-[0.98] disabled:opacity-40 cursor-pointer"
+              className={`w-full text-left px-4 py-3 rounded-xl text-[14px] transition-all duration-200 border cursor-pointer ${
+                selectedValue === opt
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)] font-medium'
+                  : submitted
+                    ? 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-tertiary)] opacity-40'
+                    : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)] active:scale-[0.98]'
+              }`}
             >
               {opt}
             </button>
@@ -726,13 +736,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showMixTrigger, setShowMixTrigger] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to bottom on new content
+  // Auto-scroll to bottom — use window scroll since the flow is the main content
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, 100);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 150);
   }, []);
 
   // Derive state from session (safe even when session is null)
@@ -768,7 +776,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   // ─── Handlers ───
 
   const handleAnswer = async (value: string) => {
-    if (!currentQuestion || isProcessing) return;
+    if (!currentQuestion || isProcessing || !latestSnapshot) return;
 
     const answer: FlowAnswer = { question_id: currentQuestion.id, value };
     store.addAnswer(answer);
@@ -872,9 +880,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   };
 
   const handleMoreQuestions = async () => {
-    // User wants to explore more before mixing.
-    // We run deepening with a synthetic "더 알고 싶다" answer to the implicit "준비됐나?" question
-    // so the LLM gets a clear signal to produce a NEW dimension question.
+    if (!latestSnapshot) return;
     setShowMixTrigger(false);
     setIsProcessing(true);
     store.setPhase('analyzing');
@@ -961,7 +967,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     <div className="max-w-2xl mx-auto px-4 md:px-0">
       <FlowProgressBar phase={phase} round={round} hasMix={!!mix} />
 
-      <div ref={scrollRef} className="space-y-4">
+      <div className="space-y-4">
         {/* User input echo */}
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)]">
           <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0 mt-0.5">

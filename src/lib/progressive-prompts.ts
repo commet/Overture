@@ -43,7 +43,10 @@ CRITICAL quality rules for your question:
 For the skeleton:
 - Each line should be an ACTIONABLE item, not a vague category
 - Write it so they can literally copy-paste into a doc and start filling in
-- 5-7 lines, each one specific
+- 5-7 lines, each one specific and 1-2 sentences long
+- Think of it as a Table of Contents with brief descriptions — not just titles
+- Example good skeleton line: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
+- Example bad skeleton line: "시장 분석" (too vague, useless)
 
 Respond in JSON. Korean only.`,
 
@@ -173,12 +176,15 @@ It should look like something a competent strategist wrote — not AI-generated 
 
 Rules:
 - Executive summary: 2-3 sentences max. The decision maker should get 80% of the value just from this.
-- Each section: concrete, specific, actionable. No filler.
+- 4-6 sections. Each section: concrete, specific, actionable. No filler. 3-5 sentences each.
 - Include the assumptions explicitly — this shows intellectual honesty.
-- Next steps should be time-bound and assigned (who does what by when).
+- Next steps should be time-bound and assigned (who does what by when). At least 3 next steps.
 - Write it so the user can literally send this as-is. No "[여기에 입력]" placeholders.
 - Tone: confident but honest about uncertainties. Professional Korean.
-- DO NOT use markdown headers in section content — just flowing text with emphasis where needed.`,
+- DO NOT use markdown headers in section content — just flowing text with emphasis where needed.
+- Use **bold** for key terms and critical numbers within section content.
+- The document should feel SUBSTANTIAL. Not a thin outline — a real first draft that shows thinking depth.
+- CRITICAL DIFFERENTIATOR: Include one section called "리스크와 대응" that identifies 2-3 risks with specific mitigation actions. This is what makes this output better than a generic ChatGPT response — it shows the author ANTICIPATED problems.`,
 
     user: `원래 고민: <user-data>${sanitize(problemText)}</user-data>
 
@@ -249,7 +255,7 @@ Severity guide:
 제출된 문서:
 ${docText}
 
-${decisionMaker}으로서 이 문서를 읽고 솔직하게 반응해줘.
+${decisionMaker}의 입장에서 이 문서를 읽고 솔직하게 반응해줘.
 
 JSON format:
 {

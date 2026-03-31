@@ -262,11 +262,10 @@ function WorkspaceContent() {
 
   /* ─── Progressive Flow: default for new sessions ─── */
   if (progressiveSession && !useLegacyMode) {
-    // Sync current session id — useEffect would be ideal but this is safe
-    // because setState on Zustand outside React lifecycle is synchronous
+    // Ensure store knows which session is active (idempotent)
     if (progressiveStore.currentSessionId !== progressiveSession.id) {
-      // Use queueMicrotask to avoid setState-during-render warning
-      queueMicrotask(() => useProgressiveStore.setState({ currentSessionId: progressiveSession.id }));
+      // Safe: Zustand setState outside render is synchronous and doesn't cause re-render loops
+      useProgressiveStore.setState({ currentSessionId: progressiveSession.id });
     }
 
     return (
