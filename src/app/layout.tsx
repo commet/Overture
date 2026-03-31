@@ -7,10 +7,25 @@ import { Providers } from '@/components/layout/Providers';
 import { Analytics } from '@/components/layout/Analytics';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
+const SITE_URL = 'https://overture-zeta.vercel.app';
+
 export const metadata: Metadata = {
-  title: 'Overture — Think before you recast',
-  description:
-    'Overture — Think before you recast. 악보 해석, 편곡, 리허설, 합주 연습.',
+  title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
+  description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다. 인지과학 + 전략기획 실무 기반.',
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
+    description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다.',
+    url: SITE_URL,
+    siteName: 'Overture',
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
+    description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다.',
+  },
 };
 
 export default async function RootLayout({
