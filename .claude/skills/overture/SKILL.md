@@ -284,11 +284,18 @@ If user says "enough" / "이 정도면 됐어" / "다음" at any point → trans
 - [ ] 리스크 섹션 있는가?
 - [ ] 다음 단계에 "누가"가 빠진 항목 없는가?
 
-After showing the Mix, transition to Step 4:
+After showing the Mix, ask using AskUserQuestion:
 
-> **[판단자]는 이걸 보고 뭐라고 할까?**
+- question: "[판단자]는 이걸 보고 뭐라고 할까?"
+- header: "다음"
+- options:
+  - label: "시뮬레이션 해보기", description: "판단자의 예상 반응을 확인한다"
+  - label: "초안 수정하고 싶다", description: "이 초안을 먼저 다듬겠다"
+  - label: "이대로 완성", description: "시뮬레이션 없이 이 초안으로 끝낸다"
 
-Then **automatically proceed** to Step 4.
+If "시뮬레이션" → proceed to Step 4.
+If "수정" → ask what to change, update Mix, then ask again.
+If "이대로 완성" → skip to Step 5 deliverables only (문서 재출력 생략, Thinking Summary + Sharpened Prompt만).
 
 ---
 
@@ -344,10 +351,10 @@ Based on `judge` from Step 2:
 
 ---
 
-**Devil's Advocate**
+**Devil's Advocate** (use the `devils-advocate` agent if available, otherwise inline)
 
 ```diff
-- ✗ [가장 현실적인 실패 — 6개월 뒤 망했다면 뭐 때문? 평범한 이유]
+- ✗ [가장 현실적인 실패 — 6개월 뒤 망했다면 뭐 때문? 평범하고 뻔한 이유]
 - 🔇 [아무도 말 안 하는 문제 — 다들 알지만 회의에서 안 꺼냄]
 - ⏳ [1년 후 후회 — 돌아보면 이걸 고려했어야 했는데]
 ```
@@ -374,7 +381,7 @@ If fixes were applied:
 - Output the full updated document (not just diffs)
 
 If no fixes (user said "이대로 완성"):
-- Output the Mix document as-is in clean markdown format
+- **Do NOT re-output the Mix document** (user already saw it). Skip directly to deliverables below (Sharpened Prompt, Thinking Summary).
 
 ### Output format:
 
