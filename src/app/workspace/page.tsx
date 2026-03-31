@@ -4,14 +4,17 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { ReframeStep } from '@/components/workspace/ReframeStep';
 import { RecastStep } from '@/components/workspace/RecastStep';
 import { RehearseStep } from '@/components/workspace/RehearseStep';
 import { RefineStep } from '@/components/workspace/RefineStep';
+import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
+import { runInitialAnalysis } from '@/lib/progressive-engine';
 import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { RefineLoop, OutcomeRecord } from '@/stores/types';
@@ -36,20 +39,27 @@ function WorkspaceContent() {
   const { settings, loadSettings } = useSettingsStore();
   const { user } = useAuth();
   const { setHandoff } = useHandoffStore();
+  const progressiveStore = useProgressiveStore();
   const [problemInput, setProblemInput] = useState('');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  // Use legacy mode if ?step= is explicitly set
+  const explicitStep = searchParams.get('step') as StepId | null;
+  const useLegacyMode = explicitStep && ['reframe', 'recast', 'rehearse', 'refine'].includes(explicitStep);
 
   useEffect(() => {
     loadProjects();
     loadSettings();
-  }, [loadProjects, loadSettings]);
+    progressiveStore.loadSessions();
+  }, [loadProjects, loadSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const step = searchParams.get('step') as StepId | null;
-    if (step && ['reframe', 'recast', 'rehearse', 'refine'].includes(step)) {
-      setActiveStep(step);
+    if (useLegacyMode && explicitStep) {
+      setActiveStep(explicitStep);
     }
-  }, [searchParams, setActiveStep]);
+  }, [explicitStep, useLegacyMode, setActiveStep]);
 
   const handleNavigate = (step: string) => {
     const stepId = step.replace('/tools/', '') as StepId;
@@ -61,18 +71,51 @@ function WorkspaceContent() {
     }
   };
 
-  const handleStartWithProblem = () => {
-    if (!problemInput.trim()) return;
+  const handleStartWithProblem = async () => {
+    if (!problemInput.trim() || isStarting) return;
     const text = problemInput.trim();
+    setIsStarting(true);
+    setStartError(null);
+
+    // Create project
     const pid = createProject(text.slice(0, 40));
     setCurrentProjectId(pid);
-    // Pass the problem text to ReframeStep via handoff
-    setHandoff({ from: 'workspace', data: { initialText: text } });
-    setActiveStep('reframe');
-    track('project_created', { source: 'workspace_hero' });
+    track('project_created', { source: 'workspace_progressive' });
+
+    // Create progressive session & kick off initial analysis
+    progressiveStore.createSession(pid, text);
+
+    try {
+      const result = await runInitialAnalysis(text);
+
+      // Store initial snapshot
+      progressiveStore.addSnapshot(result.snapshot);
+
+      // Store detected DM
+      if (result.detectedDM) {
+        progressiveStore.setDecisionMaker(result.detectedDM);
+      }
+
+      // Add first question
+      progressiveStore.addQuestion(result.question);
+      progressiveStore.setPhase('conversing');
+    } catch (err) {
+      // On error: delete the session and project so user can retry
+      const sid = progressiveStore.currentSessionId;
+      if (sid) progressiveStore.deleteSession(sid);
+      setCurrentProjectId(null);
+      setStartError(err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const currentProject = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
+
+  // Check if current project has a progressive session
+  const progressiveSession = currentProjectId
+    ? progressiveStore.sessions.find(s => s.project_id === currentProjectId)
+    : null;
 
   const currentStepMeta = STEPS.find(s => s.id === activeStep)!;
 
@@ -139,6 +182,13 @@ function WorkspaceContent() {
                   autoFocus
                 />
 
+                {startError && (
+                  <div className="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚠</span>
+                    <span>{startError}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-subtle)]">
                   <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
@@ -146,11 +196,11 @@ function WorkspaceContent() {
                   </p>
                   <button
                     onClick={handleStartWithProblem}
-                    disabled={!problemInput.trim()}
+                    disabled={!problemInput.trim() || isStarting}
                     className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-[14px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 disabled:opacity-40 cursor-pointer"
                     style={{ background: 'var(--gradient-gold)' }}
                   >
-                    시작하기
+                    {isStarting ? '분석 시작 중...' : '시작하기'}
                     <ChevronRight size={14} />
                   </button>
                 </div>
@@ -207,7 +257,47 @@ function WorkspaceContent() {
     );
   }
 
-  /* ─── Active workspace: step content ─── */
+  /* ─── Progressive Flow: default for new sessions ─── */
+  if (progressiveSession && !useLegacyMode) {
+    // Sync current session id — useEffect would be ideal but this is safe
+    // because setState on Zustand outside React lifecycle is synchronous
+    if (progressiveStore.currentSessionId !== progressiveSession.id) {
+      // Use queueMicrotask to avoid setState-during-render warning
+      queueMicrotask(() => useProgressiveStore.setState({ currentSessionId: progressiveSession.id }));
+    }
+
+    return (
+      <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
+        <StaffLines opacity={0.02} spacing={18} />
+
+        <div className="relative pt-8 md:pt-12 pb-16 px-4 md:px-6">
+          {/* Project header */}
+          <div className="max-w-2xl mx-auto mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FolderOpen size={14} className="text-[var(--accent)]" />
+              <span className="text-[13px] font-semibold text-[var(--text-secondary)] truncate max-w-[200px]">
+                {currentProject?.name}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setCurrentProjectId(null);
+                useProgressiveStore.setState({ currentSessionId: null });
+              }}
+              className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+            >
+              새 프로젝트
+            </button>
+          </div>
+
+          <ProgressiveFlow projectId={progressiveSession.project_id} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── Active workspace: step content (legacy 4-tab mode) ─── */
   return (
     <div className="flex flex-col min-h-[calc(100vh-56px)]">
       {/* Top bar: project + step indicator */}

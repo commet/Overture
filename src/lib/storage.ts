@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   DQ_SCORES: 'sot_dq_scores',
   VITALITY_ASSESSMENTS: 'sot_vitality_assessments',
   SETTINGS: 'sot_settings',
+  PROGRESSIVE_SESSIONS: 'sot_progressive_sessions',
 } as const;
 
 export function getStorage<T>(key: string, fallback: T): T {

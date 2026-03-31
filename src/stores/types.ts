@@ -681,3 +681,95 @@ export interface VitalityAssessment {
   tier: 'alive' | 'coasting' | 'performing' | 'dead';
   created_at: string;
 }
+
+// ─── Progressive Flow (단일 프로그레시브 플로우) ───
+
+export type ProgressivePhase =
+  | 'input'           // 고민 입력 대기
+  | 'analyzing'       // LLM 분석 중
+  | 'conversing'      // Q&A 루프 (질문→답변→업데이트)
+  | 'mixing'          // 최종 초안 조합 중
+  | 'dm_feedback'     // 판단자 피드백 생성/표시
+  | 'refining'        // 이슈 반영 선택
+  | 'complete';       // 최종 산출물 완성
+
+export interface FlowQuestion {
+  id: string;
+  text: string;
+  subtext?: string;
+  options?: string[];           // 선택형일 때
+  type: 'select' | 'short';    // 선택 or 짧은 입력
+  engine_phase: 'reframe' | 'recast';  // 어떤 엔진을 위한 질문인지
+}
+
+export interface FlowAnswer {
+  question_id: string;
+  value: string;
+}
+
+export interface AnalysisSnapshot {
+  version: number;
+  real_question: string;
+  hidden_assumptions: string[];
+  skeleton: string[];
+  execution_plan?: {
+    steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[];
+    key_assumptions: string[];
+  };
+  insight?: string;              // 이번 업데이트의 핵심 인사이트
+}
+
+export interface DMConcern {
+  text: string;
+  severity: 'critical' | 'important' | 'minor';
+  fix_suggestion: string;
+  applied: boolean;
+}
+
+export interface DMFeedbackResult {
+  persona_name: string;
+  persona_role: string;
+  first_reaction: string;
+  good_parts: string[];
+  concerns: DMConcern[];
+  would_ask: string[];
+  approval_condition: string;
+}
+
+export interface MixResult {
+  title: string;
+  executive_summary: string;
+  sections: { heading: string; content: string }[];
+  key_assumptions: string[];
+  next_steps: string[];
+}
+
+export interface ProgressiveSession {
+  id: string;
+  project_id: string;
+  problem_text: string;
+  decision_maker: string | null;
+
+  // Flow state
+  phase: ProgressivePhase;
+  round: number;                // 현재 Q&A 라운드 (0-based)
+  max_rounds: number;           // 최대 라운드 (기본 3)
+
+  // Accumulated data
+  questions: FlowQuestion[];
+  answers: FlowAnswer[];
+  snapshots: AnalysisSnapshot[];  // version 0 = 초기, 1+ = 업데이트
+  mix: MixResult | null;
+  dm_feedback: DMFeedbackResult | null;
+
+  // Final
+  final_deliverable: string | null;
+
+  // Engine refs (기존 store에도 저장)
+  reframe_item_id?: string;
+  recast_item_id?: string;
+  feedback_record_id?: string;
+
+  created_at: string;
+  updated_at: string;
+}
