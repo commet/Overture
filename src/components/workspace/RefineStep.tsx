@@ -24,7 +24,9 @@ import { useRecastStore } from '@/stores/useRecastStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { recordSignal } from '@/lib/signal-recorder';
 import { generateRetrospectiveQuestions, saveRetrospectiveAnswer } from '@/lib/retrospective';
-import { recordRefineEval } from '@/lib/eval-engine';
+// Heavy module: eval-engine loaded on-demand (only at step completion)
+const lazyEvalEngine = () => import('@/lib/eval-engine');
+// decision-quality used in render, must be static
 import { computeDecisionQuality, getDQScores, correlateDQWithOutcomes } from '@/lib/decision-quality';
 import type { DecisionQualityScore } from '@/stores/types';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
@@ -152,31 +154,37 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
       );
 
       // ── Phase B: Re-review with same personas ──
-      const reReviewResults: RehearsalResult[] = [];
+      // ── Parallel re-review (병렬 실행으로 N배 속도 향상) ──
       const personaIds = activeLoop.persona_ids;
+      const perspective = latestFeedbackRecord?.feedback_perspective || '전반적 인상';
+      const intensity = latestFeedbackRecord?.feedback_intensity || '솔직하게';
+      const changesContext = (revision.changes || [])
+        .map(c => `- ${c.what}: ${c.why} (대응: ${c.addressing})`)
+        .join('\n');
+      const reReviewContent = changesContext
+        ? `${revision.revised_plan}\n\n---\n[이번 수정 사항]\n${changesContext}`
+        : revision.revised_plan;
 
-      for (const personaId of personaIds) {
-        const persona = getPersona(personaId);
-        if (!persona) continue;
+      const settled = await Promise.allSettled(
+        personaIds.map(async (personaId) => {
+          const persona = getPersona(personaId);
+          if (!persona) throw new Error(`Persona ${personaId} not found`);
+          const systemPrompt = buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
+          const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
+            [{ role: 'user', content: reReviewContent }],
+            { system: systemPrompt, maxTokens: 2000 }
+          );
+          return { ...result, persona_id: personaId } as RehearsalResult;
+        })
+      );
 
-        // Single source: persona-prompt.ts (same prompt as initial feedback)
-        const perspective = latestFeedbackRecord?.feedback_perspective || '전반적 인상';
-        const intensity = latestFeedbackRecord?.feedback_intensity || '솔직하게';
-        const systemPrompt = buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
-
-        // Include diff context so persona can verify what changed
-        const changesContext = (revision.changes || [])
-          .map(c => `- ${c.what}: ${c.why} (대응: ${c.addressing})`)
-          .join('\n');
-        const reReviewContent = changesContext
-          ? `${revision.revised_plan}\n\n---\n[이번 수정 사항]\n${changesContext}`
-          : revision.revised_plan;
-
-        const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
-          [{ role: 'user', content: reReviewContent }],
-          { system: systemPrompt, maxTokens: 2000 }
-        );
-        reReviewResults.push({ ...result, persona_id: personaId });
+      const reReviewResults: RehearsalResult[] = [];
+      for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') {
+          reReviewResults.push(outcome.value);
+        } else if (process.env.NODE_ENV === 'development') {
+          console.warn('[refine] 재리뷰 실패:', outcome.reason);
+        }
       }
 
       // Synthesis for re-review
@@ -591,7 +599,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefineEval({ ...activeLoop, status: 'converged' }); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: 'converged' })); }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -613,7 +621,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); recordRefineEval({ ...activeLoop, status: fs }); }}>
+                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: fs })); }}>
                   마무리
                 </Button>
               </div>

@@ -163,7 +163,7 @@ describe('callLLM', () => {
 
   it('fetchWithRetry: 429 시 재시도 후 성공', async () => {
     mockFetch
-      .mockResolvedValueOnce(mockResponse({ error: 'rate limit' }, 429))
+      .mockResolvedValueOnce(mockResponse({ error: 'rate limit', retry_after: 0 }, 429))
       .mockResolvedValueOnce(mockResponse({ text: 'retried ok' }));
 
     const result = await callLLM(MESSAGES, OPTIONS);
@@ -201,16 +201,19 @@ describe('callLLMJson', () => {
   });
 
   it('shape 검증 실패 시 throw', async () => {
-    mockFetch.mockResolvedValueOnce(
-      mockResponse({ text: '{"findings": "not-array"}' })
-    );
+    // callLLMJson now retries once on parse/validation failure,
+    // so we need to mock 2 responses (original + retry)
+    mockFetch
+      .mockResolvedValueOnce(mockResponse({ text: '{"findings": "not-array"}' }))
+      .mockResolvedValueOnce(mockResponse({ text: '{"findings": "still-not-array"}' }));
 
     await expect(
       callLLMJson(MESSAGES, {
         ...OPTIONS,
         shape: { findings: 'array' },
+        parseRetries: 1,
       })
-    ).rejects.toThrow('expected array');
+    ).rejects.toThrow('배열');
   });
 
   it('markdown 펜스로 감싼 JSON도 파싱', async () => {
@@ -359,7 +362,7 @@ describe('callLLMStream', () => {
   it('non-ok 스트림 응답 시 onError 호출', async () => {
     let caughtError: Error | null = null;
     mockFetch.mockResolvedValueOnce(
-      mockResponse({ error: '서버 에러' }, 500)
+      mockResponse({ error: '서버 오류 (500)' }, 500)
     );
 
     await callLLMStream(MESSAGES, OPTIONS, {
@@ -371,6 +374,6 @@ describe('callLLMStream', () => {
     });
 
     expect(caughtError).not.toBeNull();
-    expect(caughtError!.message).toBe('서버 에러');
+    expect(caughtError!.message).toBe('서버 오류 (500)');
   });
 });

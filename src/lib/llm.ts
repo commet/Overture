@@ -1,6 +1,8 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { Settings } from '@/stores/types';
 
+// ━━━ Types ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 export interface LLMMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -9,6 +11,8 @@ export interface LLMMessage {
 export interface LLMOptions {
   system: string;
   maxTokens?: number;
+  /** AbortController signal for cancellation */
+  signal?: AbortSignal;
 }
 
 export interface StreamCallbacks {
@@ -17,87 +21,291 @@ export interface StreamCallbacks {
   onError: (error: Error) => void;
 }
 
-const MAX_JSON_LENGTH = 200_000; // 200KB — well above any reasonable LLM response
+// ━━━ Error System (Claude Code 패턴: 에러 분류 + 재시도 가능 여부 판단) ━━━
+
+export type LLMErrorCategory =
+  | 'rate_limit'       // 429
+  | 'overloaded'       // 529, 503
+  | 'context_too_long' // 413
+  | 'auth'             // 401, 403
+  | 'parse_failure'    // JSON 파싱 실패
+  | 'network'          // 연결 실패
+  | 'validation'       // 스키마 검증 실패
+  | 'unknown';
+
+export class LLMError extends Error {
+  readonly category: LLMErrorCategory;
+  readonly status?: number;
+  readonly retryable: boolean;
+  readonly retryAfterMs?: number;
+
+  constructor(message: string, opts: {
+    category: LLMErrorCategory;
+    status?: number;
+    retryable?: boolean;
+    retryAfterMs?: number;
+    cause?: unknown;
+  }) {
+    super(message, { cause: opts.cause });
+    this.name = 'LLMError';
+    this.category = opts.category;
+    this.status = opts.status;
+    this.retryable = opts.retryable ?? false;
+    this.retryAfterMs = opts.retryAfterMs;
+  }
+}
+
+function categorizeError(status: number, body?: Record<string, unknown>): LLMError {
+  if (status === 429) {
+    const retryAfter = typeof body?.retry_after === 'number' ? body.retry_after * 1000 : 5000;
+    return new LLMError('요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.', {
+      category: 'rate_limit', status, retryable: true, retryAfterMs: retryAfter,
+    });
+  }
+  if (status === 529 || status === 503) {
+    return new LLMError('서버가 일시적으로 과부하 상태입니다.', {
+      category: 'overloaded', status, retryable: true, retryAfterMs: 3000,
+    });
+  }
+  if (status === 413) {
+    return new LLMError('입력이 너무 깁니다. 내용을 줄여주세요.', {
+      category: 'context_too_long', status, retryable: false,
+    });
+  }
+  if (status === 401 || status === 403) {
+    const needsLogin = body?.needsLogin;
+    const msg = needsLogin ? 'LOGIN_REQUIRED:로그인이 필요합니다.' : '인증에 실패했습니다.';
+    return new LLMError(msg, { category: 'auth', status, retryable: false });
+  }
+  if (status >= 500) {
+    return new LLMError(`서버 오류 (${status})`, {
+      category: 'overloaded', status, retryable: true, retryAfterMs: 2000,
+    });
+  }
+  const msg = typeof body?.error === 'string' ? body.error : `LLM 호출 실패 (${status})`;
+  return new LLMError(msg, { category: 'unknown', status, retryable: false });
+}
+
+// ━━━ Circuit Breaker (Claude Code 패턴: 연속 실패 시 빠른 차단) ━━━
+
+interface CircuitState {
+  failures: number;
+  lastFailure: number;
+  open: boolean;
+}
+
+const circuit: CircuitState = { failures: 0, lastFailure: 0, open: false };
+const CIRCUIT_THRESHOLD = 5;
+const CIRCUIT_RESET_MS = 30_000;
+
+function checkCircuit(): void {
+  if (!circuit.open) return;
+  if (Date.now() - circuit.lastFailure > CIRCUIT_RESET_MS) {
+    circuit.open = false;
+    circuit.failures = 0;
+    return;
+  }
+  throw new LLMError('연속 실패로 잠시 중단되었습니다. 30초 후 자동 복구됩니다.', {
+    category: 'overloaded', retryable: false,
+  });
+}
+
+function recordSuccess(): void {
+  circuit.failures = 0;
+  circuit.open = false;
+}
+
+function recordFailure(): void {
+  circuit.failures++;
+  circuit.lastFailure = Date.now();
+  if (circuit.failures >= CIRCUIT_THRESHOLD) {
+    circuit.open = true;
+  }
+}
+
+// ━━━ Enhanced Retry (Claude Code 패턴: 지수 백오프 + 에러별 지연) ━━━
+
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 529]);
+
+async function fetchWithRetry(
+  input: RequestInfo,
+  init: RequestInit,
+  maxRetries = 3
+): Promise<Response> {
+  checkCircuit();
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(input, init);
+
+      if (res.ok) {
+        recordSuccess();
+        return res;
+      }
+
+      if (!RETRYABLE_STATUS.has(res.status) || attempt === maxRetries) {
+        recordFailure();
+        const body = await res.json().catch(() => ({}));
+        throw categorizeError(res.status, body);
+      }
+
+      // Retry with smart delay
+      const body = await res.json().catch(() => ({}));
+      const baseDelay = res.status === 429
+        ? (typeof body?.retry_after === 'number' ? body.retry_after * 1000 : 5000)
+        : 1000 * Math.pow(2, attempt);
+      // Jitter: ±25% to prevent thundering herd
+      const jitter = baseDelay * (0.75 + Math.random() * 0.5);
+      const delay = Math.min(jitter, 15_000);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[llm] 재시도 ${attempt + 1}/${maxRetries} (status ${res.status}, ${Math.round(delay)}ms 후)`);
+      }
+      await new Promise(r => setTimeout(r, delay));
+    } catch (error) {
+      if (error instanceof LLMError) throw error;
+      if (attempt === maxRetries) {
+        recordFailure();
+        throw new LLMError('네트워크 연결에 실패했습니다.', {
+          category: 'network', retryable: true, cause: error,
+        });
+      }
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  // Unreachable
+  return fetch(input, init);
+}
+
+// ━━━ JSON Parsing (강화: partial recovery + markdown fence 처리) ━━━
+
+const MAX_JSON_LENGTH = 200_000;
 
 export function parseJSON<T = unknown>(text: string): T {
   if (text.length > MAX_JSON_LENGTH) {
-    throw new Error('LLM response too large to parse');
+    throw new LLMError('LLM 응답이 너무 큽니다.', { category: 'parse_failure' });
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    // Extract outermost JSON object from markdown fences or surrounding text.
-    // Greedy [\s\S]* is safe here (linear backtracking, no nested quantifiers).
-    // Length limit above guards against excessive memory usage.
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) parsed = JSON.parse(match[0]);
-    else throw new Error('Failed to parse JSON from LLM response');
+    // Strategy 1: Extract from markdown code fences
+    const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (fenced) {
+      try { parsed = JSON.parse(fenced[1]); } catch { /* fall through */ }
+    }
+
+    // Strategy 2: Extract outermost JSON object
+    if (!parsed) {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { parsed = JSON.parse(match[0]); } catch { /* fall through */ }
+      }
+    }
+
+    // Strategy 3: Extract JSON array
+    if (!parsed) {
+      const arrMatch = text.match(/\[[\s\S]*\]/);
+      if (arrMatch) {
+        try { parsed = JSON.parse(arrMatch[0]); } catch { /* fall through */ }
+      }
+    }
+
+    if (!parsed) {
+      throw new LLMError('JSON 파싱 실패: LLM이 유효하지 않은 형식으로 응답했습니다.', {
+        category: 'parse_failure',
+      });
+    }
   }
 
-  // Reject non-object primitives (LLM should always return objects)
   if (parsed === null || typeof parsed !== 'object') {
-    throw new Error('LLM returned a non-object JSON value');
+    throw new LLMError('LLM이 객체가 아닌 값을 반환했습니다.', { category: 'parse_failure' });
   }
 
   return parsed as T;
 }
 
+// ━━━ Schema Validation (Claude Code 패턴: 타입 강제 변환 + 기본값) ━━━
+
+type SchemaFieldType = 'string' | 'number' | 'boolean' | 'array' | 'object';
+
+export interface FieldSchema {
+  type: SchemaFieldType;
+  default?: unknown;
+  required?: boolean;
+  /** Coerce string "true"→true, "123"→123 (Claude Code semanticNumber 패턴) */
+  coerce?: boolean;
+}
+
 /**
- * Validate that a parsed object has expected keys with expected types.
- * Returns the object if valid, throws if not.
- *
- * Usage:
- *   const data = validateShape(parsed, { findings: 'array', score: 'number' });
+ * Enhanced validateShape with defaults, coercion, and required checks.
+ * Non-destructive: returns a new object with missing fields filled in.
  */
 export function validateShape<T extends Record<string, unknown>>(
   obj: unknown,
-  schema: Record<string, 'string' | 'number' | 'boolean' | 'array' | 'object'>
+  schema: Record<string, SchemaFieldType | FieldSchema>
 ): T {
   if (!obj || typeof obj !== 'object') {
-    throw new Error('validateShape: expected object');
+    throw new LLMError('validateShape: 객체가 아닙니다.', { category: 'validation' });
   }
-  const record = obj as Record<string, unknown>;
-  for (const [key, expectedType] of Object.entries(schema)) {
-    const value = record[key];
-    if (value === undefined || value === null) continue; // optional fields OK
-    if (expectedType === 'array') {
-      if (!Array.isArray(value)) {
-        throw new Error(`validateShape: "${key}" expected array, got ${typeof value}`);
+
+  const record = { ...(obj as Record<string, unknown>) };
+
+  for (const [key, def] of Object.entries(schema)) {
+    const fieldDef: FieldSchema = typeof def === 'string' ? { type: def } : def;
+    let value = record[key];
+
+    // Apply coercion (LLM sometimes returns "true" instead of true)
+    if (fieldDef.coerce && value !== undefined && value !== null) {
+      if (fieldDef.type === 'boolean' && typeof value === 'string') {
+        value = value === 'true' || value === '1';
+        record[key] = value;
       }
-    } else if (typeof value !== expectedType) {
-      throw new Error(`validateShape: "${key}" expected ${expectedType}, got ${typeof value}`);
+      if (fieldDef.type === 'number' && typeof value === 'string') {
+        const num = Number(value);
+        if (!isNaN(num)) { value = num; record[key] = value; }
+      }
+    }
+
+    // Apply defaults for missing/null values
+    if ((value === undefined || value === null) && fieldDef.default !== undefined) {
+      record[key] = fieldDef.default;
+      continue;
+    }
+
+    // Skip optional fields that are missing
+    if (value === undefined || value === null) {
+      if (fieldDef.required) {
+        throw new LLMError(`필수 필드 "${key}"가 누락되었습니다.`, { category: 'validation' });
+      }
+      continue;
+    }
+
+    // Type check
+    if (fieldDef.type === 'array') {
+      if (!Array.isArray(value)) {
+        if (fieldDef.default !== undefined) {
+          record[key] = fieldDef.default;
+        } else {
+          throw new LLMError(`"${key}" 필드가 배열이어야 합니다.`, { category: 'validation' });
+        }
+      }
+    } else if (typeof value !== fieldDef.type) {
+      if (fieldDef.default !== undefined) {
+        record[key] = fieldDef.default;
+      } else {
+        throw new LLMError(`"${key}" 필드의 타입이 올바르지 않습니다 (${fieldDef.type} 필요, ${typeof value} 받음).`, {
+          category: 'validation',
+        });
+      }
     }
   }
+
   return record as T;
 }
 
-// ─── Retry logic for transient HTTP errors ───
-
-const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
-
-async function fetchWithRetry(
-  input: RequestInfo,
-  init: RequestInit,
-  maxRetries = 2
-): Promise<Response> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const res = await fetch(input, init);
-    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt === maxRetries) {
-      return res;
-    }
-    const delay = 1000 * Math.pow(2, attempt);
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`[llm] 재시도 ${attempt + 1}/${maxRetries} (status ${res.status}, ${delay}ms 후)`);
-    }
-    await new Promise(r => setTimeout(r, delay));
-  }
-  // Unreachable but satisfies TypeScript
-  return fetch(input, init);
-}
-
-// ─── Settings helper ───
+// ━━━ Settings ━━━
 
 function getSettings(): Settings {
   return getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
@@ -110,7 +318,19 @@ function getSettings(): Settings {
   });
 }
 
-// ─── Non-streaming calls ───
+// ━━━ Auth Helper ━━━
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const { supabase } = await import('./supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  return headers;
+}
+
+// ━━━ Non-streaming calls ━━━
 
 export async function callLLM(
   messages: LLMMessage[],
@@ -118,19 +338,13 @@ export async function callLLM(
 ): Promise<string> {
   const settings = getSettings();
 
-  // Direct mode: user's own API key, routed through server-side proxy
   if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
     return callServerWithUserKey(settings.anthropic_api_key, messages, options);
   }
 
-  // Proxy mode: server's API key with rate limiting
   return callProxy(messages, options);
 }
 
-/**
- * Direct mode — sends user's API key to a server-side endpoint.
- * The key never leaves the same origin (no cross-origin browser request).
- */
 async function callServerWithUserKey(
   apiKey: string,
   messages: LLMMessage[],
@@ -145,66 +359,146 @@ async function callServerWithUserKey(
       system: options.system,
       maxTokens: options.maxTokens,
     }),
+    signal: options.signal,
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
-  }
 
   const data = await res.json();
   return data.text;
 }
 
-/**
- * Proxy mode — uses server's API key with auth + rate limiting.
- */
 async function callProxy(
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
-  const { supabase } = await import('./supabase');
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
+  const headers = await getAuthHeaders();
 
   const res = await fetchWithRetry('/api/llm', {
     method: 'POST',
     headers,
     body: JSON.stringify({ messages, system: options.system, maxTokens: options.maxTokens }),
+    signal: options.signal,
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (err.needsLogin) {
-      throw new Error('LOGIN_REQUIRED:' + (err.error || '로그인이 필요합니다.'));
-    }
-    throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
-  }
 
   const data = await res.json();
   return data.text;
 }
 
+// ━━━ JSON call (enhanced: schema validation + parse retry) ━━━
+
 export async function callLLMJson<T = unknown>(
   messages: LLMMessage[],
   options: LLMOptions & {
-    /** Optional shape schema for runtime validation of LLM output */
-    shape?: Record<string, 'string' | 'number' | 'boolean' | 'array' | 'object'>;
+    shape?: Record<string, SchemaFieldType | FieldSchema>;
+    /** Auto-retry with corrective prompt on parse failure (default: 1) */
+    parseRetries?: number;
   } = { system: '' }
 ): Promise<T> {
-  const text = await callLLM(messages, options);
-  const parsed = parseJSON<T>(text);
-  if (options.shape) {
-    return validateShape<T & Record<string, unknown>>(parsed, options.shape) as T;
+  const maxParseRetries = options.parseRetries ?? 1;
+
+  for (let attempt = 0; attempt <= maxParseRetries; attempt++) {
+    try {
+      const currentMessages = attempt === 0
+        ? messages
+        : [
+            ...messages,
+            {
+              role: 'assistant' as const,
+              content: '죄송합니다. JSON 형식으로 다시 응답하겠습니다.',
+            },
+            {
+              role: 'user' as const,
+              content: '반드시 유효한 JSON 객체만 응답하세요. 마크다운, 설명, 코드 블록 없이 { } 로 시작하고 끝나는 순수 JSON만.',
+            },
+          ];
+
+      const text = await callLLM(currentMessages, options);
+      const parsed = parseJSON<T>(text);
+
+      if (options.shape) {
+        return validateShape<T & Record<string, unknown>>(parsed, options.shape) as T;
+      }
+      return parsed;
+    } catch (error) {
+      const isParseError = error instanceof LLMError &&
+        (error.category === 'parse_failure' || error.category === 'validation');
+
+      if (isParseError && attempt < maxParseRetries) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[llm] JSON 파싱 재시도 ${attempt + 1}/${maxParseRetries}`);
+        }
+        continue;
+      }
+      throw error;
+    }
   }
-  return parsed;
+
+  // Unreachable
+  throw new LLMError('JSON 파싱에 실패했습니다.', { category: 'parse_failure' });
 }
 
-// ─── Streaming call ───
+// ━━━ Parallel calls (Claude Code StreamingToolExecutor 패턴) ━━━
+
+export interface ParallelCallOptions<T> extends LLMOptions {
+  shape?: Record<string, SchemaFieldType | FieldSchema>;
+  /** Called when each individual call completes */
+  onItemComplete?: (index: number, result: T) => void;
+  /** Called when an individual call fails */
+  onItemError?: (index: number, error: Error) => void;
+}
+
+export interface ParallelResult<T> {
+  results: (T | null)[];
+  errors: (Error | null)[];
+  successCount: number;
+  failureCount: number;
+}
+
+/**
+ * Run multiple LLM calls concurrently with Promise.allSettled.
+ * Each call gets its own messages but shares the system prompt.
+ * Failed calls don't block others.
+ */
+export async function callLLMParallel<T = unknown>(
+  calls: Array<{ messages: LLMMessage[] }>,
+  options: ParallelCallOptions<T>
+): Promise<ParallelResult<T>> {
+  const promises = calls.map(async (call, index) => {
+    const result = await callLLMJson<T>(call.messages, {
+      system: options.system,
+      maxTokens: options.maxTokens,
+      signal: options.signal,
+      shape: options.shape,
+    });
+    options.onItemComplete?.(index, result);
+    return result;
+  });
+
+  const settled = await Promise.allSettled(promises);
+
+  const results: (T | null)[] = [];
+  const errors: (Error | null)[] = [];
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (let i = 0; i < settled.length; i++) {
+    const outcome = settled[i];
+    if (outcome.status === 'fulfilled') {
+      results.push(outcome.value);
+      errors.push(null);
+      successCount++;
+    } else {
+      results.push(null);
+      const err = outcome.reason instanceof Error ? outcome.reason : new Error(String(outcome.reason));
+      errors.push(err);
+      options.onItemError?.(i, err);
+      failureCount++;
+    }
+  }
+
+  return { results, errors, successCount, failureCount };
+}
+
+// ━━━ Streaming (enhanced: abort + better SSE parsing + rate limit) ━━━
 
 export async function callLLMStream(
   messages: LLMMessage[],
@@ -212,18 +506,14 @@ export async function callLLMStream(
   callbacks: StreamCallbacks
 ): Promise<void> {
   const settings = getSettings();
-
   const isDirect = settings.llm_mode === 'direct' && settings.anthropic_api_key;
   const url = isDirect ? '/api/llm/direct' : '/api/llm';
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-  if (!isDirect) {
-    const { supabase } = await import('./supabase');
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
+  let headers: Record<string, string>;
+  if (isDirect) {
+    headers = { 'Content-Type': 'application/json' };
+  } else {
+    headers = await getAuthHeaders();
   }
 
   const bodyObj: Record<string, unknown> = {
@@ -237,60 +527,112 @@ export async function callLLMStream(
   }
 
   try {
+    checkCircuit();
+
     const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(bodyObj),
+      signal: options.signal,
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      if (err.needsLogin) {
-        throw new Error('LOGIN_REQUIRED:' + (err.error || '로그인이 필요합니다.'));
-      }
-      throw new Error(err.error || `LLM 호출 실패 (${res.status})`);
+      const body = await res.json().catch(() => ({}));
+      recordFailure();
+      throw categorizeError(res.status, body);
     }
 
+    recordSuccess();
     const reader = res.body?.getReader();
-    if (!reader) throw new Error('Stream not available');
+    if (!reader) throw new LLMError('스트림을 사용할 수 없습니다.', { category: 'network' });
 
     const decoder = new TextDecoder();
     let fullText = '';
+    let buffer = ''; // Buffer for incomplete SSE lines
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      // Keep the last incomplete line in the buffer
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.text) {
-              fullText += parsed.text;
-              callbacks.onToken(fullText);
-            }
-            if (parsed.rateLimit !== undefined) {
-              // Dispatch rate limit info for RateLimitBadge
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('overture:ratelimit', {
-                  detail: { remaining: parsed.rateLimit },
-                }));
-              }
-            }
-          } catch {
-            // Skip malformed lines
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.text) {
+            fullText += parsed.text;
+            callbacks.onToken(fullText);
           }
+          if (parsed.rateLimit !== undefined && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('overture:ratelimit', {
+              detail: { remaining: parsed.rateLimit },
+            }));
+          }
+        } catch {
+          // Skip malformed chunks
         }
+      }
+    }
+
+    // Process any remaining buffer
+    if (buffer.startsWith('data: ')) {
+      const data = buffer.slice(6).trim();
+      if (data && data !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.text) {
+            fullText += parsed.text;
+            callbacks.onToken(fullText);
+          }
+        } catch { /* skip */ }
       }
     }
 
     callbacks.onComplete(fullText);
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      callbacks.onError(new LLMError('요청이 취소되었습니다.', { category: 'network', cause: error }));
+      return;
+    }
     callbacks.onError(error instanceof Error ? error : new Error(String(error)));
   }
+}
+
+// ━━━ Streaming JSON (new: stream + parse at end) ━━━
+
+/**
+ * Stream LLM output for UX (show progress), then parse as JSON at the end.
+ * Best of both worlds: real-time UX + structured output.
+ */
+export async function callLLMStreamThenParse<T = unknown>(
+  messages: LLMMessage[],
+  options: LLMOptions & {
+    shape?: Record<string, SchemaFieldType | FieldSchema>;
+  },
+  onToken: (text: string) => void
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    callLLMStream(messages, options, {
+      onToken,
+      onComplete: (fullText) => {
+        try {
+          const parsed = parseJSON<T>(fullText);
+          const validated = options.shape
+            ? validateShape<T & Record<string, unknown>>(parsed, options.shape) as T
+            : parsed;
+          resolve(validated);
+        } catch (error) {
+          reject(error);
+        }
+      },
+      onError: reject,
+    });
+  });
 }

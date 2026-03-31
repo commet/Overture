@@ -85,7 +85,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       decision_maker: null,
       phase: 'analyzing',
       round: 0,
-      max_rounds: 3,
+      max_rounds: 5,
       questions: [],
       answers: [],
       snapshots: [],

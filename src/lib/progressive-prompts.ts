@@ -9,6 +9,7 @@
  */
 
 import type { AnalysisSnapshot, FlowAnswer, FlowQuestion } from '@/stores/types';
+import { compactQAHistory, shouldCompact } from '@/lib/compact-context';
 
 /** Strip XML-like tags from user input to prevent prompt injection. */
 function sanitize(text: string): string {
@@ -91,9 +92,12 @@ export function buildDeepeningPrompt(
   round: number,
   maxRounds: number,
 ): { system: string; user: string } {
-  const qaHistory = questionsAndAnswers.map((qa, i) =>
-    `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
-  ).join('\n\n');
+  // 컨텍스트 압축: Q&A가 길어지면 오래된 대화를 요약
+  const qaHistory = shouldCompact(questionsAndAnswers)
+    ? compactQAHistory(questionsAndAnswers, 2)
+    : questionsAndAnswers.map((qa, i) =>
+        `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
+      ).join('\n\n');
 
   const isLastRound = round >= maxRounds - 1;
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
 import {
-  Play, Sparkles, Check, ArrowRight, ArrowLeft, ChevronDown, UserCheck, AlertTriangle,
+  Play, Sparkles, Check, ArrowRight, ArrowLeft, UserCheck, AlertTriangle,
+  Zap, Lightbulb, Target, Shield, MessageSquare, Loader2, Eye,
 } from 'lucide-react';
 import { track, trackTime } from '@/lib/analytics';
 import { recordSignal } from '@/lib/signal-recorder';
@@ -138,7 +140,7 @@ function getPersonaReaction(q2: string) {
 }
 
 /* ═══════════════════════════════════════
-   STEPS
+   CONFIG & HELPERS
    ═══════════════════════════════════════ */
 
 const STEP_LABELS = ['상황', '즉시 초안', '질문 → 진화', '대표님 반응', '반영', '최종'];
@@ -175,13 +177,13 @@ export function DemoWalkthrough() {
   const maxStep = STEP_LABELS.length - 1;
   const stepTimerRef = useRef<(() => void) | null>(null);
   const entryTimeRef = useRef(Date.now());
+  const hasSeenAnalysis = useRef(false);
 
   // Track demo entry
   useEffect(() => {
     track('demo_enter');
     entryTimeRef.current = Date.now();
     stepTimerRef.current = trackTime('demo_step_time', { step: 0, label: STEP_LABELS[0] });
-    // Track drop-off on page leave
     const onUnload = () => {
       track('demo_drop', {
         last_step: step,
@@ -200,9 +202,7 @@ export function DemoWalkthrough() {
 
   const go = (target: number) => {
     const next = Math.max(0, Math.min(target, maxStep));
-    // End timer for previous step
     if (stepTimerRef.current) stepTimerRef.current();
-    // Start timer for new step
     stepTimerRef.current = trackTime('demo_step_time', { step: next, label: STEP_LABELS[next] });
     setStep(next);
     track('demo_step', { step: next, label: STEP_LABELS[next], from_step: step });
@@ -226,7 +226,6 @@ export function DemoWalkthrough() {
     return () => window.removeEventListener('keydown', handleKey);
   });
 
-  // Can't advance past step 2 without answering questions
   const canAdvance = (s: number) => {
     if (s === 2 && (!q1Answer || !q2Answer)) return false;
     return true;
@@ -234,57 +233,79 @@ export function DemoWalkthrough() {
 
   return (
     <div className="max-w-3xl mx-auto px-5 md:px-0">
-      {/* Progress dots */}
-      <nav className="flex items-center justify-center gap-2 mb-8 md:mb-12">
+      {/* ── Progress stepper ── */}
+      <nav className="flex items-center justify-center mb-10 md:mb-14 px-1">
         {STEP_LABELS.map((label, i) => {
           const active = i === step;
           const done = i < step;
           return (
-            <button
-              key={i}
-              onClick={() => go(i)}
-              className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all ${active ? '' : done ? 'opacity-60' : 'opacity-30'}`}
-            >
-              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
-                active ? 'bg-[var(--accent)] scale-125 shadow-sm' :
-                done ? 'bg-[var(--accent)]' :
-                'bg-[var(--border)]'
-              }`} />
-              <span className={`text-[10px] font-semibold hidden md:block ${active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'}`}>
-                {label}
-              </span>
-            </button>
+            <Fragment key={i}>
+              {i > 0 && (
+                <div className={`flex-1 h-[2px] mx-0.5 md:mx-1 transition-colors duration-300 ${
+                  done ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'
+                }`} />
+              )}
+              <button
+                onClick={() => go(i)}
+                className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                  active ? '' : done ? 'opacity-70' : 'opacity-35'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold transition-all ${
+                  active ? 'bg-[var(--accent)] text-white shadow-[var(--glow-accent)] scale-110' :
+                  done ? 'bg-[var(--accent)]/15 text-[var(--accent)]' :
+                  'bg-[var(--border-subtle)] text-[var(--text-tertiary)]'
+                }`}>
+                  {done ? <Check size={13} /> : i + 1}
+                </div>
+                <span className={`text-[10px] md:text-[12px] font-semibold whitespace-nowrap ${
+                  active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'
+                }`}>
+                  {label}
+                </span>
+              </button>
+            </Fragment>
           );
         })}
       </nav>
 
-      {/* Content */}
+      {/* ── Content ── */}
       <div key={step} className="animate-fade-in">
         {step === 0 && <IntroStep />}
-        {step === 1 && <FirstDraftStep />}
+        {step === 1 && (
+          <FirstDraftStep
+            skipLoading={hasSeenAnalysis.current}
+            onLoaded={() => { hasSeenAnalysis.current = true; }}
+          />
+        )}
         {step === 2 && <InterviewStep q1={q1Answer} q2={q2Answer} setQ1={setQ1Answer} setQ2={setQ2Answer} />}
         {step === 3 && <PersonaStep q2={q2Answer} />}
         {step === 4 && <FixStep q2={q2Answer} applied={fixesApplied} setApplied={setFixesApplied} />}
         {step === 5 && <FinalStep q2={q2Answer} applied={fixesApplied} />}
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between mt-6 pt-6 border-t border-[var(--border-subtle)]">
+      {/* ── Navigation ── */}
+      <div className="flex items-center justify-between mt-8 pt-6 border-t border-[var(--border-subtle)]">
         {step > 0 ? (
           <Button variant="secondary" size="sm" onClick={() => go(step - 1)}>
             <ArrowLeft size={14} /> 이전
           </Button>
         ) : <div />}
-        <span className="text-[12px] text-[var(--text-tertiary)] font-medium tabular-nums">
+        <span className="text-[13px] text-[var(--text-tertiary)] font-medium tabular-nums">
           {step + 1} / {maxStep + 1}
         </span>
         {step < maxStep ? (
-          <Button onClick={() => go(step + 1)} disabled={!canAdvance(step)}>
+          <Button
+            variant={step === 0 ? 'accent' : 'primary'}
+            size={step === 0 ? 'lg' : 'md'}
+            onClick={() => go(step + 1)}
+            disabled={!canAdvance(step)}
+          >
             {step === 0 ? '체험 시작' : '다음'} <ArrowRight size={14} />
           </Button>
         ) : (
           <Link href="/workspace" onClick={() => track('demo_to_workspace', { from_step: step })}>
-            <Button>
+            <Button variant="accent" size="lg">
               내 과제로 시작하기 <ArrowRight size={14} />
             </Button>
           </Link>
@@ -300,33 +321,33 @@ export function DemoWalkthrough() {
 
 function IntroStep() {
   return (
-    <div className="space-y-6 phrase-entrance">
+    <div className="space-y-8 phrase-entrance">
       <div>
-        <div className="flex items-center gap-2 text-[12px] text-[var(--accent)] font-semibold tracking-wider uppercase mb-3">
-          <Play size={14} /> Demo
-        </div>
-        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+        <Badge variant="gold">DEMO</Badge>
+        <h2 className="text-[32px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
           1분이면 됩니다
         </h2>
-        <p className="text-[15px] text-[var(--text-secondary)] mt-3 leading-relaxed max-w-lg">
-          질문 하나 던지면 즉시 초안이 나오고, 답할수록 날카로워지는 걸 직접 체험하세요.
+        <p className="text-[16px] md:text-[18px] text-[var(--text-secondary)] mt-4 leading-relaxed max-w-lg">
+          질문 하나 던지면 즉시 초안이 나오고,<br className="hidden md:block" />
+          답할수록 날카로워지는 걸 직접 체험하세요.
         </p>
       </div>
 
       <Card variant="elevated" className="!border-2 !border-[var(--border)]">
-        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-3">오늘의 상황</p>
-        <p className="text-[16px] md:text-[18px] font-semibold text-[var(--text-primary)] leading-relaxed" style={{ fontFamily: 'var(--font-display)' }}>
+        <p className="text-[13px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">오늘의 상황</p>
+        <p className="text-[18px] md:text-[22px] font-semibold text-[var(--text-primary)] leading-relaxed" style={{ fontFamily: 'var(--font-display)' }}>
           {SCENARIO}
         </p>
-        <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+        <p className="text-[15px] text-[var(--text-secondary)] mt-3 leading-relaxed">
           기획안을 써본 적이 없습니다. 어디서부터 시작해야 할지 모르겠습니다.
         </p>
       </Card>
 
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
-        <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
-        <p className="text-[13px] text-[var(--text-primary)]">
-          실제 Overture에서는 <strong>당신의 과제</strong>를 입력합니다. 데모에서는 위 상황으로 체험합니다.
+      <div className="flex items-start gap-3 px-5 py-4 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
+        <Sparkles size={16} className="text-[var(--accent)] shrink-0 mt-0.5" />
+        <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">
+          실제 Overture에서는 <strong>당신의 과제</strong>를 입력합니다.
+          데모에서는 위 상황으로 체험합니다.
         </p>
       </div>
     </div>
@@ -334,62 +355,156 @@ function IntroStep() {
 }
 
 /* ═══════════════════════════════════════
-   STEP 1: Instant First Draft (30초)
+   STEP 1: Instant First Draft
    ═══════════════════════════════════════ */
 
-function FirstDraftStep() {
-  return (
-    <div className="space-y-5 phrase-entrance">
-      <div className="mb-6">
-        <p className="text-[12px] font-bold text-[var(--accent)] tracking-wider uppercase mb-2">즉시 결과 · 30초</p>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          입력 하나로 이만큼 나옵니다
-        </h2>
-      </div>
+const ANALYSIS_STEPS = [
+  '상황을 파악하고 있습니다...',
+  '숨겨진 전제를 찾고 있습니다...',
+  '초안을 구성하고 있습니다...',
+];
 
-      {/* Situation */}
-      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-2">상황 정리</p>
-        <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{FIRST_DRAFT.situation}</p>
-      </div>
+function FirstDraftStep({ skipLoading, onLoaded }: { skipLoading: boolean; onLoaded: () => void }) {
+  const [phase, setPhase] = useState<'loading' | 'results'>(skipLoading ? 'results' : 'loading');
+  const [loadStep, setLoadStep] = useState(0);
 
-      {/* Real question */}
-      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/40 mb-2">진짜 질문</p>
-        <p className="text-[17px] md:text-[19px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
-          {FIRST_DRAFT.real_question}
-        </p>
-      </div>
+  useEffect(() => {
+    if (skipLoading) return;
+    const timers = [
+      setTimeout(() => setLoadStep(1), 800),
+      setTimeout(() => setLoadStep(2), 1600),
+      setTimeout(() => { setPhase('results'); onLoaded(); }, 2400),
+    ];
+    return () => timers.forEach(clearTimeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipLoading]);
 
-      {/* Skeleton */}
-      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">기획안 뼈대</p>
-        <ol className="space-y-2">
-          {FIRST_DRAFT.skeleton.map((item, i) => (
-            <li key={i} className="flex items-start gap-3 text-[14px]">
-              <span className="shrink-0 w-5 h-5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] text-[11px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-              <span className="text-[var(--text-primary)]">{item}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
+  /* ── Loading phase ── */
+  if (phase === 'loading') {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <Badge variant="ai">즉시 분석</Badge>
+          <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
+            입력을 분석하고 있습니다
+          </h2>
+          <p className="text-[15px] text-[var(--text-secondary)] mt-3">
+            방금 입력한 상황을 Overture가 읽고 있습니다.
+          </p>
+        </div>
 
-      {/* Hidden premises */}
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-500/80 mb-3">숨겨진 전제</p>
-        <div className="space-y-2">
-          {FIRST_DRAFT.premises.map((p, i) => (
-            <div key={i} className="flex items-start gap-2.5 text-[14px]">
-              <span className="text-red-400 shrink-0 mt-0.5">?</span>
-              <span className="text-[var(--text-primary)]">{p}</span>
+        {/* Scenario recap */}
+        <Card variant="muted" className="text-center">
+          <p className="text-[13px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">입력된 상황</p>
+          <p className="text-[16px] text-[var(--text-primary)] leading-relaxed">{SCENARIO}</p>
+        </Card>
+
+        {/* Analysis steps */}
+        <div className="py-2 max-w-sm mx-auto space-y-4">
+          {ANALYSIS_STEPS.map((s, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-3 transition-all duration-300 ${
+                i < loadStep ? 'opacity-50' : i === loadStep ? 'opacity-100' : 'opacity-25'
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                i < loadStep ? 'bg-[var(--success)] text-white' :
+                i === loadStep ? 'bg-[var(--accent)] text-white' :
+                'bg-[var(--border-subtle)] text-[var(--text-tertiary)]'
+              }`}>
+                {i < loadStep ? <Check size={13} /> :
+                 i === loadStep ? <Loader2 size={13} className="animate-spin" /> :
+                 <span className="text-[11px] font-bold">{i + 1}</span>}
+              </div>
+              <span className={`text-[15px] ${
+                i === loadStep ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
+              }`}>{s}</span>
             </div>
           ))}
         </div>
       </div>
+    );
+  }
 
-      <p className="text-[13px] text-[var(--text-secondary)] italic text-center">
-        이건 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.
-      </p>
+  /* ── Results phase ── */
+  return (
+    <div className="space-y-6 phrase-entrance">
+      {/* Header */}
+      <div className="mb-2">
+        <Badge variant="ai">즉시 분석</Badge>
+        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
+          입력 하나로 이만큼 나옵니다
+        </h2>
+        <p className="text-[16px] text-[var(--text-secondary)] mt-3 leading-relaxed">
+          위 상황을 Overture에 입력했더니, 즉시 4가지가 도출되었습니다.
+        </p>
+      </div>
+
+      {/* 1. Situation */}
+      <Card className="!border-l-4 !border-l-[#2d4a7c]">
+        <div className="flex items-center gap-2 mb-3">
+          <Eye size={16} className="text-[#2d4a7c]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[#2d4a7c]">1. 상황 정리</span>
+        </div>
+        <p className="text-[16px] text-[var(--text-primary)] leading-relaxed">{FIRST_DRAFT.situation}</p>
+      </Card>
+
+      {/* 2. Real question — HERO element */}
+      <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] px-6 py-6 shadow-[var(--shadow-lg)]">
+        <div className="flex items-center gap-2 mb-3">
+          <Lightbulb size={16} className="text-[var(--accent-light)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-white/50">2. 진짜 질문</span>
+        </div>
+        <p className="text-[20px] md:text-[22px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          {FIRST_DRAFT.real_question}
+        </p>
+        <p className="text-[14px] text-white/40 mt-4">
+          표면적 질문 뒤에 숨어 있는 본질을 찾아냅니다.
+        </p>
+      </div>
+
+      {/* 3. Skeleton */}
+      <Card className="!border-l-4 !border-l-[var(--accent)]">
+        <div className="flex items-center gap-2 mb-4">
+          <Target size={16} className="text-[var(--accent)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--accent)]">3. 기획안 뼈대</span>
+        </div>
+        <ol className="space-y-3">
+          {FIRST_DRAFT.skeleton.map((item, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] text-[13px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ol>
+      </Card>
+
+      {/* 4. Hidden premises */}
+      <Card variant="danger">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle size={16} className="text-red-500" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-red-500">4. 숨겨진 전제</span>
+          <Badge variant="risk-critical">검증 필요</Badge>
+        </div>
+        <p className="text-[14px] text-[var(--text-secondary)] mb-4 leading-relaxed">
+          무의식적으로 참이라고 가정하고 있는 것들입니다. 이것들이 틀리면 기획안 전체가 흔들립니다.
+        </p>
+        <div className="space-y-3">
+          {FIRST_DRAFT.premises.map((p, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <span className="text-red-400 text-[18px] font-bold shrink-0 leading-none mt-0.5">?</span>
+              <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{p}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="text-center pt-2">
+        <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed">
+          이건 초안입니다. 몇 가지만 더 알면 <strong className="text-[var(--text-primary)]">훨씬 날카로워집니다.</strong>
+        </p>
+      </div>
     </div>
   );
 }
@@ -402,26 +517,29 @@ function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1
   const draft = q2 ? getUpdatedDraft(q2) : null;
 
   return (
-    <div className="space-y-6 phrase-entrance">
-      <div className="mb-4">
-        <p className="text-[12px] font-bold text-[#2d4a7c] tracking-wider uppercase mb-2">질문 → 진화</p>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+    <div className="space-y-8 phrase-entrance">
+      <div className="mb-2">
+        <Badge variant="gold">심화 질문</Badge>
+        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
           답할 때마다 기획안이 바뀝니다
         </h2>
+        <p className="text-[16px] text-[var(--text-secondary)] mt-3 leading-relaxed">
+          Overture가 2개의 질문을 던집니다. 답하면 초안이 즉시 진화합니다.
+        </p>
       </div>
 
       {/* Q1 */}
       <div>
-        <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">{INTERVIEW_Q1.question}</p>
-        <div className="grid grid-cols-2 gap-2">
+        <p className="text-[18px] font-semibold text-[var(--text-primary)] mb-4">{INTERVIEW_Q1.question}</p>
+        <div className="grid grid-cols-2 gap-3">
           {INTERVIEW_Q1.options.map((opt) => (
             <button
               key={opt.value}
               onClick={() => { setQ1(opt.value); track('demo_q1_answer', { value: opt.value, label: opt.label }); }}
-              className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
+              className={`px-5 py-4 rounded-xl border-2 text-left text-[15px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
                 q1 === opt.value
-                  ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
-                  : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)]'
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)] shadow-sm'
+                  : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)] hover:bg-[var(--surface)]'
               }`}
             >
               {opt.label}
@@ -433,16 +551,16 @@ function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1
       {/* Q2 */}
       {q1 && (
         <div className="animate-fade-in">
-          <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">{INTERVIEW_Q2.question}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <p className="text-[18px] font-semibold text-[var(--text-primary)] mb-4">{INTERVIEW_Q2.question}</p>
+          <div className="grid grid-cols-2 gap-3">
             {INTERVIEW_Q2.options.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => { setQ2(opt.value); track('demo_q2_answer', { value: opt.value, label: opt.label }); }}
-                className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
+                className={`px-5 py-4 rounded-xl border-2 text-left text-[15px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
                   q2 === opt.value
-                    ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
-                    : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)]'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)] shadow-sm'
+                    : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)] hover:bg-[var(--surface)]'
                 }`}
               >
                 {opt.label}
@@ -452,64 +570,89 @@ function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1
         </div>
       )}
 
+      {/* Gate hint */}
+      {!q1 && (
+        <p className="text-[14px] text-[var(--text-tertiary)] text-center">
+          위 질문에 답하면 다음으로 진행할 수 있습니다.
+        </p>
+      )}
+      {q1 && !q2 && (
+        <p className="text-[14px] text-[var(--text-tertiary)] text-center animate-fade-in">
+          한 가지만 더 답해주세요.
+        </p>
+      )}
+
       {/* Updated draft — appears after both answers */}
       {draft && (
-        <div className="mt-4 space-y-4 animate-fade-in">
-          <div className="flex items-center gap-2 text-[12px] text-[var(--success)] font-semibold">
-            <CrescendoHairpin width={16} height={8} color="var(--success)" />
-            답변 반영 — 기획안이 진화했습니다
+        <div className="mt-2 space-y-6 animate-fade-in">
+          <div className="flex items-center gap-2 text-[14px] text-[var(--success)] font-semibold">
+            <CrescendoHairpin width={18} height={9} color="var(--success)" />
+            <span>답변 반영 완료 — 기획안이 진화했습니다</span>
           </div>
 
-          <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.03] px-5 py-3">
-            <p className="text-[12px] font-bold text-[var(--accent)] mb-1">상황 업데이트</p>
-            <p className="text-[14px] text-[var(--text-primary)]">{draft.situation_update}</p>
-          </div>
+          {/* Situation update */}
+          <Card variant="ai" className="!border-l-4 !border-l-[var(--accent)]">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={15} className="text-[var(--accent)]" />
+              <span className="text-[13px] font-bold text-[var(--accent)]">상황 업데이트</span>
+            </div>
+            <p className="text-[16px] text-[var(--text-primary)] leading-relaxed">{draft.situation_update}</p>
+          </Card>
 
           {/* Question diff */}
-          <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
-            <p className="text-[11px] font-bold text-white/40 mb-2">진짜 질문 (수정됨)</p>
-            <p className="text-[13px] text-white/40 line-through mb-2">{draft.real_question_before}</p>
-            <p className="text-[16px] md:text-[18px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] px-6 py-5 shadow-[var(--shadow-lg)]">
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb size={16} className="text-[var(--accent-light)]" />
+              <span className="text-[13px] font-bold text-white/50">진짜 질문 (수정됨)</span>
+            </div>
+            <p className="text-[14px] text-white/35 line-through mb-3">{draft.real_question_before}</p>
+            <p className="text-[19px] md:text-[21px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
               {draft.real_question_after}
             </p>
           </div>
 
           {/* Updated skeleton */}
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-            <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">기획안 뼈대 (수정됨)</p>
-            <ol className="space-y-2">
+          <Card className="!border-l-4 !border-l-[var(--accent)]">
+            <div className="flex items-center gap-2 mb-4">
+              <Target size={16} className="text-[var(--accent)]" />
+              <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--accent)]">기획안 뼈대 (수정됨)</span>
+            </div>
+            <ol className="space-y-3">
               {draft.skeleton.map((item, i) => {
                 const changed = item !== FIRST_DRAFT.skeleton[i];
                 return (
-                  <li key={i} className="flex items-start gap-3 text-[14px]">
-                    <span className={`shrink-0 w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center mt-0.5 ${
+                  <li key={i} className="flex items-start gap-3">
+                    <span className={`shrink-0 w-7 h-7 rounded-lg text-[13px] font-bold flex items-center justify-center mt-0.5 ${
                       changed ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-[var(--bg)] text-[var(--text-tertiary)]'
                     }`}>{i + 1}</span>
-                    <span className={changed ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-primary)]'}>{item}</span>
+                    <span className={`text-[16px] leading-relaxed ${changed ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-primary)]'}`}>{item}</span>
                   </li>
                 );
               })}
             </ol>
-          </div>
+          </Card>
 
           {/* Updated premises */}
-          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4">
-            <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">전제 업데이트</p>
-            <div className="space-y-2 text-[14px]">
-              <div className="flex items-start gap-2.5">
-                <span className="text-[var(--success)] shrink-0">✓</span>
-                <span className="text-[var(--text-primary)]">{draft.premises_confirmed}</span>
+          <Card className="!border-dashed">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield size={16} className="text-[var(--text-tertiary)]" />
+              <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--text-tertiary)]">전제 업데이트</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[var(--collab)]">
+                <span className="text-[var(--success)] text-[18px] shrink-0 leading-none mt-0.5">✓</span>
+                <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{draft.premises_confirmed}</span>
               </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-red-500 shrink-0">✗</span>
-                <span className="text-[var(--text-primary)]">{draft.premises_risk}</span>
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-50/60">
+                <span className="text-red-500 text-[18px] shrink-0 leading-none mt-0.5">✗</span>
+                <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{draft.premises_risk}</span>
               </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-amber-500 shrink-0">?</span>
-                <span className="text-[var(--text-primary)]">{draft.premises_uncertain}</span>
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50/60">
+                <span className="text-amber-500 text-[18px] shrink-0 leading-none mt-0.5">?</span>
+                <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{draft.premises_uncertain}</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>
@@ -524,30 +667,28 @@ function PersonaStep({ q2 }: { q2: string }) {
   const persona = getPersonaReaction(q2);
 
   return (
-    <div className="space-y-5 phrase-entrance">
-      <div className="mb-4">
-        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-wider uppercase mb-2">
-          <UserCheck size={14} className="inline mr-1" />사전 검증
-        </p>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+    <div className="space-y-6 phrase-entrance">
+      <div className="mb-2">
+        <Badge variant="risk-unspoken">사전 검증</Badge>
+        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
           대표님은 뭐라고 할까?
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          실제로 보여주기 전에, 예상 반응을 미리 확인합니다.
+        <p className="text-[16px] text-[var(--text-secondary)] mt-3 leading-relaxed">
+          완성하기 전에, 실제 의사결정자의 예상 반응을 미리 시뮬레이션합니다.
         </p>
       </div>
 
-      {/* Persona reaction */}
-      <Card className="!p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[18px] font-bold shrink-0">김</div>
+      {/* Persona card */}
+      <Card variant="elevated" className="!p-6">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-14 h-14 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[20px] font-bold shrink-0 shadow-md">김</div>
           <div>
-            <p className="text-[16px] font-bold text-[var(--text-primary)]">{persona.name}</p>
-            <p className="text-[13px] text-[var(--text-secondary)]">CEO · 최종 의사결정자</p>
+            <p className="text-[18px] font-bold text-[var(--text-primary)]">{persona.name}</p>
+            <p className="text-[14px] text-[var(--text-secondary)]">CEO · 최종 의사결정자</p>
           </div>
         </div>
-        <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5">
-          <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">
+        <div className="rounded-xl bg-[var(--ai)] px-5 py-4">
+          <p className="text-[17px] font-medium text-[var(--text-primary)] leading-relaxed italic">
             &ldquo;{persona.reaction}&rdquo;
           </p>
         </div>
@@ -555,33 +696,44 @@ function PersonaStep({ q2 }: { q2: string }) {
 
       {/* Weaknesses */}
       <div>
-        <p className="text-[12px] font-bold text-red-500/80 tracking-[0.1em] uppercase mb-3">약점 3가지</p>
-        <div className="space-y-2">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle size={16} className="text-[var(--risk-critical)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--risk-critical)]">발견된 약점 3가지</span>
+        </div>
+        <div className="space-y-3">
           {persona.weaknesses.map((w, i) => (
-            <div key={i} className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
-              <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
-              <p className="text-[14px] text-[var(--text-primary)]">{w}</p>
+            <div key={i} className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/60 px-5 py-4">
+              <span className="shrink-0 w-7 h-7 rounded-full bg-red-100 text-red-500 text-[13px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <p className="text-[16px] text-[var(--text-primary)] leading-relaxed">{w}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Unspoken */}
-      <div className="rounded-xl border border-[#6b4c9a]/20 bg-[#6b4c9a]/[0.04] px-5 py-4">
-        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-[0.08em] uppercase mb-2">아무도 말 안 하는 것</p>
-        <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">
-          &ldquo;{persona.unspoken}&rdquo;
-        </p>
-      </div>
+      <Card variant="premium" className="!border-[#6b4c9a]/20">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-3">
+            <Eye size={16} className="text-[#6b4c9a]" />
+            <span className="text-[13px] font-bold text-[#6b4c9a] tracking-[0.08em] uppercase">아무도 말 안 하는 것</span>
+          </div>
+          <p className="text-[17px] font-medium text-[var(--text-primary)] leading-relaxed italic">
+            &ldquo;{persona.unspoken}&rdquo;
+          </p>
+        </div>
+      </Card>
 
-      {/* What to fix */}
+      {/* Fixes preview */}
       <div>
-        <p className="text-[12px] font-bold text-[var(--success)] tracking-[0.1em] uppercase mb-3">이렇게 고치면 OK할 가능성 ↑</p>
-        <div className="space-y-2">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield size={16} className="text-[var(--success)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--success)]">이렇게 고치면 OK할 가능성 ↑</span>
+        </div>
+        <div className="space-y-3">
           {persona.fixes.map((f, i) => (
-            <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
-              <p className="text-[14px] text-[var(--text-primary)] flex-1">{f.text}</p>
-              <span className="shrink-0 text-[11px] font-bold text-[var(--success)] bg-[var(--success)]/10 px-2.5 py-1 rounded-full">{f.impact}</span>
+            <div key={i} className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 px-5 py-4">
+              <p className="text-[16px] text-[var(--text-primary)] flex-1 leading-relaxed">{f.text}</p>
+              <Badge variant="both">{f.impact}</Badge>
             </div>
           ))}
         </div>
@@ -607,64 +759,64 @@ function FixStep({ q2, applied, setApplied }: { q2: string; applied: Set<number>
   };
 
   return (
-    <div className="space-y-5 phrase-entrance">
-      <div className="mb-4">
-        <p className="text-[12px] font-bold text-[#2d6b2d] tracking-wider uppercase mb-2">반영 선택</p>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          어떤 피드백을 기획안에 반영할까요?
+    <div className="space-y-6 phrase-entrance">
+      <div className="mb-2">
+        <Badge variant="both">반영 선택</Badge>
+        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight mt-3" style={{ fontFamily: 'var(--font-display)' }}>
+          어떤 피드백을 반영할까요?
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
+        <p className="text-[16px] text-[var(--text-secondary)] mt-3 leading-relaxed">
           탭해서 반영할 항목을 선택하세요. <strong className="text-[var(--text-primary)]">실행 준비도가 실시간으로 바뀝니다.</strong>
         </p>
       </div>
 
       {/* Score */}
-      <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
+      <div className={`rounded-2xl overflow-hidden border-2 transition-all duration-500 ${
         applied.size === 3 ? 'border-[#2d6b2d] bg-[#2d6b2d]' : 'border-[#2d6b2d]/20 bg-[#2d6b2d]/[0.06]'
       }`}>
-        <div className="px-5 py-4 flex items-center justify-between">
+        <div className="px-6 py-5 flex items-center justify-between">
           <div>
-            <p className={`text-[11px] font-medium mb-0.5 ${applied.size === 3 ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>실행 준비도</p>
-            <p className={`text-[32px] font-extrabold leading-none tabular-nums ${applied.size === 3 ? 'text-white' : 'text-[#2d6b2d]'}`}>{score}%</p>
+            <p className={`text-[13px] font-semibold mb-1 ${applied.size === 3 ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>실행 준비도</p>
+            <p className={`text-[40px] font-extrabold leading-none tabular-nums ${applied.size === 3 ? 'text-white' : 'text-[#2d6b2d]'}`}>{score}%</p>
           </div>
           {applied.size === 3 && (
-            <div className="flex items-center gap-2 text-white">
+            <div className="flex items-center gap-2 text-white bg-white/15 px-4 py-2 rounded-full">
               <Check size={18} />
-              <span className="text-[14px] font-bold">제출 가능</span>
+              <span className="text-[15px] font-bold">제출 가능</span>
             </div>
           )}
         </div>
-        <div className="h-2 bg-[var(--border)]">
+        <div className="h-2.5 bg-[#2d6b2d]/10">
           <div className="h-full bg-[#2d6b2d] transition-all duration-700 rounded-r" style={{ width: `${score}%` }} />
         </div>
       </div>
 
       {/* Fix toggles */}
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {persona.fixes.map((f, i) => {
           const isOn = applied.has(i);
           return (
             <button
               key={i}
               onClick={() => toggle(i)}
-              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+              className={`w-full text-left px-5 py-5 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                 isOn
                   ? 'border-[#2d6b2d] bg-[#2d6b2d]/[0.06] shadow-sm'
                   : 'border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)]'
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1">
-                  <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                     isOn ? 'bg-[#2d6b2d] text-white' : 'bg-[var(--bg)] border border-[var(--border)]'
                   }`}>
-                    {isOn && <Check size={12} />}
+                    {isOn && <Check size={14} />}
                   </div>
-                  <p className={`text-[14px] font-medium leading-snug ${isOn ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                  <p className={`text-[16px] font-medium leading-relaxed ${isOn ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                     {f.text}
                   </p>
                 </div>
-                <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                <span className={`shrink-0 text-[12px] font-bold px-3 py-1.5 rounded-full transition-colors ${
                   isOn ? 'bg-[#2d6b2d]/10 text-[#2d6b2d]' : 'bg-[var(--bg)] text-[var(--text-tertiary)]'
                 }`}>
                   {f.impact}
@@ -697,71 +849,107 @@ function FinalStep({ q2, applied }: { q2: string; applied: Set<number> }) {
     });
   }, [q2, applied]);
 
+  const readiness = applied.size === 3 ? 92 : applied.size === 2 ? 78 : applied.size === 1 ? 62 : 45;
+
+  const journey = [
+    { label: '입력', desc: '상황 1개', color: 'var(--accent)' },
+    { label: '분석', desc: '즉시 초안', color: '#2d4a7c' },
+    { label: '질문', desc: '2개 답변', color: '#2d4a7c' },
+    { label: '검증', desc: '약점 발견', color: '#6b4c9a' },
+    { label: '반영', desc: `${applied.size}개 수정`, color: '#2d6b2d' },
+  ];
+
   return (
-    <div className="space-y-6 phrase-entrance">
+    <div className="space-y-8 phrase-entrance">
+      {/* Hero */}
       <div className="text-center">
-        <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--success)] font-semibold tracking-wider uppercase mb-3">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--success)]/10 text-[var(--success)] text-[13px] font-bold mb-4">
           <Sparkles size={14} /> 완료
         </div>
-        <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+        <h2 className="text-[28px] md:text-[40px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
           막막했던 기획안이<br />
           <span className="text-[var(--accent)]">제출 가능한 구조</span>가 되었습니다
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-3">
+        <p className="text-[16px] text-[var(--text-secondary)] mt-4 leading-relaxed">
           입력 1개 + 질문 2개 + 피드백 반영. 이게 전부입니다.
         </p>
       </div>
 
+      {/* Journey timeline */}
+      <div className="flex items-center justify-between px-3 py-5 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)]">
+        {journey.map((j, i) => (
+          <Fragment key={i}>
+            {i > 0 && <div className="flex-1 h-[2px] bg-[var(--border-subtle)] mx-0.5 md:mx-1" />}
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold" style={{ backgroundColor: j.color }}>
+                {i + 1}
+              </div>
+              <span className="text-[12px] font-bold text-[var(--text-primary)]">{j.label}</span>
+              <span className="text-[11px] text-[var(--text-tertiary)]">{j.desc}</span>
+            </div>
+          </Fragment>
+        ))}
+      </div>
+
       {/* Final question */}
-      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
-        <p className="text-[11px] font-bold text-white/40 mb-2">최종 핵심 질문</p>
-        <p className="text-[17px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="rounded-2xl bg-[var(--primary)] text-[var(--bg)] px-6 py-6 shadow-[var(--shadow-lg)]">
+        <div className="flex items-center gap-2 mb-3">
+          <Lightbulb size={16} className="text-[var(--accent-light)]" />
+          <span className="text-[13px] font-bold text-white/50">최종 핵심 질문</span>
+        </div>
+        <p className="text-[20px] md:text-[22px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
           {draft?.real_question_after || FIRST_DRAFT.real_question}
         </p>
       </div>
 
-      {/* Final skeleton with fixes applied */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">최종 기획안 구조</p>
-        <ol className="space-y-2">
+      {/* Final skeleton with fixes */}
+      <Card className="!border-l-4 !border-l-[var(--accent)]">
+        <div className="flex items-center gap-2 mb-4">
+          <Target size={16} className="text-[var(--accent)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--accent)]">최종 기획안 구조</span>
+          {applied.size > 0 && <Badge variant="both">+{applied.size} 보강</Badge>}
+        </div>
+        <ol className="space-y-3">
           {(draft?.skeleton || FIRST_DRAFT.skeleton).map((item, i) => (
-            <li key={i} className="flex items-start gap-3 text-[14px]">
-              <span className="shrink-0 w-5 h-5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] text-[11px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-              <span className="text-[var(--text-primary)]">{item}</span>
+            <li key={i} className="flex items-start gap-3">
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] text-[13px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <span className="text-[16px] text-[var(--text-primary)] leading-relaxed">{item}</span>
             </li>
           ))}
-          {/* Applied fixes as additions */}
           {persona.fixes.filter((_, i) => applied.has(i)).map((f, i) => (
-            <li key={`fix-${i}`} className="flex items-start gap-3 text-[14px]">
-              <span className="shrink-0 w-5 h-5 rounded-md bg-[#2d6b2d]/15 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">+</span>
-              <span className="text-[#2d6b2d] font-medium">{f.text.split('—')[0].trim()}</span>
+            <li key={`fix-${i}`} className="flex items-start gap-3">
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-[#2d6b2d]/15 text-[#2d6b2d] text-[13px] font-bold flex items-center justify-center mt-0.5">+</span>
+              <span className="text-[16px] text-[#2d6b2d] font-medium leading-relaxed">{f.text.split('—')[0].trim()}</span>
             </li>
           ))}
         </ol>
-      </div>
+      </Card>
 
       {/* Summary */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">이 과정에서 일어난 일</p>
-        <div className="space-y-2 text-[13px] text-[var(--text-secondary)]">
+      <Card variant="muted">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap size={16} className="text-[var(--text-tertiary)]" />
+          <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[var(--text-tertiary)]">이 과정에서 일어난 일</span>
+        </div>
+        <div className="space-y-3 text-[15px] text-[var(--text-secondary)] leading-relaxed">
           <p>1. 입력 하나로 <strong className="text-[var(--text-primary)]">기획안 뼈대 + 숨겨진 전제</strong>가 즉시 나왔습니다.</p>
           <p>2. 질문 2개에 답하자 <strong className="text-[var(--text-primary)]">핵심 질문과 구조가 진화</strong>했습니다.</p>
           <p>3. 대표님의 예상 반응으로 <strong className="text-[var(--text-primary)]">약점 3가지</strong>를 미리 발견했습니다.</p>
-          <p>4. 피드백을 반영해서 <strong className="text-[var(--text-primary)]">실행 준비도 {applied.size === 3 ? '92' : applied.size === 2 ? '78' : '62'}%</strong>에 도달했습니다.</p>
+          <p>4. 피드백을 반영해서 <strong className="text-[var(--text-primary)]">실행 준비도 {readiness}%</strong>에 도달했습니다.</p>
         </div>
-      </div>
+      </Card>
 
       {/* CTA */}
-      <div className="text-center pt-2">
-        <p className="text-[15px] text-[var(--text-secondary)] mb-4">
+      <div className="text-center pt-4">
+        <p className="text-[17px] font-medium text-[var(--text-primary)] mb-5">
           이제 당신의 과제로 직접 해보세요.
         </p>
         <Link href="/workspace" onClick={() => track('demo_to_workspace', { from_step: 'final', q2, fixes: applied.size })}>
-          <Button>
-            내 과제로 시작하기 <ArrowRight size={14} />
+          <Button variant="accent" size="lg" className="!px-10 !py-4 !text-[16px]">
+            내 과제로 시작하기 <ArrowRight size={16} />
           </Button>
         </Link>
-        <p className="text-[11px] text-[var(--text-tertiary)] mt-3">
+        <p className="text-[13px] text-[var(--text-tertiary)] mt-4">
           로그인 없이 무료
         </p>
       </div>

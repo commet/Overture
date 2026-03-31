@@ -2,7 +2,7 @@
  * Progressive Engine — LLM 호출 + 상태 전이 오케스트레이션
  */
 
-import { callLLMJson } from '@/lib/llm';
+import { callLLMJson, callLLMStreamThenParse } from '@/lib/llm';
 import {
   buildInitialAnalysisPrompt,
   buildDeepeningPrompt,
@@ -89,18 +89,29 @@ interface FinalResponse {
 
 /**
  * Step 1: 초기 분석 — 문제 입력 → 즉시 뼈대 + 첫 질문
+ * @param onToken - 스트리밍 콜백 (있으면 실시간 출력 표시)
  */
-export async function runInitialAnalysis(problemText: string): Promise<{
+export async function runInitialAnalysis(
+  problemText: string,
+  onToken?: (text: string) => void,
+): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion;
   detectedDM: string | null;
 }> {
   const { system, user } = buildInitialAnalysisPrompt(problemText);
 
-  const result = await callLLMJson<InitialAnalysisResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 2000 },
-  );
+  // 스트리밍 콜백이 있으면 실시간 표시 후 JSON 파싱, 없으면 기존 방식
+  const result = onToken
+    ? await callLLMStreamThenParse<InitialAnalysisResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000 },
+        onToken,
+      )
+    : await callLLMJson<InitialAnalysisResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000 },
+      );
 
   const snapshot: AnalysisSnapshot = {
     version: 0,
@@ -134,6 +145,7 @@ export async function runDeepening(
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   round: number,
   maxRounds: number,
+  onToken?: (text: string) => void,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion | null;
@@ -143,10 +155,16 @@ export async function runDeepening(
     problemText, currentSnapshot, questionsAndAnswers, round, maxRounds,
   );
 
-  const result = await callLLMJson<DeepeningResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 3000 },
-  );
+  const result = onToken
+    ? await callLLMStreamThenParse<DeepeningResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 3000 },
+        onToken,
+      )
+    : await callLLMJson<DeepeningResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 3000 },
+      );
 
   const snapshot: AnalysisSnapshot = {
     version: currentSnapshot.version + 1,

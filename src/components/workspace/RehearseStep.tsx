@@ -10,7 +10,7 @@ import { PersonaCard } from '@/components/tools/PersonaCard';
 import { PersonaForm } from '@/components/tools/PersonaForm';
 import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
-import { callLLMJson, callLLM } from '@/lib/llm';
+import { callLLMJson, callLLM, callLLMParallel } from '@/lib/llm';
 import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -24,8 +24,9 @@ import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildReframeContext, buildRecastContext, injectRecastContext } from '@/lib/context-chain';
-import { recordRehearsalEval } from '@/lib/eval-engine';
-import { translateApprovalsToPlan } from '@/lib/judgment-vitality';
+// Dynamic imports for heavy modules (loaded on-demand, not at initial render)
+const lazyEvalEngine = () => import('@/lib/eval-engine');
+const lazyVitality = () => import('@/lib/judgment-vitality');
 import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
@@ -127,12 +128,13 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
     setFeedbackError('');
     setLastFeedbackData(data);
     try {
-      const results: RehearsalResult[] = [];
+      // ── Parallel persona feedback (Claude Code StreamingToolExecutor 패턴) ──
+      // 모든 페르소나를 동시에 호출하여 N배 속도 향상
+      const validPersonas: Array<{ persona: Persona; systemPrompt: string }> = [];
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
         let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
-        // Note: buildPersonaAccuracyContext is already called inside FEEDBACK_SYSTEM
 
         const projectId = pendingProjectId;
         if (projectId) {
@@ -148,12 +150,27 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             systemPrompt = injectRecastContext(systemPrompt, orchCtx, decCtx);
           }
         }
+        validPersonas.push({ persona, systemPrompt });
+      }
 
-        const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
-          [{ role: 'user', content: data.documentText }],
-          { system: systemPrompt, maxTokens: 2000 }
-        );
-        results.push({ ...result, persona_id: personaId });
+      // Fire all persona calls concurrently
+      const settled = await Promise.allSettled(
+        validPersonas.map(async ({ persona, systemPrompt }) => {
+          const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
+            [{ role: 'user', content: data.documentText }],
+            { system: systemPrompt, maxTokens: 2000 }
+          );
+          return { ...result, persona_id: persona.id } as RehearsalResult;
+        })
+      );
+
+      const results: RehearsalResult[] = [];
+      for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') {
+          results.push(outcome.value);
+        } else if (process.env.NODE_ENV === 'development') {
+          console.warn('[rehearse] 페르소나 피드백 실패:', outcome.reason);
+        }
       }
 
       let synthesis = '';
@@ -233,14 +250,15 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
         total_concerns: results.flatMap(r => r.concerns || []).length,
         total_approval_conditions: results.flatMap(r => r.approval_conditions || []).length,
       });
-      // Phase 0: Record rehearsal eval
-      if (record) { recordRehearsalEval(record, usePersonaStore.getState().personas, useAccuracyStore.getState().ratings); }
+      // Phase 0: Record rehearsal eval (dynamic import — heavy module)
+      if (record) { lazyEvalEngine().then(m => m.recordRehearsalEval(record, usePersonaStore.getState().personas, useAccuracyStore.getState().ratings)); }
       // Vitality: translate approval conditions to plan-level references
       if (record) {
         try {
           const relRecast = recastItems.find(r => r.project_id === pendingProjectId);
           const steps = relRecast?.analysis?.steps || [];
           if (steps.length > 0) {
+            const { translateApprovalsToPlan } = await lazyVitality();
             const translated = translateApprovalsToPlan(record, steps, usePersonaStore.getState().personas);
             if (translated.length > 0) {
               const updatedResults = record.results.map(r => ({

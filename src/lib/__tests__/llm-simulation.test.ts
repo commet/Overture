@@ -3,7 +3,7 @@
  *
  * 핵심 검증:
  * 1. parseJSON — JSON 파싱, markdown 펜스, 혼합 텍스트, 크기 제한, 유니코드
- * 2. validateShape — 스키마 검증, 타입 불일치, optional 필드, 에러 메시지
+ * 2. validateShape — 스키마 검증, 타입 불일치, optional 필드, 에러 메시지, 기본값, coerce
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -20,7 +20,7 @@ vi.mock('@/lib/db', () => ({
   insertToSupabase: vi.fn(),
 }));
 
-import { parseJSON, validateShape } from '@/lib/llm';
+import { parseJSON, validateShape, LLMError } from '@/lib/llm';
 
 // ═══════════════════════════════════════
 // parseJSON
@@ -44,19 +44,19 @@ describe('parseJSON', () => {
   });
 
   it('비객체 원시값(number)에서 에러 발생', () => {
-    expect(() => parseJSON('42')).toThrow('non-object');
+    expect(() => parseJSON('42')).toThrow('객체가 아닌');
   });
 
   it('비객체 원시값(string)에서 에러 발생', () => {
-    expect(() => parseJSON('"hello"')).toThrow('non-object');
+    expect(() => parseJSON('"hello"')).toThrow('객체가 아닌');
   });
 
   it('비객체 원시값(null)에서 에러 발생', () => {
-    expect(() => parseJSON('null')).toThrow('non-object');
+    expect(() => parseJSON('null')).toThrow('객체가 아닌');
   });
 
   it('비객체 원시값(boolean)에서 에러 발생', () => {
-    expect(() => parseJSON('true')).toThrow('non-object');
+    expect(() => parseJSON('true')).toThrow('객체가 아닌');
   });
 
   it('배열은 typeof === "object"이므로 통과', () => {
@@ -66,13 +66,13 @@ describe('parseJSON', () => {
 
   it('JSON이 없는 일반 텍스트에서 에러 발생', () => {
     expect(() => parseJSON('This is just plain text without any JSON')).toThrow(
-      'Failed to parse JSON'
+      'JSON 파싱 실패'
     );
   });
 
   it('200KB 초과 응답에서 에러 발생', () => {
     const oversized = '{"data":"' + 'x'.repeat(200_001) + '"}';
-    expect(() => parseJSON(oversized)).toThrow('too large');
+    expect(() => parseJSON(oversized)).toThrow('너무 큽니다');
   });
 
   it('중첩된 JSON 객체 파싱', () => {
@@ -101,20 +101,6 @@ describe('parseJSON', () => {
   });
 
   it('혼합 콘텐츠에서 첫 번째 JSON 객체 추출', () => {
-    const input = 'Some preamble text\n\n{"first": true}\n\nMore text {"second": true}';
-    // The regex /\{[\s\S]*\}/ is greedy, so it captures from the first { to the last }
-    // This means it will try to parse the entire span, which may include non-JSON text
-    // The actual behavior: it grabs from first { to last }, which is:
-    // {"first": true}\n\nMore text {"second": true}
-    // JSON.parse on this will fail, then... let's check: it matches the outermost braces
-    // Actually the greedy match gives: {"first": true}\n\nMore text {"second": true}
-    // JSON.parse will fail on that. But the regex tries to get the biggest match.
-    // Since the content between { and } isn't valid JSON, it throws.
-    // Wait — let me reconsider. If JSON.parse(text) fails, it does the regex.
-    // The regex grabs from first { to last }. That span is invalid JSON. So JSON.parse throws again.
-    // This means parseJSON would throw on this input.
-
-    // Let's test with a simpler case: one JSON object in surrounding text
     const simpleInput = 'Preamble text {"result": "success"} trailing text';
     const result = parseJSON<{ result: string }>(simpleInput);
     expect(result).toEqual({ result: 'success' });
@@ -130,6 +116,16 @@ describe('parseJSON', () => {
     const input = '  \n\n  {"padded": true}  \n\n  ';
     const result = parseJSON<{ padded: boolean }>(input);
     expect(result).toEqual({ padded: true });
+  });
+
+  it('LLMError 인스턴스로 에러를 throw', () => {
+    try {
+      parseJSON('not json at all');
+      expect.fail('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(LLMError);
+      expect((e as LLMError).category).toBe('parse_failure');
+    }
   });
 });
 
@@ -156,31 +152,25 @@ describe('validateShape', () => {
   });
 
   it('비객체 전달 시 에러 발생', () => {
-    expect(() => validateShape('hello', { x: 'string' })).toThrow('expected object');
-    expect(() => validateShape(null, { x: 'string' })).toThrow('expected object');
-    expect(() => validateShape(undefined, { x: 'string' })).toThrow('expected object');
-    expect(() => validateShape(42, { x: 'number' })).toThrow('expected object');
+    expect(() => validateShape('hello', { x: 'string' })).toThrow('객체가 아닙니다');
+    expect(() => validateShape(null, { x: 'string' })).toThrow('객체가 아닙니다');
+    expect(() => validateShape(undefined, { x: 'string' })).toThrow('객체가 아닙니다');
+    expect(() => validateShape(42, { x: 'number' })).toThrow('객체가 아닙니다');
   });
 
   it('array 기대에 string이 오면 에러 발생', () => {
     const obj = { items: 'not-an-array' };
-    expect(() => validateShape(obj, { items: 'array' })).toThrow(
-      '"items" expected array, got string'
-    );
+    expect(() => validateShape(obj, { items: 'array' })).toThrow('배열');
   });
 
   it('number 기대에 string이 오면 에러 발생', () => {
     const obj = { count: '42' };
-    expect(() => validateShape(obj, { count: 'number' })).toThrow(
-      '"count" expected number, got string'
-    );
+    expect(() => validateShape(obj, { count: 'number' })).toThrow('타입');
   });
 
   it('string 기대에 number가 오면 에러 발생', () => {
     const obj = { label: 123 };
-    expect(() => validateShape(obj, { label: 'string' })).toThrow(
-      '"label" expected string, got number'
-    );
+    expect(() => validateShape(obj, { label: 'string' })).toThrow('타입');
   });
 
   it('혼합 타입 스키마 통과', () => {
@@ -220,21 +210,62 @@ describe('validateShape', () => {
     } catch (e) {
       const msg = (e as Error).message;
       expect(msg).toContain('my_special_field');
-      expect(msg).toContain('expected number');
-      expect(msg).toContain('got string');
     }
   });
 
   it('boolean 기대에 object가 오면 에러 발생', () => {
     const obj = { flag: { nested: true } };
-    expect(() => validateShape(obj, { flag: 'boolean' })).toThrow(
-      '"flag" expected boolean, got object'
-    );
+    expect(() => validateShape(obj, { flag: 'boolean' })).toThrow('타입');
   });
 
   it('스키마에 없는 추가 필드는 무시하고 통과', () => {
     const obj = { name: 'test', extra: 'ignored' };
     const result = validateShape(obj, { name: 'string' });
     expect(result).toEqual(obj);
+  });
+
+  // ── 새로운 기능 테스트: 기본값 ──
+  it('FieldSchema의 default로 누락된 필드 채우기', () => {
+    const obj = { name: 'test' };
+    const result = validateShape(obj, {
+      name: 'string',
+      tags: { type: 'array', default: [] },
+      score: { type: 'number', default: 0 },
+    });
+    expect(result).toEqual({ name: 'test', tags: [], score: 0 });
+  });
+
+  // ── 새로운 기능 테스트: coerce ──
+  it('coerce로 문자열 "true"를 boolean으로 변환', () => {
+    const obj = { active: 'true' };
+    const result = validateShape(obj, {
+      active: { type: 'boolean', coerce: true },
+    });
+    expect(result).toEqual({ active: true });
+  });
+
+  it('coerce로 문자열 "123"을 number로 변환', () => {
+    const obj = { count: '123' };
+    const result = validateShape(obj, {
+      count: { type: 'number', coerce: true },
+    });
+    expect(result).toEqual({ count: 123 });
+  });
+
+  // ── 새로운 기능 테스트: required ──
+  it('required 필드 누락 시 에러', () => {
+    expect(() => validateShape({}, {
+      name: { type: 'string', required: true },
+    })).toThrow('누락');
+  });
+
+  it('LLMError 인스턴스로 에러를 throw', () => {
+    try {
+      validateShape(null, { x: 'string' });
+      expect.fail('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(LLMError);
+      expect((e as LLMError).category).toBe('validation');
+    }
   });
 });
