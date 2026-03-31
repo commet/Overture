@@ -1,144 +1,147 @@
 'use client';
 
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import {
-  Play, MessageSquare, Sliders, UserCheck, RefreshCw, Sparkles,
-  Check, ArrowRight, ArrowLeft, Bot, Brain, Handshake, ChevronDown,
+  Play, Sparkles, Check, ArrowRight, ArrowLeft, ChevronDown, UserCheck, AlertTriangle,
 } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { recordSignal } from '@/lib/signal-recorder';
+import { CrescendoHairpin } from '@/components/ui/MusicalElements';
 
 /* ═══════════════════════════════════════
-   DEMO DATA — 피봇 시나리오: 개발자가 기획안 써야 하는 상황
+   DEMO DATA
    ═══════════════════════════════════════ */
 
-const DEMO = {
-  scenario: '백엔드 개발자인데, 대표님이 2주 안에 신사업 기획안을 써오라고 했습니다.',
-  context: '기획안을 써본 적이 없습니다. 어디서부터 시작해야 할지 모르겠습니다.',
-  surface_task: '2주 안에 신사업 기획안 작성',
+const SCENARIO = '나는 백엔드 개발자인데, 대표님이 2주 안에 신사업 기획안을 써오라고 했어.';
 
+const FIRST_DRAFT = {
+  situation: '기술 전문가에게 비기술 산출물(기획안)이 요청된 상황. 기획안 작성 경험 없음. 2주 시한.',
+  real_question: '"기획안을 어떻게 쓰느냐"가 아니라, "대표님이 이 기획안으로 판단하고 싶은 것이 뭔가"',
+  skeleton: [
+    '신사업 배경과 기회 — 시장 환경 정리',
+    '우리가 할 수 있는 이유 — 기술력 연결',
+    '예상 비용과 수익 구조',
+    '1차 검증 방법과 타임라인',
+    '리스크와 Go/No-Go 기준',
+  ],
   premises: [
-    '기획안 형식만 잘 맞추면 통과될 것이다',
-    '시장 조사를 잘 정리하면 설득력이 있을 것이다',
     '대표님이 원하는 건 기획안 문서 자체다',
-  ],
-
-  governing_idea: '기획안이 아니라, 대표님이 판단하고 싶은 3가지를 먼저 정리한다',
-  steps: [
-    { task: '대표님이 진짜 확인하고 싶은 것 파악', actor: 'human' as const, time: '2시간' },
-    { task: '시장 데이터 + 경쟁사 분석 초안', actor: 'ai' as const, time: '반나절' },
-    { task: '판단 근거 구조화 + 기획안 초안', actor: 'both' as const, time: '1일' },
-    { task: '대표님 예상 반응 검증 → 최종본', actor: 'human' as const, time: '반나절' },
-  ],
-
-  persona: {
-    name: '김 대표',
-    role: 'CEO · 최종 의사결정자',
-    default_reaction: '시장 분석은 됐고, 결국 우리가 이걸 해야 하는 이유가 뭔데? 남들 다 하니까?',
-    unspoken_risk: '사실 내가 기획안을 시킨 건, 이 사업을 하지 않을 이유도 같이 찾아오라는 거야. 아무도 그걸 눈치 못 채더라.',
-  },
-
-  refine: [
-    {
-      fixes: [
-        { source: '우리가 이걸 해야 하는 이유가 뭔데?', action: '"왜 우리여야 하는가" 섹션 추가 — 자체 기술력 연결', delta: 38 },
-        { source: '하지 않을 이유도 찾아오라는 뜻', action: 'Go/No-Go 판단 기준표 포함', delta: 30 },
-      ],
-      score: 72,
-      review: 'Go/No-Go는 좋아. 근데 2주면 뭘 검증할 수 있는 건데? 구체적인 숫자가 없잖아.',
-    },
-    {
-      fixes: [
-        { source: '구체적인 숫자가 없다', action: '2주 내 검증 가능한 지표 3개 + 측정 방법 추가', delta: 12 },
-        { source: '실현 가능성 의문', action: '1주차 리서치 / 2주차 검증의 타임라인 구체화', delta: 8 },
-      ],
-      score: 92,
-      review: '좋아. 이 정도면 경영회의에 올려볼 만해.',
-    },
+    '시장 데이터가 많을수록 설득력이 높다',
+    '기획 경험이 없으면 좋은 기획안을 못 쓴다',
   ],
 };
 
-/* Shared user choices across steps */
-const demoChoices = {
-  doubted: new Set<number>(),
-  actors: {} as Record<number, 'ai' | 'human' | 'both'>,
+const INTERVIEW_Q1 = {
+  question: '이 결과물을 누가 최종 판단해?',
+  options: [
+    { label: '대표님/CEO', value: 'ceo' },
+    { label: '팀장/이사', value: 'manager' },
+    { label: '투자자/외부', value: 'investor' },
+    { label: '아직 모름', value: 'unknown' },
+  ],
 };
 
-/* ═══════════════════════════════════════
-   REFRAMED QUESTION LOGIC
-   ═══════════════════════════════════════ */
+const INTERVIEW_Q2 = {
+  question: '지금 가장 걱정되는 건?',
+  options: [
+    { label: '뭘 써야 할지 모르겠음', value: 'direction' },
+    { label: '설득력이 부족할 것 같음', value: 'persuasion' },
+    { label: '시간이 부족함', value: 'time' },
+    { label: '내가 기획을 모름', value: 'expertise' },
+  ],
+};
 
-function getReframed(doubted: Set<number>): { bridge: string; question: string; insight: string } {
-  const d0 = doubted.has(0); // 형식만 맞추면
-  const d1 = doubted.has(1); // 시장 조사 정리하면
-  const d2 = doubted.has(2); // 문서 자체가 목적
-  const count = doubted.size;
-
-  if (count === 0) return {
-    bridge: '전제가 탄탄하다면 — 실행 속도가 핵심이다.',
-    question: '"어떤 형식의 기획안"이 아니라 "가장 빠르게 대표님이 판단할 수 있는 구조"가 진짜 질문이다.',
-    insight: '형식보다 판단 가능한 구조를 먼저 잡으세요.',
+/* Updated draft after interview — varies by Q2 answer */
+function getUpdatedDraft(q2: string) {
+  const base = {
+    situation_update: '',
+    real_question_before: FIRST_DRAFT.real_question,
+    real_question_after: '',
+    skeleton: [...FIRST_DRAFT.skeleton],
+    premises_confirmed: '',
+    premises_risk: '',
+    premises_uncertain: '',
+    check_items: [] as string[],
   };
 
-  if (count === 3) return {
-    bridge: '세 전제 모두 흔들린다 — 기획안을 쓰기 전에 질문을 바꿔야 한다.',
-    question: '기획안을 쓰는 게 아니라, 대표님이 이 사업에 대해 판단하고 싶은 3가지가 뭔지를 먼저 파악해야 하지 않나?',
-    insight: '"뭘 쓸까"가 아니라 "뭘 판단하게 할까"가 진짜 과제입니다.',
+  if (q2 === 'direction') {
+    base.situation_update = '방향 자체가 안 잡힌 상태 → "뭘 쓸까"보다 "뭘 판단하게 할까"가 우선';
+    base.real_question_after = '기획안을 쓰는 게 아니라, 대표님이 이 사업에 대해 "3가지를 판단할 수 있는 구조"를 만드는 것이 진짜 과제다.';
+    base.skeleton[0] = '대표님이 판단하고 싶은 것 3가지 정리 ← 핵심';
+    base.skeleton[1] = '각 판단 항목에 대한 근거 데이터';
+    base.premises_confirmed = '기획 경험이 없어도 구조화된 판단 자료는 만들 수 있다';
+    base.premises_risk = '대표님이 원하는 건 문서가 아니라 판단 근거다 — 확인 필요';
+    base.premises_uncertain = '시장 데이터의 양보다 해석의 질이 중요하다';
+    base.check_items = ['대표님에게 "이 기획안으로 뭘 판단하고 싶으세요?" 직접 물어보기', '2주 내 검증 가능한 것과 불가능한 것 분리하기'];
+  } else if (q2 === 'persuasion') {
+    base.situation_update = '논리/근거 부족 우려 → 데이터보다 "판단 구조"가 설득력의 핵심';
+    base.real_question_after = '설득력 있는 기획안은 데이터가 많은 게 아니라, "왜 지금 우리가 해야 하는가"에 대한 답이 명확한 것이다.';
+    base.skeleton[0] = '"왜 지금?"과 "왜 우리?"에 대한 답 ← 설득 핵심';
+    base.skeleton[2] = '경쟁사 대비 우리의 구조적 우위 근거';
+    base.premises_confirmed = '기획 경험 없이도 구조화된 논거는 가능하다';
+    base.premises_risk = '데이터 양이 아니라 논리 구조가 설득력을 결정한다';
+    base.premises_uncertain = '대표님이 원하는 수준의 구체성이 어디까지인지';
+    base.check_items = ['대표님이 최근 승인/거절한 기획안 1개 구해서 구조 분석', '"왜 우리가?" 질문에 3문장으로 답할 수 있는지 테스트'];
+  } else if (q2 === 'time') {
+    base.situation_update = '2주 시한 압박 → 완벽한 기획안이 아니라 "판단 가능한 최소 구조"가 목표';
+    base.real_question_after = '2주 안에 완벽한 기획안은 불가능하다. "이것만 보면 Go/No-Go를 판단할 수 있다"는 수준이 목표다.';
+    base.skeleton[0] = 'Go/No-Go 판단 기준 3개 ← 1주차 핵심';
+    base.skeleton[3] = '1주차: 리서치 + 구조화 / 2주차: 검증 + 완성';
+    base.premises_confirmed = '짧은 시간에는 범위를 좁히는 게 핵심이다';
+    base.premises_risk = '완벽한 기획안을 기대하고 있을 수 있다 — 기대 관리 필요';
+    base.premises_uncertain = '대표님이 2주 뒤 어떤 형태를 기대하는지';
+    base.check_items = ['대표님에게 "2주 뒤에 어떤 형태를 기대하세요?" 확인', '검증 가능한 것 vs 가정으로 남길 것 명확히 분리'];
+  } else {
+    base.situation_update = '기획 경험 부재 → 그러나 "좋은 질문을 던지는 능력"은 기획의 80%';
+    base.real_question_after = '기획 경험이 없는 게 문제가 아니다. 개발자의 "이게 진짜 되나?" 본능이 오히려 기획의 핵심 무기다.';
+    base.skeleton[0] = '기획의 핵심 = "이게 되나?"를 구조적으로 검증하는 것 ← 개발자 강점';
+    base.skeleton[1] = '기술 가능성 분석 — 개발자만 할 수 있는 파트';
+    base.premises_confirmed = '개발자의 기술적 판단력은 기획의 핵심 자산이다';
+    base.premises_risk = '기획 = 글쓰기라는 오해. 기획 = 판단 구조화';
+    base.premises_uncertain = '비기술 부분(시장/재무)은 어디까지 다뤄야 하는지';
+    base.check_items = ['기술 가능성 분석을 기획안의 차별점으로 배치', '비기술 파트는 AI로 초안 + 전문가 검증 구조로'];
+  }
+
+  return base;
+}
+
+/* Persona reaction varies by user choices */
+function getPersonaReaction(q2: string) {
+  const name = '김 대표';
+  const base_reaction = '시장 분석은 됐고, 결국 우리가 이걸 해야 하는 이유가 뭔데? 남들 다 하니까?';
+
+  const specific: Record<string, string> = {
+    direction: '방향을 정리한 건 좋아. 근데 이 3가지 판단 항목이 정말 내가 알고 싶은 건지는 직접 들어봐야 해.',
+    persuasion: '논리 구조는 괜찮아. 근데 "왜 우리?"에 대한 답이 아직 추상적이야. 구체적인 수치가 있어야 해.',
+    time: '2주 짜리 계획은 현실적이야. 근데 Go/No-Go 기준이 너무 낙관적이야. 실패 기준도 넣어.',
+    expertise: '개발자 관점이 들어간 건 오히려 좋아. 근데 시장 부분이 너무 얕아. 그건 보완해.',
   };
 
-  if (d0 && !d1 && !d2) return {
-    bridge: '"형식만 맞추면 된다"가 흔들린다 — 형식 뒤의 판단이 진짜다.',
-    question: '기획안의 형식이 아니라, 대표님이 이 기획안으로 확인하고 싶은 판단이 뭔지가 먼저다.',
-    insight: '예쁜 문서보다 날카로운 질문 3개가 더 강력합니다.',
-  };
-
-  if (!d0 && d1 && !d2) return {
-    bridge: '"시장 조사를 잘 정리하면 된다"가 흔들린다 — 데이터가 아니라 해석이 핵심이다.',
-    question: '시장 데이터를 모으는 게 아니라, 이 데이터가 "우리가 해야 한다"를 입증하는지가 질문이다.',
-    insight: '정리가 아니라 판단의 근거를 만들어야 합니다.',
-  };
-
-  if (!d0 && !d1 && d2) return {
-    bridge: '"대표님이 원하는 건 문서다"가 흔들린다 — 문서 뒤에 진짜 의도가 있다.',
-    question: '대표님이 정말 원하는 건 기획안이 아니라, 이 사업을 할지 말지 판단할 근거 아닌가?',
-    insight: '문서가 아니라 의사결정 지원이 진짜 과제입니다.',
-  };
-
-  if (d0 && d1) return {
-    bridge: '"형식"도 의문이고 "시장 조사"도 의문이다 — 기획안의 정의 자체를 바꿔야 한다.',
-    question: '기획안이라는 형식을 버리고, 대표님에게 "이 사업을 할지 말지" 판단 자료를 만드는 게 맞지 않나?',
-    insight: '기획안 형태가 아니라 판단 자료 형태로 접근하세요.',
-  };
-
-  if (d0 && d2) return {
-    bridge: '"형식"과 "문서 목적" 둘 다 흔들린다 — 대표님의 진짜 의도를 먼저 파악해야 한다.',
-    question: '기획안을 쓰기 전에, 대표님에게 "이 기획안으로 뭘 판단하고 싶으세요?"를 먼저 물어야 하지 않나?',
-    insight: '2주를 쓰기 전에 30분 대화가 먼저입니다.',
-  };
-
-  // d1 && d2
   return {
-    bridge: '"시장 조사"와 "문서 목적" 둘 다 흔들린다 — 방향부터 확인해야 한다.',
-    question: '시장 조사를 시작하기 전에, 대표님이 이 사업의 어떤 측면을 보고 싶은 건지 먼저 확인해야 하지 않나?',
-    insight: '리서치 전에 질문을 좁혀야 시간을 아낍니다.',
+    name,
+    reaction: specific[q2] || base_reaction,
+    unspoken: '사실 이 기획안을 시킨 건, 이 사업을 하지 않을 이유도 같이 찾아오라는 거야.',
+    weaknesses: [
+      '"왜 우리가 해야 하는가"에 대한 구체적 답이 없다',
+      '2주 안에 실제로 검증할 수 있는 것과 가정의 구분이 모호하다',
+      'Go/No-Go 판단 기준에 "하지 않는 선택지"가 빠져 있다',
+    ],
+    fixes: [
+      { text: '"왜 우리여야 하는가" — 기존 기술력/팀 역량과의 구체적 연결', impact: '설득력 +40%' },
+      { text: '2주 검증 계획 — 1주차/2주차 구체적 일정과 산출물', impact: '실행력 +30%' },
+      { text: 'Go/No-Go 판단표 — "하지 않는다"도 옵션으로 포함', impact: '신뢰도 +25%' },
+    ],
   };
 }
 
 /* ═══════════════════════════════════════
-   STEPS & UTILITIES
+   STEPS
    ═══════════════════════════════════════ */
 
-const STEPS = [
-  { id: 'intro', label: '시작', icon: Play },
-  { id: 'reframe', label: '문제 재정의', icon: MessageSquare },
-  { id: 'recast', label: '실행 설계', icon: Sliders },
-  { id: 'persona', label: '사전 검증', icon: UserCheck },
-  { id: 'refine', label: '수정 반영', icon: RefreshCw },
-  { id: 'outro', label: '결과', icon: Sparkles },
-];
+const STEP_LABELS = ['상황', '즉시 초안', '질문 → 진화', '대표님 반응', '반영', '최종'];
 
 function useCountUp(target: number, duration = 800) {
   const [value, setValue] = useState(0);
@@ -161,80 +164,72 @@ function useCountUp(target: number, duration = 800) {
 }
 
 /* ═══════════════════════════════════════
-   MAIN COMPONENT
+   MAIN
    ═══════════════════════════════════════ */
 
 export function DemoWalkthrough() {
   const [step, setStep] = useState(0);
-  const maxStep = STEPS.length - 1;
+  const [q1Answer, setQ1Answer] = useState('');
+  const [q2Answer, setQ2Answer] = useState('');
+  const [fixesApplied, setFixesApplied] = useState<Set<number>>(new Set());
+  const maxStep = STEP_LABELS.length - 1;
 
   const go = (target: number) => {
     const next = Math.max(0, Math.min(target, maxStep));
     setStep(next);
-    track('demo_step', { step: next, label: STEPS[next]?.id });
+    track('demo_step', { step: next, label: STEP_LABELS[next] });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        setStep(s => {
-          const next = Math.min(s + 1, STEPS.length - 1);
-          if (next !== s) window.scrollTo({ top: 0, behavior: 'smooth' });
-          return next;
-        });
-      }
-      if (e.key === 'ArrowLeft') {
-        setStep(s => {
-          const next = Math.max(s - 1, 0);
-          if (next !== s) window.scrollTo({ top: 0, behavior: 'smooth' });
-          return next;
-        });
-      }
+      if (e.key === 'ArrowRight') go(step + 1);
+      if (e.key === 'ArrowLeft') go(step - 1);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  });
+
+  // Can't advance past step 2 without answering questions
+  const canAdvance = (s: number) => {
+    if (s === 2 && (!q1Answer || !q2Answer)) return false;
+    return true;
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-5 md:px-0">
-      {/* Progress */}
-      <nav className="flex items-center justify-center gap-0 mb-8 md:mb-12">
-        {STEPS.map((s, i) => {
-          const Icon = s.icon;
+      {/* Progress dots */}
+      <nav className="flex items-center justify-center gap-2 mb-8 md:mb-12">
+        {STEP_LABELS.map((label, i) => {
           const active = i === step;
           const done = i < step;
           return (
-            <Fragment key={s.id}>
-              {i > 0 && <div className={`h-px w-4 md:w-8 transition-colors ${done ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`} />}
-              <button
-                onClick={() => go(i)}
-                className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${active ? 'scale-110' : 'opacity-50 hover:opacity-80'}`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-colors ${
-                  active ? 'bg-[var(--accent)] text-[var(--bg)] shadow-sm' :
-                  done ? 'bg-[var(--accent)] text-[var(--bg)]' :
-                  'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)]'
-                }`}>
-                  {done ? <Check size={14} /> : <Icon size={14} />}
-                </div>
-                <span className={`text-[11px] font-semibold hidden md:block transition-colors ${active ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                  {s.label}
-                </span>
-              </button>
-            </Fragment>
+            <button
+              key={i}
+              onClick={() => go(i)}
+              className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all ${active ? '' : done ? 'opacity-60' : 'opacity-30'}`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                active ? 'bg-[var(--accent)] scale-125 shadow-sm' :
+                done ? 'bg-[var(--accent)]' :
+                'bg-[var(--border)]'
+              }`} />
+              <span className={`text-[10px] font-semibold hidden md:block ${active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'}`}>
+                {label}
+              </span>
+            </button>
           );
         })}
       </nav>
 
       {/* Content */}
       <div key={step} className="animate-fade-in">
-        {step === 0 && <IntroSection />}
-        {step === 1 && <ReframeSection />}
-        {step === 2 && <RecastSection />}
-        {step === 3 && <PersonaSection />}
-        {step === 4 && <RefineSection />}
-        {step === 5 && <OutroSection />}
+        {step === 0 && <IntroStep />}
+        {step === 1 && <FirstDraftStep />}
+        {step === 2 && <InterviewStep q1={q1Answer} q2={q2Answer} setQ1={setQ1Answer} setQ2={setQ2Answer} />}
+        {step === 3 && <PersonaStep q2={q2Answer} />}
+        {step === 4 && <FixStep q2={q2Answer} applied={fixesApplied} setApplied={setFixesApplied} />}
+        {step === 5 && <FinalStep q2={q2Answer} applied={fixesApplied} />}
       </div>
 
       {/* Navigation */}
@@ -248,13 +243,13 @@ export function DemoWalkthrough() {
           {step + 1} / {maxStep + 1}
         </span>
         {step < maxStep ? (
-          <Button onClick={() => go(step + 1)}>
+          <Button onClick={() => go(step + 1)} disabled={!canAdvance(step)}>
             {step === 0 ? '체험 시작' : '다음'} <ArrowRight size={14} />
           </Button>
         ) : (
           <Link href="/workspace">
             <Button>
-              직접 시작하기 <ArrowRight size={14} />
+              내 과제로 시작하기 <ArrowRight size={14} />
             </Button>
           </Link>
         )}
@@ -264,10 +259,10 @@ export function DemoWalkthrough() {
 }
 
 /* ═══════════════════════════════════════
-   INTRO
+   STEP 0: Intro
    ═══════════════════════════════════════ */
 
-function IntroSection() {
+function IntroStep() {
   return (
     <div className="space-y-6 phrase-entrance">
       <div>
@@ -278,146 +273,207 @@ function IntroSection() {
           1분이면 됩니다
         </h2>
         <p className="text-[15px] text-[var(--text-secondary)] mt-3 leading-relaxed max-w-lg">
-          실제 업무 시나리오로 Overture가 어떻게 도와주는지 체험하세요.
+          질문 하나 던지면 즉시 초안이 나오고, 답할수록 날카로워지는 걸 직접 체험하세요.
         </p>
       </div>
 
       <Card variant="elevated" className="!border-2 !border-[var(--border)]">
         <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-3">오늘의 상황</p>
         <p className="text-[16px] md:text-[18px] font-semibold text-[var(--text-primary)] leading-relaxed" style={{ fontFamily: 'var(--font-display)' }}>
-          {DEMO.scenario}
+          {SCENARIO}
         </p>
         <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          {DEMO.context}
+          기획안을 써본 적이 없습니다. 어디서부터 시작해야 할지 모르겠습니다.
         </p>
       </Card>
+
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
+        <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
+        <p className="text-[13px] text-[var(--text-primary)]">
+          실제 Overture에서는 <strong>당신의 과제</strong>를 입력합니다. 데모에서는 위 상황으로 체험합니다.
+        </p>
+      </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════
-   문제 재정의 — 전제 토글 → 질문 실시간 전환
+   STEP 1: Instant First Draft (30초)
    ═══════════════════════════════════════ */
 
-function ReframeSection() {
-  const [doubted, setDoubted] = useState<Set<number>>(new Set());
+function FirstDraftStep() {
+  return (
+    <div className="space-y-5 phrase-entrance">
+      <div className="mb-6">
+        <p className="text-[12px] font-bold text-[var(--accent)] tracking-wider uppercase mb-2">즉시 결과 · 30초</p>
+        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+          입력 하나로 이만큼 나옵니다
+        </h2>
+      </div>
 
-  useEffect(() => { demoChoices.doubted = doubted; }, [doubted]);
+      {/* Situation */}
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-2">상황 정리</p>
+        <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{FIRST_DRAFT.situation}</p>
+      </div>
 
-  const toggleDoubt = (i: number) => {
-    setDoubted(prev => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
-  };
+      {/* Real question */}
+      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/40 mb-2">진짜 질문</p>
+        <p className="text-[17px] md:text-[19px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          {FIRST_DRAFT.real_question}
+        </p>
+      </div>
 
-  const reframed = getReframed(doubted);
-  const reframedKey = [...doubted].sort().join('-') || 'none';
+      {/* Skeleton */}
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">기획안 뼈대</p>
+        <ol className="space-y-2">
+          {FIRST_DRAFT.skeleton.map((item, i) => (
+            <li key={i} className="flex items-start gap-3 text-[14px]">
+              <span className="shrink-0 w-5 h-5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] text-[11px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <span className="text-[var(--text-primary)]">{item}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Hidden premises */}
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-red-500/80 mb-3">숨겨진 전제</p>
+        <div className="space-y-2">
+          {FIRST_DRAFT.premises.map((p, i) => (
+            <div key={i} className="flex items-start gap-2.5 text-[14px]">
+              <span className="text-red-400 shrink-0 mt-0.5">?</span>
+              <span className="text-[var(--text-primary)]">{p}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-[13px] text-[var(--text-secondary)] italic text-center">
+        이건 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   STEP 2: Interview → Draft evolves
+   ═══════════════════════════════════════ */
+
+function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1: (v: string) => void; setQ2: (v: string) => void }) {
+  const draft = q2 ? getUpdatedDraft(q2) : null;
 
   return (
-    <div className="phrase-entrance">
-      <div className="mb-7">
-        <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold tracking-wider uppercase mb-2">
-          <MessageSquare size={14} /> 문제 재정의
-        </div>
-        <h2 className="text-[26px] md:text-[32px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          과제 뒤의 숨겨진 전제
+    <div className="space-y-6 phrase-entrance">
+      <div className="mb-4">
+        <p className="text-[12px] font-bold text-[#2d4a7c] tracking-wider uppercase mb-2">질문 → 진화</p>
+        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+          답할 때마다 기획안이 바뀝니다
         </h2>
-        <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          의심되는 전제를 탭하세요. <strong className="text-[var(--text-primary)]">질문이 실시간으로 바뀝니다.</strong>
-        </p>
       </div>
 
-      {/* ① Original Question */}
-      <div className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">원래 질문</p>
-        <p className="text-[16px] md:text-[17px] font-semibold text-[var(--text-primary)] leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
-          &ldquo;{DEMO.surface_task}&rdquo;
-        </p>
-      </div>
-
-      <div className="flex justify-center py-1.5">
-        <div className="w-px h-5 bg-[var(--border)]" />
-      </div>
-
-      {/* ② Hidden Premises */}
+      {/* Q1 */}
       <div>
-        <p className="text-[12px] font-bold text-[var(--text-tertiary)] tracking-[0.1em] uppercase mb-3">이 질문 속 숨겨진 전제</p>
-        <div className="space-y-2.5">
-          {DEMO.premises.map((text, i) => {
-            const isDoubted = doubted.has(i);
-            return (
+        <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">{INTERVIEW_Q1.question}</p>
+        <div className="grid grid-cols-2 gap-2">
+          {INTERVIEW_Q1.options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setQ1(opt.value)}
+              className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
+                q1 === opt.value
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Q2 */}
+      {q1 && (
+        <div className="animate-fade-in">
+          <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">{INTERVIEW_Q2.question}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {INTERVIEW_Q2.options.map((opt) => (
               <button
-                key={i}
-                onClick={() => toggleDoubt(i)}
-                className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
-                  isDoubted
-                    ? 'border-red-300 bg-red-50/80 shadow-sm'
-                    : 'border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm'
+                key={opt.value}
+                onClick={() => setQ2(opt.value)}
+                className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
+                  q2 === opt.value
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
+                    : 'border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border)]'
                 }`}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <p className={`text-[15px] font-medium leading-snug ${isDoubted ? 'text-red-700' : 'text-[var(--text-primary)]'}`}>
-                    &ldquo;{text}&rdquo;
-                  </p>
-                  <span className={`shrink-0 text-[12px] font-bold px-3 py-1.5 rounded-full transition-colors ${
-                    isDoubted
-                      ? 'bg-red-100 text-red-600'
-                      : 'bg-transparent text-[var(--text-tertiary)] border border-dashed border-[var(--border)]'
-                  }`}>
-                    {isDoubted ? '의심' : '동의'}
-                  </span>
-                </div>
+                {opt.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="flex justify-center py-1.5">
-        <div className="w-px h-5 bg-[var(--border)]" />
-      </div>
+      {/* Updated draft — appears after both answers */}
+      {draft && (
+        <div className="mt-4 space-y-4 animate-fade-in">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--success)] font-semibold">
+            <CrescendoHairpin width={16} height={8} color="var(--success)" />
+            답변 반영 — 기획안이 진화했습니다
+          </div>
 
-      {/* ③ Bridge */}
-      <div
-        key={`bridge-${reframedKey}`}
-        className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4 animate-fade-in"
-      >
-        <p className="text-[12px] font-bold text-[var(--accent)] tracking-[0.08em] uppercase mb-2">
-          {doubted.size === 0 ? '전제가 모두 탄탄하다면' : `전제 ${doubted.size}개가 흔들린다`}
-        </p>
-        <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-relaxed">
-          {reframed.bridge}
-        </p>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-          {reframed.insight}
-        </p>
-      </div>
+          <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.03] px-5 py-3">
+            <p className="text-[12px] font-bold text-[var(--accent)] mb-1">상황 업데이트</p>
+            <p className="text-[14px] text-[var(--text-primary)]">{draft.situation_update}</p>
+          </div>
 
-      {/* Arrow → ④ */}
-      <div className="flex flex-col items-center py-1">
-        <div className="w-px h-3 bg-[var(--accent)]/30" />
-        <ChevronDown size={18} className="text-[var(--accent)] -mt-0.5" />
-      </div>
+          {/* Question diff */}
+          <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
+            <p className="text-[11px] font-bold text-white/40 mb-2">진짜 질문 (수정됨)</p>
+            <p className="text-[13px] text-white/40 line-through mb-2">{draft.real_question_before}</p>
+            <p className="text-[16px] md:text-[18px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+              {draft.real_question_after}
+            </p>
+          </div>
 
-      {/* ④ Reframed Question */}
-      <div
-        key={reframedKey}
-        className="rounded-xl bg-[var(--primary)] text-[var(--bg)] p-6 shadow-lg animate-crescendo"
-      >
-        <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/40 mb-2">재정의된 질문</p>
-        <p className="text-[18px] md:text-[21px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
-          {reframed.question}
-        </p>
-      </div>
+          {/* Updated skeleton */}
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
+            <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">기획안 뼈대 (수정됨)</p>
+            <ol className="space-y-2">
+              {draft.skeleton.map((item, i) => {
+                const changed = item !== FIRST_DRAFT.skeleton[i];
+                return (
+                  <li key={i} className="flex items-start gap-3 text-[14px]">
+                    <span className={`shrink-0 w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center mt-0.5 ${
+                      changed ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-[var(--bg)] text-[var(--text-tertiary)]'
+                    }`}>{i + 1}</span>
+                    <span className={changed ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-primary)]'}>{item}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
 
-      {doubted.size > 0 && (
-        <div key={`hint-${doubted.size}`} className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
-          <Sparkles size={11} className="text-[var(--gold)]" />
-          <span className="text-[11px] text-[var(--gold)]">
-            전제 {doubted.size}개 의심 — 이 성향이 다음 분석에 반영됩니다
-          </span>
+          {/* Updated premises */}
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+            <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">전제 업데이트</p>
+            <div className="space-y-2 text-[14px]">
+              <div className="flex items-start gap-2.5">
+                <span className="text-[var(--success)] shrink-0">✓</span>
+                <span className="text-[var(--text-primary)]">{draft.premises_confirmed}</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="text-red-500 shrink-0">✗</span>
+                <span className="text-[var(--text-primary)]">{draft.premises_risk}</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="text-amber-500 shrink-0">?</span>
+                <span className="text-[var(--text-primary)]">{draft.premises_uncertain}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -425,400 +481,183 @@ function ReframeSection() {
 }
 
 /* ═══════════════════════════════════════
-   실행 설계 — 역할 토글 + 분배 바
+   STEP 3: "대표님은 뭐라고 할까?"
    ═══════════════════════════════════════ */
 
-function RecastSection() {
-  const [actors, setActors] = useState<Record<number, 'ai' | 'human' | 'both'>>(
-    Object.fromEntries(DEMO.steps.map((s, i) => [i, s.actor]))
-  );
-
-  useEffect(() => { demoChoices.actors = actors; }, [actors]);
-
-  const ACTOR_STYLES: Record<string, { label: string; color: string; Icon: typeof Bot }> = {
-    ai: { label: 'AI', color: '#3b6dcc', Icon: Bot },
-    both: { label: '협업', color: '#2d6b2d', Icon: Handshake },
-    human: { label: '사람', color: '#b8860b', Icon: Brain },
-  };
-
-  const total = DEMO.steps.length;
-  const counts = { ai: 0, human: 0, both: 0 };
-  DEMO.steps.forEach((_, i) => { counts[actors[i] || 'both']++; });
+function PersonaStep({ q2 }: { q2: string }) {
+  const persona = getPersonaReaction(q2);
 
   return (
     <div className="space-y-5 phrase-entrance">
-      <div>
-        <div className="flex items-center gap-2 text-[12px] text-[#8b6914] font-semibold tracking-wider uppercase mb-2">
-          <Sliders size={14} /> 실행 설계
-        </div>
-        <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          AI와 사람의 역할 설계
-        </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          <strong className="text-[var(--text-primary)]">역할 배지를 탭</strong>해서 바꿔보세요.
+      <div className="mb-4">
+        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-wider uppercase mb-2">
+          <UserCheck size={14} className="inline mr-1" />사전 검증
         </p>
-      </div>
-
-      {/* Governing idea */}
-      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
-        <p className="text-[15px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
-          {DEMO.governing_idea}
-        </p>
-      </div>
-
-      {/* Role distribution bar */}
-      <div className="flex h-8 rounded-xl overflow-hidden text-[12px] font-bold text-white">
-        {(['ai', 'both', 'human'] as const).map(actor => {
-          if (counts[actor] === 0) return null;
-          return (
-            <div
-              key={actor}
-              className="transition-all duration-500 flex items-center justify-center gap-1"
-              style={{ width: `${(counts[actor] / total) * 100}%`, backgroundColor: ACTOR_STYLES[actor].color }}
-            >
-              {ACTOR_STYLES[actor].label} {counts[actor]}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Workflow steps */}
-      <div className="space-y-2">
-        {DEMO.steps.map((s, i) => {
-          const actor = actors[i] || s.actor;
-          const style = ACTOR_STYLES[actor];
-          return (
-            <div
-              key={i}
-              className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3"
-              style={{ borderLeft: `3px solid ${style.color}` }}
-            >
-              <span className="text-[16px] font-bold tabular-nums select-none w-5" style={{ color: `${style.color}40` }}>
-                {i + 1}
-              </span>
-              <p className="flex-1 text-[13px] font-semibold text-[var(--text-primary)] leading-snug min-w-0">
-                {s.task}
-              </p>
-              <div className="shrink-0 inline-flex rounded-lg border border-[var(--border-subtle)] overflow-hidden">
-                {(['ai', 'both', 'human'] as const).map(a => {
-                  const st = ACTOR_STYLES[a];
-                  const active = actor === a;
-                  return (
-                    <button
-                      key={a}
-                      onClick={() => setActors(prev => ({ ...prev, [i]: a }))}
-                      className={`px-2.5 py-1.5 text-[10px] font-bold transition-all cursor-pointer ${
-                        active ? 'text-white' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-                      }`}
-                      style={active ? { backgroundColor: st.color } : {}}
-                    >
-                      {st.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="text-[11px] text-[var(--text-tertiary)] shrink-0 hidden sm:inline w-8 text-right">{s.time}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {(() => {
-        const aiCount = Object.values(actors).filter(a => a === 'ai').length;
-        const humanCount = Object.values(actors).filter(a => a === 'human').length;
-        const changed = DEMO.steps.some((s, i) => actors[i] !== s.actor);
-        if (!changed) return null;
-        const msg = aiCount >= 3
-          ? 'AI 위임 성향 — 체크포인트 권장이 반영됩니다'
-          : humanCount >= 3
-          ? '직접 실행 선호 — AI 활용 기회를 제안합니다'
-          : '균형 있는 배분입니다';
-        return (
-          <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
-            <Sparkles size={11} className="text-[var(--gold)]" />
-            <span className="text-[11px] text-[var(--gold)]">{msg}</span>
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════
-   사전 검증 — 페르소나 즉시 등장 + 동적 반응
-   ═══════════════════════════════════════ */
-
-function PersonaSection() {
-  const doubted = demoChoices.doubted;
-  const actors = demoChoices.actors;
-
-  const aiOnlyCount = DEMO.steps.filter((_, i) => actors[i] === 'ai').length;
-  const allConfirmed = doubted.size === 0;
-
-  const reaction = (() => {
-    if (aiOnlyCount >= 3) return '이거 AI한테 다 맡기면 누가 판단한 거야? 기획안은 판단이지 자동화가 아니야.';
-    if (allConfirmed) return '전제를 다 맞다고 놓은 거야? 기획안에서 가장 위험한 건 "당연하다"고 넘긴 부분이야.';
-    return DEMO.persona.default_reaction;
-  })();
-
-  const observations: { label: string; text: string }[] = [];
-  if (actors[0] === 'ai') {
-    observations.push({ label: '대표님 의도 파악 → AI 단독', text: '대표님 머릿속에 있는 걸 AI가 알아? 직접 물어봐야지.' });
-  }
-  if (actors[3] === 'ai') {
-    observations.push({ label: '최종 검증 → AI 단독', text: '내한테 올라오는 기획안을 AI가 검증했다고? 그건 내가 판단할 일이야.' });
-  }
-  if (!doubted.has(2) && observations.length < 2) {
-    observations.push({ label: '"문서가 목적" 확인', text: '기획안이 예쁘면 끝이야? 내가 보고 싶은 건 판단 근거야.' });
-  }
-
-  const strengths: string[] = [];
-  const improvements: string[] = [];
-
-  if (doubted.size > 0) {
-    strengths.push('전제를 의심해본 점 — 기획안의 약점을 미리 파악했습니다.');
-  }
-  if (actors[0] === 'human' || actors[0] === 'both') {
-    strengths.push('대표님 의도 파악에 사람이 참여 — 핵심 판단을 놓치지 않습니다.');
-  }
-  if (strengths.length === 0) {
-    strengths.push('구조화된 접근 — 막막한 상태에서 체계적으로 시작합니다.');
-  }
-
-  improvements.push(DEMO.persona.unspoken_risk);
-  if (allConfirmed) {
-    improvements.push('모든 전제에 동의한 상태 — 대표님이 "왜?"라고 물으면 답이 없을 수 있습니다.');
-  }
-
-  return (
-    <div className="space-y-5 phrase-entrance">
-      <div>
-        <div className="flex items-center gap-2 text-[12px] text-[#6b4c9a] font-semibold tracking-wider uppercase mb-2">
-          <UserCheck size={14} /> 사전 검증
-        </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           대표님은 뭐라고 할까?
         </h2>
-        <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          당신의 선택을 바탕으로 판단자의 예상 반응을 시뮬레이션합니다.
+        <p className="text-[14px] text-[var(--text-secondary)] mt-2">
+          실제로 보여주기 전에, 예상 반응을 미리 확인합니다.
         </p>
       </div>
 
-      {/* Persona card */}
+      {/* Persona reaction */}
       <Card className="!p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[18px] font-bold shrink-0">김</div>
           <div>
-            <p className="text-[16px] font-bold text-[var(--text-primary)]">{DEMO.persona.name}</p>
-            <p className="text-[13px] text-[var(--text-secondary)]">{DEMO.persona.role}</p>
+            <p className="text-[16px] font-bold text-[var(--text-primary)]">{persona.name}</p>
+            <p className="text-[13px] text-[var(--text-secondary)]">CEO · 최종 의사결정자</p>
           </div>
         </div>
         <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5">
           <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">
-            &ldquo;{reaction}&rdquo;
+            &ldquo;{persona.reaction}&rdquo;
           </p>
         </div>
       </Card>
 
-      {/* Dynamic observations */}
-      {observations.length > 0 && (
+      {/* Weaknesses */}
+      <div>
+        <p className="text-[12px] font-bold text-red-500/80 tracking-[0.1em] uppercase mb-3">약점 3가지</p>
         <div className="space-y-2">
-          {observations.slice(0, 2).map((obs, i) => (
-            <div key={i} className="rounded-xl border border-[#6b4c9a]/15 bg-[#6b4c9a]/[0.04] px-4 py-3">
-              <p className="text-[11px] font-bold text-[#6b4c9a] mb-1">당신의 선택: {obs.label}</p>
-              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed italic">&ldquo;{obs.text}&rdquo;</p>
+          {persona.weaknesses.map((w, i) => (
+            <div key={i} className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
+              <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-[14px] text-[var(--text-primary)]">{w}</p>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Strengths & improvements */}
-      <div className="space-y-2">
-        {strengths.map((s, i) => (
-          <div key={`s-${i}`} className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
-            <span className="shrink-0 text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded mt-0.5">강점</span>
-            <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{s}</p>
-          </div>
-        ))}
-        {improvements.map((imp, i) => (
-          <div key={`i-${i}`} className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
-            <span className="shrink-0 text-[11px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded mt-0.5">개선점</span>
-            <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{imp}</p>
-          </div>
-        ))}
+      {/* Unspoken */}
+      <div className="rounded-xl border border-[#6b4c9a]/20 bg-[#6b4c9a]/[0.04] px-5 py-4">
+        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-[0.08em] uppercase mb-2">아무도 말 안 하는 것</p>
+        <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">
+          &ldquo;{persona.unspoken}&rdquo;
+        </p>
+      </div>
+
+      {/* What to fix */}
+      <div>
+        <p className="text-[12px] font-bold text-[var(--success)] tracking-[0.1em] uppercase mb-3">이렇게 고치면 OK할 가능성 ↑</p>
+        <div className="space-y-2">
+          {persona.fixes.map((f, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+              <p className="text-[14px] text-[var(--text-primary)] flex-1">{f.text}</p>
+              <span className="shrink-0 text-[11px] font-bold text-[var(--success)] bg-[var(--success)]/10 px-2.5 py-1 rounded-full">{f.impact}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════
-   수정 반영 — 자동 재생 수렴
+   STEP 4: Fix selection
    ═══════════════════════════════════════ */
 
-function RefineSection() {
-  const [phase, setPhase] = useState<'ready' | 'r1-loading' | 'r1' | 'r2-loading' | 'r2'>('ready');
+function FixStep({ q2, applied, setApplied }: { q2: string; applied: Set<number>; setApplied: (s: Set<number>) => void }) {
+  const persona = getPersonaReaction(q2);
+  const score = useCountUp(applied.size === 3 ? 92 : applied.size === 2 ? 78 : applied.size === 1 ? 62 : 45);
 
-  useEffect(() => {
-    if (phase === 'r1-loading') { const t = setTimeout(() => setPhase('r1'), 1500); return () => clearTimeout(t); }
-    if (phase === 'r1') { const t = setTimeout(() => setPhase('r2-loading'), 2000); return () => clearTimeout(t); }
-    if (phase === 'r2-loading') { const t = setTimeout(() => setPhase('r2'), 1500); return () => clearTimeout(t); }
-  }, [phase]);
-
-  const rawScore = phase === 'r2' ? 92 : (phase === 'r1' || phase === 'r2-loading') ? 72 : 0;
-  const score = useCountUp(rawScore);
-  const isConverged = phase === 'r2';
+  const toggle = (i: number) => {
+    const next = new Set(applied);
+    next.has(i) ? next.delete(i) : next.add(i);
+    setApplied(next);
+  };
 
   return (
     <div className="space-y-5 phrase-entrance">
-      <div>
-        <div className="flex items-center gap-2 text-[12px] text-[#2d6b2d] font-semibold tracking-wider uppercase mb-2">
-          <RefreshCw size={14} /> 수정 반영
-        </div>
+      <div className="mb-4">
+        <p className="text-[12px] font-bold text-[#2d6b2d] tracking-wider uppercase mb-2">반영 선택</p>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          피드백을 반영하고 수렴합니다
+          어떤 피드백을 기획안에 반영할까요?
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          대표님 피드백을 자동 반영하고, 다시 검토합니다.
+          탭해서 반영할 항목을 선택하세요. <strong className="text-[var(--text-primary)]">실행 준비도가 실시간으로 바뀝니다.</strong>
         </p>
       </div>
 
       {/* Score */}
-      {score > 0 && (
-        <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
-          isConverged ? 'border-[#2d6b2d] bg-[#2d6b2d]' : 'border-[#2d6b2d]/20 bg-[#2d6b2d]/[0.06]'
-        }`}>
-          <div className="px-5 py-4 flex items-center justify-between">
-            <div>
-              <p className={`text-[11px] font-medium mb-0.5 ${isConverged ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>실행 준비도</p>
-              <p className={`text-[32px] font-extrabold leading-none tabular-nums ${isConverged ? 'text-white' : 'text-[#2d6b2d]'}`}>{score}%</p>
-            </div>
-            {isConverged && (
-              <div className="flex items-center gap-2 text-white">
-                <Check size={18} />
-                <span className="text-[14px] font-bold">완료</span>
-              </div>
-            )}
+      <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
+        applied.size === 3 ? 'border-[#2d6b2d] bg-[#2d6b2d]' : 'border-[#2d6b2d]/20 bg-[#2d6b2d]/[0.06]'
+      }`}>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className={`text-[11px] font-medium mb-0.5 ${applied.size === 3 ? 'text-white/60' : 'text-[var(--text-tertiary)]'}`}>실행 준비도</p>
+            <p className={`text-[32px] font-extrabold leading-none tabular-nums ${applied.size === 3 ? 'text-white' : 'text-[#2d6b2d]'}`}>{score}%</p>
           </div>
-          {!isConverged && (
-            <div className="h-2 bg-[var(--border)]">
-              <div className="h-full bg-[#2d6b2d] transition-all duration-1000 rounded-r" style={{ width: `${score}%` }} />
+          {applied.size === 3 && (
+            <div className="flex items-center gap-2 text-white">
+              <Check size={18} />
+              <span className="text-[14px] font-bold">제출 가능</span>
             </div>
           )}
         </div>
-      )}
-
-      {/* Start */}
-      {phase === 'ready' && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-            <p className="text-[12px] font-bold text-[#2d6b2d] tracking-[0.08em] uppercase mb-3">수정 반영이 진행되면</p>
-            <ol className="space-y-2 text-[14px] text-[var(--text-secondary)] leading-relaxed">
-              <li className="flex items-start gap-2.5">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
-                사전 검증에서 나온 <strong className="text-[var(--text-primary)]">개선점을 계획에 자동 반영</strong>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
-                판단자가 수정된 계획을 <strong className="text-[var(--text-primary)]">다시 검토</strong>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
-                준비도가 충분히 높아질 때까지 <strong className="text-[var(--text-primary)]">자동 반복</strong>
-              </li>
-            </ol>
-          </div>
-          <button
-            onClick={() => setPhase('r1-loading')}
-            className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#2d6b2d] text-white text-[15px] font-bold hover:bg-[#245524] transition-colors cursor-pointer active:scale-[0.98]"
-          >
-            수정 시작 <ArrowRight size={14} />
-          </button>
+        <div className="h-2 bg-[var(--border)]">
+          <div className="h-full bg-[#2d6b2d] transition-all duration-700 rounded-r" style={{ width: `${score}%` }} />
         </div>
-      )}
+      </div>
 
-      {/* Loading */}
-      {(phase === 'r1-loading' || phase === 'r2-loading') && (
-        <div className="text-center py-8 animate-fade-in">
-          <div className="w-8 h-8 rounded-full border-2 border-[#2d6b2d] border-t-transparent animate-spin mx-auto mb-3" />
-          <p className="text-[14px] text-[var(--text-secondary)]">
-            {phase === 'r1-loading' ? '피드백을 반영하여 수정 중...' : '추가 피드백을 반영 중...'}
-          </p>
-        </div>
-      )}
-
-      {/* Revision results */}
-      {(phase === 'r1' || phase === 'r2-loading' || phase === 'r2') && (
-        <div className="space-y-5 animate-fade-in">
-          {DEMO.refine.slice(0, phase === 'r1' ? 1 : 2).map((r, idx) => (
-            <div key={idx} className="space-y-3">
-              <p className="text-[14px] font-bold text-[#2d6b2d]">{idx + 1}차 수정</p>
-
-              {r.fixes.map((f, fi) => (
-                <div key={fi} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[#6b4c9a]/[0.03]">
-                    <p className="text-[11px] font-bold text-[#6b4c9a] mb-0.5">{DEMO.persona.name} 피드백</p>
-                    <p className="text-[14px] text-[var(--text-primary)] italic">&ldquo;{f.source}&rdquo;</p>
+      {/* Fix toggles */}
+      <div className="space-y-2.5">
+        {persona.fixes.map((f, i) => {
+          const isOn = applied.has(i);
+          return (
+            <button
+              key={i}
+              onClick={() => toggle(i)}
+              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                isOn
+                  ? 'border-[#2d6b2d] bg-[#2d6b2d]/[0.06] shadow-sm'
+                  : 'border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                    isOn ? 'bg-[#2d6b2d] text-white' : 'bg-[var(--bg)] border border-[var(--border)]'
+                  }`}>
+                    {isOn && <Check size={12} />}
                   </div>
-                  <div className="px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-2">
-                      <Check size={14} className="text-[#2d6b2d] shrink-0 mt-0.5" />
-                      <p className="text-[14px] font-medium text-[var(--text-primary)]">{f.action}</p>
-                    </div>
-                    <span className="shrink-0 text-[12px] font-bold text-[#2d6b2d] bg-[#2d6b2d]/10 px-2.5 py-1 rounded-full tabular-nums">+{f.delta}%</span>
-                  </div>
+                  <p className={`text-[14px] font-medium leading-snug ${isOn ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                    {f.text}
+                  </p>
                 </div>
-              ))}
-
-              <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[12px] font-bold shrink-0 mt-0.5">김</div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#6b4c9a] mb-1">수정 후 재검토</p>
-                  <p className="text-[15px] font-medium text-[var(--text-primary)] leading-relaxed italic">&ldquo;{r.review}&rdquo;</p>
-                </div>
+                <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                  isOn ? 'bg-[#2d6b2d]/10 text-[#2d6b2d]' : 'bg-[var(--bg)] text-[var(--text-tertiary)]'
+                }`}>
+                  {f.impact}
+                </span>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {isConverged && (
-        <div className="rounded-xl border-2 border-[#2d6b2d] bg-[#2d6b2d]/[0.04] px-5 py-4 text-center animate-fade-in">
-          <p className="text-[18px] font-extrabold text-[#2d6b2d]" style={{ fontFamily: 'var(--font-display)' }}>수정 완료</p>
-          <p className="text-[13px] text-[var(--text-secondary)] mt-1">2회 반복으로 실행 준비도 92%에 도달했습니다</p>
-        </div>
-      )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════
-   결과 — CTA
+   STEP 5: Final
    ═══════════════════════════════════════ */
 
-function OutroSection() {
-  const reframed = getReframed(demoChoices.doubted);
+function FinalStep({ q2, applied }: { q2: string; applied: Set<number> }) {
+  const draft = getUpdatedDraft(q2);
+  const persona = getPersonaReaction(q2);
   const seedRecorded = useRef(false);
 
   useEffect(() => {
     if (seedRecorded.current) return;
     seedRecorded.current = true;
-
-    const aiOnlySteps = DEMO.steps.filter((_, i) => demoChoices.actors[i] === 'ai').length;
-    const humanOnlySteps = DEMO.steps.filter((_, i) => demoChoices.actors[i] === 'human').length;
-
     recordSignal({
       tool: 'reframe',
       signal_type: 'demo_seed',
-      signal_data: {
-        doubted_count: demoChoices.doubted.size,
-        total_premises: DEMO.premises.length,
-        ai_only_steps: aiOnlySteps,
-        human_only_steps: humanOnlySteps,
-        total_steps: DEMO.steps.length,
-        completed: true,
-      },
+      signal_data: { q2, fixes_applied: applied.size, completed: true },
     });
-  }, []);
+  }, [q2, applied]);
 
   return (
     <div className="space-y-6 phrase-entrance">
@@ -828,70 +667,60 @@ function OutroSection() {
         </div>
         <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
           막막했던 기획안이<br />
-          <span className="text-[var(--accent)]">판단 가능한 구조</span>가 되었습니다
+          <span className="text-[var(--accent)]">제출 가능한 구조</span>가 되었습니다
         </h2>
+        <p className="text-[14px] text-[var(--text-secondary)] mt-3">
+          입력 1개 + 질문 2개 + 피드백 반영. 이게 전부입니다.
+        </p>
       </div>
 
-      {/* Deliverable 1: Reframed question */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <MessageSquare size={14} className="text-[#2d4a7c]" />
-          <span className="text-[13px] font-bold text-[var(--text-primary)]">재정의된 질문</span>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-[14px] text-[var(--text-tertiary)] line-through mb-2">&ldquo;{DEMO.surface_task}&rdquo;</p>
-          <p className="text-[15px] font-semibold text-[var(--text-primary)] leading-relaxed">
-            &ldquo;{reframed.question}&rdquo;
-          </p>
-        </div>
+      {/* Final question */}
+      <div className="rounded-xl bg-[var(--primary)] text-[var(--bg)] px-5 py-4 shadow-md">
+        <p className="text-[11px] font-bold text-white/40 mb-2">최종 핵심 질문</p>
+        <p className="text-[17px] font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
+          {draft?.real_question_after || FIRST_DRAFT.real_question}
+        </p>
       </div>
 
-      {/* Deliverable 2: Thinking Summary */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <Sliders size={14} className="text-[#8b6914]" />
-          <span className="text-[13px] font-bold text-[var(--text-primary)]">Thinking Summary</span>
-          <span className="text-[10px] font-bold text-[#8b6914] bg-[#8b6914]/10 px-2 py-0.5 rounded-full">팀 공유용</span>
-        </div>
-        <div className="px-5 py-4">
-          <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 text-[13px] text-[var(--text-secondary)] leading-relaxed space-y-2">
-            <p className="font-semibold text-[var(--text-primary)]">신사업 기획안 — 검토 요약</p>
-            <p>핵심 질문을 &ldquo;기획안 작성&rdquo;에서 &ldquo;대표님이 판단할 수 있는 구조 설계&rdquo;로 재정의했습니다.</p>
-            <p>4단계 실행 계획 수립, AI/사람 역할 배분 완료. 대표님 피드백 2회 반영, 실행 준비도 92%.</p>
-            <p className="text-[var(--text-tertiary)]">다음 단계: 대표님에게 "이 기획안으로 뭘 판단하고 싶으세요?" 확인</p>
-          </div>
-        </div>
+      {/* Final skeleton with fixes applied */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">최종 기획안 구조</p>
+        <ol className="space-y-2">
+          {(draft?.skeleton || FIRST_DRAFT.skeleton).map((item, i) => (
+            <li key={i} className="flex items-start gap-3 text-[14px]">
+              <span className="shrink-0 w-5 h-5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] text-[11px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <span className="text-[var(--text-primary)]">{item}</span>
+            </li>
+          ))}
+          {/* Applied fixes as additions */}
+          {persona.fixes.filter((_, i) => applied.has(i)).map((f, i) => (
+            <li key={`fix-${i}`} className="flex items-start gap-3 text-[14px]">
+              <span className="shrink-0 w-5 h-5 rounded-md bg-[#2d6b2d]/15 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">+</span>
+              <span className="text-[#2d6b2d] font-medium">{f.text.split('—')[0].trim()}</span>
+            </li>
+          ))}
+        </ol>
       </div>
 
-      {/* Deliverable 3: Agent Harness */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <Bot size={14} className="text-[var(--accent)]" />
-          <span className="text-[13px] font-bold text-[var(--text-primary)]">Agent Harness</span>
-          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full">CLAUDE.md</span>
-        </div>
-        <div className="px-5 py-4">
-          <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)] leading-relaxed space-y-1">
-            <p className="text-[var(--text-tertiary)]"># 신사업 기획안 — Agent 실행 지시서</p>
-            <p>- 검증된 전제: 3개 중 {demoChoices.doubted.size}개 재검증 완료</p>
-            <p>- 판단자 조건: {DEMO.persona.name} 승인 기준 반영</p>
-            <p>- 실행 계획: 4단계 · 역할 배분 확정</p>
-            <p className="text-[var(--text-tertiary)]">...</p>
-          </div>
-          <p className="text-[13px] text-[var(--text-tertiary)] mt-3">
-            당신의 판단이 에이전트 instruction이 됩니다.
-          </p>
+      {/* Summary */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-[var(--text-tertiary)] mb-3">이 과정에서 일어난 일</p>
+        <div className="space-y-2 text-[13px] text-[var(--text-secondary)]">
+          <p>1. 입력 하나로 <strong className="text-[var(--text-primary)]">기획안 뼈대 + 숨겨진 전제</strong>가 즉시 나왔습니다.</p>
+          <p>2. 질문 2개에 답하자 <strong className="text-[var(--text-primary)]">핵심 질문과 구조가 진화</strong>했습니다.</p>
+          <p>3. 대표님의 예상 반응으로 <strong className="text-[var(--text-primary)]">약점 3가지</strong>를 미리 발견했습니다.</p>
+          <p>4. 피드백을 반영해서 <strong className="text-[var(--text-primary)]">실행 준비도 {applied.size === 3 ? '92' : applied.size === 2 ? '78' : '62'}%</strong>에 도달했습니다.</p>
         </div>
       </div>
 
       {/* CTA */}
       <div className="text-center pt-2">
         <p className="text-[15px] text-[var(--text-secondary)] mb-4">
-          당신의 과제로 직접 만들어보세요.
+          이제 당신의 과제로 직접 해보세요.
         </p>
         <Link href="/workspace">
           <Button>
-            지금 바로 시작하기 <ArrowRight size={14} />
+            내 과제로 시작하기 <ArrowRight size={14} />
           </Button>
         </Link>
         <p className="text-[11px] text-[var(--text-tertiary)] mt-3">
