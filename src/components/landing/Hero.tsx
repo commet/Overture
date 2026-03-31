@@ -17,7 +17,7 @@ export function Hero() {
           {/* ─── Left: Message ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
-              <span className="whitespace-nowrap">내 전문 분야가 아닌 걸</span>
+              <span className="lg:whitespace-nowrap">내 전문 분야가 아닌 걸</span>
               <br />
               <span className="text-gold-gradient">해야 할 때.</span>
             </h1>
