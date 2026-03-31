@@ -112,13 +112,27 @@ Then **immediately generate the first question** using AskUserQuestion.
 
 ## Step 2: Progressive Deepening (2-3 rounds)
 
-This is an **iterative loop**, not a fixed interview. Each round:
+**⚠️ This is a MULTI-TURN conversation, not a single output.** The flow is:
 
-1. Ask a targeted question (via AskUserQuestion)
+```
+You: [Step 1 output + first AskUserQuestion]
+User: [answers]
+You: [insight + updated analysis + next AskUserQuestion]
+User: [answers]
+You: [insight + updated analysis + mix trigger AskUserQuestion]
+User: [picks "초안 완성"]
+You: [Step 3 Mix]
+```
+
+Do NOT combine multiple rounds into one output. Wait for the user's answer before each update.
+
+Each round:
+
+1. Ask a targeted question (via AskUserQuestion — always use the tool, never type questions as text)
 2. User answers
 3. Show **insight** (what this answer revealed, 1 sentence)
 4. Show **updated analysis** (changes highlighted with diff)
-5. Generate **next question** (must open a NEW dimension)
+5. Generate **next question** via AskUserQuestion (must open a NEW dimension)
 6. Repeat until ready for Mix (2-3 rounds typically)
 
 ### Question quality rules (CRITICAL):
@@ -254,14 +268,21 @@ If user says "enough" / "이 정도면 됐어" / "다음" at any point → trans
 
 ---
 
-**Mix quality rules:**
+**Mix quality rules (CRITICAL — this is the core deliverable):**
 - **Send-as-is quality**: 사용자가 이걸 그대로 보내도 되는 수준. "[여기에 입력]" 같은 플레이스홀더 금지.
-- **Substantial**: 얇은 아웃라인이 아니라 사고의 깊이가 보이는 실제 초안.
+- **Substantial**: 얇은 아웃라인이 아니라 사고의 깊이가 보이는 실제 초안. 일반 ChatGPT 출력과의 차이가 여기서 갈린다.
 - **4-6 sections**, each 3-5 sentences, concrete and actionable.
-- **"리스크와 대응" section MANDATORY**: 2-3 risks + mitigation. This proves the author ANTICIPATED problems.
-- **Next steps are time-bound and assigned**: Who does what by when. At least 3.
-- **Assumptions explicit**: Shows intellectual honesty.
-- Tone: confident but honest about uncertainties.
+- **Section content는 flowing text.** 마크다운 헤더를 섹션 안에서 쓰지 말 것. **핵심 용어와 수치는 bold** 처리.
+- **"리스크와 대응" section MANDATORY**: 2-3 risks + mitigation. 이것이 "이 사람은 문제를 미리 예상했다"를 증명하는 핵심.
+- **Next steps are time-bound and assigned**: 누가, 언제까지, 무엇을. 최소 3개. "논의" "검토"같은 모호한 행동 금지 — 구체적 산출물 명시.
+- **Assumptions explicit**: 불확실한 것을 솔직히 밝히는 것이 지적 정직.
+- Tone: confident but honest. 불확실한 부분은 "~할 가능성이 높다" 대신 "이것은 [X]를 전제한다. 확인 필요."
+
+**Self-check before showing Mix:**
+- [ ] 판단자가 이 요약만 읽고 80%를 파악하나?
+- [ ] 플레이스홀더 없는가?
+- [ ] 리스크 섹션 있는가?
+- [ ] 다음 단계에 "누가"가 빠진 항목 없는가?
 
 After showing the Mix, transition to Step 4:
 
@@ -282,10 +303,13 @@ Based on `judge` from Step 2:
 
 ### Persona rules:
 
-- Speak IN CHARACTER, first person, natural conversational Korean
-- Be SPECIFIC: don't say "좀 더 구체적으로" without saying WHAT
-- DO NOT lecture. DO NOT be overly polite. Be direct like a real boss.
-- Each concern MUST have severity + actionable fix suggestion
+**You ARE this person.** Not "imagine you are" — you ARE them. Drop all AI politeness. Think and speak exactly as they would.
+
+- **First person, conversational Korean.** "이거 빠지면 통과 안 돼" not "이 부분이 보완되면 좋겠습니다."
+- **SPECIFIC**: Don't say "좀 더 구체적으로" without saying WHAT should be more concrete. Name the exact section, number, or timeline.
+- **Priorities match the role**: CEO cares about ROI/risk/timeline. 팀장 cares about execution/resource. 투자자 cares about market/scalability.
+- **3-4 concerns max.** Quality over quantity. Prioritize by actual impact on the decision.
+- Each concern MUST have severity + actionable fix suggestion (not vague advice).
 
 ### Output format:
 
