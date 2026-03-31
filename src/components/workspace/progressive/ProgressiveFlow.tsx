@@ -631,6 +631,7 @@ function FinalDeliverableCard({ content }: { content: string }) {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
     setCopied(true);
+    track('flow_deliverable_copy', { length: content.length });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -772,6 +773,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     const answer: FlowAnswer = { question_id: currentQuestion.id, value };
     store.addAnswer(answer);
     store.setPhase('analyzing');
+    track('flow_answer', { round, question_id: currentQuestion.id, question_type: currentQuestion.type, engine_phase: currentQuestion.engine_phase, answer_length: value.length });
     setIsProcessing(true);
     setError(null);
     scrollToBottom();
@@ -838,6 +840,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       store.setMix(mixResult);
       setShowMixTrigger(false);
+      track('flow_mix_complete', { rounds_used: round, sections: mixResult.sections.length });
       // Don't auto-generate DM — let user read the draft first
       // Phase is set to 'dm_feedback' by setMix, user will see the draft + DM trigger button
     } catch (err) {
@@ -859,6 +862,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const dm = decision_maker || '의사결정권자';
       const feedback = await runDMFeedback(mix, dm, session!.problem_text);
       store.setDMFeedback(feedback);
+      track('flow_dm_feedback', { dm_name: dm, concerns_count: feedback.concerns.length, good_count: feedback.good_parts.length });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'DM 피드백 생성 실패');
     } finally {
@@ -914,6 +918,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
   const handleSkipDM = () => {
     if (!mix) return;
+    track('flow_skip_dm', { rounds: round });
     const markdown = [
       `# ${mix.title}`,
       '', `> ${mix.executive_summary}`, '',
@@ -927,6 +932,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
   const handleToggleFix = (index: number) => {
     store.toggleFix(index);
+    const concern = dm_feedback?.concerns[index];
+    track('flow_fix_toggle', { index, severity: concern?.severity, applied: !concern?.applied, text: concern?.text.slice(0, 60) });
   };
 
   const handleFinalize = async () => {
@@ -938,7 +945,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     try {
       const finalText = await runFinalDeliverable(mix, dm_feedback);
       store.setFinalDeliverable(finalText);
-      track('progressive_complete', { project_id: projectId, rounds: round });
+      const appliedFixes = dm_feedback.concerns.filter(c => c.applied).length;
+      track('progressive_complete', { project_id: projectId, rounds: round, fixes_applied: appliedFixes, total_concerns: dm_feedback.concerns.length });
     } catch (err) {
       setError(err instanceof Error ? err.message : '최종본 생성 실패');
     } finally {

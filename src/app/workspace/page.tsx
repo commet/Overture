@@ -53,6 +53,7 @@ function WorkspaceContent() {
     loadProjects();
     loadSettings();
     progressiveStore.loadSessions();
+    track('workspace_enter', { has_user: !!user, has_projects: projects.length > 0 });
   }, [loadProjects, loadSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -80,7 +81,7 @@ function WorkspaceContent() {
     // Create project
     const pid = createProject(text.slice(0, 40));
     setCurrentProjectId(pid);
-    track('project_created', { source: 'workspace_progressive' });
+    track('workspace_problem_submit', { text_length: text.length, source: 'workspace_progressive' });
 
     // Create progressive session & kick off initial analysis
     progressiveStore.createSession(pid, text);
@@ -104,7 +105,9 @@ function WorkspaceContent() {
       const sid = progressiveStore.currentSessionId;
       if (sid) progressiveStore.deleteSession(sid);
       setCurrentProjectId(null);
-      setStartError(err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.');
+      const errMsg = err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.';
+      setStartError(errMsg);
+      track('workspace_start_error', { error: errMsg });
     } finally {
       setIsStarting(false);
     }

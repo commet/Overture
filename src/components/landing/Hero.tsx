@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
+import { track } from '@/lib/analytics';
 
 export function Hero() {
   return (
@@ -33,6 +34,7 @@ export function Hero() {
             <div className="mt-8">
               <Link
                 href="/demo"
+                onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
                 className="inline-flex items-center gap-2.5 px-7 py-3.5 text-white rounded-full text-[15px] font-semibold shadow-[var(--shadow-md)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200"
                 style={{ background: 'var(--gradient-gold)' }}
               >

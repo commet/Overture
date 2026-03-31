@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { track } from '@/lib/analytics';
 
 export function ClosingCTA() {
   const { ref, isVisible } = useScrollReveal({ threshold: 0.3 });
@@ -36,6 +37,7 @@ export function ClosingCTA() {
           <div className="mt-8 md:mt-10">
             <Link
               href="/workspace"
+              onClick={() => track('landing_cta_click', { cta: 'closing_workspace' })}
               className="inline-flex items-center gap-2.5 px-7 py-3.5 text-white rounded-full text-[15px] font-semibold shadow-[var(--shadow-lg)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200"
               style={{ background: 'var(--gradient-gold)' }}
             >

@@ -84,13 +84,32 @@ function getSessionId(): string {
   return _sessionId;
 }
 
+/** Session-level metadata — computed once, attached to every event */
+let _sessionMeta: Record<string, unknown> | null = null;
+
+function getSessionMeta(): Record<string, unknown> {
+  if (_sessionMeta) return _sessionMeta;
+  if (typeof window === 'undefined') return {};
+  _sessionMeta = {
+    viewport_w: window.innerWidth,
+    viewport_h: window.innerHeight,
+    dark_mode: document.documentElement.getAttribute('data-theme') === 'dark',
+    lang: navigator.language,
+    touch: 'ontouchstart' in window,
+    returning: !!localStorage.getItem('ov_returning'),
+  };
+  // Mark as returning for next session
+  localStorage.setItem('ov_returning', '1');
+  return _sessionMeta;
+}
+
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
 
   try {
     supabase.from('user_events').insert({
       event_name: event,
-      properties: properties || {},
+      properties: { ...getSessionMeta(), ...properties },
       session_id: getSessionId(),
       page_path: window.location.pathname + window.location.search,
       referrer: document.referrer || null,
@@ -98,6 +117,17 @@ export function track(event: string, properties?: Record<string, unknown>) {
   } catch {
     // silently fail — analytics should never break the app
   }
+}
+
+/**
+ * Track time spent. Returns a function to call when done.
+ * Usage: const done = trackTime('demo_step_1'); ... done();
+ */
+export function trackTime(event: string, properties?: Record<string, unknown>): () => void {
+  const start = Date.now();
+  return () => {
+    track(event, { ...properties, duration_ms: Date.now() - start });
+  };
 }
 
 /**

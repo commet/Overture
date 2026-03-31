@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   Play, Sparkles, Check, ArrowRight, ArrowLeft, ChevronDown, UserCheck, AlertTriangle,
 } from 'lucide-react';
-import { track } from '@/lib/analytics';
+import { track, trackTime } from '@/lib/analytics';
 import { recordSignal } from '@/lib/signal-recorder';
 import { CrescendoHairpin } from '@/components/ui/MusicalElements';
 
@@ -173,11 +173,47 @@ export function DemoWalkthrough() {
   const [q2Answer, setQ2Answer] = useState('');
   const [fixesApplied, setFixesApplied] = useState<Set<number>>(new Set());
   const maxStep = STEP_LABELS.length - 1;
+  const stepTimerRef = useRef<(() => void) | null>(null);
+  const entryTimeRef = useRef(Date.now());
+
+  // Track demo entry
+  useEffect(() => {
+    track('demo_enter');
+    entryTimeRef.current = Date.now();
+    stepTimerRef.current = trackTime('demo_step_time', { step: 0, label: STEP_LABELS[0] });
+    // Track drop-off on page leave
+    const onUnload = () => {
+      track('demo_drop', {
+        last_step: step,
+        label: STEP_LABELS[step],
+        total_time_ms: Date.now() - entryTimeRef.current,
+        q1: q1Answer || null,
+        q2: q2Answer || null,
+        fixes_applied: fixesApplied.size,
+        completed: step === maxStep,
+      });
+    };
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const go = (target: number) => {
     const next = Math.max(0, Math.min(target, maxStep));
+    // End timer for previous step
+    if (stepTimerRef.current) stepTimerRef.current();
+    // Start timer for new step
+    stepTimerRef.current = trackTime('demo_step_time', { step: next, label: STEP_LABELS[next] });
     setStep(next);
-    track('demo_step', { step: next, label: STEP_LABELS[next] });
+    track('demo_step', { step: next, label: STEP_LABELS[next], from_step: step });
+    if (next === maxStep) {
+      track('demo_complete', {
+        total_time_ms: Date.now() - entryTimeRef.current,
+        q1: q1Answer,
+        q2: q2Answer,
+        fixes_applied: fixesApplied.size,
+      });
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -247,7 +283,7 @@ export function DemoWalkthrough() {
             {step === 0 ? '체험 시작' : '다음'} <ArrowRight size={14} />
           </Button>
         ) : (
-          <Link href="/workspace">
+          <Link href="/workspace" onClick={() => track('demo_to_workspace', { from_step: step })}>
             <Button>
               내 과제로 시작하기 <ArrowRight size={14} />
             </Button>
@@ -381,7 +417,7 @@ function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1
           {INTERVIEW_Q1.options.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setQ1(opt.value)}
+              onClick={() => { setQ1(opt.value); track('demo_q1_answer', { value: opt.value, label: opt.label }); }}
               className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
                 q1 === opt.value
                   ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
@@ -402,7 +438,7 @@ function InterviewStep({ q1, q2, setQ1, setQ2 }: { q1: string; q2: string; setQ1
             {INTERVIEW_Q2.options.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setQ2(opt.value)}
+                onClick={() => { setQ2(opt.value); track('demo_q2_answer', { value: opt.value, label: opt.label }); }}
                 className={`px-4 py-3 rounded-xl border-2 text-left text-[13px] font-medium transition-all cursor-pointer active:scale-[0.98] ${
                   q2 === opt.value
                     ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--accent)]'
@@ -564,8 +600,10 @@ function FixStep({ q2, applied, setApplied }: { q2: string; applied: Set<number>
 
   const toggle = (i: number) => {
     const next = new Set(applied);
-    next.has(i) ? next.delete(i) : next.add(i);
+    const wasOn = next.has(i);
+    wasOn ? next.delete(i) : next.add(i);
     setApplied(next);
+    track('demo_fix_toggle', { fix_index: i, applied: !wasOn, total_applied: next.size, fix_text: persona.fixes[i]?.text.slice(0, 50) });
   };
 
   return (
@@ -718,7 +756,7 @@ function FinalStep({ q2, applied }: { q2: string; applied: Set<number> }) {
         <p className="text-[15px] text-[var(--text-secondary)] mb-4">
           이제 당신의 과제로 직접 해보세요.
         </p>
-        <Link href="/workspace">
+        <Link href="/workspace" onClick={() => track('demo_to_workspace', { from_step: 'final', q2, fixes: applied.size })}>
           <Button>
             내 과제로 시작하기 <ArrowRight size={14} />
           </Button>
