@@ -253,7 +253,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (handoff && handoff.from === 'reframe') {
-      setInputText(handoff.content);
+      setInputText(handoff.content || '');
       setPendingProjectId(handoff.projectId);
       // Capture typed context from decompose (Phase 0)
       if (handoff.contextData && 'reframed_question' in handoff.contextData) {

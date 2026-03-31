@@ -377,7 +377,7 @@ interface ReframeStepProps {
 export function ReframeStep({ onNavigate }: ReframeStepProps) {
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useReframeStore();
   const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
-  const { setHandoff } = useHandoffStore();
+  const { handoff, setHandoff, clearHandoff } = useHandoffStore();
   const { projects, loadProjects, getOrCreateProject, addRef } = useProjectStore();
   const { settings } = useSettingsStore();
   const [inputText, setInputText] = useState('');
@@ -398,6 +398,14 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
     loadJudgments();
     loadProjects();
   }, [loadItems, loadJudgments, loadProjects]);
+
+  // Pick up initial text from workspace handoff
+  useEffect(() => {
+    if (handoff?.from === 'workspace' && handoff.data?.initialText) {
+      setInputText(handoff.data.initialText as string);
+      clearHandoff();
+    }
+  }, [handoff, clearHandoff]);
 
   // Recover items stuck in 'analyzing' (e.g., page reload during LLM call)
   useEffect(() => {

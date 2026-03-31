@@ -92,7 +92,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (handoff) {
-      setHandoffContent(handoff.content);
+      setHandoffContent(handoff.content || '');
       setHandoffTitle(`${handoff.from === 'reframe' ? '악보 해석' : handoff.from === 'recast' ? '편곡' : '리허설'} 결과물`);
       setPendingProjectId(handoff.projectId);
       if (handoff.autoPersonaIds && handoff.autoPersonaIds.length > 0) {

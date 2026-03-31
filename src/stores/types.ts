@@ -357,12 +357,13 @@ export type PhaseContext = ReframeContext | RecastContext | RehearsalContext;
 // ─── Handoff (transient, not persisted) ───
 
 export interface Handoff {
-  from: 'reframe' | 'synthesize' | 'recast' | 'rehearse' | 'refine';
-  fromItemId: string;
-  content: string;
+  from: 'reframe' | 'synthesize' | 'recast' | 'rehearse' | 'refine' | 'workspace';
+  fromItemId?: string;
+  content?: string;
   projectId?: string;
   contextData?: PhaseContext;
   autoPersonaIds?: string[];
+  data?: Record<string, unknown>;
 }
 
 // ─── Judgment Record ───

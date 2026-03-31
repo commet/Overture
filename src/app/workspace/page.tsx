@@ -12,13 +12,14 @@ import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
-import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw } from 'lucide-react';
+import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { RefineLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
+import { useHandoffStore } from '@/stores/useHandoffStore';
 
 /* ─── Step metadata ─── */
 const STEPS: { id: StepId; number: string; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -34,7 +35,9 @@ function WorkspaceContent() {
   const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
   const { settings, loadSettings } = useSettingsStore();
   const { user } = useAuth();
+  const { setHandoff } = useHandoffStore();
   const [problemInput, setProblemInput] = useState('');
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -60,11 +63,16 @@ function WorkspaceContent() {
 
   const handleStartWithProblem = () => {
     if (!problemInput.trim()) return;
-    const pid = createProject(problemInput.trim().slice(0, 40));
+    const text = problemInput.trim();
+    const pid = createProject(text.slice(0, 40));
     setCurrentProjectId(pid);
+    // Pass the problem text to ReframeStep via handoff
+    setHandoff({ from: 'workspace', data: { initialText: text } });
     setActiveStep('reframe');
     track('project_created', { source: 'workspace_hero' });
   };
+
+  const currentProject = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
 
   const currentStepMeta = STEPS.find(s => s.id === activeStep)!;
 
@@ -202,10 +210,53 @@ function WorkspaceContent() {
   /* ─── Active workspace: step content ─── */
   return (
     <div className="flex flex-col min-h-[calc(100vh-56px)]">
-      {/* Horizontal step indicator */}
+      {/* Top bar: project + step indicator */}
       <div className="border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="max-w-4xl mx-auto px-4 md:px-6">
-          <div className="flex items-center gap-1 overflow-x-auto py-2 scrollbar-hide">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 flex items-center gap-3">
+          {/* Project name + switcher */}
+          {currentProject && (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setProjectMenuOpen(!projectMenuOpen)}
+                className="flex items-center gap-1.5 py-2.5 text-[12px] font-semibold text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+              >
+                <FolderOpen size={13} className="text-[var(--accent)]" />
+                <span className="max-w-[120px] truncate">{currentProject.name}</span>
+                <ChevronDown size={11} />
+              </button>
+              {projectMenuOpen && (
+                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-50 py-1">
+                  {projects.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setCurrentProjectId(p.id); setProjectMenuOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-[12px] cursor-pointer transition-colors ${
+                        p.id === currentProjectId
+                          ? 'text-[var(--accent)] font-semibold bg-[var(--accent)]/5'
+                          : 'text-[var(--text-primary)] hover:bg-[var(--bg)]'
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                  <div className="border-t border-[var(--border)] mt-1 pt-1">
+                    <button
+                      onClick={() => { setCurrentProjectId(null); setProjectMenuOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-[12px] text-[var(--accent)] font-medium cursor-pointer hover:bg-[var(--bg)]"
+                    >
+                      + 새 프로젝트
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Divider */}
+          {currentProject && <div className="w-px h-5 bg-[var(--border)] shrink-0" />}
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-1 overflow-x-auto py-2 scrollbar-hide flex-1">
             {STEPS.map((step, i) => {
               const isActive = activeStep === step.id;
               return (
