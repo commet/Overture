@@ -135,7 +135,7 @@ function WorkspaceContent() {
                   }}
                   placeholder="예: 나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어"
                   rows={3}
-                  className="w-full bg-transparent text-[15px] md:text-[17px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none placeholder:text-[var(--text-tertiary)]"
+                  className="w-full px-4 py-3.5 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[15px] md:text-[17px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-colors placeholder:text-[var(--text-tertiary)]"
                   autoFocus
                 />
 
