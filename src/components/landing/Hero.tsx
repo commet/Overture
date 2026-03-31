@@ -12,7 +12,7 @@ export function Hero() {
       <StaffLines opacity={0.04} spacing={14} />
 
       <div className="relative max-w-5xl mx-auto px-5 md:px-6 pt-16 md:pt-28 pb-12 md:pb-20">
-        <div className="md:grid md:grid-cols-2 md:gap-16 md:items-center">
+        <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:items-center">
 
           {/* ─── Left: Message ─── */}
           <div className="phrase-entrance">
@@ -50,7 +50,7 @@ export function Hero() {
           </div>
 
           {/* ─── Right: Example Prompt Visual ─── */}
-          <div className="mt-12 md:mt-0 phrase-entrance" style={{ animationDelay: '200ms' }}>
+          <div className="mt-12 lg:mt-0 phrase-entrance" style={{ animationDelay: '200ms' }}>
             <div className="relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden">
 
               {/* Header bar */}
