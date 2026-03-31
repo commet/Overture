@@ -39,11 +39,12 @@ Read `.overture/rehearse.md`, `.overture/recast.md`, `.overture/reframe.md` for 
 
 ## How it works
 
-1. Extract issues from /rehearse → auto-prioritize
-2. **Auto-address all critical issues** (no user confirmation)
-3. Revise — surgically, not wholesale
-4. Re-test with same personas
-5. Check convergence. Repeat if needed (max 3 rounds decide, 1 round build).
+1. Extract issues from /rehearse → auto-prioritize by severity
+2. **🔴 critical items = auto-selected for fix.** 🟡 important = suggest. ⚪ minor = optional.
+3. Show the list. Use AskUserQuestion to confirm which to apply: "전부 반영 / critical만 / 직접 선택"
+4. Revise — surgically, not wholesale. Apply selected fixes only.
+5. Re-test with same personas
+6. Check convergence. Repeat if needed (max 3 rounds decide, 1 round build).
 
 ## Step 1: Revise
 

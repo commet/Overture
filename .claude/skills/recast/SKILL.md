@@ -274,3 +274,13 @@ Check journal. If previous /recast in same topic area:
 - At least one step must have a human checkpoint.
 - The governing idea must be falsifiable.
 - Self-check: Would this make the user rethink anything?
+
+**Skeleton quality (from progressive engine):**
+- Each item = ACTIONABLE, not vague category
+- Good: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
+- Bad: "시장 분석" (too vague)
+- 사용자가 copy-paste해서 바로 채울 수 있는 수준
+
+**Feature behavior rule (Build context):**
+- "Google OAuth login · session persistence · logout" (specific behavior)
+- NOT "auth" (label only)

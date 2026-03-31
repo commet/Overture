@@ -61,9 +61,11 @@ See `references/persona-design.md` for detailed guidance.
 ### Decide context — each persona independently:
 
 - **First reaction** — in their voice (1-2 sentences)
-- **Failure scenario** — most LIKELY way this fails
-- **Risks** — [critical] / [manageable] / [unspoken]
-- **Approval conditions** — what they need to say "yes"
+- **Failure scenario** — most LIKELY way this fails (mundane, not dramatic)
+- **Risks with severity + fix** — each concern must include:
+  - severity: 🔴 critical ("이거 빠지면 통과 안 됨") / 🟡 important ("있으면 훨씬 좋음") / ⚪ minor
+  - fix_suggestion: 구체적이고 실행 가능한 수정 방향
+- **Approval conditions** — what they need to say "yes" (1 sentence)
 
 ### Build context:
 
@@ -132,32 +134,30 @@ These are recommendations, not blockers.
 
 **[Name]** — [Role] → **[verdict]**
 
-```diff
-+ ✓ [strength/approval condition]
-- ✗ [critical risk]
-- 🔇 [unspoken risk]
-```
+> "[첫 반응 — 직접 인용, 날카롭게]"
 
-> "[sharpest quote]"
-
-**[Name]** — [Role] → **[verdict]**
-
-```diff
-+ ✓ [strength/approval condition]
-- ✗ [critical risk]
-- 🔇 [unspoken risk]
-```
-
-> "[sharpest quote]"
+| 우려 | 심각도 | 수정 방향 |
+|------|--------|----------|
+| [구체적 우려] | 🔴 critical | [이렇게 고치면 됨] |
+| [구체적 우려] | 🟡 important | [수정 방향] |
+| [unspoken] | 🔇 | [대응 방향] |
 
 **[Name]** — [Role] → **[verdict]**
 
-```diff
-+ ✓ [strength/approval condition]
-- ? [manageable risk]
-```
+> "[첫 반응]"
 
-> "[sharpest quote]"
+| 우려 | 심각도 | 수정 방향 |
+|------|--------|----------|
+| [우려] | 🔴 critical | [수정] |
+| [우려] | 🟡 important | [수정] |
+
+**[Name]** — [Role] → **[verdict]**
+
+> "[첫 반응]"
+
+| 우려 | 심각도 | 수정 방향 |
+|------|--------|----------|
+| [우려] | ⚪ minor | [수정] |
 
 ---
 
