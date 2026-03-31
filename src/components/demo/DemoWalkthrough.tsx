@@ -5,58 +5,58 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import {
-  Play, Layers, Map, Users, RefreshCw, Sparkles, Music2,
+  Play, MessageSquare, Sliders, UserCheck, RefreshCw, Sparkles,
   Check, ArrowRight, ArrowLeft, Bot, Brain, Handshake, ChevronDown,
 } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { recordSignal } from '@/lib/signal-recorder';
 
 /* ═══════════════════════════════════════
-   DEMO DATA
+   DEMO DATA — 피봇 시나리오: 개발자가 기획안 써야 하는 상황
    ═══════════════════════════════════════ */
 
 const DEMO = {
-  scenario: '대표가 "AI를 활용해서 업무 효율을 높여라"고 지시했습니다.',
-  context: '팀원 대부분은 AI 실무 경험이 없습니다. 다음 달까지 계획을 내야 합니다.',
-  surface_task: '우리 팀의 AI 활용 계획을 다음 달까지 수립',
+  scenario: '백엔드 개발자인데, 대표님이 2주 안에 신사업 기획안을 써오라고 했습니다.',
+  context: '기획안을 써본 적이 없습니다. 어디서부터 시작해야 할지 모르겠습니다.',
+  surface_task: '2주 안에 신사업 기획안 작성',
 
   premises: [
-    'AI를 도입하면 업무 효율이 올라간다',
-    '팀원들이 AI 도구를 배우고 적극 사용할 것이다',
-    '경쟁사가 성공했으니 우리도 될 것이다',
+    '기획안 형식만 잘 맞추면 통과될 것이다',
+    '시장 조사를 잘 정리하면 설득력이 있을 것이다',
+    '대표님이 원하는 건 기획안 문서 자체다',
   ],
 
-  governing_idea: '모든 업무에 AI가 아니라, 효과가 큰 1-2개를 파일럿으로 먼저 증명한다',
+  governing_idea: '기획안이 아니라, 대표님이 판단하고 싶은 3가지를 먼저 정리한다',
   steps: [
-    { task: '팀 업무 목록화 + AI 적합도 평가', actor: 'both' as const, time: '1일' },
-    { task: '파일럿 대상 업무 1-2개 선정', actor: 'human' as const, time: '반나절' },
-    { task: '2주 파일럿 실행 + 효과 측정', actor: 'both' as const, time: '2주' },
-    { task: '결과 기반 확대/중단 의사결정', actor: 'human' as const, time: '1일' },
+    { task: '대표님이 진짜 확인하고 싶은 것 파악', actor: 'human' as const, time: '2시간' },
+    { task: '시장 데이터 + 경쟁사 분석 초안', actor: 'ai' as const, time: '반나절' },
+    { task: '판단 근거 구조화 + 기획안 초안', actor: 'both' as const, time: '1일' },
+    { task: '대표님 예상 반응 검증 → 최종본', actor: 'human' as const, time: '반나절' },
   ],
 
   persona: {
-    name: '김상무',
-    role: '경영기획 상무 · 대표 직보',
-    default_reaction: '파일럿부터 하겠다는 건 좋아. 근데 2주 파일럿이면 남은 2주에 뭘 보여줄 수 있어?',
-    unspoken_risk: '솔직히 팀원 절반은 "AI가 내 일을 뺏는 거 아냐?"라고 생각하고 있어. 아무도 대놓고 말 안 하지만.',
+    name: '김 대표',
+    role: 'CEO · 최종 의사결정자',
+    default_reaction: '시장 분석은 됐고, 결국 우리가 이걸 해야 하는 이유가 뭔데? 남들 다 하니까?',
+    unspoken_risk: '사실 내가 기획안을 시킨 건, 이 사업을 하지 않을 이유도 같이 찾아오라는 거야. 아무도 그걸 눈치 못 채더라.',
   },
 
   refine: [
     {
       fixes: [
-        { source: '2주 파일럿이면 남은 2주에 뭘 보여줄 수 있어?', action: 'IT 보안 승인 병행 프로세스 추가', delta: 45 },
-        { source: '팀원 심리적 저항 우려', action: '팀원 온보딩 워크숍 설계', delta: 33 },
+        { source: '우리가 이걸 해야 하는 이유가 뭔데?', action: '"왜 우리여야 하는가" 섹션 추가 — 자체 기술력 연결', delta: 38 },
+        { source: '하지 않을 이유도 찾아오라는 뜻', action: 'Go/No-Go 판단 기준표 포함', delta: 30 },
       ],
-      score: 78,
-      review: '워크숍은 좋은데, 실제 업무 데이터로 해봐야 감이 와.',
+      score: 72,
+      review: 'Go/No-Go는 좋아. 근데 2주면 뭘 검증할 수 있는 건데? 구체적인 숫자가 없잖아.',
     },
     {
       fixes: [
-        { source: '실제 업무 데이터로 해봐야 감이 온다', action: 'Before/After 측정 프레임 구체화', delta: 8 },
-        { source: '대표 보고 근거 필요', action: '팀원 불안감 관리 커뮤니케이션 추가', delta: 6 },
+        { source: '구체적인 숫자가 없다', action: '2주 내 검증 가능한 지표 3개 + 측정 방법 추가', delta: 12 },
+        { source: '실현 가능성 의문', action: '1주차 리서치 / 2주차 검증의 타임라인 구체화', delta: 8 },
       ],
       score: 92,
-      review: '좋아. 데이터가 있으면 대표한테 보고할 수 있어.',
+      review: '좋아. 이 정도면 경영회의에 올려볼 만해.',
     },
   ],
 };
@@ -72,58 +72,58 @@ const demoChoices = {
    ═══════════════════════════════════════ */
 
 function getReframed(doubted: Set<number>): { bridge: string; question: string; insight: string } {
-  const d0 = doubted.has(0);
-  const d1 = doubted.has(1);
-  const d2 = doubted.has(2);
+  const d0 = doubted.has(0); // 형식만 맞추면
+  const d1 = doubted.has(1); // 시장 조사 정리하면
+  const d2 = doubted.has(2); // 문서 자체가 목적
   const count = doubted.size;
 
   if (count === 0) return {
-    bridge: '실행 속도가 관건 — 전제가 맞다면 "무엇을"이 아니라 "어디부터"가 핵심이다.',
-    question: '"어떤 AI 도구"가 아니라 "어떤 업무부터 적용해서 가장 빠르게 성과를 증명할지"가 진짜 질문이다.',
-    insight: '파일럿 대상 업무 선정이 핵심 판단입니다.',
+    bridge: '전제가 탄탄하다면 — 실행 속도가 핵심이다.',
+    question: '"어떤 형식의 기획안"이 아니라 "가장 빠르게 대표님이 판단할 수 있는 구조"가 진짜 질문이다.',
+    insight: '형식보다 판단 가능한 구조를 먼저 잡으세요.',
   };
 
   if (count === 3) return {
-    bridge: '세 전제 모두 흔들린다 — 계획보다 검증이 먼저다.',
-    question: 'AI 도구를 도입하는 것이 아니라, 우리 팀의 어떤 업무가 AI로 실질적으로 나아질 수 있는지를 먼저 파악해야 하는 것 아닌가?',
-    insight: '"도입"이 아니라 "검증"이 진짜 과제입니다.',
+    bridge: '세 전제 모두 흔들린다 — 기획안을 쓰기 전에 질문을 바꿔야 한다.',
+    question: '기획안을 쓰는 게 아니라, 대표님이 이 사업에 대해 판단하고 싶은 3가지가 뭔지를 먼저 파악해야 하지 않나?',
+    insight: '"뭘 쓸까"가 아니라 "뭘 판단하게 할까"가 진짜 과제입니다.',
   };
 
   if (d0 && !d1 && !d2) return {
-    bridge: '"AI 도입 = 효율 향상"이 흔들린다 — 정말 빨라지는가?',
-    question: '계획이 아니라, 우리 업무 중 AI가 실제로 시간을 줄여주는 게 있는지부터 검증해야 하지 않나?',
-    insight: 'Before/After 데이터를 먼저 확보해야 합니다.',
+    bridge: '"형식만 맞추면 된다"가 흔들린다 — 형식 뒤의 판단이 진짜다.',
+    question: '기획안의 형식이 아니라, 대표님이 이 기획안으로 확인하고 싶은 판단이 뭔지가 먼저다.',
+    insight: '예쁜 문서보다 날카로운 질문 3개가 더 강력합니다.',
   };
 
   if (!d0 && d1 && !d2) return {
-    bridge: '"팀원들이 쓸 것이다"가 흔들린다 — 도구보다 사람이 먼저다.',
-    question: 'AI가 효율적인 건 맞을 수 있다. 하지만 도구가 아니라 팀의 변화 수용력을 먼저 설계해야 하지 않나?',
-    insight: '학습 비용과 심리적 저항을 먼저 다뤄야 합니다.',
+    bridge: '"시장 조사를 잘 정리하면 된다"가 흔들린다 — 데이터가 아니라 해석이 핵심이다.',
+    question: '시장 데이터를 모으는 게 아니라, 이 데이터가 "우리가 해야 한다"를 입증하는지가 질문이다.',
+    insight: '정리가 아니라 판단의 근거를 만들어야 합니다.',
   };
 
   if (!d0 && !d1 && d2) return {
-    bridge: '"경쟁사 성공 = 우리 성공"이 흔들린다 — 남의 답이 우리 답이 아니다.',
-    question: '경쟁사를 따라가는 게 아니라, 우리 팀의 고유한 병목을 찾아서 거기에 AI를 쓰는 게 맞지 않나?',
-    insight: '우리 팀만의 판단 기준이 필요합니다.',
+    bridge: '"대표님이 원하는 건 문서다"가 흔들린다 — 문서 뒤에 진짜 의도가 있다.',
+    question: '대표님이 정말 원하는 건 기획안이 아니라, 이 사업을 할지 말지 판단할 근거 아닌가?',
+    insight: '문서가 아니라 의사결정 지원이 진짜 과제입니다.',
   };
 
   if (d0 && d1) return {
-    bridge: '"빨라지는지도 모르고, 팀이 쓸지도 모른다" — 큰 계획은 위험하다.',
-    question: '계획이 아니라, 1명이 1개 업무로 1주일 써보는 최소 실험부터 해야 하지 않나?',
-    insight: '가장 작은 단위의 실험으로 두 가정을 동시에 검증하세요.',
+    bridge: '"형식"도 의문이고 "시장 조사"도 의문이다 — 기획안의 정의 자체를 바꿔야 한다.',
+    question: '기획안이라는 형식을 버리고, 대표님에게 "이 사업을 할지 말지" 판단 자료를 만드는 게 맞지 않나?',
+    insight: '기획안 형태가 아니라 판단 자료 형태로 접근하세요.',
   };
 
   if (d0 && d2) return {
-    bridge: '"정말 빨라지는지"도 의문이고 경쟁사 논리도 약하다.',
-    question: '우리 팀만의 효율 병목을 먼저 정의하는 게 선행 질문 아닌가?',
-    insight: '자체 데이터에서 시작해야 합니다.',
+    bridge: '"형식"과 "문서 목적" 둘 다 흔들린다 — 대표님의 진짜 의도를 먼저 파악해야 한다.',
+    question: '기획안을 쓰기 전에, 대표님에게 "이 기획안으로 뭘 판단하고 싶으세요?"를 먼저 물어야 하지 않나?',
+    insight: '2주를 쓰기 전에 30분 대화가 먼저입니다.',
   };
 
   // d1 && d2
   return {
-    bridge: '"팀이 쓸지"와 "남의 성공이 우리 성공인지" 둘 다 흔들린다.',
-    question: '도구가 아니라 팀 내부 합의와 자체 기준을 먼저 만드는 게 순서 아닌가?',
-    insight: '사람과 맥락이 다르면 기술이 준비돼도 실패합니다.',
+    bridge: '"시장 조사"와 "문서 목적" 둘 다 흔들린다 — 방향부터 확인해야 한다.',
+    question: '시장 조사를 시작하기 전에, 대표님이 이 사업의 어떤 측면을 보고 싶은 건지 먼저 확인해야 하지 않나?',
+    insight: '리서치 전에 질문을 좁혀야 시간을 아낍니다.',
   };
 }
 
@@ -133,10 +133,10 @@ function getReframed(doubted: Set<number>): { bridge: string; question: string; 
 
 const STEPS = [
   { id: 'intro', label: '시작', icon: Play },
-  { id: 'reframe', label: '악보 해석', icon: Layers },
-  { id: 'recast', label: '편곡', icon: Map },
-  { id: 'persona', label: '리허설', icon: Users },
-  { id: 'refine', label: '합주', icon: RefreshCw },
+  { id: 'reframe', label: '문제 재정의', icon: MessageSquare },
+  { id: 'recast', label: '실행 설계', icon: Sliders },
+  { id: 'persona', label: '사전 검증', icon: UserCheck },
+  { id: 'refine', label: '수정 반영', icon: RefreshCw },
   { id: 'outro', label: '결과', icon: Sparkles },
 ];
 
@@ -278,7 +278,7 @@ function IntroSection() {
           1분이면 됩니다
         </h2>
         <p className="text-[15px] text-[var(--text-secondary)] mt-3 leading-relaxed max-w-lg">
-          실제 업무 시나리오로 Overture의 핵심을 체험하세요.
+          실제 업무 시나리오로 Overture가 어떻게 도와주는지 체험하세요.
         </p>
       </div>
 
@@ -296,7 +296,7 @@ function IntroSection() {
 }
 
 /* ═══════════════════════════════════════
-   악보 해석 — 전제 토글 → 질문 실시간 전환
+   문제 재정의 — 전제 토글 → 질문 실시간 전환
    ═══════════════════════════════════════ */
 
 function ReframeSection() {
@@ -317,10 +317,9 @@ function ReframeSection() {
 
   return (
     <div className="phrase-entrance">
-      {/* Header */}
       <div className="mb-7">
         <div className="flex items-center gap-2 text-[12px] text-[#2d4a7c] font-semibold tracking-wider uppercase mb-2">
-          <Layers size={14} /> 악보 해석
+          <MessageSquare size={14} /> 문제 재정의
         </div>
         <h2 className="text-[26px] md:text-[32px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           과제 뒤의 숨겨진 전제
@@ -330,7 +329,7 @@ function ReframeSection() {
         </p>
       </div>
 
-      {/* ① Original Question — starting point */}
+      {/* ① Original Question */}
       <div className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-5 py-4">
         <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">원래 질문</p>
         <p className="text-[16px] md:text-[17px] font-semibold text-[var(--text-primary)] leading-snug" style={{ fontFamily: 'var(--font-display)' }}>
@@ -338,12 +337,11 @@ function ReframeSection() {
         </p>
       </div>
 
-      {/* Connector ① → ② */}
       <div className="flex justify-center py-1.5">
         <div className="w-px h-5 bg-[var(--border)]" />
       </div>
 
-      {/* ② Hidden Premises — tappable toggle */}
+      {/* ② Hidden Premises */}
       <div>
         <p className="text-[12px] font-bold text-[var(--text-tertiary)] tracking-[0.1em] uppercase mb-3">이 질문 속 숨겨진 전제</p>
         <div className="space-y-2.5">
@@ -377,12 +375,11 @@ function ReframeSection() {
         </div>
       </div>
 
-      {/* Connector ② → ③ */}
       <div className="flex justify-center py-1.5">
         <div className="w-px h-5 bg-[var(--border)]" />
       </div>
 
-      {/* ③ Bridge — reasoning connector */}
+      {/* ③ Bridge */}
       <div
         key={`bridge-${reframedKey}`}
         className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4 animate-fade-in"
@@ -398,13 +395,13 @@ function ReframeSection() {
         </p>
       </div>
 
-      {/* Arrow ③ → ④ */}
+      {/* Arrow → ④ */}
       <div className="flex flex-col items-center py-1">
         <div className="w-px h-3 bg-[var(--accent)]/30" />
         <ChevronDown size={18} className="text-[var(--accent)] -mt-0.5" />
       </div>
 
-      {/* ④ Reframed Question — destination */}
+      {/* ④ Reframed Question */}
       <div
         key={reframedKey}
         className="rounded-xl bg-[var(--primary)] text-[var(--bg)] p-6 shadow-lg animate-crescendo"
@@ -415,14 +412,11 @@ function ReframeSection() {
         </p>
       </div>
 
-      {/* Concertmaster hint — shows after user interacts with premises */}
       {doubted.size > 0 && (
         <div key={`hint-${doubted.size}`} className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
-          <Music2 size={11} className="text-[var(--gold)]" />
+          <Sparkles size={11} className="text-[var(--gold)]" />
           <span className="text-[11px] text-[var(--gold)]">
-            {doubted.size === DEMO.premises.length
-              ? '강한 비판적 관점 — 악장이 기억합니다'
-              : `전제 ${doubted.size}개 의심 — 이 성향이 다음 분석에 반영됩니다`}
+            전제 {doubted.size}개 의심 — 이 성향이 다음 분석에 반영됩니다
           </span>
         </div>
       )}
@@ -431,7 +425,7 @@ function ReframeSection() {
 }
 
 /* ═══════════════════════════════════════
-   편곡 — 역할 토글 + 분배 바
+   실행 설계 — 역할 토글 + 분배 바
    ═══════════════════════════════════════ */
 
 function RecastSection() {
@@ -455,7 +449,7 @@ function RecastSection() {
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#8b6914] font-semibold tracking-wider uppercase mb-2">
-          <Map size={14} /> 편곡
+          <Sliders size={14} /> 실행 설계
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           AI와 사람의 역할 설계
@@ -529,20 +523,19 @@ function RecastSection() {
         })}
       </div>
 
-      {/* Concertmaster hint — role distribution pattern */}
       {(() => {
         const aiCount = Object.values(actors).filter(a => a === 'ai').length;
         const humanCount = Object.values(actors).filter(a => a === 'human').length;
         const changed = DEMO.steps.some((s, i) => actors[i] !== s.actor);
         if (!changed) return null;
         const msg = aiCount >= 3
-          ? 'AI 위임 성향 — 체크포인트 권장이 다음에 반영됩니다'
+          ? 'AI 위임 성향 — 체크포인트 권장이 반영됩니다'
           : humanCount >= 3
-          ? '직접 실행 선호 — AI 활용 기회를 다음에 제안합니다'
-          : '균형 있는 배분 — 악장이 이 패턴을 학습합니다';
+          ? '직접 실행 선호 — AI 활용 기회를 제안합니다'
+          : '균형 있는 배분입니다';
         return (
           <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--gold-muted)] animate-fade-in w-fit mx-auto">
-            <Music2 size={11} className="text-[var(--gold)]" />
+            <Sparkles size={11} className="text-[var(--gold)]" />
             <span className="text-[11px] text-[var(--gold)]">{msg}</span>
           </div>
         );
@@ -552,7 +545,7 @@ function RecastSection() {
 }
 
 /* ═══════════════════════════════════════
-   리허설 — 페르소나 즉시 등장 + 동적 반응
+   사전 검증 — 페르소나 즉시 등장 + 동적 반응
    ═══════════════════════════════════════ */
 
 function PersonaSection() {
@@ -562,69 +555,53 @@ function PersonaSection() {
   const aiOnlyCount = DEMO.steps.filter((_, i) => actors[i] === 'ai').length;
   const allConfirmed = doubted.size === 0;
 
-  // Dynamic main reaction
   const reaction = (() => {
-    if (aiOnlyCount >= 3) return '이거 AI한테 다 맡기면 누가 책임져? 결과가 안 좋으면 "사람이 안 봐서 그렇다"고 할 건데.';
-    if (allConfirmed) return '전제를 다 맞다고 놓은 건 좀 걱정되는데. 팀원들이 정말 AI를 배울 의지가 있어?';
+    if (aiOnlyCount >= 3) return '이거 AI한테 다 맡기면 누가 판단한 거야? 기획안은 판단이지 자동화가 아니야.';
+    if (allConfirmed) return '전제를 다 맞다고 놓은 거야? 기획안에서 가장 위험한 건 "당연하다"고 넘긴 부분이야.';
     return DEMO.persona.default_reaction;
   })();
 
-  // Dynamic observations from user choices (max 2)
   const observations: { label: string; text: string }[] = [];
+  if (actors[0] === 'ai') {
+    observations.push({ label: '대표님 의도 파악 → AI 단독', text: '대표님 머릿속에 있는 걸 AI가 알아? 직접 물어봐야지.' });
+  }
   if (actors[3] === 'ai') {
-    observations.push({ label: '대표 보고서 → AI 단독', text: '대표한테 올라가는 문서를 AI가 쓴다고? "이게 팀의 판단이야 AI 판단이야?"라고 물을 거야.' });
+    observations.push({ label: '최종 검증 → AI 단독', text: '내한테 올라오는 기획안을 AI가 검증했다고? 그건 내가 판단할 일이야.' });
   }
-  if (actors[1] === 'ai') {
-    observations.push({ label: '파일럿 선정 → AI 단독', text: '파일럿 대상을 AI가 골라? 팀원들이 "왜 내 업무야?"라고 하면 뭐라고 해.' });
-  }
-  if (!doubted.has(0) && observations.length < 2) {
-    observations.push({ label: '"AI=효율" 확인', text: '도입만 한다고 올라가? 어떤 업무에 쓸 건지 구체적으로 나와야지.' });
+  if (!doubted.has(2) && observations.length < 2) {
+    observations.push({ label: '"문서가 목적" 확인', text: '기획안이 예쁘면 끝이야? 내가 보고 싶은 건 판단 근거야.' });
   }
 
-  // Strengths & improvements (dynamic based on user choices)
   const strengths: string[] = [];
   const improvements: string[] = [];
 
   if (doubted.size > 0) {
-    strengths.push('전제를 의심해본 점 — 검증 없이 진행하는 위험을 줄였습니다.');
+    strengths.push('전제를 의심해본 점 — 기획안의 약점을 미리 파악했습니다.');
   }
-  if (actors[3] === 'human' || actors[3] === 'both') {
-    strengths.push('최종 의사결정에 사람이 참여 — 책임 소재가 명확합니다.');
+  if (actors[0] === 'human' || actors[0] === 'both') {
+    strengths.push('대표님 의도 파악에 사람이 참여 — 핵심 판단을 놓치지 않습니다.');
   }
   if (strengths.length === 0) {
-    strengths.push('파일럿 접근 — 단계적으로 검증하겠다는 방향이 설득력 있습니다.');
+    strengths.push('구조화된 접근 — 막막한 상태에서 체계적으로 시작합니다.');
   }
 
-  improvements.push('팀원들의 심리적 저항 — "AI가 내 일을 뺏는 거 아냐?"라는 우려를 아직 다루지 않고 있습니다.');
+  improvements.push(DEMO.persona.unspoken_risk);
   if (allConfirmed) {
-    improvements.push('모든 전제에 동의한 상태 — 하나라도 틀리면 계획 전체가 흔들릴 수 있습니다.');
+    improvements.push('모든 전제에 동의한 상태 — 대표님이 "왜?"라고 물으면 답이 없을 수 있습니다.');
   }
 
   return (
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#6b4c9a] font-semibold tracking-wider uppercase mb-2">
-          <Users size={14} /> 리허설
+          <UserCheck size={14} /> 사전 검증
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          이해관계자의 예상 반응
+          대표님은 뭐라고 할까?
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-          당신의 선택을 바탕으로 핵심 이해관계자 페르소나를 시뮬레이션합니다.<br />
-          예상 피드백을 미리 받아보고, <strong className="text-[var(--text-primary)]">강점과 개선점</strong>을 확인하세요.
+          당신의 선택을 바탕으로 판단자의 예상 반응을 시뮬레이션합니다.
         </p>
-      </div>
-
-      {/* Extraction rationale */}
-      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-        <p className="text-[12px] font-bold text-[#6b4c9a] tracking-[0.08em] uppercase mb-2">이전 단계에서 추출된 핵심 이해관계자</p>
-        <div className="flex flex-wrap gap-2 text-[13px] text-[var(--text-secondary)]">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]">대표 지시 과제</span>
-          <span className="text-[var(--text-tertiary)]">&rarr;</span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]">보고 라인 의사결정자</span>
-          <span className="text-[var(--text-tertiary)]">&rarr;</span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#6b4c9a]/10 border border-[#6b4c9a]/20 text-[#6b4c9a] font-semibold">{DEMO.persona.name}</span>
-        </div>
       </div>
 
       {/* Persona card */}
@@ -643,7 +620,7 @@ function PersonaSection() {
         </div>
       </Card>
 
-      {/* Dynamic observations based on user's prior choices */}
+      {/* Dynamic observations */}
       {observations.length > 0 && (
         <div className="space-y-2">
           {observations.slice(0, 2).map((obs, i) => (
@@ -675,7 +652,7 @@ function PersonaSection() {
 }
 
 /* ═══════════════════════════════════════
-   합주 — 자동 재생 수렴
+   수정 반영 — 자동 재생 수렴
    ═══════════════════════════════════════ */
 
 function RefineSection() {
@@ -687,7 +664,7 @@ function RefineSection() {
     if (phase === 'r2-loading') { const t = setTimeout(() => setPhase('r2'), 1500); return () => clearTimeout(t); }
   }, [phase]);
 
-  const rawScore = phase === 'r2' ? 92 : (phase === 'r1' || phase === 'r2-loading') ? 78 : 0;
+  const rawScore = phase === 'r2' ? 92 : (phase === 'r1' || phase === 'r2-loading') ? 72 : 0;
   const score = useCountUp(rawScore);
   const isConverged = phase === 'r2';
 
@@ -695,17 +672,17 @@ function RefineSection() {
     <div className="space-y-5 phrase-entrance">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-[#2d6b2d] font-semibold tracking-wider uppercase mb-2">
-          <RefreshCw size={14} /> 합주
+          <RefreshCw size={14} /> 수정 반영
         </div>
         <h2 className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
           피드백을 반영하고 수렴합니다
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2">
-          리허설 피드백을 자동으로 반영하고, 이해관계자가 다시 검토합니다.
+          대표님 피드백을 자동 반영하고, 다시 검토합니다.
         </p>
       </div>
 
-      {/* Execution readiness score */}
+      {/* Score */}
       {score > 0 && (
         <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
           isConverged ? 'border-[#2d6b2d] bg-[#2d6b2d]' : 'border-[#2d6b2d]/20 bg-[#2d6b2d]/[0.06]'
@@ -730,23 +707,23 @@ function RefineSection() {
         </div>
       )}
 
-      {/* Start — explanation + button */}
+      {/* Start */}
       {phase === 'ready' && (
         <div className="space-y-4">
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-            <p className="text-[12px] font-bold text-[#2d6b2d] tracking-[0.08em] uppercase mb-3">합주가 진행되면</p>
+            <p className="text-[12px] font-bold text-[#2d6b2d] tracking-[0.08em] uppercase mb-3">수정 반영이 진행되면</p>
             <ol className="space-y-2 text-[14px] text-[var(--text-secondary)] leading-relaxed">
               <li className="flex items-start gap-2.5">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
-                리허설에서 나온 <strong className="text-[var(--text-primary)]">개선점을 계획에 자동 반영</strong>
+                사전 검증에서 나온 <strong className="text-[var(--text-primary)]">개선점을 계획에 자동 반영</strong>
               </li>
               <li className="flex items-start gap-2.5">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
-                이해관계자가 수정된 계획을 <strong className="text-[var(--text-primary)]">다시 검토</strong>
+                판단자가 수정된 계획을 <strong className="text-[var(--text-primary)]">다시 검토</strong>
               </li>
               <li className="flex items-start gap-2.5">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-[#2d6b2d]/10 text-[#2d6b2d] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
-                실행 준비도가 충분히 높아질 때까지 <strong className="text-[var(--text-primary)]">자동 반복</strong>
+                준비도가 충분히 높아질 때까지 <strong className="text-[var(--text-primary)]">자동 반복</strong>
               </li>
             </ol>
           </div>
@@ -754,7 +731,7 @@ function RefineSection() {
             onClick={() => setPhase('r1-loading')}
             className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#2d6b2d] text-white text-[15px] font-bold hover:bg-[#245524] transition-colors cursor-pointer active:scale-[0.98]"
           >
-            합주 시작 <ArrowRight size={14} />
+            수정 시작 <ArrowRight size={14} />
           </button>
         </div>
       )}
@@ -764,7 +741,7 @@ function RefineSection() {
         <div className="text-center py-8 animate-fade-in">
           <div className="w-8 h-8 rounded-full border-2 border-[#2d6b2d] border-t-transparent animate-spin mx-auto mb-3" />
           <p className="text-[14px] text-[var(--text-secondary)]">
-            {phase === 'r1-loading' ? '피드백을 반영하여 계획 수정 중...' : '추가 피드백을 반영 중...'}
+            {phase === 'r1-loading' ? '피드백을 반영하여 수정 중...' : '추가 피드백을 반영 중...'}
           </p>
         </div>
       )}
@@ -776,11 +753,10 @@ function RefineSection() {
             <div key={idx} className="space-y-3">
               <p className="text-[14px] font-bold text-[#2d6b2d]">{idx + 1}차 수정</p>
 
-              {/* Feedback → Fix cards */}
               {r.fixes.map((f, fi) => (
                 <div key={fi} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
                   <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[#6b4c9a]/[0.03]">
-                    <p className="text-[11px] font-bold text-[#6b4c9a] mb-0.5">김상무 피드백</p>
+                    <p className="text-[11px] font-bold text-[#6b4c9a] mb-0.5">{DEMO.persona.name} 피드백</p>
                     <p className="text-[14px] text-[var(--text-primary)] italic">&ldquo;{f.source}&rdquo;</p>
                   </div>
                   <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -793,7 +769,6 @@ function RefineSection() {
                 </div>
               ))}
 
-              {/* Persona re-review */}
               <div className="rounded-xl bg-[var(--ai)] px-4 py-3.5 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#6b4c9a] flex items-center justify-center text-white text-[12px] font-bold shrink-0 mt-0.5">김</div>
                 <div>
@@ -806,10 +781,9 @@ function RefineSection() {
         </div>
       )}
 
-      {/* Converged banner */}
       {isConverged && (
         <div className="rounded-xl border-2 border-[#2d6b2d] bg-[#2d6b2d]/[0.04] px-5 py-4 text-center animate-fade-in">
-          <p className="text-[18px] font-extrabold text-[#2d6b2d]" style={{ fontFamily: 'var(--font-display)' }}>합주 완료</p>
+          <p className="text-[18px] font-extrabold text-[#2d6b2d]" style={{ fontFamily: 'var(--font-display)' }}>수정 완료</p>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">2회 반복으로 실행 준비도 92%에 도달했습니다</p>
         </div>
       )}
@@ -825,7 +799,6 @@ function OutroSection() {
   const reframed = getReframed(demoChoices.doubted);
   const seedRecorded = useRef(false);
 
-  // Record demo seed signal — fires once when outro renders
   useEffect(() => {
     if (seedRecorded.current) return;
     seedRecorded.current = true;
@@ -854,15 +827,15 @@ function OutroSection() {
           <Sparkles size={14} /> 완료
         </div>
         <h2 className="text-[28px] md:text-[36px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          이 과정을 통해<br />
-          <span className="text-[var(--accent)]">3가지 결과물</span>이 만들어졌습니다.
+          막막했던 기획안이<br />
+          <span className="text-[var(--accent)]">판단 가능한 구조</span>가 되었습니다
         </h2>
       </div>
 
       {/* Deliverable 1: Reframed question */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
         <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <Layers size={14} className="text-[#2d4a7c]" />
+          <MessageSquare size={14} className="text-[#2d4a7c]" />
           <span className="text-[13px] font-bold text-[var(--text-primary)]">재정의된 질문</span>
         </div>
         <div className="px-5 py-4">
@@ -876,20 +849,17 @@ function OutroSection() {
       {/* Deliverable 2: Thinking Summary */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
         <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <Map size={14} className="text-[#8b6914]" />
+          <Sliders size={14} className="text-[#8b6914]" />
           <span className="text-[13px] font-bold text-[var(--text-primary)]">Thinking Summary</span>
           <span className="text-[10px] font-bold text-[#8b6914] bg-[#8b6914]/10 px-2 py-0.5 rounded-full">팀 공유용</span>
         </div>
         <div className="px-5 py-4">
           <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 text-[13px] text-[var(--text-secondary)] leading-relaxed space-y-2">
-            <p className="font-semibold text-[var(--text-primary)]">AI 활용 파일럿 계획 — 검토 요약</p>
-            <p>핵심 질문을 &ldquo;AI 도입&rdquo;에서 &ldquo;어떤 업무에 효과가 있는지 검증&rdquo;으로 재정의했습니다.</p>
-            <p>4단계 실행 계획 수립, AI/사람 역할 배분 완료. 김상무 피드백 2회 반영, 실행 준비도 92%.</p>
-            <p className="text-[var(--text-tertiary)]">다음 단계: 파일럿 대상 업무 선정 (담당: 팀장)</p>
+            <p className="font-semibold text-[var(--text-primary)]">신사업 기획안 — 검토 요약</p>
+            <p>핵심 질문을 &ldquo;기획안 작성&rdquo;에서 &ldquo;대표님이 판단할 수 있는 구조 설계&rdquo;로 재정의했습니다.</p>
+            <p>4단계 실행 계획 수립, AI/사람 역할 배분 완료. 대표님 피드백 2회 반영, 실행 준비도 92%.</p>
+            <p className="text-[var(--text-tertiary)]">다음 단계: 대표님에게 "이 기획안으로 뭘 판단하고 싶으세요?" 확인</p>
           </div>
-          <p className="text-[13px] text-[var(--text-tertiary)] mt-3">
-            복사해서 Slack · 이메일 · 보고서에 바로 사용. 비개발자도 맥락을 즉시 파악.
-          </p>
         </div>
       </div>
 
@@ -902,14 +872,14 @@ function OutroSection() {
         </div>
         <div className="px-5 py-4">
           <div className="rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)] leading-relaxed space-y-1">
-            <p className="text-[var(--text-tertiary)]"># AI 활용 파일럿 — Agent 실행 지시서</p>
+            <p className="text-[var(--text-tertiary)]"># 신사업 기획안 — Agent 실행 지시서</p>
             <p>- 검증된 전제: 3개 중 {demoChoices.doubted.size}개 재검증 완료</p>
-            <p>- 이해관계자 조건: 김상무 승인 기준 반영</p>
+            <p>- 판단자 조건: {DEMO.persona.name} 승인 기준 반영</p>
             <p>- 실행 계획: 4단계 · 역할 배분 확정</p>
             <p className="text-[var(--text-tertiary)]">...</p>
           </div>
           <p className="text-[13px] text-[var(--text-tertiary)] mt-3">
-            당신의 판단이 에이전트 instruction이 됩니다. 맥락 재설명 없이 바로 실행.
+            당신의 판단이 에이전트 instruction이 됩니다.
           </p>
         </div>
       </div>
@@ -921,7 +891,7 @@ function OutroSection() {
         </p>
         <Link href="/workspace">
           <Button>
-            워크스페이스에서 시작하기 <ArrowRight size={14} />
+            지금 바로 시작하기 <ArrowRight size={14} />
           </Button>
         </Link>
         <p className="text-[11px] text-[var(--text-tertiary)] mt-3">

@@ -32,11 +32,11 @@ export function Hero() {
 
             <div className="mt-8">
               <Link
-                href="/workspace"
+                href="/demo"
                 className="inline-flex items-center gap-2.5 px-7 py-3.5 text-white rounded-full text-[15px] font-semibold shadow-[var(--shadow-md)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200"
                 style={{ background: 'var(--gradient-gold)' }}
               >
-                지금 바로 써보기
+                1분 데모 체험
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
