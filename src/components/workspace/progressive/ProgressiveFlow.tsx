@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import {
   runDeepening,
@@ -218,14 +218,18 @@ function QuestionCard({
   disabled: boolean;
 }) {
   const [inputValue, setInputValue] = useState('');
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = () => {
-    if (question.options && selectedOption !== null) {
-      onAnswer(question.options[selectedOption]);
-    } else if (inputValue.trim()) {
-      onAnswer(inputValue.trim());
-    }
+  const handleOptionClick = (opt: string) => {
+    if (disabled || submitted) return;
+    setSubmitted(true);
+    onAnswer(opt);
+  };
+
+  const handleTextSubmit = () => {
+    if (!inputValue.trim() || disabled || submitted) return;
+    setSubmitted(true);
+    onAnswer(inputValue.trim());
   };
 
   return (
@@ -239,76 +243,81 @@ function QuestionCard({
             {question.text}
           </p>
           {question.subtext && (
-            <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">{question.subtext}</p>
+            <p className="mt-1.5 text-[12px] text-[var(--text-tertiary)] leading-relaxed">{question.subtext}</p>
           )}
         </div>
       </div>
 
-      {/* Options */}
+      {/* Options — one-click submit */}
       {question.options && question.options.length > 0 ? (
-        <div className="space-y-2 mb-4">
+        <div className="space-y-2 mb-3">
           {question.options.map((opt, i) => (
             <button
               key={i}
-              onClick={() => setSelectedOption(i)}
-              disabled={disabled}
-              className={`w-full text-left px-4 py-3 rounded-xl text-[14px] transition-all duration-200 border ${
-                selectedOption === i
-                  ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)] font-medium'
-                  : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40'
-              } disabled:opacity-40`}
+              onClick={() => handleOptionClick(opt)}
+              disabled={disabled || submitted}
+              className="w-full text-left px-4 py-3 rounded-xl text-[14px] transition-all duration-200 border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)] active:scale-[0.98] disabled:opacity-40 cursor-pointer"
             >
               {opt}
             </button>
           ))}
 
           {/* "직접 입력" fallback */}
-          <div className="pt-1">
+          <div className="flex gap-2 pt-1">
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => { setInputValue(e.target.value); setSelectedOption(null); }}
+              onChange={(e) => setInputValue(e.target.value)}
               placeholder="또는 직접 입력..."
-              disabled={disabled}
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/40 transition-colors disabled:opacity-40"
+              disabled={disabled || submitted}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/40 transition-colors disabled:opacity-40"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSubmit();
+                  handleTextSubmit();
                 }
               }}
             />
+            {inputValue.trim() && (
+              <button
+                onClick={handleTextSubmit}
+                disabled={disabled || submitted}
+                className="shrink-0 px-4 py-2.5 text-white rounded-xl text-[13px] font-semibold disabled:opacity-40 cursor-pointer"
+                style={{ background: 'var(--gradient-gold)' }}
+              >
+                확인
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        <div className="mb-4">
+        /* Short input mode — no options */
+        <div className="flex gap-2">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="입력..."
-            disabled={disabled}
+            disabled={disabled || submitted}
             autoFocus
-            className="w-full px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/40 transition-colors disabled:opacity-40"
+            className="flex-1 px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/40 transition-colors disabled:opacity-40"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSubmit();
+                handleTextSubmit();
               }
             }}
           />
+          <button
+            onClick={handleTextSubmit}
+            disabled={disabled || !inputValue.trim() || submitted}
+            className="shrink-0 px-5 py-3 text-white rounded-xl text-[14px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] transition-all duration-200 disabled:opacity-40 cursor-pointer"
+            style={{ background: 'var(--gradient-gold)' }}
+          >
+            확인
+          </button>
         </div>
       )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={disabled || (selectedOption === null && !inputValue.trim())}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-[13px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 disabled:opacity-40 cursor-pointer"
-        style={{ background: 'var(--gradient-gold)' }}
-      >
-        다음
-        <ChevronRight size={14} />
-      </button>
     </div>
   );
 }
@@ -410,16 +419,19 @@ function DMFeedbackCard({
                         <p className="text-[13px] text-[var(--text-primary)] mb-1.5">{concern.text}</p>
                         <p className="text-[12px] text-[var(--accent)]">→ {concern.fix_suggestion}</p>
                       </div>
-                      <button
-                        onClick={() => onToggleFix(i)}
-                        className={`shrink-0 w-10 h-6 rounded-full transition-all duration-200 ${
-                          concern.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 mx-1 ${
-                          concern.applied ? 'translate-x-4' : ''
-                        }`} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-[var(--text-tertiary)]">{concern.applied ? '반영' : '스킵'}</span>
+                        <button
+                          onClick={() => onToggleFix(i)}
+                          className={`w-10 h-6 rounded-full transition-all duration-200 ${
+                            concern.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 mx-1 ${
+                            concern.applied ? 'translate-x-4' : ''
+                          }`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -455,11 +467,91 @@ function DMFeedbackCard({
             {isProcessing ? (
               <><Loader2 size={16} className="animate-spin" /> 최종본 작성 중...</>
             ) : (
-              <>선택한 수정사항 반영하고 완성하기 <ChevronRight size={14} /></>
+              <>반영하고 완성 <ChevronRight size={14} /></>
             )}
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Mix Preview Card (shows the draft before DM feedback) ───
+
+function MixPreviewCard({
+  mix,
+  decisionMaker,
+  onRequestDM,
+  onSkipDM,
+  isProcessing,
+  dmAlreadyGenerated,
+}: {
+  mix: import('@/stores/types').MixResult;
+  decisionMaker: string | null;
+  onRequestDM: () => void;
+  onSkipDM: () => void;
+  isProcessing: boolean;
+  dmAlreadyGenerated: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--accent)]/20 bg-[var(--surface)] overflow-hidden phrase-entrance">
+      <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
+      <div className="p-5 md:p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[11px] font-semibold text-[var(--accent)] uppercase tracking-wider">초안 완성</span>
+        </div>
+
+        <h3 className="text-[18px] md:text-[20px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>
+          {mix.title}
+        </h3>
+
+        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed italic border-l-[3px] border-[var(--accent)]/30 pl-4 py-1">
+          {mix.executive_summary}
+        </p>
+
+        {mix.sections.map((s, i) => (
+          <div key={i}>
+            <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">{s.heading}</p>
+            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{s.content}</p>
+          </div>
+        ))}
+
+        {mix.next_steps.length > 0 && (
+          <div className="pt-3 border-t border-[var(--border-subtle)]">
+            <p className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">다음 단계</p>
+            {mix.next_steps.map((s, i) => (
+              <div key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-primary)] mb-1">
+                <span className="text-[var(--accent)] shrink-0">→</span> {s}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* DM trigger */}
+        {!dmAlreadyGenerated && (
+          <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+            <button
+              onClick={onRequestDM}
+              disabled={isProcessing}
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-white rounded-xl text-[14px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] transition-all duration-200 disabled:opacity-50 cursor-pointer"
+              style={{ background: 'var(--gradient-gold)' }}
+            >
+              {isProcessing ? (
+                <><Loader2 size={16} className="animate-spin" /> {decisionMaker || '의사결정권자'} 반응 시뮬레이션 중...</>
+              ) : (
+                <><UserCheck size={16} /> {decisionMaker || '의사결정권자'}{getParticle(decisionMaker || '자')} 뭐라고 할까?</>
+              )}
+            </button>
+            <button
+              onClick={onSkipDM}
+              disabled={isProcessing}
+              className="w-full text-center text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer py-1"
+            >
+              건너뛰고 이대로 완성
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -487,8 +579,8 @@ function renderMarkdownLines(content: string) {
       );
     } else if (line.startsWith('> ')) {
       elements.push(
-        <blockquote key={key} className="border-l-3 border-[var(--accent)]/30 pl-4 py-1 text-[14px] text-[var(--text-secondary)] italic my-2">
-          {line.slice(2)}
+        <blockquote key={key} className="border-l-[3px] border-[var(--accent)]/30 pl-4 py-1 text-[14px] text-[var(--text-secondary)] italic my-2">
+          {renderInlineFormatting(line.slice(2))}
         </blockquote>
       );
     } else if (line.startsWith('- ')) {
@@ -511,12 +603,24 @@ function renderMarkdownLines(content: string) {
     } else {
       elements.push(
         <p key={key} className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-          {line}
+          {renderInlineFormatting(line)}
         </p>
       );
     }
   }
   return elements;
+}
+
+/** Render **bold** inline formatting safely via React nodes */
+function renderInlineFormatting(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-bold text-[var(--text-primary)]">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
 }
 
 // ─── Final Deliverable ───
@@ -554,11 +658,25 @@ function FinalDeliverableCard({ content }: { content: string }) {
 
 // ─── Loading indicator ───
 
-function AnalyzingIndicator({ text }: { text: string }) {
+function AnalyzingIndicator({ text, steps }: { text: string; steps?: string[] }) {
+  const [stepIndex, setStepIndex] = useState(0);
+
+  useEffect(() => {
+    if (!steps || steps.length <= 1) return;
+    const interval = setInterval(() => {
+      setStepIndex(prev => (prev + 1) % steps.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [steps]);
+
+  const displayText = steps && steps.length > 0 ? steps[stepIndex] : text;
+
   return (
     <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/15 phrase-entrance">
-      <Loader2 size={18} className="animate-spin text-[var(--accent)]" />
-      <span className="text-[14px] text-[var(--text-secondary)]">{text}</span>
+      <div className="relative w-5 h-5 shrink-0">
+        <Loader2 size={18} className="animate-spin text-[var(--accent)]" />
+      </div>
+      <span className="text-[14px] text-[var(--text-secondary)] transition-opacity duration-300">{displayText}</span>
     </div>
   );
 }
@@ -712,7 +830,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         .map(qa => ({ question: qa.question, answer: qa.answer! }));
 
       const mixResult = await runMix(
-        session.problem_text,
+        session!.problem_text,
         snapshots,
         allQA,
         decision_maker,
@@ -720,14 +838,29 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       store.setMix(mixResult);
       setShowMixTrigger(false);
+      // Don't auto-generate DM — let user read the draft first
+      // Phase is set to 'dm_feedback' by setMix, user will see the draft + DM trigger button
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '초안 생성 실패');
+      store.setPhase('conversing');
+    } finally {
+      setIsProcessing(false);
+      scrollToBottom();
+    }
+  };
 
-      // Auto-generate DM feedback
+  const handleRequestDM = async () => {
+    if (!mix) return;
+    setIsProcessing(true);
+    setError(null);
+    scrollToBottom();
+
+    try {
       const dm = decision_maker || '의사결정권자';
-      const feedback = await runDMFeedback(mixResult, dm, session.problem_text);
+      const feedback = await runDMFeedback(mix, dm, session!.problem_text);
       store.setDMFeedback(feedback);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mix 실패');
-      store.setPhase('conversing');
+      setError(err instanceof Error ? err.message : 'DM 피드백 생성 실패');
     } finally {
       setIsProcessing(false);
       scrollToBottom();
@@ -779,25 +912,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleRetryDM = async () => {
-    if (!mix) return;
-    setIsProcessing(true);
-    setError(null);
-    try {
-      const dm = decision_maker || '의사결정권자';
-      const feedback = await runDMFeedback(mix, dm, session!.problem_text);
-      store.setDMFeedback(feedback);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'DM 피드백 생성 실패');
-    } finally {
-      setIsProcessing(false);
-      scrollToBottom();
-    }
-  };
-
   const handleSkipDM = () => {
     if (!mix) return;
-    // Skip DM and go straight to final deliverable
     const markdown = [
       `# ${mix.title}`,
       '', `> ${mix.executive_summary}`, '',
@@ -864,13 +980,19 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
         {/* Loading state — check phase (not isProcessing) since initial analysis runs in parent */}
         {phase === 'analyzing' && snapshots.length === 0 && (
-          <AnalyzingIndicator text="30초 안에 뼈대를 뽑고 있습니다..." />
+          <AnalyzingIndicator
+            text="분석 시작..."
+            steps={['상황을 파악하고 있습니다...', '숨겨진 전제를 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']}
+          />
         )}
         {phase === 'analyzing' && snapshots.length > 0 && (
           <AnalyzingIndicator text="답변을 반영해서 업데이트 중..." />
         )}
         {phase === 'mixing' && (
-          <AnalyzingIndicator text="초안을 조합하고 있습니다..." />
+          <AnalyzingIndicator
+            text="초안 조합 중..."
+            steps={['분석 결과를 종합하고 있습니다...', '문서 구조를 잡는 중...', '내용을 채우고 있습니다...', '마무리 중...']}
+          />
         )}
 
         {/* Current question — key forces remount so input state resets */}
@@ -888,32 +1010,16 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           <MixTrigger onMix={handleMix} onMore={handleMoreQuestions} isProcessing={isProcessing} />
         )}
 
-        {/* Mix result (shown before DM feedback) */}
-        {mix && !final_deliverable && phase !== 'mixing' && !dm_feedback && !error && (
-          <AnalyzingIndicator text={`${decision_maker || '의사결정권자'}의 반응을 시뮬레이션 중...`} />
-        )}
-
-        {/* DM generation failed — offer retry or skip */}
-        {mix && !dm_feedback && error && !final_deliverable && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3 phrase-entrance">
-            <p className="text-[14px] text-[var(--text-primary)]">판단자 피드백 생성에 실패했습니다.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleRetryDM}
-                disabled={isProcessing}
-                className="px-4 py-2 rounded-xl text-[13px] font-medium text-white cursor-pointer"
-                style={{ background: 'var(--gradient-gold)' }}
-              >
-                다시 시도
-              </button>
-              <button
-                onClick={handleSkipDM}
-                className="px-4 py-2 rounded-xl text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/40 cursor-pointer"
-              >
-                건너뛰고 완성
-              </button>
-            </div>
-          </div>
+        {/* Mix preview — user reads the draft, then chooses DM or skip */}
+        {mix && !dm_feedback && !final_deliverable && phase !== 'mixing' && (
+          <MixPreviewCard
+            mix={mix}
+            decisionMaker={decision_maker}
+            onRequestDM={handleRequestDM}
+            onSkipDM={handleSkipDM}
+            isProcessing={isProcessing}
+            dmAlreadyGenerated={false}
+          />
         )}
 
         {/* DM Feedback */}
@@ -928,7 +1034,22 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
         {/* Final deliverable */}
         {final_deliverable && (
-          <FinalDeliverableCard content={final_deliverable} />
+          <>
+            <FinalDeliverableCard content={final_deliverable} />
+            <div className="text-center pt-4 pb-8">
+              <p className="text-[13px] text-[var(--text-tertiary)] mb-3">문서를 복사해서 바로 사용하세요.</p>
+              <button
+                onClick={() => {
+                  useProgressiveStore.setState({ currentSessionId: null });
+                  // Navigate back to input — parent will handle via null currentProjectId
+                  window.location.href = '/workspace';
+                }}
+                className="text-[13px] text-[var(--accent)] hover:underline cursor-pointer"
+              >
+                새 프로젝트 시작하기
+              </button>
+            </div>
+          </>
         )}
 
         {/* Error */}
