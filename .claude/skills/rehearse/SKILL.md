@@ -193,22 +193,21 @@ Severity-based actions:
 
 🎯 **[Name]** · [context] · [current_solution] → **[verdict]**
 
-```diff
-+ ✓ [strength]
-- ✗ [critical — what makes them delete it]
-- 🔇 [unspoken]
-```
+> "[첫 반응]"
+
+| 우려 | 심각도 | 수정 방향 |
+|------|--------|----------|
+| [what makes them delete it] | 🔴 critical | [수정] |
+| [unspoken market reality] | 🔇 unspoken | [대응] |
 
 🤨 **[Name]** · [alternative] → **[verdict]**
 
-```diff
-+ ✓ [strength]
-- ✗ [critical]
-- 🔇 [unspoken]
-```
+> "[첫 반응]"
 
-> **[Name]:** "[quote]"
-> **[Name]:** "[quote]"
+| 우려 | 심각도 | 수정 방향 |
+|------|--------|----------|
+| [likely death mode] | 🔴 critical | [수정] |
+| [what nobody admits] | 🔇 unspoken | [대응] |
 
 ---
 

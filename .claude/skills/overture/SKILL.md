@@ -73,9 +73,9 @@ Record as `context: build` or `context: decide`.
 **{기획안 뼈대 / 제품 뼈대}** (context에 따라)
 
 ```
-1. [항목: 구체적 설명. 여기에 실제 내용이 들어간다] — 예: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
-2. [항목: 설명] — 절대 "시장 분석" 같은 모호한 제목만 쓰지 말 것
-3. [항목: 설명]
+1. [항목: 구체적 설명 1-2문장]
+2. [항목: 구체적 설명]
+3. [항목: 구체적 설명]
 4. [항목: 설명]
 5. [항목: 설명]
 ```
@@ -146,17 +146,21 @@ Skip rounds whose answers are already clear from input.
 - question: "이 결과물을 누가 최종 판단해?"
 - header: "판단자"
 - options:
-  - label: "대표/CEO"
-  - label: "팀장/이사"
-  - label: "투자자/외부"
-  - label: "아직 모름"
+  - label: "대표/CEO", description: "대표님이 직접 검토하고 판단"
+  - label: "팀장/이사", description: "중간 관리자가 검토"
+  - label: "투자자/외부", description: "외부 이해관계자가 대상"
+  - label: "아직 모름", description: "판단자가 불명확하거나 나 자신"
 
 → Record as `judge`. Determines persona in Step 4.
 
 **Build context — always ask first:**
 - question: "이걸 누가 쓸 건가요?"
 - header: "사용자"
-- options: "나만 쓸 것" / "특정 그룹" / "누구나" / "아직 모름"
+- options:
+  - label: "나만 쓸 것", description: "개인 도구나 프로젝트"
+  - label: "특정 그룹", description: "정해진 사용자층이 있음"
+  - label: "누구나", description: "대중을 대상으로"
+  - label: "아직 모름", description: "사용자가 불명확"
 
 ### After each answer — show updated analysis:
 
@@ -199,13 +203,18 @@ Skip rounds whose answers are already clear from input.
 3. ...
 ```
 
+After showing the updated analysis, **use AskUserQuestion for the next question**. Never type questions as plain text — always use the tool.
+
 ### When to transition to Mix:
 
-- 2-3 rounds completed, OR
-- All key dimensions covered (who judges, constraints, success criteria), OR
-- User says "enough" / "이 정도면 됐어" / "다음"
+After 2+ rounds, or when key dimensions are covered, ask using AskUserQuestion:
+- question: "충분한 정보가 모였다. 어떻게 할까?"
+- header: "다음 단계"
+- options:
+  - label: "초안 완성하기", description: "지금까지의 분석으로 문서 초안을 만든다"
+  - label: "질문 하나 더", description: "한 가지 더 확인하고 싶다"
 
-Transition phrase: "충분한 정보가 모였다. 이제 전체를 하나의 문서로 조합하겠다."
+If user says "enough" / "이 정도면 됐어" / "다음" at any point → transition to Mix immediately.
 
 ---
 
@@ -321,12 +330,14 @@ Based on `judge` from Step 2:
 
 ---
 
-After showing DM feedback, ask which fixes to apply:
+After showing DM feedback, ask which fixes to apply using AskUserQuestion:
 
-Use AskUserQuestion or show directly:
-
-> 🔴 critical 항목은 기본 반영됩니다.
-> 🟡/⚪ 항목 중 추가로 반영할 것이 있으면 번호를 알려주세요. (예: "2번도 반영" / "전부 반영" / "이대로 완성")
+- question: "🔴 critical은 기본 반영됩니다. 나머지는?"
+- header: "반영 범위"
+- options:
+  - label: "전부 반영", description: "모든 우려 사항을 반영"
+  - label: "critical만", description: "🔴 항목만 반영하고 나머지는 무시"
+  - label: "이대로 완성", description: "수정 없이 현재 초안으로 완성"
 
 ---
 
