@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StaffLines, TrebleClef } from '@/components/ui/MusicalElements';
 import { track } from '@/lib/analytics';
-import { ArrowRight, Code2, BarChart3, Palette, Rocket } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { PersonaAvatar, type AvatarType } from './PersonaAvatars';
 
 /* ─── Example Data ─── */
 interface ExampleData {
   input: string;
   persona: string;
-  icon: React.ReactNode;
+  avatar: AvatarType;
   realQuestion: { tag: string; text: string };
   pills: { label: string; value: string }[];
   dm: { name: string; quote: string; action: { tag: string; text: string; link: string } };
@@ -22,7 +23,7 @@ const EXAMPLES: ExampleData[] = [
   {
     input: '나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어',
     persona: '개발자',
-    icon: <Code2 size={13} />,
+    avatar: 'dev',
     realQuestion: {
       tag: '진짜 질문',
       text: '기획안의 형식이 아니라,\n대표님이 확인하고 싶은 것이 뭔지가 먼저다.',
@@ -40,7 +41,7 @@ const EXAMPLES: ExampleData[] = [
   {
     input: 'PM인데 전략 제안서를 내일까지 내야 하는데 어디서 시작하지',
     persona: 'PM',
-    icon: <BarChart3 size={13} />,
+    avatar: 'pm',
     realQuestion: {
       tag: '진짜 질문',
       text: '제안서가 아니라,\n의사결정자가 YES라고 할 조건이 뭔지가 먼저다.',
@@ -58,7 +59,7 @@ const EXAMPLES: ExampleData[] = [
   {
     input: '디자이너인데 비즈니스 케이스를 만들라고 했다. ROI가 뭐지.',
     persona: '디자이너',
-    icon: <Palette size={13} />,
+    avatar: 'designer',
     realQuestion: {
       tag: '진짜 질문',
       text: 'ROI 계산이 아니라,\n디자인이 매출에 영향을 준 증거가 필요하다.',
@@ -76,7 +77,7 @@ const EXAMPLES: ExampleData[] = [
   {
     input: '스타트업 CTO인데 투자자 피치덱을 혼자 만들어야 한다',
     persona: 'CTO',
-    icon: <Rocket size={13} />,
+    avatar: 'cto',
     realQuestion: {
       tag: '진짜 질문',
       text: '기술 스택이 아니라,\n왜 이 팀이 이걸 할 수 있는지가 먼저다.',
@@ -300,34 +301,48 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
   );
 }
 
-/* ─── Persona selector pills ─── */
+/* ─── Persona selector with avatars ─── */
 function PersonaSelector({ examples, activeIdx, onSelect }: { examples: ExampleData[]; activeIdx: number; onSelect: (idx: number) => void }) {
   return (
-    <div className="flex items-center gap-1.5 mt-4">
+    <div className="flex items-center gap-4 mt-5">
       {examples.map((ex, i) => {
         const isActive = i === activeIdx;
         return (
           <button
             key={ex.persona}
             onClick={() => onSelect(i)}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-500 cursor-pointer"
-            style={{
-              background: isActive ? 'var(--accent)' : 'transparent',
-              color: isActive ? 'white' : 'var(--text-tertiary)',
-              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-              transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
-            }}
+            className="group flex flex-col items-center gap-1.5 cursor-pointer bg-transparent border-none p-0"
           >
-            {ex.icon}
-            <span>{ex.persona}</span>
-            {isActive && (
-              <motion.div
-                layoutId="persona-indicator"
-                className="absolute inset-0 rounded-full"
-                style={{ background: 'var(--accent)', zIndex: -1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            {/* Avatar ring */}
+            <div
+              className="relative transition-all duration-500"
+              style={{
+                transform: isActive ? 'scale(1.12)' : 'scale(1)',
+                opacity: isActive ? 1 : 0.55,
+                transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+              }}
+            >
+              {/* Gold ring for active */}
+              <div
+                className="absolute -inset-[3px] rounded-full transition-all duration-500"
+                style={{
+                  border: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                  boxShadow: isActive ? '0 0 12px 2px rgba(184,150,62,0.2)' : 'none',
+                  transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                }}
               />
-            )}
+              <PersonaAvatar type={ex.avatar} size={42} />
+            </div>
+            {/* Name label */}
+            <span
+              className="text-[11px] font-medium transition-all duration-500"
+              style={{
+                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+              }}
+            >
+              {ex.persona}
+            </span>
           </button>
         );
       })}
