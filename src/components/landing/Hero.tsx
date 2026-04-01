@@ -1,10 +1,86 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { StaffLines, TrebleClef } from '@/components/ui/MusicalElements';
 import { track } from '@/lib/analytics';
+import { ArrowRight } from 'lucide-react';
+
+/* ─── Auto-typing placeholder examples ─── */
+const EXAMPLES = [
+  '나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어',
+  'PM인데 전략 제안서를 내일까지 내야 하는데 어디서 시작하지',
+  '디자이너인데 비즈니스 케이스를 만들라고 했다. ROI가 뭐지.',
+  '스타트업 CTO인데 투자자 피치덱을 혼자 만들어야 한다',
+];
+
+function useAutoType(examples: string[], speed = 45, pause = 3000) {
+  const [display, setDisplay] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+  const idxRef = useRef(0);
+  const charRef = useRef(0);
+  const activeRef = useRef(true); // tracks if user has focused the input
+
+  useEffect(() => {
+    if (!activeRef.current) return;
+
+    const tick = () => {
+      if (!activeRef.current) return;
+
+      const current = examples[idxRef.current];
+
+      if (isTyping) {
+        if (charRef.current <= current.length) {
+          setDisplay(current.slice(0, charRef.current));
+          charRef.current++;
+          return speed;
+        } else {
+          setIsTyping(false);
+          return pause;
+        }
+      } else {
+        // Move to next example
+        idxRef.current = (idxRef.current + 1) % examples.length;
+        charRef.current = 0;
+        setDisplay('');
+        setIsTyping(true);
+        return speed;
+      }
+    };
+
+    let timeout: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const delay = tick();
+      if (delay !== undefined) timeout = setTimeout(loop, delay);
+    };
+    loop();
+
+    return () => clearTimeout(timeout);
+  }, [examples, speed, pause, isTyping]);
+
+  const stop = () => { activeRef.current = false; };
+  return { display, stop };
+}
 
 export function Hero() {
+  const router = useRouter();
+  const [inputValue, setInputValue] = useState('');
+  const [focused, setFocused] = useState(false);
+  const { display: autoText, stop: stopAutoType } = useAutoType(EXAMPLES);
+
+  const handleSubmit = () => {
+    const text = inputValue.trim() || autoText;
+    if (!text) return;
+    track('landing_hero_submit', { text_length: text.length, used_example: !inputValue.trim() });
+    router.push(`/workspace?q=${encodeURIComponent(text)}`);
+  };
+
+  const handleFocus = () => {
+    setFocused(true);
+    stopAutoType();
+  };
+
   return (
     <section className="relative overflow-hidden">
       {/* Concert hall atmosphere */}
@@ -15,7 +91,7 @@ export function Hero() {
       <div className="relative max-w-5xl mx-auto px-5 md:px-6 pt-16 md:pt-28 pb-12 md:pb-20">
         <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:items-center">
 
-          {/* ─── Left: Message ─── */}
+          {/* ─── Left: Message + Input ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
               <span className="lg:whitespace-nowrap">내 전문 분야가 아닌 걸</span>
@@ -24,37 +100,58 @@ export function Hero() {
             </h1>
 
             <p className="mt-5 text-[15px] md:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-md">
-              기획안, 전략 제안서, 비즈니스 케이스...
-              <br />
               질문 하나 던지면, 30초 안에 뼈대가 나옵니다.
               <br />
               채울수록 날카로워집니다.
             </p>
 
-            <div className="mt-8 flex items-center gap-3">
-              <Link
-                href="/workspace"
-                onClick={() => track('landing_cta_click', { cta: 'hero_workspace' })}
-                className="inline-flex items-center gap-2.5 px-7 py-3.5 text-white rounded-full text-[15px] font-semibold shadow-[var(--shadow-md)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200"
-                style={{ background: 'var(--gradient-gold)' }}
-              >
-                지금 바로 써보기
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Link>
-              <Link
-                href="/demo"
-                onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
-                className="text-[14px] font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
-              >
-                데모 보기
-              </Link>
+            {/* ─── Inline Input ─── */}
+            <div className="mt-8">
+              <div className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
+                style={{ transitionProperty: 'border-color, box-shadow', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                <div className="flex items-center gap-3 px-5 py-4">
+                  <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onFocus={handleFocus}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
+                    placeholder={focused ? '고민을 입력하세요...' : undefined}
+                    className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.95] cursor-pointer"
+                    style={{ background: 'var(--gradient-gold)', transitionProperty: 'box-shadow, transform', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
 
-              <p className="mt-4 text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
-                인지과학 + 전략기획 실무 기반 프레임워크
-              </p>
+                {/* Auto-typing text (shows when not focused and no user input) */}
+                {!focused && !inputValue && (
+                  <div className="absolute inset-0 flex items-center px-5 pointer-events-none">
+                    <span className="text-[15px] text-[var(--text-tertiary)]">
+                      {autoText}<span className="animate-pulse">|</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mt-3 px-1">
+                <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
+                  로그인 없이 무료 체험
+                </p>
+                <Link
+                  href="/demo"
+                  onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
+                  className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)]"
+                  style={{ transitionProperty: 'color', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}
+                >
+                  데모 먼저 보기
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -79,12 +176,12 @@ export function Hero() {
                   </p>
                   <div className="flex gap-3 mt-2.5">
                     <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-red-400 text-[10px]">?</span> 전제 3개</span>
-                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-[var(--accent)]">▸</span> 뼈대 5줄</span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-[var(--accent)]">&#9656;</span> 뼈대 5줄</span>
                   </div>
                 </div>
               </div>
 
-              {/* Step 2: Q&A pill */}
+              {/* Step 2: Q&A pills */}
               <div className="flex items-center gap-2 px-1">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]">
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -113,7 +210,7 @@ export function Hero() {
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">필수</span>
                     <span className="text-[10px] text-[var(--text-tertiary)]">경쟁 분석 추가</span>
-                    <span className="text-[10px] text-[var(--accent)] font-medium">→ 자동 반영</span>
+                    <span className="text-[10px] text-[var(--accent)] font-medium">&rarr; 자동 반영</span>
                   </div>
                 </div>
               </div>

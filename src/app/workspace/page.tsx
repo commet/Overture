@@ -62,6 +62,39 @@ function WorkspaceContent() {
     }
   }, [explicitStep, useLegacyMode, setActiveStep]);
 
+  // Auto-start from ?q= param (Hero inline input)
+  const queryProblem = searchParams.get('q');
+  const [autoStarted, setAutoStarted] = useState(false);
+
+  useEffect(() => {
+    if (queryProblem && !autoStarted && !currentProjectId && !isStarting) {
+      setAutoStarted(true);
+      setProblemInput(queryProblem);
+      // Auto-trigger after a tick to let stores load
+      setTimeout(() => {
+        const text = queryProblem.trim();
+        if (!text) return;
+        setIsStarting(true);
+        setStartError(null);
+        const pid = createProject(text.slice(0, 40));
+        setCurrentProjectId(pid);
+        track('project_created', { source: 'hero_inline' });
+        progressiveStore.createSession(pid, text);
+        runInitialAnalysis(text).then(result => {
+          progressiveStore.addSnapshot(result.snapshot);
+          if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
+          progressiveStore.addQuestion(result.question);
+          progressiveStore.setPhase('conversing');
+        }).catch(err => {
+          const sid = progressiveStore.currentSessionId;
+          if (sid) progressiveStore.deleteSession(sid);
+          setCurrentProjectId(null);
+          setStartError(err instanceof Error ? err.message : '분석에 실패했습니다.');
+        }).finally(() => setIsStarting(false));
+      }, 100);
+    }
+  }, [queryProblem, autoStarted, currentProjectId, isStarting]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleNavigate = (step: string) => {
     const stepId = step.replace('/tools/', '') as StepId;
     setActiveStep(stepId);
