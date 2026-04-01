@@ -15,6 +15,7 @@ interface ExampleData {
   persona: string;
   avatar: AvatarType;
   realQuestion: { tag: string; text: string };
+  skeleton: string; // doc_type preview showing domain awareness
   pills: { label: string; value: string }[];
   dm: { name: string; quote: string; action: { tag: string; text: string; link: string } };
 }
@@ -28,6 +29,7 @@ const EXAMPLES: ExampleData[] = [
       tag: '진짜 질문',
       text: '기획안의 형식이 아니라,\n대표님이 확인하고 싶은 것이 뭔지가 먼저다.',
     },
+    skeleton: '배경 → 현황 분석 → 제안 → 기대효과 → 일정 → 리스크',
     pills: [
       { label: '누가 봐?', value: '대표님' },
       { label: '기한?', value: '2주' },
@@ -44,16 +46,17 @@ const EXAMPLES: ExampleData[] = [
     avatar: 'pm',
     realQuestion: {
       tag: '진짜 질문',
-      text: '제안서가 아니라,\n의사결정자가 YES라고 할 조건이 뭔지가 먼저다.',
+      text: '이사회가 읽는 건 첫 3줄뿐이다.\n거기서 승부가 난다.',
     },
+    skeleton: '현황 → 기회 분석 → 전략 방향 → 실행 로드맵 → 성공 기준',
     pills: [
       { label: '결정자?', value: '이사회' },
       { label: '핵심?', value: 'ROI' },
     ],
     dm: {
       name: '이사회는 뭐라고 할까?',
-      quote: '숫자는 있는데 스토리가 없어. 왜 지금 해야 하는지 한 줄이면 됨.',
-      action: { tag: '필수', text: '"왜 지금" 내러티브 추가', link: '자동 반영' },
+      quote: '요약이 너무 길어. 한 문장으로 줄여. 그리고 숫자가 어디 있어?',
+      action: { tag: '필수', text: '1줄 요약 + 핵심 수치 추가', link: '자동 반영' },
     },
   },
   {
@@ -62,16 +65,17 @@ const EXAMPLES: ExampleData[] = [
     avatar: 'designer',
     realQuestion: {
       tag: '진짜 질문',
-      text: 'ROI 계산이 아니라,\n디자인이 매출에 영향을 준 증거가 필요하다.',
+      text: 'CFO는 감성이 아니라 숫자를 산다.\n전환율 데이터 하나면 된다.',
     },
+    skeleton: '현황 → 대안 비교 → 추천안 → 재무 분석 → 리스크',
     pills: [
       { label: '목적?', value: '예산 확보' },
       { label: '설득?', value: 'CFO' },
     ],
     dm: {
       name: 'CFO는 뭐라고 할까?',
-      quote: '감성적 호소는 빼고, A/B 테스트 수치 하나만 넣으면 설득력이 2배.',
-      action: { tag: '필수', text: '전환율 데이터 추가', link: '자동 반영' },
+      quote: '디자인 얘기 말고. 이걸 하면 매출이 얼마나 느는지만 보여줘.',
+      action: { tag: '필수', text: '매출 임팩트 수치화', link: '자동 반영' },
     },
   },
   {
@@ -80,16 +84,17 @@ const EXAMPLES: ExampleData[] = [
     avatar: 'cto',
     realQuestion: {
       tag: '진짜 질문',
-      text: '기술 스택이 아니라,\n왜 이 팀이 이걸 할 수 있는지가 먼저다.',
+      text: '투자자의 진짜 질문은 단 하나:\n왜 이 팀이어야 하는가.',
     },
+    skeleton: 'Problem → Solution → Market → Product → Team → Ask',
     pills: [
       { label: '라운드?', value: 'Seed' },
       { label: '핵심?', value: 'Why now' },
     ],
     dm: {
       name: '투자자는 뭐라고 할까?',
-      quote: 'TAM 숫자 좋은데, 경쟁사 섹션이 너무 약해. 구체적 해자를 넣어.',
-      action: { tag: '필수', text: '경쟁 우위 구체화', link: '자동 반영' },
+      quote: '기술은 알겠어. 근데 이걸 왜 지금 해야 해? "Why now"이 안 보여.',
+      action: { tag: '필수', text: 'Why now 섹션 강화', link: '자동 반영' },
     },
   },
 ];
@@ -206,18 +211,15 @@ function AnalysisCard({ data }: { data: ExampleData }) {
         >
           {data.realQuestion.text}
         </motion.p>
+        {/* Document structure preview — shows domain awareness */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.3 }}
-          className="flex gap-3 mt-2.5"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.3, ease: EASE }}
+          className="mt-3 px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]"
         >
-          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
-            <span className="text-red-400 text-[10px]">?</span> 전제 3개
-          </span>
-          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
-            <span className="text-[var(--accent)]">&#9656;</span> 뼈대 5줄
-          </span>
+          <span className="text-[10px] font-medium text-[var(--accent)] tracking-wide">문서 구조</span>
+          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">{data.skeleton}</p>
         </motion.div>
       </div>
     </motion.div>
@@ -261,28 +263,31 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
       animate="animate"
       exit="exit"
       transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
-      className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-sm)] overflow-hidden"
+      className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
     >
-      <div className="px-5 py-4">
+      {/* Gold accent line — matches the analysis card's visual weight */}
+      <div className="h-[2px] w-full" style={{ background: 'linear-gradient(90deg, var(--accent), transparent)' }} />
+      <div className="px-5 py-5">
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.35, ease: EASE }}
-          className="flex items-center gap-2 mb-2"
+          className="flex items-center gap-2.5 mb-3"
         >
-          <div className="w-6 h-6 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M8 1a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V6a5 5 0 0 1 5-5z" stroke="var(--accent)" strokeWidth="1.2" />
               <path d="M5.5 14.5h5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </div>
-          <span className="text-[12px] font-semibold text-[var(--text-primary)]">{dm.name}</span>
+          <span className="text-[13px] font-semibold text-[var(--text-primary)]">{dm.name}</span>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.4, ease: EASE }}
-          className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed"
+          className="text-[14px] text-[var(--text-primary)] italic leading-relaxed"
+          style={{ fontFamily: 'var(--font-display)' }}
         >
           &ldquo;{dm.quote}&rdquo;
         </motion.p>
@@ -290,11 +295,11 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
           initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.3, ease: EASE }}
-          className="flex items-center gap-2 mt-2"
+          className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border-subtle)]"
         >
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">{dm.action.tag}</span>
-          <span className="text-[10px] text-[var(--text-tertiary)]">{dm.action.text}</span>
-          <span className="text-[10px] text-[var(--accent)] font-medium">&rarr; {dm.action.link}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{dm.action.tag}</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">{dm.action.text}</span>
+          <span className="text-[11px] text-[var(--accent)] font-medium">&rarr; {dm.action.link}</span>
         </motion.div>
       </div>
     </motion.div>
