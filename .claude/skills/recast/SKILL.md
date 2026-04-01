@@ -1,286 +1,191 @@
 ---
 name: recast
-description: "Design an execution plan that separates what AI should do from what humans must decide. Creates a storyline, assigns actors, identifies checkpoints. Use after /reframe or when planning any complex project involving both AI and human work."
-argument-hint: "[goal or reframed question]"
+description: "기존 계획에서 AI와 사람의 역할을 재설계한다. '이건 AI가 해도 돼' vs '이건 반드시 사람이 판단해야 해'를 명확히 구분. 이미 만든 계획이 있을 때 사용."
+argument-hint: "[계획서, 실행 계획, 또는 TODO 리스트]"
 allowed-tools: Read, Write, AskUserQuestion
 ---
 
 ## When to use
 
-- ✓ After /reframe — you have a sharp question and need an execution plan
-- ✓ After /reframe (build) — you have a product thesis and need a spec
-- ✓ Planning a project with both AI and human involvement
-- ✗ Simple tasks that one person can do alone
-- ✗ When you need feedback on an existing plan (use /rehearse)
+- ✓ 이미 만든 계획/기획안의 AI/사람 역할을 명확히 하고 싶을 때
+- ✓ /overture 결과물의 실행 계획을 더 세밀하게 다듬고 싶을 때
+- ✓ 팀 프로젝트에서 "이건 누가 해?" 질문에 구조적으로 답하고 싶을 때
+- ✗ 아직 계획이 없음 → /overture 먼저
+- ✗ 판단자 피드백을 받고 싶음 → /rehearse
+
+**핵심 철학: AI가 빨라지는 시대에, "사람이 반드시 판단해야 하는 지점"을 설계하는 것이 실행의 품질을 결정한다.**
 
 **Always respond in the same language the user uses.**
 
-## If no argument
+## Step 0: 계획 가져오기
 
-If no `/reframe` result exists and no argument given:
+**3가지 경로** 중 하나:
 
-> What's the goal or project? (Tip: /reframe first for a sharper start)
+1. **인자로 받음** — `/recast "시장 조사 → 프로토타입 → 고객 검증 → 런칭"` 형태
+2. **이전 결과 읽기** — `.overture/last-run.md` 또는 `.overture/recast.md`가 있으면 자동으로 읽어서 제안:
 
-## Context extraction from /reframe
+> 이전에 만든 계획이 있습니다. 이걸로 역할 설계를 할까요?
 
-If `.overture/reframe.md` exists, read the Context Contract:
+3. **없으면 질문**:
 
-- `reframed_question` → this is your GOAL
-- `assumptions_doubtful` → key_assumption with importance: H, certainty: L. Include validation steps.
-- `assumptions_uncertain` → key_assumption with importance: M, certainty: L.
-- `assumptions_confirmed` → foundation. Don't re-validate.
-- `ai_limitations` → steps touching these = human or both. Cross-check after assigning.
+> 어떤 계획의 역할을 설계할까요? 실행 계획, TODO 리스트, 또는 기획안을 붙여넣어 주세요.
 
-**Risk stance from `assumption_pattern`:**
-- `mostly_doubtful` → conservative. Validation BEFORE commitment.
-- `confirmed` → execution-focused. Optimize for speed.
-- `mixed` → maintain direction + add verification checkpoints.
+## Step 1: 즉시 분석 — 현재 역할 구조 파악
 
-**If no /reframe result:** Proceed with user's input as goal. Detect context from input.
-
-## Step 1: Instant — Governing Idea + Structure
-
-**Produce this IMMEDIATELY.** No preamble.
+계획을 받으면 **즉시** 각 단계를 분석하고 자동 역할 배정:
 
 ---
 
-**Overture · Recast** — 실행 설계
+**Overture · Recast** — 역할 재설계
 
-**▸** [governing idea — ONE sentence. Falsifiable. A decision-maker gets it in 10 seconds.]
+**현재 계획의 역할 구조:**
 
-[Situation] → [Complication]
-[Approach]: [Resolution]
+| # | 단계 | 현재 담당 | 산출물 |
+|---|------|----------|--------|
+| 1 | [단계] | 🤖 AI | [산출물] |
+| 2 | [단계] | 🧑 사람 | [산출물] |
+| 3 | [단계] | ⚡ 둘 다 | [산출물] |
+| 4 | [단계] | 🤖 AI | [산출물] |
 
-**Bad governing idea:** "We'll conduct market research"
-**Good:** "90일 단일국가 실험으로 동남아 시장성을 검증한 후 확장 여부를 결정한다"
-
----
-
-## Step 2: Execution Plan / Feature Spec
-
-### Decide context: Execution steps (3-5)
-
-For each step:
-- **Task**: Specific deliverable name
-- **Owner**: `AI` / `Human` / `Both`
-- **Why this owner** (4 questions):
-  1. Internal/political knowledge needed? → Human
-  2. Judgment subjective/strategic? → Human
-  3. Cost of error high/irreversible? → Human or Both
-  4. Specific accountability needed? → Human
-  - None apply → AI
-- **Deliverable**: Specific output ("TAM analysis with 3 scenario models" not "research")
-- **Checkpoint**: Does human need to approve before next step?
-
-When owner is `Both`: specify AI scope and Human scope separately.
-
-See `references/execution-design.md` for detailed guidance.
-
-### Build context: Feature spec
-
-- **P0** (must have): MAX 2 features
-- **P1** (after P0 works): MAX 2 features
-- **P2** (nice to have): MAX 1 feature
-
-Each feature: **name** + **behavior** (one line, specific: "Google OAuth login · session persistence · logout" not "auth")
-
-**User story**: "As a [who], I want [action], so that [value]."
-**Scope cuts** (mandatory): 2-3 specific things NOT to build.
-**Success metric**: One measurable thing ("5 people use it daily for a week" not "users love it").
-
-## Step 3: Key Assumptions (2-4)
-
-What must be TRUE for this to work? Each with importance, confidence, and if_wrong.
-
-Merge from /reframe: every doubtful/uncertain assumption MUST appear here, marked `← reframe`.
-
-## Step 4: Personas → /rehearse
-
-### Decide: 3 stakeholder personas
-
-**Diversity rule:**
-1. Reporting audience — receives the deliverable
-2. Gatekeeper — controls resources/approval
-3. Domain expert — knows if this is realistic
-
-Each with: name, role, influence, decision_style, risk_tolerance, primary_concern, blocking_condition, success_metric.
-
-### Build: 2 user personas
-
-1. **Target User** — name, context, current_solution (specific!), switch_threshold, dealbreaker
-2. **Skeptic** — name, context, alternative (specific!), objection
-
-## Output
-
-### Decide context:
-
----
-
-**Overture · Recast** — 실행 설계
-
-**▸** [governing idea]
-
-[situation] → [complication]
-[approach]: [resolution]
-
----
-
-**실행 계획**
-
-| # | Actor | Task | Deliverable | Mark |
-|---|-------|------|-------------|------|
-| 1 | 🧑 | [task] | [deliverable] | ⚑ |
-| 2 | 🤖 | [task] | [deliverable] | |
-| 3 | ⚡ | [task] | [deliverable] | ★ |
-
-⚑ checkpoint · ★ critical
-
-For ⚡ Both: `> AI: [scope] / Human: [scope]`
-
----
-
-**전제**
+**역할 분포:** 🤖 AI [N]개 · 🧑 사람 [N]개 · ⚡ 둘 다 [N]개
 
 ```diff
-+ ✓ [confirmed] — importance: H, confidence: H
-- ? [uncertain] — importance: M, confidence: L  ← reframe
-- ✗ [doubtful] — importance: H, confidence: L  ← reframe
+- ⚠️ [자동 분석에서 발견된 역할 배분 문제점 — 예: "3단계 고객 검증을 AI 단독으로 하면 진짜 고객 반응을 놓칠 수 있다"]
 ```
 
 ---
 
-**사전 검증 대상** → /rehearse
-
-1. **[Name]** — [Role]: [primary concern]
-2. **[Name]** — [Role]: [primary concern]
-3. **[Name]** — [Role]: [primary concern]
+> 각 단계를 하나씩 검토하겠다. 내가 질문하면 답해달라.
 
 ---
 
-`Next? 1 /rehearse · 2 edit · 3 save · ← 0`
+## Step 2: 4-Question 역할 검토 (AskUserQuestion)
+
+**핵심 가치: 이 단계가 /recast의 존재 이유.**
+
+모든 단계를 한번에 묻지 않는다. **가장 판단이 애매한 1-2개 단계**부터 시작.
+
+### 검토 대상 선정 기준:
+- ⚡ Both로 배정된 단계 (역할 경계 모호)
+- 🤖 AI인데 판단/정치 요소가 있는 단계
+- 🧑 사람인데 AI가 80%는 할 수 있는 단계
+
+### 각 단계에 대해 AskUserQuestion:
+
+**예시 — "시장 조사" 단계:**
+
+- question: "[단계명] — 이건 누가 해야 할까? 4가지 기준으로 판단해보자."
+- header: "역할 판단"
+- options:
+  - label: "🤖 AI가 해도 됨", description: "내부 지식/정치 불필요, 틀려도 수정 가능, 판단보다 실행"
+  - label: "🧑 사람이 해야 함", description: "내부 맥락·정치 필요, 또는 틀리면 되돌릴 수 없음"
+  - label: "⚡ 둘 다", description: "AI가 초안, 사람이 검증/판단"
+
+사용자가 선택하면, 선택 이유를 한 줄로 기록하고 다음 단계로.
+
+**2-3개 단계를 검토한 후**, 나머지는 자동 배정 유지하고 전체 결과를 보여준다.
+
+### 4-Question Framework (내부 판단 기준 — 사용자에게 직접 노출하지 않고 AI가 옵션 설명에 반영):
+
+1. **내부/정치적 지식 필요?** → 조직 내 역학, 승인 라인, 비공식 권력 구조 → 🧑
+2. **주관적/전략적 판단?** → "이게 맞다/아니다"의 판단이 사람 경험에 의존 → 🧑
+3. **틀렸을 때 비용이 크고 되돌릴 수 없음?** → 한 번 잘못되면 복구 불가 → 🧑 or ⚡
+4. **특정인이 책임져야 함?** → "누가 판단했어?"에 답할 수 있어야 → 🧑
+→ 4개 모두 아님 → 🤖 AI
+
+## Step 3: 재설계 결과 출력
 
 ---
 
-### Build context:
+**Overture · Recast** — 역할 재설계 완료
 
----
+**재설계된 실행 계획:**
 
-**Overture · Recast** — 실행 설계
+| # | 단계 | 담당 | 산출물 | 판단 근거 |
+|---|------|------|--------|----------|
+| 1 | [단계] | 🤖 AI | [산출물] | [왜 AI] |
+| 2 | [단계] | 🧑 사람 ⚑ | [산출물] | [왜 사람 — 체크포인트] |
+| 3 | [단계] | ⚡ 둘 다 | [산출물] | AI: [범위] / 사람: [범위] |
+| 4 | [단계] | 🤖 AI | [산출물] | [왜 AI] |
+
+⚑ = 사람 체크포인트 (다음 단계 진행 전 승인 필요)
+
+**변경 사항:**
 
 ```diff
-+ ▸ [product thesis]
+- [이전: 단계 X를 AI 단독]
++ [이후: 단계 X를 사람+AI 협업 — 이유: ...]
 ```
 
-**User Story:** [As a ... I want ... so that ...]
-
----
-
-**MVP**
-
-| # | Feature | Behavior |
-|---|---------|----------|
-| P0 | [feature] | [behavior] |
-| P0 | [feature] | [behavior] |
-| P1 | [feature] | [behavior] |
-| P2 | [feature] | [behavior] |
-
-**✂ Scope Cuts:** [cut] · [cut] · [cut]
-
----
-
-**전제**
+**역할 분포 변화:**
 
 ```diff
-+ ✓ [confirmed]
-- ? [uncertain]  ← reframe
+- Before: 🤖 3 · 🧑 1 · ⚡ 1
++ After:  🤖 2 · 🧑 2 · ⚡ 1
 ```
 
 ---
 
-**사용자 검증** → /rehearse
+**핵심 원칙이 지켜졌는가:**
 
-- 🎯 **[Name]** — [context]: [current_solution]
-- 🤨 **[Name]** — [context]: "[objection]"
+```diff
++ ✓ 되돌릴 수 없는 결정에 사람 체크포인트 있음
++ ✓ 내부 지식이 필요한 단계에 사람 배정
+- ? [아직 모호한 점 — 있다면]
+```
+
+> 💡 [역할 설계에서 발견된 인사이트 — 예: "AI가 시장 조사를 하되, 경쟁사 전략의 '의도' 해석은 사람이 해야 한다. 숫자는 AI가 빠르지만 숫자 뒤의 맥락은 사람만 읽는다."]
 
 ---
 
-**성공 기준** = [metric]
+## Step 4: 다음 행동
 
-`Next? 1 /rehearse · 2 edit · 3 save · ← 0`
+AskUserQuestion:
+
+- question: "재설계된 계획으로 무엇을 할까?"
+- header: "다음"
+- options:
+  - label: "이걸로 진행", description: "저장하고 실행 시작"
+  - label: "판단자 반응 보기", description: "/rehearse로 이 계획을 검증"
+  - label: "다시 조정", description: "특정 단계의 역할을 바꾸고 싶다"
 
 ---
 
-**Implementation Prompt** (Build only, after card):
+## Build context 모드
 
-> **✦ 이 프롬프트를 Cursor/Claude Code에 붙여넣으세요:**
->
-> Build a [type] that [thesis].
-> Target user: [who]
-> Core features:
-> - [P0]: [behavior]
-> - [P0]: [behavior]
-> Then add:
-> - [P1]: [behavior]
-> Do NOT build: [scope cuts]
-> Constraints:
-> - [from assumption/persona]
-> Success = [metric]
+계획이 아니라 **제품을 만드는 상황**이면 (Build context 감지 시), 역할 설계 대신 **feature spec 모드**로 전환:
 
-## Quick actions
+- P0/P1/P2 feature spec 생성
+- User story
+- Scope cuts
+- Success metric
+- Implementation prompt
 
-- `1` → save + launch /rehearse
-- `2` → edit (show: a. thesis, b. steps/features, c. personas, d. scope cuts)
-- `3` → save and stop
-- `0` → back to /reframe with insights
-- Anything else → respond naturally
+(기존 Build context 출력 유지 — 이 경우 역할 검토 프레임워크는 적용하지 않음)
+
+---
 
 ## Rendering rules
 
-- Markdown sections separated by `---`. NOT a single code block.
+- Markdown sections separated by `---`.
 - **No box drawing.** Use `---`, `**bold**`, whitespace.
 - **No fixed width.** Markdown auto-wraps.
-- **diff = color tool.** `+` confirmed (green), `-` risk (red). Max 3 per output.
-- No academic citations.
+- **diff = color.** `+` confirmed (green), `-` risk (red). Max 3 per output.
+- Actor emoji: 🤖 AI, 🧑 사람, ⚡ 둘 다
+- ⚑ = 체크포인트 (사람 승인 필요)
 
 ## Auto-save
 
-Save to `.overture/recast.md` when user approves:
-- Top: shareable content
-- Bottom after `---`: Context Contract (all fields for /rehearse)
-
-**Contract must include ALL persona fields** — /rehearse reproduces them exactly.
+Save to `.overture/recast.md`:
+- Top: 재설계된 실행 계획 (human-readable)
+- Bottom after `---`: Context Contract (all persona fields for /rehearse)
 
 ## Journal
 
-Append to `.overture/journal.md`:
-
 ```
 ## [date] /recast — [topic, ≤5 words]
-- Context: [build|decide]
-- Goal: "[governing idea]"
-- Steps: [N] | AI: [M]% / Human: [K]%
-- Key assumptions: [N] ([M] from reframe)
-- Pipeline: reframe ✓ → recast ✓ → rehearse · refine
+- Input: [새 계획 | 기존 계획 재설계 | /overture 후속]
+- Steps: [N] | 🤖 [M] · 🧑 [K] · ⚡ [L]
+- Changes: [N]개 역할 변경
+- Key insight: [1줄]
 ```
-
-## Returning users
-
-Check journal. If previous /recast in same topic area:
-> 💭 관련 이전 분석: [date] "[topic]" — [key learning]
-
-## Rules
-
-- If the plan mirrors exactly what user described, you haven't added value. Challenge something.
-- At least one step must have a human checkpoint.
-- The governing idea must be falsifiable.
-- Self-check: Would this make the user rethink anything?
-
-**Skeleton quality (from progressive engine):**
-- Each item = ACTIONABLE, not vague category
-- Good: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
-- Bad: "시장 분석" (too vague)
-- 사용자가 copy-paste해서 바로 채울 수 있는 수준
-
-**Feature behavior rule (Build context):**
-- "Google OAuth login · session persistence · logout" (specific behavior)
-- NOT "auth" (label only)

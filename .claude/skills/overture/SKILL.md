@@ -210,12 +210,28 @@ Skip rounds whose answers are already clear from input.
 
 ### After round 2+: Include execution plan
 
-```
-실행 계획:
-1. [할 일] — 담당: AI/사람/둘 다 — 산출물: [구체적]
-2. [할 일] — 담당: [누구] — 산출물: [구체적]
-3. ...
-```
+실행 계획을 포함하되, 각 단계에 담당자를 자동 배정한다:
+
+1. **[할 일]** — 담당: 🤖 AI — 산출물: [구체적]
+2. **[할 일]** — 담당: 🧑 사람 — 산출물: [구체적]
+3. **[할 일]** — 담당: ⚡ 둘 다 — 산출물: [구체적]
+
+실행 계획을 보여준 직후, AskUserQuestion으로 역할 설계 깊이를 선택:
+
+- question: "AI/사람 역할 배분을 더 세밀하게 설계할까?"
+- header: "역할 설계"
+- options:
+  - label: "이대로 충분", description: "자동 배분으로 진행"
+  - label: "세밀하게 설계", description: "각 단계별로 4가지 기준으로 검토"
+
+If "세밀하게 설계" → 각 단계에 대해 4-question framework 적용:
+1. 내부/정치적 지식이 필요한가? → 🧑 사람
+2. 주관적/전략적 판단인가? → 🧑 사람
+3. 틀렸을 때 비용이 크고 되돌릴 수 없는가? → 🧑 or ⚡
+4. 특정 누군가가 책임져야 하는가? → 🧑 사람
+→ 4개 다 아니면 → 🤖 AI
+
+결과를 반영하여 실행 계획 업데이트 후 다음 질문으로 진행.
 
 After showing the updated analysis, **use AskUserQuestion for the next question**. Never type questions as plain text — always use the tool.
 
