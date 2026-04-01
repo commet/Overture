@@ -139,3 +139,21 @@
 - Sharpest critique: "숫자를 던졌으면 뒷받침이 있어야지. '왜 우리인가'가 아직 아무 회사나 할 수 있는 말이야."
 - Strength: Go/No-Go 기준을 수치로 정의하고 "하지 않는다"도 옵션에 포함
 - Growth edge: "왜 우리인가"의 구체성 — 추상적 강점이 아니라 기술 자산 레벨로 내려가야 설득됨
+
+## 2026-04-01 /overture — Overture 타겟 피벗
+- Context: decide
+- Judge: self (1인 프로젝트)
+- Problem: "사업 방향 전환 — 제품 라인 피벗, 사용자 반응이 미지근"
+- Reframed: "카테고리를 바꿔야 하나, 타겟을 바꿔야 하나? → 둘 다. 타겟 검증이 먼저."
+- Rounds: 3 (피벗 동기 + 미지근의 정체 + 타겟 방향)
+- Score: DQ 76
+- Assumptions: 2 confirmed, 2 uncertain, 2 doubtful
+  - ✗ PM이 AI 기획 검증에 자존심 저항 없이 쓸 것
+  - ✗ Claude Code 사용자 중 PM이 충분히 있을 것
+  - ? "기획 검증 도구" 포지셔닝이 전환율 개선할지
+  - ? PM vs 개발자 중 어느 쪽이 더 절실한지
+- Simulation: 까다로운 조언자, 2 critical, 1 important, 0 minor
+- Fixes applied: 3 of 3
+- Sharpest critique: "Claude Code 쓰는 PM이 얼마나 되는데?"
+- Strength: 근본 진단 — "카테고리 인식 부재"를 METR RCT와 연결하여 구조적으로 설명
+- Growth edge: 종화 피드백("기획하라고 된 개발자")을 건너뛰고 PM을 선택한 판단 — 검증 전에 직감으로 타겟을 고르는 패턴 반복
