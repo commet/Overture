@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import {
@@ -448,6 +448,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
 
   const phase = session?.phase ?? 'input';
@@ -477,11 +479,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: curQ, answer: ans });
       if (!dm && round === 0) { const g = value.includes('대표') ? '대표님' : value.includes('팀장') ? '팀장님' : value.includes('투자') ? '투자자' : null; if (g) store.setDecisionMaker(g); }
-      const r = await runDeepening(session.problem_text, latest, qa, round, maxR);
+      abortRef.current = new AbortController();
+      setStreamingText('');
+      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, (text) => setStreamingText(text), abortRef.current.signal);
+      setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
       r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
-    } catch (e) { setError(e instanceof Error ? e.message : '분석 실패'); store.setPhase('conversing'); }
-    finally { setBusy(false); scroll(); }
+    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '분석 실패'); store.setPhase('conversing'); }
+    finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
   const onMix = async () => {
@@ -506,10 +511,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: { id: 's', text: '더?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: '한 가지 더 확인' } });
-      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2);
+      abortRef.current = new AbortController();
+      setStreamingText('');
+      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, (text) => setStreamingText(text), abortRef.current.signal);
+      setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
-    } catch (e) { setError(e instanceof Error ? e.message : '실패'); store.setPhase('conversing'); setShowMix(true); }
-    finally { setBusy(false); scroll(); }
+    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '실패'); store.setPhase('conversing'); setShowMix(true); }
+    finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
   const onSkip = () => {
@@ -555,9 +563,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
 
-          {phase === 'analyzing' && snapshots.length === 0 && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '숨겨진 전제를 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
-          {phase === 'analyzing' && snapshots.length > 0 && <LoadingState text="답변을 반영해서 업데이트 중..." />}
+          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '숨겨진 전제를 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
+          {phase === 'analyzing' && snapshots.length > 0 && !streamingText && <LoadingState text="답변을 반영해서 업데이트 중..." />}
           {phase === 'mixing' && <LoadingState text="조합 중..." steps={['분석을 종합하고 있습니다...', '문서를 구성하는 중...', '마무리 중...']} />}
+
+          {/* Streaming text display — shows AI thinking in real-time */}
+          {streamingText !== null && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="space-y-2">
+              <div className="px-5 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] max-h-[200px] overflow-y-auto">
+                <p className="text-[13px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">{streamingText || '분석 시작...'}</p>
+              </div>
+              <div className="flex justify-center">
+                <button onClick={() => abortRef.current?.abort()} className="text-[11px] text-[var(--text-tertiary)] hover:text-red-500 transition-colors cursor-pointer px-3 py-1 rounded-lg border border-transparent hover:border-red-200">취소</button>
+              </div>
+            </motion.div>
+          )}
 
           {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} />}
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}

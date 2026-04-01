@@ -252,7 +252,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
     try {
       const result = await callLLMJson<Record<string, unknown>>(
         [{ role: 'user', content: freeText }],
-        { system: STRUCTURE_PROMPT, maxTokens: 1000 }
+        { system: STRUCTURE_PROMPT, maxTokens: 1000, shape: { extracted_traits: 'array' } }
       );
       setForm({
         name: (result.name as string) || '',
@@ -287,7 +287,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       const text = await file.text();
       const result = await callLLMJson<Record<string, unknown>>(
         [{ role: 'user', content: text }],
-        { system: FILE_ANALYZE_PROMPT, maxTokens: 1000 }
+        { system: FILE_ANALYZE_PROMPT, maxTokens: 1000, shape: { extracted_traits: 'array' } }
       );
       setForm({
         name: (result.name as string) || '',

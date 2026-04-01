@@ -219,7 +219,7 @@ export async function runWorkflowReview(
       const prompt = lens.buildPrompt(ctx);
       const output = await callLLMJson<ReviewOutput>(
         [{ role: 'user', content: '위 워크플로우를 검토해주세요.' }],
-        { system: prompt, maxTokens: 1200 }
+        { system: prompt, maxTokens: 1200, shape: { findings: 'array' } }
       );
       return {
         lens: lens.id,

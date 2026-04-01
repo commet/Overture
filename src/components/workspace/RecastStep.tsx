@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { ShareBar } from '@/components/ui/ShareBar';
 import { recastToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
+import { toDisplayError, isAuthError } from '@/lib/error-display';
 import type { RecastAnalysis, RecastItem, ReframeItem, Persona, ActorRelationship } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -28,7 +29,7 @@ import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline'
 import { t } from '@/lib/i18n';
 import { recordSignal, getSignals } from '@/lib/signal-recorder';
 import { autoPersonaToFull } from '@/lib/auto-persona';
-import { recordRecastEval } from '@/lib/eval-engine';
+const lazyEvalEngine = () => import('@/lib/eval-engine');
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Users } from 'lucide-react';
 
@@ -339,7 +340,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
         // JSON parse failed — fall back to non-streaming call
         analysis = await callLLMJson<RecastAnalysis>(
           [{ role: 'user', content: finalPrompt }],
-          { system: systemPrompt, maxTokens: 3500 }
+          { system: systemPrompt, maxTokens: 3500, shape: { governing_idea: 'string', steps: 'array', key_assumptions: 'array', critical_path: 'array' } }
         );
       }
 
@@ -387,8 +388,12 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
       setIsStreaming(false);
       setStreamingText('');
       trackError('recast_analyze', err);
-      const msg = err instanceof Error ? err.message : '';
-      setError(msg.startsWith('LOGIN_REQUIRED:') ? 'LOGIN_REQUIRED' : (msg || '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.'));
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setError('LOGIN_REQUIRED');
+      } else {
+        setError(de.message || '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
+      }
       updateItem(id, { status: 'input' });
     }
   };
@@ -405,7 +410,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
       has_reviews: !!(current?.analysis?.reviews?.length),
       ai_limitation_warnings: current?.analysis?.ai_limitation_warnings?.length || 0,
     });
-    if (current) { const oc = useJudgmentStore.getState().judgments.filter(j => j.type === 'actor_override' && j.project_id === current.project_id).length; recordRecastEval(current, oc); }
+    if (current) { const oc = useJudgmentStore.getState().judgments.filter(j => j.type === 'actor_override' && j.project_id === current.project_id).length; lazyEvalEngine().then(m => m.recordRecastEval(current, oc)); }
     if (settings.audio_enabled) {
       resumeAudioContext();
       playSuccessTone(settings.audio_volume);

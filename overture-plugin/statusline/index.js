@@ -200,6 +200,8 @@ function parseTranscriptQuality(transcriptPath) {
     pushback: { reframed: false, blindSpotsFound: false, planChanged: false },
     risks: { critical: 0, unspoken: 0 },
     personaNames: [],
+    decisionMaker: null,
+    projectName: null,
   };
 
   if (!transcriptPath || !existsSync(transcriptPath)) return result;
@@ -244,6 +246,31 @@ function parseTranscriptQuality(transcriptPath) {
       // Detect stage from card headers
       const hm = t.match(/Overture\s*·\s*(Reframe|Recast|Rehearse|Refine)/i);
       if (hm) result.currentStage = hm[1].toLowerCase();
+
+      // Extract decision maker (DM / 판단자)
+      if (!result.decisionMaker) {
+        const dmm =
+          t.match(/판단자\s*[:：]\s*([^\n,·|]{2,30})/i) ||
+          t.match(/Decision[\s-]?[Mm]aker\s*[:：]\s*([^\n,·|]{2,30})/i) ||
+          t.match(/\bDM\s*[:：]\s*([^\n,·|]{2,30})/i) ||
+          t.match(/persona_name["']?\s*:\s*["']([^"'\n]{2,30})/i);
+        if (dmm) {
+          const raw = dmm[1].trim().split(/[\n·|,]/)[0].trim();
+          if (raw.length >= 2) result.decisionMaker = truncate(raw, 25);
+        }
+      }
+
+      // Extract project name
+      if (!result.projectName) {
+        const pnm =
+          t.match(/프로젝트\s*[:：]\s*([^\n·|]{2,40})/i) ||
+          t.match(/Project\s*[:：]\s*([^\n·|]{2,40})/i) ||
+          t.match(/\*\*([^*\n]{3,40})\*\*\s*\n.*(?:Overture|Reframe|판단)/i);
+        if (pnm) {
+          const raw = pnm[1].trim().split(/[\n·|]/)[0].trim();
+          if (raw.length >= 2) result.projectName = truncate(raw, 35);
+        }
+      }
 
       // Count assumption evaluations (from reframe cards and tables)
       const confMatches = (t.match(/✓/g) || []).length;
@@ -449,19 +476,58 @@ function main() {
 
   const q = parseTranscriptQuality(stdin.transcript_path);
 
-  if (q.pipelineActive || q.currentStage) {
+  // Project name: prefer session_name from stdin, fall back to transcript parse
+  const sessionName = stdin.session_name || q.projectName || null;
+
+  if (q.pipelineActive || q.currentStage || sessionName) {
     const parts = [];
 
-    // Current stage indicator (compact, not the main info)
-    if (q.currentStage) {
-      const stageIcon = { reframe: "\uD83C\uDFAF", recast: "\uD83D\uDCCB", rehearse: "\uD83D\uDC65", refine: "\uD83D\uDD27" };
-      parts.push(`${stageIcon[q.currentStage] || "\u266B"} ${C.c}${q.currentStage}${R}`);
+    // Project / session name — anchors the user in the right decision context
+    if (sessionName) {
+      parts.push(`${C.w}${BOLD}${sessionName}${R}`);
     }
 
-    // Live assumption health
+    // Current stage indicator
+    if (q.currentStage) {
+      const stageLabel = {
+        reframe: "Reframe",
+        recast: "Recast",
+        rehearse: "Rehearse",
+        refine: "Refine",
+      };
+      const stageColor = {
+        reframe: C.b,
+        recast: C.c,
+        rehearse: C.m,
+        refine: C.g,
+      };
+      const sc = stageColor[q.currentStage] || C.c;
+      parts.push(`${sc}${stageLabel[q.currentStage] || q.currentStage}${R}`);
+    }
+
+    // Decision maker
+    if (q.decisionMaker) {
+      parts.push(`${C.d}DM:${R} ${C.y}${q.decisionMaker}${R}`);
+    }
+
+    // Assumption pattern label (confirmed / mixed / doubtful)
     const ac = q.assumptions;
-    if (ac.confirmed + ac.uncertain + ac.doubtful > 0) {
-      parts.push(`${C.g}${ac.confirmed}\u2713${R} ${C.y}${ac.uncertain}?${R} ${C.r}${ac.doubtful}\u2717${R}`);
+    const acTotal = ac.confirmed + ac.uncertain + ac.doubtful;
+    if (acTotal > 0) {
+      let patternLabel, patternColor;
+      const confPct = ac.confirmed / acTotal;
+      const doubtPct = ac.doubtful / acTotal;
+      if (doubtPct > 0.4) {
+        patternLabel = "doubtful";
+        patternColor = C.r;
+      } else if (confPct > 0.6) {
+        patternLabel = "confirmed";
+        patternColor = C.g;
+      } else {
+        patternLabel = "mixed";
+        patternColor = C.y;
+      }
+      parts.push(`${C.g}${ac.confirmed}\u2713${R}${C.y}${ac.uncertain}?${R}${C.r}${ac.doubtful}\u2717${R} ${patternColor}(${patternLabel})${R}`);
     }
 
     // Anti-sycophancy pushback score

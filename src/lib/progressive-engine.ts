@@ -110,7 +110,7 @@ export async function runInitialAnalysis(
       )
     : await callLLMJson<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000 },
+        { system, maxTokens: 2000, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
       );
 
   const snapshot: AnalysisSnapshot = {
@@ -146,6 +146,7 @@ export async function runDeepening(
   round: number,
   maxRounds: number,
   onToken?: (text: string) => void,
+  signal?: AbortSignal,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion | null;
@@ -158,12 +159,12 @@ export async function runDeepening(
   const result = onToken
     ? await callLLMStreamThenParse<DeepeningResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 3000 },
+        { system, maxTokens: 3000, signal },
         onToken,
       )
     : await callLLMJson<DeepeningResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 3000 },
+        { system, maxTokens: 3000, signal, shape: { insight: 'string', real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', ready_for_mix: 'boolean' } },
       );
 
   const snapshot: AnalysisSnapshot = {
@@ -208,7 +209,7 @@ export async function runMix(
 
   const result = await callLLMJson<MixResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 4000 },
+    { system, maxTokens: 4000, shape: { title: 'string', executive_summary: 'string', sections: 'array', key_assumptions: 'array', next_steps: 'array' } },
   );
 
   return {
@@ -232,7 +233,7 @@ export async function runDMFeedback(
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 2500 },
+    { system, maxTokens: 2500, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
   );
 
   return {
@@ -271,7 +272,7 @@ export async function runFinalDeliverable(
 
   const result = await callLLMJson<FinalResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 4000 },
+    { system, maxTokens: 4000, shape: { title: 'string', executive_summary: 'string', sections: 'array' } },
   );
 
   const finalMix: MixResult = {

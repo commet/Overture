@@ -10,7 +10,8 @@ import { PersonaCard } from '@/components/tools/PersonaCard';
 import { PersonaForm } from '@/components/tools/PersonaForm';
 import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
-import { callLLMJson, callLLM, callLLMParallel } from '@/lib/llm';
+import { callLLMJson, callLLM } from '@/lib/llm';
+import { toDisplayError, isAuthError } from '@/lib/error-display';
 import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
@@ -158,7 +159,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
         validPersonas.map(async ({ persona, systemPrompt }) => {
           const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
             [{ role: 'user', content: data.documentText }],
-            { system: systemPrompt, maxTokens: 2000 }
+            { system: systemPrompt, maxTokens: 2000, shape: { overall_reaction: 'string', classified_risks: 'array', praise: 'array', concerns: 'array', approval_conditions: 'array' } }
           );
           return { ...result, persona_id: persona.id } as RehearsalResult;
         })
@@ -171,6 +172,10 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
         } else if (process.env.NODE_ENV === 'development') {
           console.warn('[rehearse] 페르소나 피드백 실패:', outcome.reason);
         }
+      }
+
+      if (results.length === 0) {
+        throw new Error('모든 페르소나 피드백이 실패했습니다. 다시 시도해주세요.');
       }
 
       let synthesis = '';
@@ -211,7 +216,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
 - 영향력 높은 이해관계자의 우려를 priority "high"로
 - 핵심 위협(critical)과 침묵의 리스크(unspoken)를 우선 반영
 - 한국어로 작성
-- 반드시 JSON만 응답`, maxTokens: 1500 }
+- 반드시 JSON만 응답`, maxTokens: 1500, shape: { common_agreements: 'array', key_conflicts: 'array', priority_actions: 'array' } }
           );
           structured_synthesis = synthResult;
           synthesis = `공통 합의: ${synthResult.common_agreements.join(', ')}. 핵심 갈등: ${synthResult.key_conflicts.map(c => c.topic).join(', ')}.`;
@@ -277,7 +282,12 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       }
     } catch (err) {
       trackError('feedback_generate', err);
-      setFeedbackError('리허설을 진행할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setFeedbackError('LOGIN_REQUIRED');
+      } else {
+        setFeedbackError(de.message);
+      }
       setPhase('setup');
     } finally {
       setFeedbackLoading(false);
@@ -329,6 +339,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
 
 한국어로 작성하세요. 반드시 JSON만 응답하세요.`,
           maxTokens: 2500,
+          shape: { messages: 'array', key_takeaway: 'string' },
         }
       );
 
@@ -344,7 +355,8 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       });
       track('discussion_complete', { message_count: discussionResult.messages.length });
     } catch (err) {
-      alert('토론을 생성할 수 없었습니다. ' + (err instanceof Error ? err.message : ''));
+      const de = toDisplayError(err);
+      alert('토론을 생성할 수 없었습니다. ' + de.message);
     } finally {
       setDiscussionLoading(false);
     }

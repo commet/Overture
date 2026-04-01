@@ -9,7 +9,7 @@
  */
 
 import type { AnalysisSnapshot, FlowAnswer, FlowQuestion } from '@/stores/types';
-import { compactQAHistory, shouldCompact } from '@/lib/compact-context';
+import { compactQAHistory, shouldCompact, compactSnapshots } from '@/lib/compact-context';
 
 /** Strip XML-like tags from user input to prevent prompt injection. */
 function sanitize(text: string): string {
@@ -166,11 +166,13 @@ export function buildMixPrompt(
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
 ): { system: string; user: string } {
-  const latestSnapshot = snapshots[snapshots.length - 1];
+  const snapshotSummary = compactSnapshots(snapshots);
 
-  const qaHistory = questionsAndAnswers.map((qa, i) =>
-    `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
-  ).join('\n\n');
+  const qaHistory = shouldCompact(questionsAndAnswers)
+    ? compactQAHistory(questionsAndAnswers, 2)
+    : questionsAndAnswers.map((qa, i) =>
+        `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
+      ).join('\n\n');
 
   return {
     system: `You are assembling a final draft document. Korean only.
@@ -193,13 +195,7 @@ Rules:
     user: `원래 고민: <user-data>${sanitize(problemText)}</user-data>
 
 최종 분석:
-- 진짜 질문: ${latestSnapshot.real_question}
-- 전제: ${latestSnapshot.hidden_assumptions.join(' / ')}
-- 뼈대: ${latestSnapshot.skeleton.join('\n')}
-${latestSnapshot.execution_plan ? `
-실행계획:
-${latestSnapshot.execution_plan.steps.map((s, i) => `${i + 1}. ${s.task} (${s.who}) → ${s.output}`).join('\n')}
-핵심 가정: ${latestSnapshot.execution_plan.key_assumptions.join(' / ')}` : ''}
+${snapshotSummary}
 
 Q&A 전체:
 ${qaHistory}

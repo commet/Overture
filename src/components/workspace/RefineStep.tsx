@@ -13,6 +13,7 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ShareBar } from '@/components/ui/ShareBar';
 import { callLLMJson } from '@/lib/llm';
+import { toDisplayError, isAuthError } from '@/lib/error-display';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
 import type { FeedbackRecord, RehearsalResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefineLoop } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target } from 'lucide-react';
@@ -150,7 +151,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
         not_addressed: string[];
       }>(
         [{ role: 'user', content: revisionPrompt }],
-        { system: revisionSystem, maxTokens: 3500 }
+        { system: revisionSystem, maxTokens: 3500, shape: { revised_plan: 'string', changes: 'array' } }
       );
 
       // ── Phase B: Re-review with same personas ──
@@ -172,7 +173,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
           const systemPrompt = buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
           const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
             [{ role: 'user', content: reReviewContent }],
-            { system: systemPrompt, maxTokens: 2000 }
+            { system: systemPrompt, maxTokens: 2000, shape: { overall_reaction: 'string', classified_risks: 'array', praise: 'array', concerns: 'array', approval_conditions: 'array' } }
           );
           return { ...result, persona_id: personaId } as RehearsalResult;
         })
@@ -199,7 +200,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
         try {
           structured_synthesis = await callLLMJson<StructuredSynthesis>(
             [{ role: 'user', content: feedbackSummary }],
-            { system: `이해관계자 재리뷰 피드백을 종합하세요. JSON: {"common_agreements":["합의점"],"key_conflicts":[{"topic":"","positions":[{"persona_id":"","stance":""}]}],"priority_actions":[{"action":"","requested_by":"","priority":"high|medium"}]}. 한국어. JSON만.`, maxTokens: 1500 }
+            { system: `이해관계자 재리뷰 피드백을 종합하세요. JSON: {"common_agreements":["합의점"],"key_conflicts":[{"topic":"","positions":[{"persona_id":"","stance":""}]}],"priority_actions":[{"action":"","requested_by":"","priority":"high|medium"}]}. 한국어. JSON만.`, maxTokens: 1500, shape: { common_agreements: 'array', key_conflicts: 'array', priority_actions: 'array' } }
           );
           synthesis = `합의: ${structured_synthesis.common_agreements.join(', ')}`;
         } catch {
@@ -275,7 +276,12 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
       });
     } catch (err) {
       trackError('refine_iterate', err);
-      setError(err instanceof Error ? err.message : '개선안을 생성할 수 없었습니다.');
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setError('LOGIN_REQUIRED');
+      } else {
+        setError(de.message || '개선안을 생성할 수 없었습니다.');
+      }
     } finally {
       setIsRefining(false);
     }

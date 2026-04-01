@@ -123,3 +123,19 @@
 - Key change: product thesis "시간 절약" → "시니어 영향력 확장" + core feature "컨벤션 학습" → "리뷰어 판단 학습"
 - Sharpest critique resolved: "CodeRabbit+ESLint+Prettier면 90% 잡힌다" → 포지셔닝을 linter 영역에서 "리뷰어 판단 학습"으로 이동, 비교 축 자체를 전환
 - Pipeline: reframe ✓ → recast ✓ → rehearse ✓ → refine ✓
+
+## 2026-04-01 /overture — 신사업 기획안 2주
+- Context: decide
+- Judge: 대표님/CEO
+- Problem: "백엔드 개발자인데 대표님이 2주 안에 신사업 기획안을 써오라고 했어"
+- Reframed: "대표님이 이미 정한 영역에서, 지금 진입해야 하는 이유와 2주 안에 검증 가능한 것을 어떻게 분리해서 보여줄 것인가"
+- Rounds: 2 (판단자 + 신사업 범위)
+- Score: DQ 78
+- Assumptions: 2 confirmed, 2 uncertain, 1 doubtful
+  - ✗ 대표님이 원하는 건 완성된 기획안이다
+  - ? 2주 안에 의미 있는 검증이 가능한가
+- Simulation: 대표님, 2 critical, 1 important, 0 minor
+- Fixes applied: 3 of 3
+- Sharpest critique: "숫자를 던졌으면 뒷받침이 있어야지. '왜 우리인가'가 아직 아무 회사나 할 수 있는 말이야."
+- Strength: Go/No-Go 기준을 수치로 정의하고 "하지 않는다"도 옵션에 포함
+- Growth edge: "왜 우리인가"의 구체성 — 추상적 강점이 아니라 기술 자산 레벨로 내려가야 설득됨

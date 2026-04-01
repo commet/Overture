@@ -9,6 +9,7 @@ import { Field } from '@/components/ui/Field';
 import { ShareBar } from '@/components/ui/ShareBar';
 import { synthesizeToMarkdown } from '@/lib/export';
 import { callLLMJson } from '@/lib/llm';
+import { toDisplayError, isAuthError } from '@/lib/error-display';
 import type { SynthesizeAnalysis, SynthesizeSource } from '@/stores/types';
 import { InterviewInput, buildInterviewPrompt } from '@/components/ui/InterviewInput';
 import type { InterviewStep } from '@/components/ui/InterviewInput';
@@ -150,11 +151,16 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
     try {
       const analysis = await callLLMJson<SynthesizeAnalysis>(
         [{ role: 'user', content: userContent }],
-        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500 }
+        { system: buildEnhancedSystemPrompt(SYSTEM_PROMPT), maxTokens: 2500, shape: { sources_summary: 'array', agreements: 'array', conflicts: 'array', questions_for_user: 'array' } }
       );
       updateItem(id, { analysis, status: 'review' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 분석에 실패했습니다.');
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setError('LOGIN_REQUIRED');
+      } else {
+        setError(de.message || 'AI 분석에 실패했습니다.');
+      }
       updateItem(id, { status: 'input' });
     }
   };

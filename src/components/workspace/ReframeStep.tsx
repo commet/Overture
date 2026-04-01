@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ShareBar } from '@/components/ui/ShareBar';
 import { reframeToMarkdown } from '@/lib/export';
 import { callLLMJson, callLLMStream, parseJSON } from '@/lib/llm';
+import { toDisplayError, isAuthError } from '@/lib/error-display';
 import type { ReframeAnalysis, ReframeItem, ReframeHiddenQuestion, HiddenAssumption } from '@/stores/types';
 import { StepEntry } from '@/components/ui/StepEntry';
 import { LoadingSteps } from '@/components/ui/LoadingSteps';
@@ -27,7 +28,7 @@ import { buildReframeContext, extractInterviewSignals } from '@/lib/context-chai
 import { selectReframingStrategy, applyReframingStrategy, STRATEGY_LABELS, type ReframingStrategy } from '@/lib/reframing-strategy';
 import type { InterviewSignals } from '@/stores/types';
 import type { EntryStep } from '@/components/ui/StepEntry';
-import { recordReframeEval, getBestStrategy } from '@/lib/eval-engine';
+const lazyEvalEngine = () => import('@/lib/eval-engine');
 import { applyPromptMutations } from '@/lib/prompt-mutation';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
@@ -446,6 +447,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
     const signals = structuredSignals || extractInterviewSignals(finalPrompt) as InterviewSignals | undefined;
     let strategy: ReframingStrategy | null = null;
     if (signals) {
+      const { getBestStrategy } = await lazyEvalEngine();
       strategy = getBestStrategy(signals) || selectReframingStrategy(signals);
     }
     setCurrentStrategy(strategy);
@@ -494,7 +496,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
         // JSON parse failed — fall back to non-streaming call
         analysis = await callLLMJson<ReframeAnalysis>(
           [{ role: 'user', content: finalPrompt }],
-          { system: systemPrompt, maxTokens: 1200 }
+          { system: systemPrompt, maxTokens: 1200, shape: { surface_task: 'string', reframed_question: 'string', hidden_assumptions: 'array', hidden_questions: 'array' } }
         );
       }
 
@@ -533,11 +535,11 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       setIsStreaming(false);
       setStreamingText('');
       trackError('reframe_analyze', err);
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.startsWith('LOGIN_REQUIRED:')) {
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
         setError('LOGIN_REQUIRED');
       } else {
-        setError(msg || '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
+        setError(de.message || '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
       }
       updateItem(id, { status: 'input' });
     }
@@ -648,7 +650,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
         // JSON parse failed — fall back to non-streaming call
         reframingResult = await callLLMJson<Partial<ReframeAnalysis>>(
           [{ role: 'user', content: userMessage }],
-          { system: reframingPrompt, maxTokens: 1500 }
+          { system: reframingPrompt, maxTokens: 1500, shape: { reframed_question: 'string', hidden_assumptions: 'array' } }
         );
       }
 
@@ -667,7 +669,12 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       setIsStreaming(false);
       setStreamingText('');
       trackError('reframe_reframe', err);
-      setError(err instanceof Error ? err.message : '질문을 재정의할 수 없었습니다.');
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setError('LOGIN_REQUIRED');
+      } else {
+        setError(de.message || '질문을 재정의할 수 없었습니다.');
+      }
     } finally {
       setReframing(false);
     }
@@ -697,7 +704,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
     });
 
     // Phase 1: Record binary evals for strategy learning
-    recordReframeEval(current, currentStrategy);
+    lazyEvalEngine().then(m => m.recordReframeEval(current, currentStrategy));
 
     if (current?.analysis?.hidden_assumptions) {
       const assumptions = current.analysis.hidden_assumptions;
@@ -733,11 +740,16 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
         : current.input_text;
       const analysis = await callLLMJson<ReframeAnalysis>(
         [{ role: 'user', content: prompt }],
-        { system: buildEnhancedSystemPrompt(ASSUMPTION_PROMPT, current?.project_id), maxTokens: 1200 }
+        { system: buildEnhancedSystemPrompt(ASSUMPTION_PROMPT, current?.project_id), maxTokens: 1200, shape: { surface_task: 'string', reframed_question: 'string', hidden_assumptions: 'array', hidden_questions: 'array' } }
       );
       updateItem(currentId, { analysis, status: 'review' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : '악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.');
+      const de = toDisplayError(err);
+      if (isAuthError(err)) {
+        setError('LOGIN_REQUIRED');
+      } else {
+        setError(de.message || '악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.');
+      }
       updateItem(currentId, { status: 'review' });
     }
   };
