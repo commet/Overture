@@ -17,7 +17,7 @@ interface ExampleData {
   realQuestion: { tag: string; text: string };
   skeleton: string; // doc_type preview showing domain awareness
   pills: { label: string; value: string }[];
-  dm: { name: string; quote: string; action: { tag: string; text: string; link: string } };
+  judge: { name: string; quote: string; action: { tag: string; text: string; link: string } };
 }
 
 const EXAMPLES: ExampleData[] = [
@@ -34,7 +34,7 @@ const EXAMPLES: ExampleData[] = [
       { label: '누가 봐?', value: '대표님' },
       { label: '기한?', value: '2주' },
     ],
-    dm: {
+    judge: {
       name: '대표님은 뭐라고 할까?',
       quote: '방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.',
       action: { tag: '필수', text: '경쟁 분석 추가', link: '자동 반영' },
@@ -53,7 +53,7 @@ const EXAMPLES: ExampleData[] = [
       { label: '결정자?', value: '이사회' },
       { label: '핵심?', value: 'ROI' },
     ],
-    dm: {
+    judge: {
       name: '이사회는 뭐라고 할까?',
       quote: '요약이 너무 길어. 한 문장으로 줄여. 그리고 숫자가 어디 있어?',
       action: { tag: '필수', text: '1줄 요약 + 핵심 수치 추가', link: '자동 반영' },
@@ -72,7 +72,7 @@ const EXAMPLES: ExampleData[] = [
       { label: '목적?', value: '예산 확보' },
       { label: '설득?', value: 'CFO' },
     ],
-    dm: {
+    judge: {
       name: 'CFO는 뭐라고 할까?',
       quote: '디자인 얘기 말고. 이걸 하면 매출이 얼마나 느는지만 보여줘.',
       action: { tag: '필수', text: '매출 임팩트 수치화', link: '자동 반영' },
@@ -91,7 +91,7 @@ const EXAMPLES: ExampleData[] = [
       { label: '라운드?', value: 'Seed' },
       { label: '핵심?', value: 'Why now' },
     ],
-    dm: {
+    judge: {
       name: '투자자는 뭐라고 할까?',
       quote: '기술은 알겠어. 근데 이걸 왜 지금 해야 해? "Why now"이 안 보여.',
       action: { tag: '필수', text: 'Why now 섹션 강화', link: '자동 반영' },
@@ -255,7 +255,7 @@ function QAPills({ pills }: { pills: ExampleData['pills'] }) {
   );
 }
 
-function DMCard({ dm }: { dm: ExampleData['dm'] }) {
+function JudgeCard({ judge }: { judge: ExampleData['judge'] }) {
   return (
     <motion.div
       variants={cardVariants}
@@ -280,7 +280,7 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
               <path d="M5.5 14.5h5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </div>
-          <span className="text-[13px] font-semibold text-[var(--text-primary)]">{dm.name}</span>
+          <span className="text-[13px] font-semibold text-[var(--text-primary)]">{judge.name}</span>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 6 }}
@@ -289,7 +289,7 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
           className="text-[14px] text-[var(--text-primary)] italic leading-relaxed"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          &ldquo;{dm.quote}&rdquo;
+          &ldquo;{judge.quote}&rdquo;
         </motion.p>
         <motion.div
           initial={{ opacity: 0, x: -6 }}
@@ -297,9 +297,9 @@ function DMCard({ dm }: { dm: ExampleData['dm'] }) {
           transition={{ delay: 0.5, duration: 0.3, ease: EASE }}
           className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border-subtle)]"
         >
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{dm.action.tag}</span>
-          <span className="text-[11px] text-[var(--text-secondary)]">{dm.action.text}</span>
-          <span className="text-[11px] text-[var(--accent)] font-medium">&rarr; {dm.action.link}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{judge.action.tag}</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">{judge.action.text}</span>
+          <span className="text-[11px] text-[var(--accent)] font-medium">&rarr; {judge.action.link}</span>
         </motion.div>
       </div>
     </motion.div>
@@ -490,7 +490,7 @@ export function Hero() {
                 >
                   <AnalysisCard data={currentExample} />
                   <QAPills pills={currentExample.pills} />
-                  <DMCard dm={currentExample.dm} />
+                  <JudgeCard judge={currentExample.judge} />
                 </motion.div>
               </AnimatePresence>
             </div>
