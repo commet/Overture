@@ -331,10 +331,10 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
 function MixPreview({ mix, dm, onDM, onSkip, busy }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
-      <div className="rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
-        <div className="rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
+        <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
-          <div className="p-8 md:p-10 space-y-6">
+          <div className="p-5 md:p-10 space-y-6">
             <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">초안</span>
             <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{mix.title}</h2>
             <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[15px] text-[var(--text-secondary)] italic leading-relaxed">{mix.executive_summary}</blockquote>
@@ -375,9 +375,9 @@ function MixPreview({ mix, dm, onDM, onSkip, busy }: { mix: MixResult; dm: strin
 function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/types').DMFeedbackResult; onToggle: (i: number) => void; onFinalize: () => void; busy: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
-      <div className="rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
-        <div className="rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          <div className="p-8 md:p-10 space-y-6">
+      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
+        <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+          <div className="p-5 md:p-10 space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[var(--accent)]/8 flex items-center justify-center"><UserCheck size={18} className="text-[var(--accent)]" /></div>
               <div><p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p><p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p></div>
@@ -395,14 +395,14 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
                 {fb.concerns.map((c: DMConcern, i: number) => (
                   <div key={i} className={`rounded-2xl border p-4 transition-all duration-500 ${c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'}`}
                     style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 ${c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
+                    <div>
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
                           {c.severity === 'critical' ? '필수' : c.severity === 'important' ? '권장' : '참고'}</span>
-                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed mb-1">{c.text}</p>
-                        <p className="text-[12px] text-[var(--accent)] leading-relaxed">→ {c.fix_suggestion}</p>
+                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 pt-1">
+                      <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">→ {c.fix_suggestion}</p>
+                      <div className="flex items-center justify-end gap-2">
                         <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? '반영' : '스킵'}</span>
                         <button onClick={() => onToggle(i)} className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
                           style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
@@ -443,8 +443,8 @@ function FinalCard({ content }: { content: string }) {
   const copy = async () => { await navigator.clipboard.writeText(content); setCopied(true); track('flow_copy', {}); setTimeout(() => setCopied(false), 2000); };
   return (
     <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
-      <div className="rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
-        <div className="rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
+      <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
+        <div className="rounded-[calc(1rem-2px)] md:rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
           <div className="h-[3px]" style={{ background: 'var(--gradient-gold)' }} />
           <div className="px-7 py-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
@@ -456,7 +456,7 @@ function FinalCard({ content }: { content: string }) {
               {copied ? <><CheckCheck size={12} /> 복사됨</> : <><Copy size={12} /> 복사</>}
             </motion.button>
           </div>
-          <div className="p-8 md:p-10 space-y-1">{renderMd(content)}</div>
+          <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
         </div>
       </div>
     </motion.div>
