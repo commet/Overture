@@ -1,76 +1,349 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { StaffLines, TrebleClef } from '@/components/ui/MusicalElements';
 import { track } from '@/lib/analytics';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Code2, BarChart3, Palette, Rocket } from 'lucide-react';
 
-/* ─── Auto-typing placeholder examples ─── */
-const EXAMPLES = [
-  '나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어',
-  'PM인데 전략 제안서를 내일까지 내야 하는데 어디서 시작하지',
-  '디자이너인데 비즈니스 케이스를 만들라고 했다. ROI가 뭐지.',
-  '스타트업 CTO인데 투자자 피치덱을 혼자 만들어야 한다',
+/* ─── Example Data ─── */
+interface ExampleData {
+  input: string;
+  persona: string;
+  icon: React.ReactNode;
+  realQuestion: { tag: string; text: string };
+  pills: { label: string; value: string }[];
+  dm: { name: string; quote: string; action: { tag: string; text: string; link: string } };
+}
+
+const EXAMPLES: ExampleData[] = [
+  {
+    input: '나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어',
+    persona: '개발자',
+    icon: <Code2 size={13} />,
+    realQuestion: {
+      tag: '진짜 질문',
+      text: '기획안의 형식이 아니라,\n대표님이 확인하고 싶은 것이 뭔지가 먼저다.',
+    },
+    pills: [
+      { label: '누가 봐?', value: '대표님' },
+      { label: '기한?', value: '2주' },
+    ],
+    dm: {
+      name: '대표님은 뭐라고 할까?',
+      quote: '방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.',
+      action: { tag: '필수', text: '경쟁 분석 추가', link: '자동 반영' },
+    },
+  },
+  {
+    input: 'PM인데 전략 제안서를 내일까지 내야 하는데 어디서 시작하지',
+    persona: 'PM',
+    icon: <BarChart3 size={13} />,
+    realQuestion: {
+      tag: '진짜 질문',
+      text: '제안서가 아니라,\n의사결정자가 YES라고 할 조건이 뭔지가 먼저다.',
+    },
+    pills: [
+      { label: '결정자?', value: '이사회' },
+      { label: '핵심?', value: 'ROI' },
+    ],
+    dm: {
+      name: '이사회는 뭐라고 할까?',
+      quote: '숫자는 있는데 스토리가 없어. 왜 지금 해야 하는지 한 줄이면 됨.',
+      action: { tag: '필수', text: '"왜 지금" 내러티브 추가', link: '자동 반영' },
+    },
+  },
+  {
+    input: '디자이너인데 비즈니스 케이스를 만들라고 했다. ROI가 뭐지.',
+    persona: '디자이너',
+    icon: <Palette size={13} />,
+    realQuestion: {
+      tag: '진짜 질문',
+      text: 'ROI 계산이 아니라,\n디자인이 매출에 영향을 준 증거가 필요하다.',
+    },
+    pills: [
+      { label: '목적?', value: '예산 확보' },
+      { label: '설득?', value: 'CFO' },
+    ],
+    dm: {
+      name: 'CFO는 뭐라고 할까?',
+      quote: '감성적 호소는 빼고, A/B 테스트 수치 하나만 넣으면 설득력이 2배.',
+      action: { tag: '필수', text: '전환율 데이터 추가', link: '자동 반영' },
+    },
+  },
+  {
+    input: '스타트업 CTO인데 투자자 피치덱을 혼자 만들어야 한다',
+    persona: 'CTO',
+    icon: <Rocket size={13} />,
+    realQuestion: {
+      tag: '진짜 질문',
+      text: '기술 스택이 아니라,\n왜 이 팀이 이걸 할 수 있는지가 먼저다.',
+    },
+    pills: [
+      { label: '라운드?', value: 'Seed' },
+      { label: '핵심?', value: 'Why now' },
+    ],
+    dm: {
+      name: '투자자는 뭐라고 할까?',
+      quote: 'TAM 숫자 좋은데, 경쟁사 섹션이 너무 약해. 구체적 해자를 넣어.',
+      action: { tag: '필수', text: '경쟁 우위 구체화', link: '자동 반영' },
+    },
+  },
 ];
 
-function useAutoType(examples: string[], speed = 45, pause = 3000) {
+/* ─── Auto-typing hook (exposes index) ─── */
+function useAutoType(examples: ExampleData[], speed = 45, pause = 2800) {
   const [display, setDisplay] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
-  const idxRef = useRef(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [userStopped, setUserStopped] = useState(false);
+  const phaseRef = useRef<'typing' | 'pausing' | 'clearing'>('typing');
   const charRef = useRef(0);
-  const activeRef = useRef(true); // tracks if user has focused the input
+  const idxRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const jumpTo = useCallback((idx: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    idxRef.current = idx;
+    charRef.current = 0;
+    phaseRef.current = 'typing';
+    setCurrentIdx(idx);
+    setDisplay('');
+    setUserStopped(false);
+  }, []);
 
   useEffect(() => {
-    if (!activeRef.current) return;
+    if (userStopped) return;
 
     const tick = () => {
-      if (!activeRef.current) return;
+      const current = examples[idxRef.current].input;
 
-      const current = examples[idxRef.current];
-
-      if (isTyping) {
+      if (phaseRef.current === 'typing') {
         if (charRef.current <= current.length) {
           setDisplay(current.slice(0, charRef.current));
           charRef.current++;
-          return speed;
+          timerRef.current = setTimeout(tick, speed);
         } else {
-          setIsTyping(false);
-          return pause;
+          phaseRef.current = 'pausing';
+          timerRef.current = setTimeout(tick, pause);
         }
+      } else if (phaseRef.current === 'pausing') {
+        phaseRef.current = 'clearing';
+        timerRef.current = setTimeout(tick, 400);
       } else {
-        // Move to next example
-        idxRef.current = (idxRef.current + 1) % examples.length;
+        // clearing → next
+        const nextIdx = (idxRef.current + 1) % examples.length;
+        idxRef.current = nextIdx;
         charRef.current = 0;
+        phaseRef.current = 'typing';
+        setCurrentIdx(nextIdx);
         setDisplay('');
-        setIsTyping(true);
-        return speed;
+        timerRef.current = setTimeout(tick, 300);
       }
     };
 
-    let timeout: ReturnType<typeof setTimeout>;
-    const loop = () => {
-      const delay = tick();
-      if (delay !== undefined) timeout = setTimeout(loop, delay);
-    };
-    loop();
+    timerRef.current = setTimeout(tick, speed);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [examples, speed, pause, userStopped]);
 
-    return () => clearTimeout(timeout);
-  }, [examples, speed, pause, isTyping]);
+  const stop = useCallback(() => { setUserStopped(true); if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  const stop = () => { activeRef.current = false; };
-  return { display, stop };
+  return { display, currentIdx, jumpTo, stop, userStopped };
 }
 
+/* ─── Motion constants ─── */
+const EASE = [0.32, 0.72, 0, 1] as [number, number, number, number];
+
+const cardVariants = {
+  initial: { opacity: 0, y: 16, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -10, scale: 0.98 },
+};
+
+const pillVariants = {
+  initial: { opacity: 0, x: -8 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 8 },
+};
+
+/* ─── Preview Card Components ─── */
+
+function AnalysisCard({ data }: { data: ExampleData }) {
+  return (
+    <motion.div
+      variants={cardVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
+    >
+      <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
+      <div className="px-5 pt-4 pb-3 bg-[var(--bg)]">
+        <p className="text-[13px] text-[var(--text-secondary)] leading-snug">
+          &ldquo;{data.input.length > 40 ? data.input.slice(0, 40) + '...' : data.input}&rdquo;
+        </p>
+      </div>
+      <div className="px-5 pt-3 pb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4, ease: EASE }}
+          className="flex items-center gap-2 mb-2"
+        >
+          <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">
+            {data.realQuestion.tag}
+          </span>
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.45, ease: EASE }}
+          className="text-[15px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight whitespace-pre-line"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {data.realQuestion.text}
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.3 }}
+          className="flex gap-3 mt-2.5"
+        >
+          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
+            <span className="text-red-400 text-[10px]">?</span> 전제 3개
+          </span>
+          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
+            <span className="text-[var(--accent)]">&#9656;</span> 뼈대 5줄
+          </span>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+function QAPills({ pills }: { pills: ExampleData['pills'] }) {
+  return (
+    <motion.div
+      variants={pillVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.35, ease: EASE }}
+      className="flex items-center gap-2 px-1"
+    >
+      {pills.map((pill, i) => (
+        <motion.div
+          key={pill.label}
+          initial={{ opacity: 0, x: -6 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 + i * 0.08, duration: 0.3, ease: EASE }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]"
+        >
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <span className="text-[var(--text-tertiary)]">{pill.label}</span>
+          <span className="text-[var(--text-primary)] font-medium">{pill.value}</span>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}
+
+function DMCard({ dm }: { dm: ExampleData['dm'] }) {
+  return (
+    <motion.div
+      variants={cardVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
+      className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-sm)] overflow-hidden"
+    >
+      <div className="px-5 py-4">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.35, ease: EASE }}
+          className="flex items-center gap-2 mb-2"
+        >
+          <div className="w-6 h-6 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V6a5 5 0 0 1 5-5z" stroke="var(--accent)" strokeWidth="1.2" />
+              <path d="M5.5 14.5h5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="text-[12px] font-semibold text-[var(--text-primary)]">{dm.name}</span>
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.4, ease: EASE }}
+          className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed"
+        >
+          &ldquo;{dm.quote}&rdquo;
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0, x: -6 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5, duration: 0.3, ease: EASE }}
+          className="flex items-center gap-2 mt-2"
+        >
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">{dm.action.tag}</span>
+          <span className="text-[10px] text-[var(--text-tertiary)]">{dm.action.text}</span>
+          <span className="text-[10px] text-[var(--accent)] font-medium">&rarr; {dm.action.link}</span>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Persona selector pills ─── */
+function PersonaSelector({ examples, activeIdx, onSelect }: { examples: ExampleData[]; activeIdx: number; onSelect: (idx: number) => void }) {
+  return (
+    <div className="flex items-center gap-1.5 mt-4">
+      {examples.map((ex, i) => {
+        const isActive = i === activeIdx;
+        return (
+          <button
+            key={ex.persona}
+            onClick={() => onSelect(i)}
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-500 cursor-pointer"
+            style={{
+              background: isActive ? 'var(--accent)' : 'transparent',
+              color: isActive ? 'white' : 'var(--text-tertiary)',
+              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+            }}
+          >
+            {ex.icon}
+            <span>{ex.persona}</span>
+            {isActive && (
+              <motion.div
+                layoutId="persona-indicator"
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'var(--accent)', zIndex: -1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Main Hero ─── */
 export function Hero() {
   const router = useRouter();
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
-  const { display: autoText, stop: stopAutoType } = useAutoType(EXAMPLES);
+  const { display: autoText, currentIdx, jumpTo, stop: stopAutoType, userStopped } = useAutoType(EXAMPLES);
 
   const handleSubmit = () => {
-    const text = inputValue.trim() || autoText;
+    const text = inputValue.trim() || (userStopped ? '' : autoText) || EXAMPLES[currentIdx].input;
     if (!text) return;
     track('landing_hero_submit', { text_length: text.length, used_example: !inputValue.trim() });
     router.push(`/workspace?q=${encodeURIComponent(text)}`);
@@ -81,6 +354,13 @@ export function Hero() {
     stopAutoType();
   };
 
+  const handlePersonaSelect = (idx: number) => {
+    track('landing_persona_select', { persona: EXAMPLES[idx].persona });
+    jumpTo(idx);
+  };
+
+  const currentExample = EXAMPLES[currentIdx];
+
   return (
     <section className="relative overflow-hidden">
       {/* Concert hall atmosphere */}
@@ -89,7 +369,7 @@ export function Hero() {
       <StaffLines opacity={0.04} spacing={14} />
 
       <div className="relative max-w-5xl mx-auto px-5 md:px-6 pt-16 md:pt-28 pb-12 md:pb-20">
-        <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:items-center">
+        <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:items-start">
 
           {/* ─── Left: Message + Input ─── */}
           <div className="phrase-entrance">
@@ -107,8 +387,14 @@ export function Hero() {
 
             {/* ─── Inline Input ─── */}
             <div className="mt-8">
-              <div className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
-                style={{ transitionProperty: 'border-color, box-shadow', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+              <div
+                className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
+                style={{
+                  transitionProperty: 'border-color, box-shadow',
+                  transitionDuration: '400ms',
+                  transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                }}
+              >
                 <div className="flex items-center gap-3 px-5 py-4">
                   <input
                     type="text"
@@ -117,12 +403,18 @@ export function Hero() {
                     onFocus={handleFocus}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
                     placeholder={focused ? '고민을 입력하세요...' : undefined}
+                    maxLength={200}
                     className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
                   />
                   <button
                     onClick={handleSubmit}
                     className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.95] cursor-pointer"
-                    style={{ background: 'var(--gradient-gold)', transitionProperty: 'box-shadow, transform', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}
+                    style={{
+                      background: 'var(--gradient-gold)',
+                      transitionProperty: 'box-shadow, transform',
+                      transitionDuration: '300ms',
+                      transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                    }}
                   >
                     <ArrowRight size={16} />
                   </button>
@@ -138,16 +430,25 @@ export function Hero() {
                 )}
               </div>
 
+              {/* Persona selector */}
+              <PersonaSelector examples={EXAMPLES} activeIdx={currentIdx} onSelect={handlePersonaSelect} />
+
               <div className="flex items-center justify-between mt-3 px-1">
                 <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0">
+                    <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z" />
+                  </svg>
                   로그인 없이 무료 체험
                 </p>
                 <Link
                   href="/demo"
                   onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
                   className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)]"
-                  style={{ transitionProperty: 'color', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}
+                  style={{
+                    transitionProperty: 'color',
+                    transitionDuration: '300ms',
+                    transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                  }}
                 >
                   데모 먼저 보기
                 </Link>
@@ -155,66 +456,23 @@ export function Hero() {
             </div>
           </div>
 
-          {/* ─── Right: Progressive Flow Preview ─── */}
+          {/* ─── Right: Live Preview (synced with current example) ─── */}
           <div className="mt-12 lg:mt-0 phrase-entrance" style={{ animationDelay: '200ms' }}>
-            <div className="relative space-y-3">
-
-              {/* Step 1: Input + Result */}
-              <div className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden">
-                <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
-                <div className="px-5 pt-4 pb-3 bg-[var(--bg)]">
-                  <p className="text-[13px] text-[var(--text-secondary)] leading-snug">
-                    &ldquo;개발자인데 대표님이 2주 안에 기획안을 짜오라고 했어&rdquo;
-                  </p>
-                </div>
-                <div className="px-5 pt-3 pb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">진짜 질문</span>
-                  </div>
-                  <p className="text-[15px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-                    기획안의 형식이 아니라,<br />대표님이 확인하고 싶은 것이 뭔지가 먼저다.
-                  </p>
-                  <div className="flex gap-3 mt-2.5">
-                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-red-400 text-[10px]">?</span> 전제 3개</span>
-                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-[var(--accent)]">&#9656;</span> 뼈대 5줄</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2: Q&A pills */}
-              <div className="flex items-center gap-2 px-1">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]">
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <span className="text-[var(--text-tertiary)]">누가 봐?</span>
-                  <span className="text-[var(--text-primary)] font-medium">대표님</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]">
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <span className="text-[var(--text-tertiary)]">기한?</span>
-                  <span className="text-[var(--text-primary)] font-medium">2주</span>
-                </div>
-              </div>
-
-              {/* Step 3: DM Feedback preview */}
-              <div className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-sm)] overflow-hidden">
-                <div className="px-5 py-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V6a5 5 0 0 1 5-5z" stroke="var(--accent)" strokeWidth="1.2"/><path d="M5.5 14.5h5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                    </div>
-                    <span className="text-[12px] font-semibold text-[var(--text-primary)]">대표님은 뭐라고 할까?</span>
-                  </div>
-                  <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
-                    &ldquo;방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.&rdquo;
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">필수</span>
-                    <span className="text-[10px] text-[var(--text-tertiary)]">경쟁 분석 추가</span>
-                    <span className="text-[10px] text-[var(--accent)] font-medium">&rarr; 자동 반영</span>
-                  </div>
-                </div>
-              </div>
-
+            <div className="relative min-h-[340px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIdx}
+                  className="space-y-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                >
+                  <AnalysisCard data={currentExample} />
+                  <QAPills pills={currentExample.pills} />
+                  <DMCard dm={currentExample.dm} />
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Treble clef watermark */}
