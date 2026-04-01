@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
+import { StaffLines, TrebleClef } from '@/components/ui/MusicalElements';
 import { track } from '@/lib/analytics';
 
 export function Hero() {
@@ -31,17 +31,24 @@ export function Hero() {
               채울수록 날카로워집니다.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 flex items-center gap-3">
               <Link
-                href="/demo"
-                onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
+                href="/workspace"
+                onClick={() => track('landing_cta_click', { cta: 'hero_workspace' })}
                 className="inline-flex items-center gap-2.5 px-7 py-3.5 text-white rounded-full text-[15px] font-semibold shadow-[var(--shadow-md)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200"
                 style={{ background: 'var(--gradient-gold)' }}
               >
-                1분 데모 체험
+                지금 바로 써보기
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
+              </Link>
+              <Link
+                href="/demo"
+                onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
+                className="text-[14px] font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
+              >
+                데모 보기
               </Link>
 
               <p className="mt-4 text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
@@ -51,61 +58,66 @@ export function Hero() {
             </div>
           </div>
 
-          {/* ─── Right: Example Prompt Visual ─── */}
+          {/* ─── Right: Progressive Flow Preview ─── */}
           <div className="mt-12 lg:mt-0 phrase-entrance" style={{ animationDelay: '200ms' }}>
-            <div className="relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden">
+            <div className="relative space-y-3">
 
-              {/* Header bar */}
-              <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
-
-              {/* Input — the user's problem */}
-              <div className="relative px-5 pt-5 pb-4 bg-[var(--bg)] overflow-hidden">
-                <div className="relative">
+              {/* Step 1: Input + Result */}
+              <div className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden">
+                <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
+                <div className="px-5 pt-4 pb-3 bg-[var(--bg)]">
+                  <p className="text-[13px] text-[var(--text-secondary)] leading-snug">
+                    &ldquo;개발자인데 대표님이 2주 안에 기획안을 짜오라고 했어&rdquo;
+                  </p>
+                </div>
+                <div className="px-5 pt-3 pb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-section-label text-[var(--text-tertiary)]">입력</span>
+                    <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">진짜 질문</span>
                   </div>
-                  <p className="text-[15px] md:text-[17px] text-[var(--text-primary)] leading-snug">
-                    &ldquo;나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어&rdquo;
+                  <p className="text-[15px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                    기획안의 형식이 아니라,<br />대표님이 확인하고 싶은 것이 뭔지가 먼저다.
                   </p>
-                </div>
-              </div>
-
-              {/* Transformation */}
-              <div className="flex items-center justify-center gap-3 px-5 py-2 bg-[var(--surface)]">
-                <div className="h-px flex-1 bg-[var(--accent)]/20" />
-                <CrescendoHairpin width={48} height={12} color="var(--accent)" />
-                <span className="text-[10px] font-bold text-[var(--accent)] tracking-wider uppercase">30초</span>
-                <CrescendoHairpin width={48} height={12} color="var(--accent)" className="scale-x-[-1]" />
-                <div className="h-px flex-1 bg-[var(--accent)]/20" />
-              </div>
-
-              {/* Output — immediate result */}
-              <div className="relative px-5 pt-4 pb-5 overflow-hidden">
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-section-label !text-[var(--accent)]">결과</span>
-                  </div>
-                  <p className="text-[13px] md:text-[14px] font-semibold text-[var(--accent)] mb-2">
-                    진짜 질문
-                  </p>
-                  <p
-                    className="text-[17px] md:text-[20px] font-bold text-[var(--text-primary)] leading-snug tracking-tight mb-3"
-                    style={{ fontFamily: 'var(--font-display)' }}
-                  >
-                    기획안의 형식이 아니라,
-                    <br />
-                    대표님이 확인하고 싶은 것이 뭔지가 먼저다.
-                  </p>
-                  <div className="space-y-1.5">
-                    <p className="text-[12px] text-[var(--text-secondary)] flex items-center gap-1.5">
-                      <span className="text-red-400">?</span> 숨겨진 전제 3개
-                    </p>
-                    <p className="text-[12px] text-[var(--text-secondary)] flex items-center gap-1.5">
-                      <span className="text-[var(--accent)]">▸</span> 기획안 뼈대 5줄
-                    </p>
+                  <div className="flex gap-3 mt-2.5">
+                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-red-400 text-[10px]">?</span> 전제 3개</span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1"><span className="text-[var(--accent)]">▸</span> 뼈대 5줄</span>
                   </div>
                 </div>
               </div>
+
+              {/* Step 2: Q&A pill */}
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]">
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span className="text-[var(--text-tertiary)]">누가 봐?</span>
+                  <span className="text-[var(--text-primary)] font-medium">대표님</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 text-[11px]">
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8H13" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span className="text-[var(--text-tertiary)]">기한?</span>
+                  <span className="text-[var(--text-primary)] font-medium">2주</span>
+                </div>
+              </div>
+
+              {/* Step 3: DM Feedback preview */}
+              <div className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-sm)] overflow-hidden">
+                <div className="px-5 py-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V6a5 5 0 0 1 5-5z" stroke="var(--accent)" strokeWidth="1.2"/><path d="M5.5 14.5h5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    </div>
+                    <span className="text-[12px] font-semibold text-[var(--text-primary)]">대표님은 뭐라고 할까?</span>
+                  </div>
+                  <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed">
+                    &ldquo;방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.&rdquo;
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">필수</span>
+                    <span className="text-[10px] text-[var(--text-tertiary)]">경쟁 분석 추가</span>
+                    <span className="text-[10px] text-[var(--accent)] font-medium">→ 자동 반영</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             {/* Treble clef watermark */}

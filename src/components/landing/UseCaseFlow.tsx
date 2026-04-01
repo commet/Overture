@@ -1,6 +1,7 @@
 'use client';
 
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { Code2, ClipboardList, Palette } from 'lucide-react';
 
 function RevealCard({ children, delay }: { children: React.ReactNode; delay: number }) {
   const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ delay });
@@ -13,21 +14,21 @@ function RevealCard({ children, delay }: { children: React.ReactNode; delay: num
 
 const scenarios = [
   {
-    emoji: '💻',
+    icon: Code2,
     headline: '백엔드 개발자인데\n대표님이 기획안을 써오라고 했다',
     before: '뭘 써야 할지 모르겠다. 기획은 내 전문이 아닌데.',
     after: '기획안 구조가 잡혔다. 대표님이 뭘 보고 싶은지도 파악됐다.',
     color: '#2d4a7c',
   },
   {
-    emoji: '📋',
+    icon: ClipboardList,
     headline: 'PM인데 전략 제안서를\n2시간 안에 내야 한다',
     before: '시간이 없다. 어디서부터 시작해야 하지.',
     after: '핵심만 뽑아서 설득력 있게 정리됐다. 약점도 미리 파악했다.',
     color: '#6b4c9a',
   },
   {
-    emoji: '🎨',
+    icon: Palette,
     headline: '디자이너인데\n비즈니스 케이스를 만들라고 했다',
     before: '비즈니스 언어를 모르겠다. ROI가 뭐지.',
     after: '숫자와 논리로 번역됐다. 경영진이 이해하는 언어로.',
@@ -56,9 +57,11 @@ export function UseCaseFlow() {
                 className="h-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg)] p-5 md:p-6 flex flex-col shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300"
                 style={{ borderTop: `2px solid ${s.color}` }}
               >
-                {/* Emoji + headline */}
+                {/* Icon + headline */}
                 <div className="mb-4">
-                  <span className="text-[28px] md:text-[32px] block mb-2">{s.emoji}</span>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${s.color}0D` }}>
+                    <s.icon size={20} strokeWidth={1.5} style={{ color: s.color }} />
+                  </div>
                   <h3 className="text-[15px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug whitespace-pre-line">
                     {s.headline}
                   </h3>
