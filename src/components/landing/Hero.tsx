@@ -27,7 +27,7 @@ const EXAMPLES: ExampleData[] = [
     avatar: 'dev',
     realQuestion: {
       tag: '진짜 질문',
-      text: '기획안의 형식이 아니라,\n대표님이 확인하고 싶은 것이 뭔지가 먼저다.',
+      text: '네가 아는 건 충분하다.\n그걸 대표님 언어로 옮기는 게 문제다.',
     },
     skeleton: '배경 → 현황 분석 → 제안 → 기대효과 → 일정 → 리스크',
     pills: [
