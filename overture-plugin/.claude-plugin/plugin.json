@@ -1,7 +1,7 @@
 {
   "name": "overture",
-  "version": "0.3.0",
-  "description": "Decision harness for AI. Sharpen your thinking before asking AI to execute. Find hidden assumptions, stress-test with stakeholders, refine until solid. Like running tests before deploying — but for decisions.",
+  "version": "0.4.0",
+  "description": "Structured thinking for decisions and plans. Input a problem → instant draft → sharpen with questions → stress-test with your boss's perspective → final deliverable. Progressive — each step adds value, stop anytime.",
   "author": {
     "name": "Overture",
     "email": "yclee913@gmail.com",
@@ -11,27 +11,37 @@
   "license": "MIT",
   "repository": "https://github.com/commet/Overture",
   "commands": [
+    "./skills/overture/SKILL.md",
     "./skills/reframe/SKILL.md",
     "./skills/recast/SKILL.md",
     "./skills/rehearse/SKILL.md",
     "./skills/refine/SKILL.md",
-    "./skills/overture/SKILL.md",
     "./skills/help/SKILL.md",
     "./skills/setup/SKILL.md",
     "./skills/doctor/SKILL.md",
     "./skills/configure/SKILL.md",
     "./skills/patterns/SKILL.md"
   ],
+  "agents": [
+    "./agents/devils-advocate.md"
+  ],
+  "references": [
+    "./CONTEXT-CONTRACT.md",
+    "./RENDERING-RULES.md",
+    "./skills/reframe/references/reframing-strategies.md",
+    "./skills/recast/references/execution-design.md",
+    "./skills/rehearse/references/persona-design.md",
+    "./skills/rehearse/references/risk-classification.md",
+    "./skills/refine/references/convergence.md"
+  ],
+  "statusline": "./statusline/index.js",
   "keywords": [
     "decision-making",
-    "strategy",
-    "reframing",
-    "anti-sycophancy",
-    "harness",
     "structured-thinking",
+    "anti-sycophancy",
     "stakeholder-simulation",
     "decision-quality",
-    "4R-framework",
-    "meta-cognition"
+    "progressive-disclosure",
+    "context-chain"
   ]
 }

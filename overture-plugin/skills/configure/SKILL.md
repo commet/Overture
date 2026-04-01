@@ -14,6 +14,8 @@ allowed-tools: Read, Write, AskUserQuestion
 
 **Always respond in the same language the user uses.**
 
+**No box drawing.** Do NOT use `╭╮╰╯`, `┌│└`, `═══╪`, `───┼`, `━━━`, or any Unicode box characters. Use `---`, `**bold**`, and whitespace for structure.
+
 ## Configuration Flow
 
 ### Step 0: Detect existing configuration
@@ -27,13 +29,9 @@ Check if `.overture/config.json` exists.
 
 Show the header:
 
-```
-  ╭──────────────────────────────────────────╮
-  │  ⚙ Overture · Configure                │
-  ╰──────────────────────────────────────────╯
+**⚙ Overture · Configure**
 
-  Let's set up your preferences. 5 quick questions.
-```
+Let's set up your preferences. 5 quick questions.
 
 **Q1: Preset**
 
@@ -122,26 +120,25 @@ Only shown if preset is Standard or Learning:
 
 ### For returning users: Quick update
 
+**⚙ Overture · Configure**
+
+**Current settings:**
+- Preset: [Learning]
+- Language: [auto-detect]
+- Output: [.overture/]
+- Journal: [enabled]
+- Personas: [3]
+
+What would you like to change?
+
 ```
-  ╭──────────────────────────────────────────╮
-  │  ⚙ Overture · Configure                │
-  ╰──────────────────────────────────────────╯
-
-  Current settings:
-    Preset:     [Learning]
-    Language:   [auto-detect]
-    Output:     [.overture/]
-    Journal:    [enabled]
-    Personas:   [3]
-
-  What would you like to change?
-    1 · Switch preset
-    2 · Change language
-    3 · Change output location
-    4 · Toggle journal
-    5 · Change persona count
-    6 · Reset to defaults
-    7 · Done — keep current settings
+  1 · Switch preset
+  2 · Change language
+  3 · Change output location
+  4 · Toggle journal
+  5 · Change persona count
+  6 · Reset to defaults
+  7 · Done — keep current settings
 
   ▸
 ```
@@ -178,22 +175,17 @@ Save to `.overture/config.json`:
 
 ### Confirmation
 
-```
-  ╭──────────────────────────────────────────╮
-  │  ✓ Overture · Configured                │
-  ╰──────────────────────────────────────────╯
+**✓ Overture · Configured**
 
-  Preset:     [Learning]
-  Language:   [auto-detect]
-  Output:     [.overture/]
-  Journal:    [enabled]
-  Personas:   [3]
+- Preset: [Learning]
+- Language: [auto-detect]
+- Output: [.overture/]
+- Journal: [enabled]
+- Personas: [3]
 
-  Saved to .overture/config.json
+Saved to `.overture/config.json`
 
-  Try:  /reframe "your problem"
-        /overture "important decision"
-```
+> Try: `/reframe "your problem"` or `/overture "important decision"`
 
 ## How other skills read the config
 

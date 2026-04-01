@@ -1,97 +1,95 @@
 # Overture
 
-**Decision harness for AI.** Sharpen your thinking before asking AI to execute.
+**막막할 때 쓰는 구조화 도구.** 생각을 문서 언어로 번역합니다.
 
-Getting generic answers from AI? The problem isn't the AI — it's your question. Overture finds hidden assumptions, stress-tests your plan with simulated stakeholders, and refines until solid.
+개발자가 기획안을 써야 할 때. PM이 전략 제안서를 만들어야 할 때.
+내 전문 분야가 아닌 걸 해야 하는 순간 — `/overture`를 치세요.
 
-## The 4R Framework
-
-Every step Re-examines. Reframe · Recast · Rehearse · Refine.
-
-| Command | Time | What it does |
-|---------|------|-------------|
-| `/reframe` | 30 sec – 2 min | Find hidden assumptions, get a sharper question |
-| `/recast` | 2 min | Design who does what (AI vs human) with checkpoints |
-| `/rehearse` | 3 min | Stress-test with simulated stakeholders |
-| `/refine` | 3-5 min | Fix issues, re-test, repeat until converged |
-| `/overture` | 5-10 min | Full pipeline → 3 deliverables + quality score |
-
-Each skill works independently. Chain them for deeper analysis.
-
-## Quick start
+## 30초 안에 초안이 나옵니다
 
 ```
-/reframe "We need to expand into Southeast Asia"
+/overture "개발자인데 대표님이 기획안 짜오라고 했어"
 ```
 
-Your question changes — and so does every answer you'll get after it.
+→ **30초:** 상황 정리 + 진짜 질문 + 기획안 뼈대 + 숨겨진 전제
+→ **2-3분:** 질문 2-3개에 답하면 초안이 구체적으로 진화
+→ **4분:** "대표님은 뭐라고 할까?" — 우려 사항 + OK 조건
+→ **5분:** 피드백 자동 반영 → **바로 제출 가능한 문서**
 
-**Example output:**
-```
-Sharpened prompt — paste this into your next AI conversation:
+멈추고 싶으면 언제든 멈추세요. 그 시점까지의 결과가 이미 쓸 만합니다.
 
-> "Given that our ops capacity for international expansion is unvalidated
-> and unit economics at SEA price points are uncertain, what's the minimum
-> viable experiment to test international readiness within 90 days —
-> and what would make us walk away?"
-
----
-You asked: "We need to expand into Southeast Asia"
-
-The sharper question:
-> Is Southeast Asia actually our best next market, or are we
-> defaulting to it because it's familiar?
-
-Hidden assumptions:
-1. SEA is our best next market → If wrong: 6 months on a suboptimal market
-2. We can handle international ops → If wrong: domestic quality drops
-3. Regulatory environment allows our model → If wrong: 3-6 month delay
-4. Unit economics work at SEA prices → If wrong: growth without profit
-```
-
-## Full pipeline
-
-```
-/overture "Series A fundraising strategy"
-```
-
-5-10 minutes later, you get:
-
-1. **Sharpened Prompt** — a better question to paste into your next AI conversation
-2. **Thinking Summary** — a Slack-ready summary to share with your team
-3. **Agent Harness** — an instruction document for AI agents to execute against (CLAUDE.md-compatible)
-
-Plus a Decision Quality scorecard (0-100) measuring your thinking process.
-
-## Installation
+## 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/commet/Overture/main/overture-plugin/install.sh | bash
 ```
 
-Restart Claude Code, then try `/reframe "your problem here"`.
+Claude Code를 재시작하고, `/overture "고민"` 을 입력하세요.
 
-## What makes this different
+## 결과물
 
-**Anti-sycophancy by design.** AI agrees with you by default. Every Overture skill has "disagree" as a core principle. The rehearsal personas default to "tough." If the feedback is all positive, it runs again harder.
+| 만드는 것 (Build) | 판단하는 것 (Decide) |
+|---|---|
+| Implementation Prompt — Cursor/Claude Code에 바로 붙여넣기 | Sharpened Prompt — AI에 바로 붙여넣기 |
+| Product Brief (MVP spec + scope cuts) | Thinking Summary (3000자, Slack/이메일 공유용) |
+| | Decision Quality Score (0-100) |
 
-**Unspoken risk detection.** The #1 cause of "everyone saw it coming" failures is risks people know but won't say. Overture's [unspoken] risk category specifically targets the elephant in the room.
+## 스킬
 
-**Devil's Advocate agent.** Inspired by Anthropic's harness design research: "Tuning a separate evaluator to be skeptical is more tractable than making a generator critical of its own work." A dedicated sub-agent attacks your plan from 3 angles.
+| 스킬 | 한 줄 설명 | 소요 시간 |
+|------|-----------|----------|
+| **`/overture`** | **전체 파이프라인** — 초안→심화→시뮬레이션→최종 | ~5분 |
+| `/reframe` | 문제 재정의 — 숨겨진 전제 발견, 진짜 질문 도출 | ~2분 |
+| `/recast` | 역할 재설계 — 기존 계획에서 AI/사람 역할 명확히 구분 | ~3분 |
+| `/rehearse` | 사전 검증 — 판단자 반응 시뮬레이션 + Devil's Advocate | ~3분 |
+| `/refine` | 수정 반영 — /rehearse 피드백을 계획에 반영, 수렴 확인 | ~2분 |
 
-**Decision Quality scoring.** Based on Spetzler's (2016) Decision Quality framework. Measures framing, alternatives, information, perspectives, reasoning, and actionability — the process, not the outcome.
+```
+/reframe → /recast → /rehearse → /refine
+각 스킬은 독립 사용 가능. /overture는 전체를 한 번에 실행.
+결과는 .overture/ 에 자동 저장되고, 다음 스킬이 자동으로 읽어감.
+```
 
-**Learning journal.** Each run appends to `.overture/journal.md`. Over time, Overture learns your patterns and surfaces recurring blind spots.
+유틸리티: `/overture:setup` · `/overture:doctor` · `/overture:configure` · `/overture:patterns`
 
-## Works in any language
+## 이게 뭐가 다른데?
 
-Overture responds in whatever language you use. Input in Korean, get output in Korean. Input in English, get output in English.
+**"지금 해주기" 모델.** AI가 "이런 걸 해보세요" 리스트를 주는 게 아니라, 이 세션 안에서 AI가 할 수 있는 건 직접 하고, 사람이 해야 할 건 "다음에 이 질문을 대표님에게 하세요" 수준까지 구체화합니다.
 
-## Research foundations
+**Anti-sycophancy.** AI는 기본적으로 당신에게 동의합니다. Overture의 모든 스킬은 "반박"이 핵심 원칙입니다. 판단자 시뮬레이션은 까다롭게 기본 설정되어 있고, 피드백이 전부 긍정적이면 더 세게 돌립니다.
 
-Grounded in cognitive science and AI research:
+**Unspoken risk.** "다들 알지만 회의에서 안 꺼내는 것"을 찾는 전용 카테고리. Devil's Advocate 에이전트가 3가지 렌즈(현실적 실패, 침묵하는 문제, 1년 후 후회)로 공격합니다.
+
+**쓸수록 똑똑해짐.** 실행 기록이 `.overture/journal.md`에 쌓이고, `/overture:patterns`로 반복되는 블라인드 스팟을 분석합니다. 각 스킬은 저널을 읽고 적응합니다.
+
+## 아무 언어나 됩니다
+
+한국어로 입력하면 한국어로, 영어로 입력하면 영어로 답합니다.
+
+## 스킬 체인
+
+각 스킬은 `.overture/`에 Context Contract(YAML)를 저장합니다. 다음 스킬이 자동으로 읽고 이어갑니다.
+
+```
+/reframe → .overture/reframe.md (진짜 질문 + 숨겨진 전제)
+    ↓
+/recast  → .overture/recast.md  (실행 계획 + 역할 배분 + 페르소나)
+    ↓
+/rehearse → .overture/rehearse.md (리스크 + 우려 + 승인 조건)
+    ↓
+/refine   → .overture/refine.md  (수정 사항 + 수렴 상태)
+```
+
+스키마 상세: [`CONTEXT-CONTRACT.md`](CONTEXT-CONTRACT.md)
+
+## Research
+
 - Spetzler (2016) — Decision Quality framework
 - Sharma/Anthropic (2023) — structural sycophancy mitigation
 - Dell'Acqua/Harvard-BCG (2023) — structured AI outperforms free-form by 12%
-- Du/MIT (2023) — multi-agent debate improves reasoning accuracy by 8 percentage points
+- Du/MIT (2023) — multi-agent debate improves reasoning accuracy by 8pp
 - Klein/HBR — premortem improves risk identification by 30%
+
+## License
+
+MIT
