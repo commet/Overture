@@ -36,7 +36,17 @@ Read `.overture/recast.md` and `.overture/reframe.md` for contracts.
 - If `/overture` set a `judge` → create persona matching that judge + 1-2 additional
 - Otherwise → auto-generate based on context (see below)
 
-## Step 1: Auto-generate personas (no setup needed)
+## Step 1: Load or generate personas
+
+### Persona pack check (first)
+
+Read `.overture/config.json`. If `persona_pack` field exists:
+1. Read the file at that path (e.g., `templates/persona-packs/startup-founders.md`)
+2. Parse the YAML persona definitions
+3. Use those personas exactly — skip auto-generation
+4. Inform user: "페르소나 팩 '[name]'을 사용합니다. ([N]명)"
+
+If no persona pack configured → auto-generate as below.
 
 ### Decide context: 3 stakeholders
 

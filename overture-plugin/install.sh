@@ -88,7 +88,14 @@ for skill_dir in "$SOURCE_DIR/skills/"*/; do
   rm -rf "$CLAUDE_DIR/skills/$skill_name"
 
   if [ "$LINK_MODE" = true ]; then
-    ln -sf "$skill_dir" "$CLAUDE_DIR/skills/$skill_name"
+    # Use PowerShell junctions on Windows (works without admin), ln -sf on Unix
+    if command -v powershell.exe &>/dev/null; then
+      SKILL_WIN=$(cygpath -w "$skill_dir" 2>/dev/null || echo "$skill_dir")
+      LINK_WIN=$(cygpath -w "$CLAUDE_DIR/skills/$skill_name" 2>/dev/null || echo "$CLAUDE_DIR/skills/$skill_name")
+      powershell.exe -Command "New-Item -ItemType Junction -Path '$LINK_WIN' -Target '$SKILL_WIN'" >/dev/null 2>&1
+    else
+      ln -sfn "$skill_dir" "$CLAUDE_DIR/skills/$skill_name"
+    fi
   else
     cp -r "$skill_dir" "$CLAUDE_DIR/skills/$skill_name"
   fi

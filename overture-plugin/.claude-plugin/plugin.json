@@ -25,6 +25,9 @@
   "agents": [
     "./agents/devils-advocate.md"
   ],
+  "outputStylesPaths": [
+    "./output-styles/overture.md"
+  ],
   "references": [
     "./CONTEXT-CONTRACT.md",
     "./RENDERING-RULES.md",
