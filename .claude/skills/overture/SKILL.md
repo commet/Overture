@@ -208,49 +208,54 @@ Skip rounds whose answers are already clear from input.
 
 ---
 
-### After round 2+: Include execution plan
+### After round 2+: Include execution plan + 실행 준비
 
-실행 계획을 포함하되, 각 단계에 담당자를 자동 배정한다:
+실행 계획을 보여주되, **이건 "나중에 할 일"이 아니라 "지금 이 세션에서 일어나는 일"**로 프레이밍한다:
 
-1. **[할 일]** — 담당: 🤖 AI — 산출물: [구체적]
-2. **[할 일]** — 담당: 🧑 사람 — 산출물: [구체적]
-3. **[할 일]** — 담당: ⚡ 둘 다 — 산출물: [구체적]
+**실행 계획** (이 세션에서 처리)
 
-실행 계획을 보여준 직후, AskUserQuestion으로 역할 설계 깊이를 선택:
+| # | 할 일 | 담당 | 처리 방식 |
+|---|-------|------|----------|
+| 1 | [AI가 할 수 있는 것] | 🤖 | → **지금 해줌** (Mix에서 내용 채움) |
+| 2 | [사용자 판단 필요] | 🧑 | → **지금 물어봄** (AskUserQuestion) |
+| 3 | [둘 다] | ⚡ | → AI가 초안 + 사용자가 확인 |
+| 4 | [오프라인 행동] | 🧑⏳ | → **다음 단계에 명시** (문서 완성 후 해야 할 것) |
 
-- question: "AI/사람 역할 배분을 더 세밀하게 설계할까?"
+실행 계획을 보여준 직후, **🧑 단계의 핵심 판단을 AskUserQuestion으로 즉시 수집**한다.
+이 답변이 Mix 문서의 품질을 결정하므로, 꼭 필요한 것만 1-2개 묻는다.
+
+**예시:**
+- 🧑 "대표님이 특별히 강조한 키워드나 방향이 있어?" (판단 수집)
+- 🧑 "경쟁사 중 특히 의식하는 곳이 있어?" (맥락 수집)
+
+### 역할 설계 심화 (선택적):
+
+실행 계획 + 🧑 질문 후, AskUserQuestion으로 역할 검토 깊이를 선택:
+
+- question: "AI/사람 역할 배분을 더 세밀하게 볼까?"
 - header: "역할 설계"
 - options:
-  - label: "이대로 충분", description: "자동 배분으로 진행"
-  - label: "세밀하게 설계", description: "각 단계별로 4가지 기준으로 검토"
+  - label: "이대로 좋아", description: "바로 초안 완성으로"
+  - label: "역할 검토하기", description: "각 단계의 담당자를 4가지 기준으로 재검토"
 
-If "세밀하게 설계" → 각 단계에 대해 4-question framework 적용:
-1. 내부/정치적 지식이 필요한가? → 🧑 사람
-2. 주관적/전략적 판단인가? → 🧑 사람
-3. 틀렸을 때 비용이 크고 되돌릴 수 없는가? → 🧑 or ⚡
-4. 특정 누군가가 책임져야 하는가? → 🧑 사람
-→ 4개 다 아니면 → 🤖 AI
-
-결과를 반영하여 실행 계획 업데이트 후 다음 질문으로 진행.
-
-After showing the updated analysis, **use AskUserQuestion for the next question**. Never type questions as plain text — always use the tool.
+If "역할 검토" → 4-question framework:
+1. 내부/정치적 지식 필요? → 🧑
+2. 주관적/전략적 판단? → 🧑
+3. 틀리면 되돌릴 수 없음? → 🧑 or ⚡
+4. 누군가 책임져야 함? → 🧑
+→ 해당 없으면 → 🤖
 
 ### When to transition to Mix:
 
-After 2+ rounds, or when key dimensions are covered, ask using AskUserQuestion:
-- question: "충분한 정보가 모였다. 어떻게 할까?"
-- header: "다음 단계"
-- options:
-  - label: "초안 완성하기", description: "지금까지의 분석으로 문서 초안을 만든다"
-  - label: "질문 하나 더", description: "한 가지 더 확인하고 싶다"
-
-If user says "enough" / "이 정도면 됐어" / "다음" at any point → transition to Mix immediately.
+After 🧑 판단 수집 완료 (+ 선택적 역할 검토), 자동으로 Mix로 전환.
+"충분하다"고 판단되면 별도 질문 없이 바로 진행. 사용자가 "이 정도면 됐어" / "다음"을 말하면 즉시 전환.
 
 ---
 
 ## Step 3: Mix — Full Document Synthesis
 
-**Synthesize ALL accumulated analysis into a REAL document.** Not an outline — a first draft with substance.
+**실행 계획의 🤖 단계를 실제로 수행하고, 🧑 수집 답변을 반영하여 REAL document를 만든다.**
+이건 outline이 아니다 — AI가 자기 담당 부분을 실제로 채운 first draft다.
 
 ### Output format:
 
@@ -287,20 +292,23 @@ If user says "enough" / "이 정도면 됐어" / "다음" at any point → trans
 ---
 
 **Mix quality rules (CRITICAL — this is the core deliverable):**
-- **Send-as-is quality**: 사용자가 이걸 그대로 보내도 되는 수준. "[여기에 입력]" 같은 플레이스홀더 금지.
-- **Substantial**: 얇은 아웃라인이 아니라 사고의 깊이가 보이는 실제 초안. 일반 ChatGPT 출력과의 차이가 여기서 갈린다.
-- **4-6 sections**, each 3-5 sentences, concrete and actionable.
-- **Section content는 flowing text.** 마크다운 헤더를 섹션 안에서 쓰지 말 것. **핵심 용어와 수치는 bold** 처리.
-- **"리스크와 대응" section MANDATORY**: 2-3 risks + mitigation. 이것이 "이 사람은 문제를 미리 예상했다"를 증명하는 핵심.
-- **Next steps are time-bound and assigned**: 누가, 언제까지, 무엇을. 최소 3개. "논의" "검토"같은 모호한 행동 금지 — 구체적 산출물 명시.
-- **Assumptions explicit**: 불확실한 것을 솔직히 밝히는 것이 지적 정직.
-- Tone: confident but honest. 불확실한 부분은 "~할 가능성이 높다" 대신 "이것은 [X]를 전제한다. 확인 필요."
+- **🤖 AI 단계를 실제로 수행**: 실행 계획에서 AI 담당이었던 것(시장 분석, 경쟁사 조사, 구조화 등)은 이 문서에서 **실제 내용으로 채운다.** "시장 분석이 필요하다"가 아니라 시장 분석 결과를 쓴다.
+- **🧑 수집한 답변을 반영**: Step 2에서 AskUserQuestion으로 받은 사용자 판단을 문서에 녹인다.
+- **🧑⏳ 오프라인 행동은 "다음 단계"에**: 이 세션에서 해결 못한 것(대표님에게 직접 물어봐야 할 것 등)은 "다음 단계"에 구체적 질문과 함께 명시. "[확인 필요]"로 표시.
+- **Send-as-is quality**: 사용자가 이걸 그대로 보내도 되는 수준. "[여기에 입력]" 금지.
+- **Substantial**: 아웃라인이 아니라 사고의 깊이가 보이는 실제 초안.
+- **4-6 sections**, each 3-5 sentences. **Section content는 flowing text.** **핵심 용어/수치 bold.**
+- **"⚠️ 리스크와 대응" MANDATORY**: 2-3 risks + mitigation.
+- **다음 단계 = 오프라인에서 해야 할 🧑 행동**: 시간/담당/구체적 산출물. "논의" "검토" 금지.
+- **전제 조건**: 불확실한 것을 솔직히 밝힌다.
 
 **Self-check before showing Mix:**
-- [ ] 판단자가 이 요약만 읽고 80%를 파악하나?
+- [ ] 🤖 AI 담당 부분이 실제 내용으로 채워졌나? (TODO로 남아있지 않나?)
+- [ ] 🧑 수집 답변이 문서에 반영됐나?
+- [ ] 판단자가 요약만 읽고 80%를 파악하나?
 - [ ] 플레이스홀더 없는가?
 - [ ] 리스크 섹션 있는가?
-- [ ] 다음 단계에 "누가"가 빠진 항목 없는가?
+- [ ] 다음 단계가 "오프라인에서 해야 할 것"인가? (AI가 할 것이 남아있으면 안 됨)
 
 After showing the Mix, ask using AskUserQuestion:
 
