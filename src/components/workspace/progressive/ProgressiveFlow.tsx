@@ -65,31 +65,80 @@ function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; 
   );
 }
 
-/* ═══ THE LIVING ANALYSIS — ONE card that morphs in place ═══ */
+/* ═══ Diff helpers — compare snapshots ═══ */
 
-function LiveAnalysis({ snapshot, isActive, dimmed }: { snapshot: AnalysisSnapshot; isActive: boolean; dimmed: boolean }) {
+function diffItems(prev: string[], curr: string[]): Array<{ text: string; status: 'new' | 'same' | 'removed' }> {
+  const prevSet = new Set(prev);
+  const currSet = new Set(curr);
+  const result: Array<{ text: string; status: 'new' | 'same' | 'removed' }> = [];
+  // Removed items first (brief flash)
+  for (const item of prev) {
+    if (!currSet.has(item)) result.push({ text: item, status: 'removed' });
+  }
+  // Current items
+  for (const item of curr) {
+    result.push({ text: item, status: prevSet.has(item) ? 'same' : 'new' });
+  }
+  return result;
+}
+
+/* ═══ THE LIVING ANALYSIS — ONE card that morphs in place, with visible diffs ═══ */
+
+function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
+  snapshot: AnalysisSnapshot;
+  prevSnapshot: AnalysisSnapshot | null;
+  isActive: boolean;
+}) {
+  const hasChanges = prevSnapshot && snapshot.version > 0;
+  const questionChanged = hasChanges && prevSnapshot.real_question !== snapshot.real_question;
+
+  // Compute diffs
+  const skeletonDiff = hasChanges
+    ? diffItems(prevSnapshot.skeleton, snapshot.skeleton)
+    : snapshot.skeleton.map(s => ({ text: s, status: 'same' as const }));
+  const assumptionDiff = hasChanges
+    ? diffItems(prevSnapshot.hidden_assumptions, snapshot.hidden_assumptions)
+    : snapshot.hidden_assumptions.map(a => ({ text: a, status: 'same' as const }));
+
+  const newCount = skeletonDiff.filter(d => d.status === 'new').length + assumptionDiff.filter(d => d.status === 'new').length;
+  const removedCount = skeletonDiff.filter(d => d.status === 'removed').length + assumptionDiff.filter(d => d.status === 'removed').length;
+
   return (
-    <motion.div layout className={`rounded-[1.75rem] transition-opacity duration-500 ${dimmed ? 'opacity-90' : ''}`}
+    <motion.div layout className="rounded-[1.75rem]"
       style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
       <div className={`rounded-[1.75rem] p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
         <div className="rounded-[calc(1.75rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           {isActive && <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />}
           <div className="p-7 md:p-9 space-y-6">
-            {/* Eyebrow */}
-            <div className="flex items-center gap-2.5">
+            {/* Eyebrow + change summary */}
+            <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">진짜 질문</span>
-              {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">{snapshot.version + 1}번째 개선</span>}
+              {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
+              {hasChanges && (newCount > 0 || removedCount > 0) && (
+                <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                  {newCount > 0 && `+${newCount} 추가`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} 제거`}
+                </span>
+              )}
             </div>
 
-            {/* Real question — morphs in place */}
-            <AnimatePresence mode="wait">
-              <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.5, ease: EASE }}
-                className="text-[20px] md:text-[26px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight"
-                style={{ fontFamily: 'var(--font-display)' }}>
-                {snapshot.real_question}
-              </motion.h2>
-            </AnimatePresence>
+            {/* Real question — shows change if updated */}
+            <div>
+              {questionChanged && (
+                <motion.p initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 2, ease: EASE }}
+                  className="text-[14px] text-[var(--text-tertiary)] line-through mb-2 leading-relaxed"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+                  {prevSnapshot.real_question}
+                </motion.p>
+              )}
+              <AnimatePresence mode="wait">
+                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.5, ease: EASE }}
+                  className="text-[20px] md:text-[26px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+                  {snapshot.real_question}
+                </motion.h2>
+              </AnimatePresence>
+            </div>
 
             {/* Insight badge */}
             <AnimatePresence>
@@ -104,18 +153,32 @@ function LiveAnalysis({ snapshot, isActive, dimmed }: { snapshot: AnalysisSnapsh
               )}
             </AnimatePresence>
 
-            {/* Two-column: Assumptions | Skeleton */}
+            {/* Two-column: Assumptions | Skeleton — with diff indicators */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {snapshot.hidden_assumptions.length > 0 && (
+              {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
                 <div>
                   <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">숨겨진 전제</p>
                   <div className="space-y-2.5">
-                    {snapshot.hidden_assumptions.map((a, i) => (
+                    <AnimatePresence>
+                      {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
+                        <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.8, ease: EASE }}
+                          className="flex items-start gap-2.5 text-[13px] text-red-300 line-through leading-relaxed overflow-hidden">
+                          <span className="w-[18px] h-[18px] rounded-full bg-red-50 text-red-300 flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5">−</span>
+                          <span>{d.text}</span>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
                       <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.08, duration: 0.4, ease: EASE }}
-                        className="flex items-start gap-2.5 text-[13px] text-[var(--text-secondary)] leading-relaxed">
-                        <span className="w-[18px] h-[18px] rounded-full bg-red-50 text-red-400 flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5">?</span>
-                        <span>{a}</span>
+                        className={`flex items-start gap-2.5 text-[13px] leading-relaxed rounded-lg px-2 py-1 -mx-2 transition-colors duration-1000 ${
+                          d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
+                        }`}>
+                        <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5 ${
+                          d.status === 'new' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-50 text-red-400'
+                        }`}>{d.status === 'new' ? '+' : '?'}</span>
+                        <span>{d.text}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -124,12 +187,26 @@ function LiveAnalysis({ snapshot, isActive, dimmed }: { snapshot: AnalysisSnapsh
               <div>
                 <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">뼈대</p>
                 <div className="space-y-2.5">
-                  {snapshot.skeleton.map((s, i) => (
+                  <AnimatePresence>
+                    {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
+                      <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.8, ease: EASE }}
+                        className="flex items-start gap-2.5 text-[13px] text-red-300 line-through leading-relaxed overflow-hidden">
+                        <span className="text-red-300 font-mono text-[10px] w-4 text-right shrink-0 mt-1">−</span>
+                        <span>{d.text}</span>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
                     <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.06, duration: 0.4, ease: EASE }}
-                      className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)] leading-relaxed">
-                      <span className="text-[var(--accent)]/60 font-mono text-[10px] w-4 text-right shrink-0 mt-1">{i + 1}</span>
-                      <span>{s}</span>
+                      className={`flex items-start gap-2.5 text-[13px] leading-relaxed rounded-lg px-2 py-1 -mx-2 transition-colors duration-1000 ${
+                        d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
+                      }`}>
+                      <span className={`font-mono text-[10px] w-4 text-right shrink-0 mt-1 ${
+                        d.status === 'new' ? 'text-emerald-500' : 'text-[var(--accent)]/60'
+                      }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
+                      <span>{d.text}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -581,9 +658,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             </motion.div>
           )}
 
-          {/* Living Analysis — the evolving draft */}
+          {/* Living Analysis — the evolving draft with visible diffs */}
           {latest && !final_ && (
-            <LiveAnalysis key={latest.version} snapshot={latest} isActive={!mix} dimmed={false} />
+            <LiveAnalysis
+              key={latest.version}
+              snapshot={latest}
+              prevSnapshot={snapshots.length > 1 ? snapshots[snapshots.length - 2] : null}
+              isActive={!mix}
+            />
           )}
 
           {/* Answered Q&A history — collapsed at bottom */}
