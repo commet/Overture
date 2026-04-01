@@ -163,10 +163,44 @@ Worst: [element] — [why]
 - ? Uncertain — [N]%
 - ✗ Doubtful — [N]%
 
+## Confidence Tiers
+
+Scale ALL claims to sample size. Never overstate:
+
+| Entries | Tier | Language | What you can say |
+|---------|------|----------|-----------------|
+| 3-5 | 초기 인상 | "~로 보인다", "초기 패턴" | Frequency counts only. No trends. No profile. |
+| 6-10 | 패턴 형성 | "~하는 경향", "반복 확인" | Trends visible. Blind spots if 3+ occurrences. Profile tentative. |
+| 11-20 | 패턴 확인 | "일관된 패턴", "강점 확인" | Full analysis. DQ trajectory meaningful. Profile confident. |
+| 20+ | 확립 | "확립된 패턴", "검증된 강점" | Statistical claims, correlations, comparisons across periods. |
+
+**At 3-5 entries:** Skip DQ trajectory table (not enough data points). Show "DQ: [score1], [score2], [score3] — 아직 추세를 판단하기 이릅니다." instead.
+
+**At 6-10 entries:** Include trajectory but caveat: "6회 기준 초기 추세입니다."
+
+## Journal Maintenance
+
+When journal exceeds 50 entries (or `max_entries_before_archive_hint` in config):
+
+1. **Notify:** "저널이 [N]개 항목입니다. 아카이브할까요?"
+2. **If yes:** Move all except last 15 entries to `.overture/journal-archive-[date].md`
+3. **Preserve:** Archive header with date range, total entries, summary stats
+4. **Pattern continuity:** When analyzing, read BOTH current journal AND archive headers (not full archive content)
+
+Archive header format:
+```
+# Journal Archive — [start_date] to [end_date]
+- Entries: [N]
+- Skills: /reframe [N], /recast [N], /rehearse [N], /refine [N], /overture [N]
+- DQ range: [min]-[max] (avg [avg])
+- Top blind spot: [pattern]
+- Top strength: [pattern]
+```
+
 ## Rules
 
 - **Never fabricate patterns.** If the data doesn't clearly show a pattern, say so. "Not enough runs to identify a clear trend in X" is better than a forced insight.
 - **Be specific.** "You missed timing in 5/8 runs" not "You sometimes miss things."
 - **Be honest but constructive.** Blind spots are stated directly, not softened. But always pair with a concrete suggestion.
-- **Respect the data.** If someone has 3 runs, don't make sweeping claims. Scale confidence to sample size.
+- **Respect the data.** Scale confidence to sample size (see Confidence Tiers above).
 - **The thinking profile is descriptive, not prescriptive.** Don't tell them to change their style — describe it and note its trade-offs.

@@ -34,6 +34,11 @@
     "./skills/rehearse/references/risk-classification.md",
     "./skills/refine/references/convergence.md"
   ],
+  "templates": [
+    "./templates/CUSTOM-SKILL-TEMPLATE.md",
+    "./templates/persona-packs/startup-founders.md",
+    "./templates/persona-packs/enterprise-decision.md"
+  ],
   "statusline": "./statusline/index.js",
   "keywords": [
     "decision-making",

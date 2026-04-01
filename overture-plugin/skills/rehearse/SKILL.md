@@ -96,6 +96,17 @@ Build context uses lighter version (no agent, inline):
 2. Market reality builders avoid
 3. 6-month regret
 
+## Confidence Gate
+
+After all persona reviews, before showing to user:
+
+**Self-check each concern:**
+- Does it cite a specific plan element (step, assumption, number)? If not → too vague, strengthen or drop.
+- Is the fix_suggestion actionable within this plan's scope? If not → rewrite.
+- Is this concern unique (not repeating another persona's point)? If duplicate → merge.
+
+**Low-confidence marker:** If a concern is based on general knowledge rather than plan specifics, mark it `[일반론]` and deprioritize. The user needs plan-specific pushback, not generic risk warnings.
+
 ## Step 4: Synthesis
 
 1. **Priority actions** — top 3 changes, ordered: critical risks → multi-persona concerns → unspoken risks
