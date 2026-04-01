@@ -19,11 +19,19 @@ allowed-tools: Read, Write, Agent, AskUserQuestion
 
 ## If no argument is provided
 
-Ask ONLY this:
+Ask using AskUserQuestion:
 
-> What problem or decision are you working on?
+- question: "어떤 고민이야? 한 줄이면 충분해."
+- header: "고민"
+- options:
+  - label: "기획안/제안서 써야 함", description: "누군가에게 제출할 문서를 만들어야 하는 상황"
+  - label: "전략/방향 결정해야 함", description: "어떤 방향으로 갈지 판단이 필요한 상황"
+  - label: "제품/서비스 만들어야 함", description: "앱, 도구, 서비스 등을 만드는 상황"
 
-Wait for response. Then proceed.
+사용자가 선택하면 → 후속으로 구체적 내용을 1줄 물어본다:
+"구체적으로 어떤 거야? 예: 'AI 물류 최적화 SaaS' 또는 '동남아 시장 진출'"
+
+이 답변을 받은 후 Step 1 진행. **구체적 내용 없이는 좋은 초안을 만들 수 없다.**
 
 ## Core principle: Progressive Value
 
@@ -135,46 +143,49 @@ Each round:
 5. Generate **next question** via AskUserQuestion (must open a NEW dimension)
 6. Repeat until ready for Mix (2-3 rounds typically)
 
-### Question quality rules (CRITICAL):
+### Question logic: "가장 빠진 것을 먼저 묻는다" (적응형)
 
-- **Reference their specific answer**: "대표님이 확인한다고 했는데, 그러면..." — not generic follow-ups
-- **Each question opens a NEW dimension**: Don't drill into same theme twice
-- **Never ask lazy questions**: "목표가 뭐야?" or "어떤 결과를 원해?" are BANNED
-- **Offer 3-4 concrete options** when possible — people answer better with choices
-- **If answer is vague**, ask something concrete with specific options
-- **If user is more sophisticated than expected**, level up the questions
+**고정 시퀀스가 아니다.** 사용자 입력에서 이미 알 수 있는 것은 건너뛰고, 가장 가치가 높은 빈 칸을 먼저 채운다.
 
-### Question progression pattern:
+**우선순위 (위에서 아래로 — 이미 아는 건 건너뜀):**
 
-| Round | Dimension | Purpose |
-|-------|-----------|---------|
-| 1 | WHO judges/uses this | Determines decision maker, shapes tone |
-| 2 | Constraints, resources, timeline | Shapes execution feasibility |
-| 3 | Success criteria, risks | Sharpens focus and priorities |
+| 우선순위 | 빠진 정보 | 왜 중요 | 질문 예시 |
+|---------|----------|--------|----------|
+| 1 | **구체적 내용** (도메인, 영역) | 이게 없으면 아무것도 구체적으로 못 씀 | "어떤 영역이야?" |
+| 2 | **판단자** (누가 검토) | 문서의 톤과 깊이를 결정 | "이걸 누가 판단해?" |
+| 3 | **핵심 맥락** (배경, 이유) | 왜 이걸 해야 하는지 | "왜 이게 지금 나온 거야?" |
+| 4 | **제약 조건** (시간, 자원) | 실행 가능성 판단 | "시간/인력 제약이 뭐야?" |
 
-Skip rounds whose answers are already clear from input.
+**입력이 풍부할 때** (예: "AI 물류 최적화 SaaS, 대표님이 2주 안에"):
+- 도메인 ✓, 판단자 ✓, 시간 ✓ → 이미 3개 파악
+- Q1: 핵심 맥락만 물어보면 됨 → "왜 이게 지금 나온 거야?"
+- Q2 없이 Mix로 직행 가능
 
-### Round 1 question examples:
+**입력이 빈약할 때** (예: "기획안 써야 해"):
+- 다 빠져 있음
+- Q1: 도메인 ("어떤 기획안이야?")
+- Q2: 판단자 ("누가 봐?")
+- 이것만 있으면 Mix 가능
 
-**Decide context — always ask first:**
-- question: "이 결과물을 누가 최종 판단해?"
+### Question quality rules:
+
+- **Reference their specific answer**: "대표님이 확인한다고 했는데, 그러면..."
+- **Each question opens a NEW dimension**: 같은 주제 2번 금지
+- **Never ask metadata when content is missing**: 도메인 모르는데 "누가 판단해?" 먼저 묻지 마라
+- **Offer 3-4 concrete options**: 선택이 타이핑보다 빠르다
+- **If input already answers it, SKIP**: "대표님이 시킨" → 판단자=대표님, 질문 안 함
+
+### AskUserQuestion 호출 시:
+
+항상 header + options + description 포맷. 예시:
+
+- question: "이 결과물을 누가 판단해?"
 - header: "판단자"
 - options:
-  - label: "대표/CEO", description: "대표님이 직접 검토하고 판단"
+  - label: "대표/CEO", description: "대표님이 직접 검토"
   - label: "팀장/이사", description: "중간 관리자가 검토"
-  - label: "투자자/외부", description: "외부 이해관계자가 대상"
-  - label: "아직 모름", description: "판단자가 불명확하거나 나 자신"
-
-→ Record as `judge`. Determines persona in Step 4.
-
-**Build context — always ask first:**
-- question: "이걸 누가 쓸 건가요?"
-- header: "사용자"
-- options:
-  - label: "나만 쓸 것", description: "개인 도구나 프로젝트"
-  - label: "특정 그룹", description: "정해진 사용자층이 있음"
-  - label: "누구나", description: "대중을 대상으로"
-  - label: "아직 모름", description: "사용자가 불명확"
+  - label: "투자자/외부", description: "외부 이해관계자"
+  - label: "아직 모름", description: "불명확하거나 나 자신"
 
 ### After each answer — show updated analysis:
 
@@ -228,27 +239,14 @@ Skip rounds whose answers are already clear from input.
 - 🧑 "대표님이 특별히 강조한 키워드나 방향이 있어?" (판단 수집)
 - 🧑 "경쟁사 중 특히 의식하는 곳이 있어?" (맥락 수집)
 
-### 역할 설계 심화 (선택적):
-
-실행 계획 + 🧑 질문 후, AskUserQuestion으로 역할 검토 깊이를 선택:
-
-- question: "AI/사람 역할 배분을 더 세밀하게 볼까?"
-- header: "역할 설계"
-- options:
-  - label: "이대로 좋아", description: "바로 초안 완성으로"
-  - label: "역할 검토하기", description: "각 단계의 담당자를 4가지 기준으로 재검토"
-
-If "역할 검토" → 4-question framework:
-1. 내부/정치적 지식 필요? → 🧑
-2. 주관적/전략적 판단? → 🧑
-3. 틀리면 되돌릴 수 없음? → 🧑 or ⚡
-4. 누군가 책임져야 함? → 🧑
-→ 해당 없으면 → 🤖
-
 ### When to transition to Mix:
 
-After 🧑 판단 수집 완료 (+ 선택적 역할 검토), 자동으로 Mix로 전환.
-"충분하다"고 판단되면 별도 질문 없이 바로 진행. 사용자가 "이 정도면 됐어" / "다음"을 말하면 즉시 전환.
+**필수 정보가 모이면 질문 없이 자동 전환.** 별도로 "초안 만들까?" 묻지 않는다.
+필수 정보 = 도메인 + 판단자 (최소). 맥락/제약은 있으면 좋지만 없어도 진행.
+
+사용자가 "이 정도면 됐어" / "다음"을 말하면 즉시 전환.
+
+**역할 설계 심화는 묻지 않는다.** 필요하면 /recast로 안내한다.
 
 ---
 
@@ -310,18 +308,11 @@ After 🧑 판단 수집 완료 (+ 선택적 역할 검토), 자동으로 Mix로
 - [ ] 리스크 섹션 있는가?
 - [ ] 다음 단계가 "오프라인에서 해야 할 것"인가? (AI가 할 것이 남아있으면 안 됨)
 
-After showing the Mix, ask using AskUserQuestion:
+Mix 출력 후 **자동으로 Step 4 진행.** "시뮬레이션 할까?" 묻지 않는다.
 
-- question: "[판단자]는 이걸 보고 뭐라고 할까?"
-- header: "다음"
-- options:
-  - label: "시뮬레이션 해보기", description: "판단자의 예상 반응을 확인한다"
-  - label: "초안 수정하고 싶다", description: "이 초안을 먼저 다듬겠다"
-  - label: "이대로 완성", description: "시뮬레이션 없이 이 초안으로 끝낸다"
+> **[판단자]는 이걸 보고 뭐라고 할까?**
 
-If "시뮬레이션" → proceed to Step 4.
-If "수정" → ask what to change, update Mix, then ask again.
-If "이대로 완성" → skip to Step 5 deliverables only (문서 재출력 생략, Thinking Summary + Sharpened Prompt만).
+이 한 줄을 보여주고 바로 DM 시뮬레이션 결과를 출력한다. 사용자는 궁금해서 읽게 된다 — 질문으로 멈추면 모멘텀이 끊긴다.
 
 ---
 
@@ -383,14 +374,11 @@ Based on `judge` from Step 2:
 
 ---
 
-After showing DM feedback, ask which fixes to apply using AskUserQuestion:
+DM 피드백 출력 후 **모든 fix를 자동 반영하고 바로 Step 5로 진행.** "뭘 반영할까?" 묻지 않는다.
 
-- question: "🔴 critical은 기본 반영됩니다. 나머지는?"
-- header: "반영 범위"
-- options:
-  - label: "전부 반영", description: "모든 우려 사항을 반영"
-  - label: "critical만", description: "🔴 항목만 반영하고 나머지는 무시"
-  - label: "이대로 완성", description: "수정 없이 현재 초안으로 완성"
+> 위 피드백을 모두 반영하여 최종본을 완성한다.
+
+사용자가 특정 fix를 빼고 싶으면 그때 말하면 된다 (opt-out, not opt-in).
 
 ---
 
