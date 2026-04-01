@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { AuthGuard } from './AuthGuard';
 
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo'];
+const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo', '/workspace'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
