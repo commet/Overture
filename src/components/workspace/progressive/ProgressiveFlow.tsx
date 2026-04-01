@@ -69,7 +69,7 @@ function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; 
 
 function LiveAnalysis({ snapshot, isActive, dimmed }: { snapshot: AnalysisSnapshot; isActive: boolean; dimmed: boolean }) {
   return (
-    <motion.div layout className={`rounded-[1.75rem] transition-opacity duration-700 ${dimmed ? 'opacity-40' : ''}`}
+    <motion.div layout className={`rounded-[1.75rem] transition-opacity duration-500 ${dimmed ? 'opacity-90' : ''}`}
       style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
       <div className={`rounded-[1.75rem] p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
         <div className="rounded-[calc(1.75rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
@@ -553,34 +553,41 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <p className="text-[13px] text-[var(--text-secondary)] truncate">{session.problem_text}</p>
           </motion.div>
 
-          {/* Living Analysis — ONE card */}
-          {latest && !final_ && (
-            <div className="space-y-4">
-              <LiveAnalysis key={latest.version} snapshot={latest} isActive={!mix} dimmed={!!curQ && phase === 'conversing'} />
-              <VersionPills snapshots={snapshots} current={snapshots.length - 1} />
-            </div>
-          )}
+          {/* Question FIRST — user action at the top, not buried below */}
+          {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} />}
+          {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
-          {!final_ && <AnsweredPills qaPairs={qaPairs} />}
-
+          {/* Loading states */}
           {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '숨겨진 전제를 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
-          {phase === 'analyzing' && snapshots.length > 0 && !streamingText && <LoadingState text="답변을 반영해서 업데이트 중..." />}
+          {phase === 'analyzing' && snapshots.length > 0 && !streamingText && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
+              <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
+              <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
+            </motion.div>
+          )}
+          {streamingText !== null && phase === 'analyzing' && snapshots.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
+              <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
+              <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
+            </motion.div>
+          )}
           {phase === 'mixing' && <LoadingState text="조합 중..." steps={['분석을 종합하고 있습니다...', '문서를 구성하는 중...', '마무리 중...']} />}
 
-          {/* Streaming text display — shows AI thinking in real-time */}
-          {streamingText !== null && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="space-y-2">
-              <div className="px-5 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] max-h-[200px] overflow-y-auto">
-                <p className="text-[13px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">{streamingText || '분석 시작...'}</p>
-              </div>
-              <div className="flex justify-center">
-                <button onClick={() => abortRef.current?.abort()} className="text-[11px] text-[var(--text-tertiary)] hover:text-red-500 transition-colors cursor-pointer px-3 py-1 rounded-lg border border-transparent hover:border-red-200">취소</button>
-              </div>
+          {/* Version indicator — shows what round we're on */}
+          {snapshots.length > 1 && !final_ && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 w-fit">
+              <Sparkles size={11} className="text-[var(--accent)]" />
+              <span className="text-[11px] text-[var(--accent)] font-medium">{snapshots.length - 1}번째 개선 반영됨</span>
             </motion.div>
           )}
 
-          {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} />}
-          {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
+          {/* Living Analysis — the evolving draft */}
+          {latest && !final_ && (
+            <LiveAnalysis key={latest.version} snapshot={latest} isActive={!mix} dimmed={false} />
+          )}
+
+          {/* Answered Q&A history — collapsed at bottom */}
+          {!final_ && <AnsweredPills qaPairs={qaPairs} />}
           {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} />}
           {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} busy={busy} />}
 

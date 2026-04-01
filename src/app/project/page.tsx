@@ -68,7 +68,7 @@ export default function ProjectPage() {
     return [
       {
         tool: 'reframe',
-        label: '악보 해석',
+        label: '문제 재정의',
         icon: <Layers size={18} />,
         href: '/workspace?step=reframe',
         status: latestReframe?.status === 'done' ? 'done' : latestReframe ? 'in-progress' : 'not-started',
@@ -78,7 +78,7 @@ export default function ProjectPage() {
       },
       {
         tool: 'recast',
-        label: '편곡',
+        label: '실행 설계',
         icon: <Map size={18} />,
         href: '/workspace?step=recast',
         status: latestRecast?.status === 'done' ? 'done' : latestRecast ? 'in-progress' : 'not-started',
@@ -88,7 +88,7 @@ export default function ProjectPage() {
       },
       {
         tool: 'rehearse',
-        label: '리허설',
+        label: '사전 검증',
         icon: <Users size={18} />,
         href: '/workspace?step=rehearse',
         status: latestFeedback ? 'done' : 'not-started',
@@ -98,7 +98,7 @@ export default function ProjectPage() {
       },
       {
         tool: 'refine',
-        label: '합주 연습',
+        label: '수정 반영',
         icon: <RefreshCw size={18} />,
         href: '/workspace?step=refine',
         status: latestLoop?.status === 'converged' ? 'done' : latestLoop?.status === 'active' ? 'in-progress' : 'not-started',
@@ -313,10 +313,10 @@ export default function ProjectPage() {
                 <div className="flex-1">
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">다음 단계: {nextStep.label}</p>
                   <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                    {nextStep.tool === 'reframe' && '과제의 진짜 질문을 찾아보세요.'}
-                    {nextStep.tool === 'recast' && '발견한 질문을 해결할 워크플로우를 설계하세요.'}
-                    {nextStep.tool === 'rehearse' && '이해관계자 시점에서 결과물을 검증하세요.'}
-                    {nextStep.tool === 'refine' && '피드백을 반영하여 수렴할 때까지 반복하세요.'}
+                    {nextStep.tool === 'reframe' && '숨겨진 전제를 찾고 진짜 질문을 정의합니다.'}
+                    {nextStep.tool === 'recast' && 'AI와 사람의 역할을 설계합니다.'}
+                    {nextStep.tool === 'rehearse' && '판단자의 예상 반응을 시뮬레이션합니다.'}
+                    {nextStep.tool === 'refine' && '피드백을 반영하여 최종본을 완성합니다.'}
                   </p>
                   <Link href={nextStep.href}>
                     <Button size="sm" className="mt-2">
