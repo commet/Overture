@@ -5,13 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import {
   runDeepening,
+  refineInitialFraming,
   runMix,
   runDMFeedback,
   runFinalDeliverable,
 } from '@/lib/progressive-engine';
+import { assessConvergence } from '@/lib/progressive-convergence';
+import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
 import { runAllAIWorkers, type WorkerContext } from '@/lib/worker-engine';
 import { track } from '@/lib/analytics';
-import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult } from '@/stores/types';
+import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics } from '@/stores/types';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, Copy, CheckCheck, UserCheck, ArrowRight } from 'lucide-react';
 
 /* ═══ Design tokens ═══ */
@@ -292,7 +295,7 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
         </div>
         <div>
           <p className="text-[14px] md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{question.text}</p>
-          {question.subtext && <p className="mt-1 text-[11px] text-[var(--text-secondary)] leading-relaxed">{question.subtext}</p>}
+          {question.subtext && <p className="mt-1.5 text-[12px] text-[var(--text-secondary)] leading-relaxed italic">{question.subtext}</p>}
         </div>
       </div>
 
@@ -517,6 +520,111 @@ function MixTrigger({ onMix, onMore, busy }: { onMix: () => void; onMore: () => 
   );
 }
 
+/* ═══ Framing Confirmation (Weakness A fix) ═══ */
+function FramingConfirmation({ snapshot, onConfirm, onReject, busy }: {
+  snapshot: AnalysisSnapshot;
+  onConfirm: () => void;
+  onReject: (reason: string) => void;
+  busy: boolean;
+}) {
+  const [rejectMode, setRejectMode] = useState(false);
+  const [reason, setReason] = useState('');
+  const confidence = snapshot.framing_confidence ?? 75;
+  const isLowConfidence = confidence < 70;
+
+  if (snapshot.framing_locked) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+      className={`rounded-xl border p-4 md:p-5 ${isLowConfidence ? 'bg-amber-50/50 border-amber-200' : 'bg-[var(--accent)]/[0.02] border-[var(--accent)]/10'}`}>
+      <div className="flex items-start gap-3 mb-3">
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isLowConfidence ? 'bg-amber-100' : 'bg-[var(--accent)]/10'}`}>
+          {isLowConfidence ? <AlertTriangle size={11} className="text-amber-600" /> : <Check size={11} className="text-[var(--accent)]" />}
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">이 방향이 맞나요?</p>
+          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+            {isLowConfidence ? '이 문제는 여러 방향으로 해석될 수 있습니다.' : '분석 방향을 확인하고 다음으로 넘어갑니다.'}
+            {' '}확신도 {confidence}%
+          </p>
+        </div>
+      </div>
+
+      {!rejectMode ? (
+        <div className="flex gap-2 pl-9">
+          <motion.button onClick={onConfirm} disabled={busy} whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white cursor-pointer disabled:opacity-50"
+            style={{ background: 'var(--gradient-gold)' }}>맞습니다</motion.button>
+          <motion.button onClick={() => setRejectMode(true)} disabled={busy} whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 rounded-xl text-[12px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer">
+            다시 정의</motion.button>
+        </div>
+      ) : (
+        <div className="pl-9 space-y-2">
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="어떤 방향이 더 맞나요? (예: 이건 투자용이 아니라 내부 보고용이야)"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30"
+            onKeyDown={e => { if (e.key === 'Enter' && reason.trim()) { e.preventDefault(); onReject(reason.trim()); } }} autoFocus />
+          <div className="flex gap-2">
+            <motion.button onClick={() => reason.trim() && onReject(reason.trim())} disabled={busy || !reason.trim()} whileTap={{ scale: 0.98 }}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white cursor-pointer disabled:opacity-50"
+              style={{ background: 'var(--gradient-gold)' }}>재분석</motion.button>
+            <button onClick={() => setRejectMode(false)} className="px-3 py-2 text-[11px] text-[var(--text-tertiary)] cursor-pointer">취소</button>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══ Convergence Status (Weakness C fix) ═══ */
+function ConvergenceStatus({ metrics }: { metrics: ConvergenceMetrics }) {
+  const colorClass = metrics.score >= 75 ? 'text-emerald-600 bg-emerald-50' :
+    metrics.score >= 50 ? 'text-amber-600 bg-amber-50' : 'text-red-500 bg-red-50';
+  const barColor = metrics.score >= 75 ? 'bg-emerald-400' :
+    metrics.score >= 50 ? 'bg-amber-400' : 'bg-red-400';
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: EASE }}
+      className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[var(--bg)]/60 border border-[var(--border-subtle)]">
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">명확도</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colorClass}`}>{metrics.score}%</span>
+        </div>
+        <div className="h-1 rounded-full bg-[var(--border-subtle)] overflow-hidden">
+          <motion.div className={`h-full rounded-full ${barColor}`}
+            initial={{ width: 0 }} animate={{ width: `${metrics.score}%` }} transition={{ duration: 0.8, ease: EASE }} />
+        </div>
+      </div>
+      <p className="text-[10px] text-[var(--text-tertiary)] max-w-[160px] leading-tight">{metrics.guidance}</p>
+    </motion.div>
+  );
+}
+
+/* ═══ Pipeline Exit Buttons (Weakness D fix) ═══ */
+function PipelineExitOptions({ onReframe, onRehearse }: {
+  onReframe: () => void;
+  onRehearse: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-dashed border-[var(--border-subtle)] pt-4 mt-2">
+      <p className="text-[10px] font-medium text-[var(--text-tertiary)] tracking-wide">다른 도구로 전환</p>
+      <div className="flex gap-2">
+        <button onClick={onReframe}
+          className="flex-1 text-left px-3 py-2 rounded-xl bg-[var(--bg)]/60 hover:bg-[var(--accent)]/5 border border-transparent hover:border-[var(--accent)]/10 cursor-pointer transition-colors duration-300">
+          <p className="text-[11px] font-medium text-[var(--text-secondary)]">→ 문제 재정의</p>
+          <p className="text-[9px] text-[var(--text-tertiary)]">더 깊이 들어가기</p>
+        </button>
+        <button onClick={onRehearse}
+          className="flex-1 text-left px-3 py-2 rounded-xl bg-[var(--bg)]/60 hover:bg-[var(--accent)]/5 border border-transparent hover:border-[var(--accent)]/10 cursor-pointer transition-colors duration-300">
+          <p className="text-[11px] font-medium text-[var(--text-secondary)]">→ 피드백 먼저</p>
+          <p className="text-[9px] text-[var(--text-tertiary)]">이해관계자 반응 시뮬레이션</p>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════ */
 /* ═══ MAIN                             ═══ */
 /* ═══════════════════════════════════════════ */
@@ -561,7 +669,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (!dm && round === 0) { const g = value.includes('대표') ? '대표님' : value.includes('팀장') ? '팀장님' : value.includes('투자') ? '투자자' : null; if (g) store.setDecisionMaker(g); }
       abortRef.current = new AbortController();
       setStreamingText('');
-      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, (text) => setStreamingText(text), abortRef.current.signal);
+      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
       // Spawn workers when execution_plan first appears
@@ -582,14 +690,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {
             onStart: (id) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
             onStream: (id, text) => store.setWorkerStreamText(id, text),
-            onComplete: (id, result) => {
+            onComplete: (id, result, validation) => {
               const w = store.currentSession()?.workers.find(ww => ww.id === id);
               if (w?.who === 'both') {
-                store.updateWorker(id, { status: 'waiting_input', result, stream_text: '' });
+                store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', validation_score: validation?.score, validation_passed: validation?.passed });
+              } else if (validation && !validation.passed) {
+                store.updateWorker(id, { status: 'validation_failed', result, stream_text: '', validation_score: validation.score, validation_feedback: validation.issues.join(', '), validation_passed: false, completed_at: new Date().toISOString() });
               } else {
-                store.updateWorker(id, { status: 'done', result, stream_text: '', completed_at: new Date().toISOString() });
+                store.updateWorker(id, { status: 'done', result, stream_text: '', validation_score: validation?.score, validation_passed: validation?.passed ?? true, completed_at: new Date().toISOString() });
               }
             },
+            onValidationFailed: async () => 'accept' as const,
             onError: (id, error) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
           },
           abortRef.current?.signal,
@@ -632,7 +743,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       qa.push({ question: { id: 's', text: '더?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: '한 가지 더 확인' } });
       abortRef.current = new AbortController();
       setStreamingText('');
-      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, (text) => setStreamingText(text), abortRef.current.signal);
+      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
       setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '실패'); store.setPhase('conversing'); setShowMix(true); }
@@ -710,6 +821,61 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             />
           )}
 
+          {/* Framing Confirmation — Round 1 후 사용자 확인 (Weakness A) */}
+          {latest && !latest.framing_locked && snapshots.length === 1 && phase === 'conversing' && !mix && !final_ && (
+            <FramingConfirmation
+              snapshot={latest}
+              onConfirm={() => {
+                store.updateLatestSnapshot({ framing_locked: true });
+                track('framing_confirmed', { confidence: latest.framing_confidence });
+              }}
+              onReject={async (reason) => {
+                setBusy(true); setError(null);
+                try {
+                  setStreamingText('');
+                  const r = await refineInitialFraming(
+                    session.problem_text, latest.real_question, reason,
+                    (text) => setStreamingText(text),
+                  );
+                  setStreamingText(null);
+                  store.replaceInitialSnapshot(r.snapshot);
+                  if (r.detectedDM) store.setDecisionMaker(r.detectedDM);
+                  store.replaceLatestQuestion(r.question);
+                  track('framing_rejected', { reason });
+                } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '재분석 실패'); }
+                finally { setBusy(false); scroll(); }
+              }}
+              busy={busy}
+            />
+          )}
+
+          {/* Convergence Status — 라운드 2+ (Weakness C) */}
+          {snapshots.length >= 2 && !mix && !final_ && phase === 'conversing' && (
+            <ConvergenceStatus metrics={assessConvergence(snapshots)} />
+          )}
+
+          {/* Pipeline Exit — 라운드 1+ 후 4R로 분기 가능 (Weakness D) */}
+          {latest && snapshots.length >= 1 && !mix && !final_ && phase === 'conversing' && !busy && (
+            <PipelineExitOptions
+              onReframe={() => {
+                try {
+                  const item = exportProgressiveAsReframe(session);
+                  store.linkToReframe(item.id);
+                  // Navigate to reframe — store the item in handoff
+                  track('progressive_exit_to_reframe', { round });
+                  window.location.href = `/workspace?step=reframe&handoff=progressive&itemId=${item.id}`;
+                } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }
+              }}
+              onRehearse={() => {
+                try {
+                  const item = exportProgressiveAsRecast(session);
+                  track('progressive_exit_to_rehearse', { round });
+                  window.location.href = `/workspace?step=rehearse&handoff=progressive&itemId=${item.id}`;
+                } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }
+              }}
+            />
+          )}
+
           {/* Answered Q&A history — collapsed at bottom */}
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
           {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} />}
@@ -717,10 +883,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {final_ && <>
             <FinalCard content={final_} />
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center pt-8 pb-16">
-              <p className="text-[13px] text-[var(--text-tertiary)] mb-4">문서를 복사해서 바로 사용하세요.</p>
-              <a href="/workspace" onClick={() => useProgressiveStore.setState({ currentSessionId: null })}
-                className="inline-flex items-center gap-2 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">새 프로젝트 시작 <ArrowRight size={12} /></a>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
+              <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">문서를 복사해서 바로 사용하세요.</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="/workspace" onClick={() => useProgressiveStore.setState({ currentSessionId: null })}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-[13px] font-semibold cursor-pointer"
+                  style={{ background: 'var(--gradient-gold)' }}>새 프로젝트 시작 <ArrowRight size={12} /></a>
+                <button onClick={() => { if (mix) { store.setFinalDeliverable(null as unknown as string); store.setDMFeedback(null as unknown as import('@/stores/types').DMFeedbackResult); store.setMix(null as unknown as MixResult); setShowMix(true); } }}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer transition-colors">
+                  이해관계자 검증 다시 하기
+                </button>
+              </div>
             </motion.div>
           </>}
 

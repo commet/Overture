@@ -383,7 +383,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             </div>
             <div className="flex-1">
               <p className="text-[14px] font-semibold text-[var(--text-primary)]">자유롭게 설명</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">아는 것을 적으면 AI가 프로필로 구조화</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">아는 것을 적으면 프로필로 구조화됩니다</p>
             </div>
             <ChevronRight size={16} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)]" />
           </button>

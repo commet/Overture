@@ -44,6 +44,14 @@ interface ProgressiveState {
   // Final
   setFinalDeliverable: (text: string) => void;
 
+  // Framing (Weakness A)
+  replaceInitialSnapshot: (snapshot: AnalysisSnapshot) => void;
+  replaceLatestQuestion: (question: FlowQuestion) => void;
+
+  // Pipeline bridge (Weakness D)
+  linkToReframe: (reframeItemId: string) => void;
+  linkToRecast: (recastItemId: string) => void;
+
   // Workers
   initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[]) => void;
   updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
@@ -183,6 +191,56 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       snaps[snaps.length - 1] = { ...snaps[snaps.length - 1], ...partial };
       return { snapshots: snaps };
     });
+    persist(sessions);
+    set({ sessions });
+  },
+
+  replaceInitialSnapshot: (snapshot) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      snapshots: [snapshot],
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  replaceLatestQuestion: (question) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => {
+      const questions = [...s.questions];
+      if (questions.length > 0) {
+        questions[questions.length - 1] = question;
+      } else {
+        questions.push(question);
+      }
+      return { questions };
+    });
+    persist(sessions);
+    set({ sessions });
+  },
+
+  linkToReframe: (reframeItemId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      reframe_item_id: reframeItemId,
+      exited_at_phase: s.phase,
+      exited_at_round: s.round,
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  linkToRecast: (recastItemId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      recast_item_id: recastItemId,
+      exited_at_phase: s.phase,
+      exited_at_round: s.round,
+    }));
     persist(sessions);
     set({ sessions });
   },

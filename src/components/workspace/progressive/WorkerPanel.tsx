@@ -60,14 +60,16 @@ export function WorkerPanel({ className }: { className?: string }) {
     store.updateWorker(id, { status: 'running', error: null, started_at: new Date().toISOString() });
 
     try {
-      const result = await runWorkerTask(
+      const { text, validation } = await runWorkerTask(
         worker, context,
-        (text) => store.setWorkerStreamText(id, text),
+        (t) => store.setWorkerStreamText(id, t),
       );
-      if (worker.who === 'both') {
-        store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completed_at: null });
+      if (validation && !validation.passed) {
+        store.updateWorker(id, { status: 'validation_failed', result: text, stream_text: '', validation_score: validation.score, validation_feedback: validation.issues.join(', '), validation_passed: false });
+      } else if (worker.who === 'both') {
+        store.updateWorker(id, { status: 'waiting_input', result: text, stream_text: '', completed_at: null, validation_score: validation?.score });
       } else {
-        store.updateWorker(id, { status: 'done', result, stream_text: '', completed_at: new Date().toISOString() });
+        store.updateWorker(id, { status: 'done', result: text, stream_text: '', completed_at: new Date().toISOString(), validation_score: validation?.score });
       }
     } catch (err) {
       store.updateWorker(id, { status: 'error', error: err instanceof Error ? err.message : '실패', stream_text: '' });
@@ -157,11 +159,13 @@ export function WorkerDrawer({ className }: { className?: string }) {
     if (!worker || !context) return;
     store.updateWorker(id, { status: 'running', error: null, started_at: new Date().toISOString() });
     try {
-      const result = await runWorkerTask(worker, context, (text) => store.setWorkerStreamText(id, text));
-      if (worker.who === 'both') {
-        store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completed_at: null });
+      const { text: resultText, validation: val } = await runWorkerTask(worker, context, (t) => store.setWorkerStreamText(id, t));
+      if (val && !val.passed) {
+        store.updateWorker(id, { status: 'validation_failed', result: resultText, stream_text: '', validation_score: val.score, validation_feedback: val.issues.join(', '), validation_passed: false });
+      } else if (worker.who === 'both') {
+        store.updateWorker(id, { status: 'waiting_input', result: resultText, stream_text: '', completed_at: null, validation_score: val?.score });
       } else {
-        store.updateWorker(id, { status: 'done', result, stream_text: '', completed_at: new Date().toISOString() });
+        store.updateWorker(id, { status: 'done', result: resultText, stream_text: '', completed_at: new Date().toISOString(), validation_score: val?.score });
       }
     } catch (err) {
       store.updateWorker(id, { status: 'error', error: err instanceof Error ? err.message : '실패', stream_text: '' });

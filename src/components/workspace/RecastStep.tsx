@@ -817,7 +817,7 @@ function QuickRehearsalCard({
         <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 검증할 이해관계자</p>
       </div>
       <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-        프로젝트 맥락에서 자동으로 찾았습니다. 선택 후 바로 리허설을 시작하세요.
+        프로젝트 맥락에서 이해관계자를 도출했습니다. 선택 후 바로 리허설을 시작하세요.
       </p>
 
       <div className="space-y-2.5">

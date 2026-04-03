@@ -9,7 +9,7 @@
  */
 
 import type { AnalysisSnapshot, FlowAnswer, FlowQuestion } from '@/stores/types';
-import { compactQAHistory, shouldCompact, compactSnapshots } from '@/lib/compact-context';
+import { compactQAHistory, shouldCompact, compactSnapshots, getKeepRecent } from '@/lib/compact-context';
 
 /** Strip XML-like tags from user input to prevent prompt injection. */
 function sanitize(text: string): string {
@@ -35,6 +35,12 @@ Your job: In ONE pass, give them:
    Example good: "투자자가 이 기획안에서 진짜 보고 싶은 게 기술력인지 시장성인지?"
    Example bad: "개발자가 사업계획서를 통해 실행력을 증명해야 한다" (이건 질문이 아님)
 
+   FRAMING CONFIDENCE: After formulating the real_question, rate your own certainty (0-100):
+   - 90-100: User's intent is crystal clear. This question nails it.
+   - 70-89: Mostly clear, but one ambiguity exists.
+   - 50-69: Could be interpreted 2-3 ways. Best guess included.
+   - <50: Too vague to be confident. Flag it.
+
 2. 놓치기 쉬운 것 — Things they're probably assuming wrong.
    Must be REALISTIC and COMMON (많은 사람이 실제로 하는 실수)
    Each item: "~라고 생각하지만, 실제로는 ~일 수 있다" format.
@@ -59,6 +65,7 @@ Respond in JSON. Keep total output concise — quality over volume.`,
 JSON format:
 {
   "real_question": "이 사람이 먼저 답해야 하는 핵심 질문 (물음표로 끝나는 1문장)",
+  "framing_confidence": 85,
   "why_this_matters": "왜 이 질문부터 답해야 하는지 (1문장)",
   "hidden_assumptions": [
     "~라고 생각하지만, 실제로는 ~일 수 있다 (현실적인 것만)",
@@ -92,9 +99,10 @@ export function buildDeepeningPrompt(
   round: number,
   maxRounds: number,
 ): { system: string; user: string } {
-  // 컨텍스트 압축: Q&A가 길어지면 오래된 대화를 요약
+  // 컨텍스트 압축: Q&A가 길어지면 오래된 대화를 요약 (후반 라운드일수록 더 많이 보존)
+  const keepRecent = getKeepRecent(round);
   const qaHistory = shouldCompact(questionsAndAnswers)
-    ? compactQAHistory(questionsAndAnswers, 2)
+    ? compactQAHistory(questionsAndAnswers, keepRecent)
     : questionsAndAnswers.map((qa, i) =>
         `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
       ).join('\n\n');
@@ -340,6 +348,54 @@ JSON format:
   "key_assumptions": ["..."],
   "next_steps": ["..."],
   "changes_applied": ["어떤 수정이 적용됐는지 요약 1줄씩"]
+}`,
+  };
+}
+
+// ─── 1b. 프레이밍 재분석 (사용자가 Round 1 질문 거부 시) ───
+
+export function buildInitialRefinementPrompt(
+  problemText: string,
+  rejectedQuestion: string,
+  rejectionReason: string,
+): { system: string; user: string } {
+  return {
+    system: `You are a practical business mentor. Korean only. Direct.
+
+The user saw your initial "진짜 질문" and REJECTED it. Their feedback tells you WHERE you went wrong.
+Re-analyze from scratch, incorporating their correction. The new real_question must:
+1. Directly address the user's feedback
+2. Still be a QUESTION (물음표로 끝남)
+3. Be more specific than the rejected version
+4. Include framing_confidence — if you're still uncertain, say so (60-70).
+
+Do NOT repeat the rejected question with minor edits. Find the ACTUAL underlying question.`,
+
+    user: `원래 고민:
+<user-data>${sanitize(problemText)}</user-data>
+
+처음 제시된 질문 (거부됨):
+"${sanitize(rejectedQuestion)}"
+
+사용자 피드백:
+"${sanitize(rejectionReason)}"
+
+사용자의 거부 이유를 반영해서 완전히 새로운 분석을 해줘.
+
+JSON format:
+{
+  "real_question": "새로운 핵심 질문 (물음표로 끝남)",
+  "framing_confidence": 0-100,
+  "why_this_matters": "왜 이 질문이 맞는지 (1문장)",
+  "hidden_assumptions": ["현실적인 놓치기 쉬운 것 2-3개"],
+  "skeleton": ["업데이트된 뼈대 항목들"],
+  "next_question": {
+    "text": "다음 질문",
+    "subtext": "이유",
+    "options": ["1","2","3"],
+    "type": "select"
+  },
+  "detected_decision_maker": "대표님|팀장님|투자자|null"
 }`,
   };
 }

@@ -201,6 +201,9 @@ function AnalysisCard({ data }: { data: ExampleData }) {
           <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">
             {data.realQuestion.tag}
           </span>
+          <span className="text-[10px] text-[var(--text-tertiary)] ml-1">
+            문제는 표면. 이게 당신이 진짜 답해야 할 것
+          </span>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 6 }}
@@ -463,9 +466,9 @@ export function Hero() {
                 <Link
                   href="/demo"
                   onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
-                  className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)]"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.06] hover:border-[var(--accent)]/50"
                   style={{
-                    transitionProperty: 'color',
+                    transitionProperty: 'color, background-color, border-color',
                     transitionDuration: '300ms',
                     transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
                   }}

@@ -146,7 +146,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
             <div className="px-4 py-3 bg-[var(--ai)]">
               <div className="flex items-center gap-2 mb-1">
                 <Check size={12} className="text-[var(--accent)]" />
-                <span className="text-[12px] font-semibold text-[var(--accent)]">편곡 결과가 자동으로 연결되었습니다</span>
+                <span className="text-[12px] font-semibold text-[var(--accent)]">편곡 결과가 연결되었습니다</span>
               </div>
               <p className="text-[14px] font-bold text-[var(--text-primary)] mt-1">
                 {relatedRecast.analysis.governing_idea}

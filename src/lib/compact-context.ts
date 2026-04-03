@@ -1,12 +1,12 @@
 /**
- * Context Compaction — Claude Code 4-layer compact 패턴 적용
+ * Context Compaction — Semantic-Aware Truncation
  *
  * Progressive Flow에서 Q&A가 쌓일수록 컨텍스트가 커짐.
- * 오래된 Q&A를 요약하여 토큰 예산을 관리하고, 더 깊은 대화를 가능하게 함.
+ * 오래된 Q&A를 요약하되 핵심 조건절(caveat)을 보존함.
  *
  * 전략:
- * - 최근 2라운드는 원문 유지 (디테일 중요)
- * - 그 이전은 핵심만 추출하여 1줄로 압축
+ * - 최근 N라운드는 원문 유지 (N = 2, 라운드 3+에서는 3)
+ * - 그 이전은 완전한 문장 2~3개 + 조건절 추출
  * - snapshot은 최신 것만 전체, 이전은 delta만 기록
  */
 
@@ -17,7 +17,55 @@ interface QAPair {
   answer: FlowAnswer;
 }
 
-/** 최근 N개를 제외한 Q&A를 압축하여 반환 */
+// ─── Caveat extraction ───
+
+/** 답변에서 조건절/단서를 추출 (놓치면 안 되는 핵심 조건) */
+function extractCaveats(answer: string): string[] {
+  const patterns = [
+    // 한국어 조건절
+    /(?:단,|다만|단지|만약|다만,)\s*[^.!?\n]+/g,
+    /(?:~인 경우|~일 때|~하면|~한다면)[^.!?\n]*/g,
+    /(?:조건은|전제는|단서는)[^.!?\n]+/g,
+    // 영어 혼용
+    /(?:but |however |only if |unless )[^.!?\n]+/gi,
+  ];
+
+  const caveats: string[] = [];
+  for (const pattern of patterns) {
+    const matches = answer.match(pattern);
+    if (matches) {
+      for (const m of matches) {
+        const trimmed = m.trim();
+        if (trimmed.length > 5 && !caveats.includes(trimmed)) {
+          caveats.push(trimmed);
+        }
+      }
+    }
+  }
+  return caveats.slice(0, 2); // 최대 2개만
+}
+
+/** 텍스트를 완전한 문장 단위로 잘라서 요약 */
+function summarizeBySentence(text: string, maxSentences = 2): string {
+  // 한국어/영어 문장 경계
+  const sentences = text.match(/[^.!?。]+[.!?。]+/g);
+  if (!sentences || sentences.length === 0) {
+    return text.length > 150 ? text.slice(0, 150) + '...' : text;
+  }
+
+  const selected = sentences.slice(0, maxSentences);
+  const result = selected.join('').trim();
+
+  // 150자 초과하면 첫 문장만
+  if (result.length > 150 && sentences.length > 1) {
+    return sentences[0].trim();
+  }
+  return result;
+}
+
+// ─── Main compaction ───
+
+/** 최근 N개를 제외한 Q&A를 시맨틱 압축하여 반환 */
 export function compactQAHistory(
   questionsAndAnswers: QAPair[],
   keepRecent = 2
@@ -33,14 +81,17 @@ export function compactQAHistory(
   const recent = questionsAndAnswers.slice(-keepRecent);
   const recentStartIndex = older.length;
 
-  // 오래된 Q&A는 핵심만 추출
+  // 오래된 Q&A: 완전한 문장 요약 + 조건절 보존
   const compactedOlder = older.map((qa, i) => {
     const answer = qa.answer.value;
-    // 긴 답변은 첫 문장 + "..." 으로 축약
-    const shortAnswer = answer.length > 100
-      ? answer.slice(0, 100).replace(/[.。!?](?=[^.。!?]*$).*/, '...') || answer.slice(0, 100) + '...'
-      : answer;
-    return `[R${i + 1}] ${qa.question.text} → ${shortAnswer}`;
+    const summary = summarizeBySentence(answer, 2);
+    const caveats = extractCaveats(answer);
+
+    let line = `[R${i + 1}] ${qa.question.text} → ${summary}`;
+    if (caveats.length > 0) {
+      line += `\n     ⚠️ ${caveats[0]}`;
+    }
+    return line;
   }).join('\n');
 
   // 최근 Q&A는 원문 유지
@@ -50,6 +101,11 @@ export function compactQAHistory(
   }).join('\n\n');
 
   return `[이전 라운드 요약]\n${compactedOlder}\n\n[최근 대화]\n${fullRecent}`;
+}
+
+/** 라운드에 따라 keepRecent를 결정 (후반일수록 더 많이 보존) */
+export function getKeepRecent(round: number): number {
+  return round >= 3 ? 3 : 2;
 }
 
 /** 스냅샷 히스토리를 압축: 최신만 전체, 이전은 delta만 */
@@ -92,10 +148,9 @@ function formatSnapshot(s: AnalysisSnapshot): string {
   return lines.join('\n');
 }
 
-/** 현재 컨텍스트의 대략적 토큰 수 추정 (~4 bytes/token) */
+/** 현재 컨텍스트의 대략적 토큰 수 추정 */
 export function estimateTokens(text: string): number {
   // 한국어는 ~2 chars/token, 영어는 ~4 chars/token
-  // 보수적으로 2.5 chars/token
   return Math.ceil(text.length / 2.5);
 }
 

@@ -5,14 +5,17 @@
 import { callLLMJson, callLLMStreamThenParse } from '@/lib/llm';
 import {
   buildInitialAnalysisPrompt,
+  buildInitialRefinementPrompt,
   buildDeepeningPrompt,
   buildMixPrompt,
   buildDMFeedbackPrompt,
   buildFinalDeliverablePrompt,
 } from '@/lib/progressive-prompts';
+import { assessConvergence } from '@/lib/progressive-convergence';
 import { generateId } from '@/lib/uuid';
 import type {
   AnalysisSnapshot,
+  ConvergenceMetrics,
   FlowQuestion,
   FlowAnswer,
   MixResult,
@@ -24,6 +27,7 @@ import type {
 
 interface InitialAnalysisResponse {
   real_question: string;
+  framing_confidence?: number;
   why_this_matters?: string;
   hidden_assumptions: string[];
   skeleton: string[];
@@ -113,11 +117,15 @@ export async function runInitialAnalysis(
         { system, maxTokens: 2000, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
       );
 
+  const framingConfidence = Math.min(100, Math.max(0, result.framing_confidence ?? 75));
+
   const snapshot: AnalysisSnapshot = {
     version: 0,
     real_question: result.real_question || '분석 중...',
     hidden_assumptions: result.hidden_assumptions || [],
     skeleton: result.skeleton || [],
+    framing_confidence: framingConfidence,
+    framing_locked: false,
   };
 
   const question: FlowQuestion = {
@@ -137,6 +145,60 @@ export async function runInitialAnalysis(
 }
 
 /**
+ * Step 1b: 프레이밍 재분석 — 사용자가 Round 1 질문을 거부했을 때
+ */
+export async function refineInitialFraming(
+  problemText: string,
+  rejectedQuestion: string,
+  rejectionReason: string,
+  onToken?: (text: string) => void,
+): Promise<{
+  snapshot: AnalysisSnapshot;
+  question: FlowQuestion;
+  detectedDM: string | null;
+}> {
+  const { system, user } = buildInitialRefinementPrompt(
+    problemText, rejectedQuestion, rejectionReason,
+  );
+
+  const result = onToken
+    ? await callLLMStreamThenParse<InitialAnalysisResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000 },
+        onToken,
+      )
+    : await callLLMJson<InitialAnalysisResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
+      );
+
+  const framingConfidence = Math.min(100, Math.max(0, result.framing_confidence ?? 70));
+
+  const snapshot: AnalysisSnapshot = {
+    version: 0,
+    real_question: result.real_question || '분석 중...',
+    hidden_assumptions: result.hidden_assumptions || [],
+    skeleton: result.skeleton || [],
+    framing_confidence: framingConfidence,
+    framing_locked: false,
+    framing_override_reason: rejectionReason,
+  };
+
+  return {
+    snapshot,
+    question: {
+      id: generateId(),
+      text: result.next_question?.text || '이제 이 방향이 맞나요?',
+      subtext: result.next_question?.subtext,
+      options: result.next_question?.options,
+      type: result.next_question?.type || 'select',
+      engine_phase: 'reframe',
+    },
+    detectedDM: result.detected_decision_maker || null,
+  };
+}
+
+/**
  * Step 2+: 심화 분석 — 답변 반영 → 업데이트된 분석 + 다음 질문
  */
 export async function runDeepening(
@@ -145,12 +207,14 @@ export async function runDeepening(
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   round: number,
   maxRounds: number,
+  allSnapshots: AnalysisSnapshot[],
   onToken?: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion | null;
   readyForMix: boolean;
+  convergenceMetrics: ConvergenceMetrics;
 }> {
   const { system, user } = buildDeepeningPrompt(
     problemText, currentSnapshot, questionsAndAnswers, round, maxRounds,
@@ -174,23 +238,63 @@ export async function runDeepening(
     skeleton: result.skeleton || currentSnapshot.skeleton,
     execution_plan: result.execution_plan || currentSnapshot.execution_plan,
     insight: result.insight,
+    framing_confidence: currentSnapshot.framing_confidence,
+    framing_locked: currentSnapshot.framing_locked,
   };
 
-  const question: FlowQuestion | null = result.next_question
-    ? {
-        id: generateId(),
-        text: result.next_question.text,
-        subtext: result.next_question.subtext,
-        options: result.next_question.options,
-        type: result.next_question.type || 'select',
-        engine_phase: round >= 1 ? 'recast' : 'reframe',
-      }
-    : null;
+  // Adaptive convergence: 스냅샷 전체 + 새 스냅샷으로 수렴도 계산
+  const convergence = assessConvergence([...allSnapshots, snapshot]);
+  snapshot.convergence_score = convergence.score;
+  snapshot.convergence_trend = convergence.trend;
+
+  // LLM이 ready라고 했거나, 수렴도가 충분하면 Mix 가능
+  const llmSaysReady = result.ready_for_mix === true;
+  const convergenceSaysReady = convergence.is_converged;
+  const isMaxRound = round >= maxRounds - 1;
+
+  // 적응형 수렴: 최대 라운드라도 수렴 안 됐으면 강제하지 않음 → 대신 선택지 제시
+  let shouldProceedToMix: boolean;
+  let question: FlowQuestion | null;
+
+  if (llmSaysReady || convergenceSaysReady) {
+    // 수렴 완료
+    shouldProceedToMix = true;
+    question = null;
+  } else if (isMaxRound && !convergenceSaysReady) {
+    // 최대 라운드인데 수렴 안 됨 → 사용자에게 선택지 제시
+    shouldProceedToMix = false;
+    question = {
+      id: generateId(),
+      text: `아직 완전히 명확하지 않습니다 (명확도: ${convergence.score}%). 어떻게 할까요?`,
+      subtext: convergence.guidance,
+      options: [
+        '지금 바로 문서로 만들기',
+        '한 라운드 더 진행하기',
+        '문제를 다시 정의하기',
+      ],
+      type: 'select',
+      engine_phase: 'reframe',
+    };
+  } else {
+    // 아직 진행 중
+    shouldProceedToMix = false;
+    question = result.next_question
+      ? {
+          id: generateId(),
+          text: result.next_question.text,
+          subtext: result.next_question.subtext,
+          options: result.next_question.options,
+          type: result.next_question.type || 'select',
+          engine_phase: round >= 1 ? 'recast' : 'reframe',
+        }
+      : null;
+  }
 
   return {
     snapshot,
     question,
-    readyForMix: result.ready_for_mix ?? (round >= maxRounds - 1),
+    readyForMix: shouldProceedToMix,
+    convergenceMetrics: convergence,
   };
 }
 

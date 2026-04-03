@@ -226,7 +226,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
           <h1 className="text-[22px] font-bold text-[var(--text-primary)]">조율</h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
             {mode === 'direct'
-              ? '결과물을 붙여넣으면 AI가 쟁점을 찾고, 당신은 판단만 합니다.'
+              ? '결과물을 붙여넣으면 쟁점이 도출되고, 당신은 판단만 합니다.'
               : '질문에 답한 후 내용을 붙여넣으면 더 정확하게 분석합니다.'}
           </p>
         </div>
@@ -263,7 +263,7 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
             <Card className="space-y-3">
               <div>
                 <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">비교할 결과물을 붙여넣으세요</h2>
-                <p className="text-[12px] text-[var(--text-secondary)]">여러 AI 답변이나 의견을 한 번에 붙여넣으면 AI가 자동으로 분리하고 분석합니다.</p>
+                <p className="text-[12px] text-[var(--text-secondary)]">여러 AI 답변이나 의견을 한 번에 붙여넣으면 공통점과 차이를 구조화합니다.</p>
               </div>
               <div className="flex gap-2 mb-2">
                 <button

@@ -182,7 +182,14 @@ function WorkspaceContent() {
       const sid = progressiveStore.currentSessionId;
       if (sid) progressiveStore.deleteSession(sid);
       setCurrentProjectId(null);
-      const errMsg = err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.';
+      const raw = err instanceof Error ? err.message : '';
+      const errMsg = raw.includes('fetch') || raw.includes('network') || raw.includes('Failed to fetch')
+        ? '인터넷 연결을 확인해주세요.'
+        : raw.includes('rate') || raw.includes('limit') || raw.includes('429')
+        ? '오늘의 분석 횟수를 모두 사용했습니다. 내일 다시 시도해주세요.'
+        : raw.includes('too long') || raw.includes('token')
+        ? '입력이 너무 깁니다. 핵심만 간결하게 입력해주세요.'
+        : raw || '분석에 실패했습니다. 다시 시도해주세요.';
       setStartError(errMsg);
       track('workspace_start_error', { error: errMsg });
     } finally {
@@ -262,6 +269,16 @@ function WorkspaceContent() {
                   autoFocus
                 />
 
+                <details className="mb-2 group">
+                  <summary className="text-[11px] text-[var(--text-tertiary)] cursor-pointer hover:text-[var(--accent)] transition-colors select-none">
+                    이렇게 쓰면 더 정확합니다 ↓
+                  </summary>
+                  <div className="mt-2 px-3 py-2.5 rounded-lg bg-[var(--bg)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-1">
+                    <p><strong className="text-[var(--text-primary)]">좋은 예:</strong> &quot;나는 마케팅 팀장인데, CEO가 3개월 신제품 론칭 전략을 요청했다. 시장 조사도 안 했고 팀도 작다.&quot;</p>
+                    <p><strong className="text-[var(--text-primary)]">포인트:</strong> 역할 + 상황 + 제약조건이 있으면 분석이 정확해집니다.</p>
+                  </div>
+                </details>
+
                 {startError && (
                   <div className="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">⚠</span>
@@ -280,7 +297,7 @@ function WorkspaceContent() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-[14px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 disabled:opacity-40 cursor-pointer"
                     style={{ background: 'var(--gradient-gold)' }}
                   >
-                    {isStarting ? '분석 시작 중...' : '시작하기'}
+                    {isStarting ? '분석 중... (약 30초)' : '시작하기'}
                     <ChevronRight size={14} />
                   </button>
                 </div>

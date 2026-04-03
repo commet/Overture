@@ -717,11 +717,20 @@ export interface AnalysisSnapshot {
     key_assumptions: string[];
   };
   insight?: string;              // 이번 업데이트의 핵심 인사이트
+
+  // Framing validation (Weakness A fix)
+  framing_confidence?: number;      // 0-100: LLM의 자기 평가
+  framing_locked?: boolean;         // Round 1 질문을 사용자가 확인했는지
+  framing_override_reason?: string; // 사용자가 거부한 이유
+
+  // Convergence tracking (Weakness C fix)
+  convergence_score?: number;       // 0-100: 질문 안정성 + 가정 감소 종합
+  convergence_trend?: 'improving' | 'stable' | 'declining' | 'unclear';
 }
 
 // ─── Agent Workers ───
 
-export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input';
+export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input' | 'validation_failed';
 
 export interface WorkerTask {
   id: string;
@@ -736,6 +745,12 @@ export interface WorkerTask {
   error: string | null;
   started_at: string | null;
   completed_at: string | null;
+
+  // Quality gate (Weakness E fix)
+  validation_score?: number;        // 0-100: 결과물 품질
+  validation_feedback?: string;     // 검증 실패 시 피드백
+  validation_passed?: boolean;      // true if score >= 70
+  retry_count?: number;             // 재시도 횟수
 }
 
 export interface DMConcern {
@@ -790,6 +805,21 @@ export interface ProgressiveSession {
   recast_item_id?: string;
   feedback_record_id?: string;
 
+  // Pipeline bridge (Weakness D fix)
+  exited_at_phase?: ProgressivePhase;
+  exited_at_round?: number;
+  re_entry_point?: ProgressivePhase;
+
   created_at: string;
   updated_at: string;
+}
+
+// ─── Convergence Metrics ───
+
+export interface ConvergenceMetrics {
+  score: number;                    // 0-100
+  trend: 'improving' | 'stable' | 'declining' | 'unclear';
+  is_converged: boolean;            // true if score >= 75
+  estimated_rounds_left: number;    // 0 = ready
+  guidance: string;                 // 사용자에게 보여줄 한 줄 안내
 }

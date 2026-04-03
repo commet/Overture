@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, AlertTriangle, ChevronDown, RotateCw, Loader2 } from 'lucide-react';
+import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { WorkerTask } from '@/stores/types';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -30,7 +31,8 @@ export function WorkerCard({
   onSubmitInput?: (id: string, input: string) => void;
   onRetry?: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(worker.status === 'waiting_input');
+  const store = useProgressiveStore();
+  const [expanded, setExpanded] = useState(worker.status === 'waiting_input' || worker.status === 'validation_failed');
   const [inputVal, setInputVal] = useState(worker.who === 'both' && worker.result ? worker.result : '');
   const badge = WHO_BADGE[worker.who];
 
@@ -40,6 +42,7 @@ export function WorkerCard({
     done: '완료',
     error: '오류',
     waiting_input: '입력 필요',
+    validation_failed: '품질 확인 필요',
   }[worker.status];
 
   const previewText = worker.status === 'running'
@@ -144,12 +147,27 @@ export function WorkerCard({
                 </div>
               )}
 
+              {/* Validation failed */}
+              {worker.status === 'validation_failed' && (
+                <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-[11px] font-semibold text-amber-900 mb-1">품질 확인이 필요합니다</p>
+                  {worker.validation_feedback && <p className="text-[10px] text-amber-700 mb-2">{worker.validation_feedback}</p>}
+                  <div className="flex gap-2">
+                    {onRetry && <button onClick={(e) => { e.stopPropagation(); onRetry(worker.id); }}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-50">다시 생성</button>}
+                    <button onClick={(e) => { e.stopPropagation(); store.updateWorker(worker.id, { status: 'done', completed_at: new Date().toISOString() }); }}
+                      className="text-[10px] px-2.5 py-1 rounded-lg text-amber-600 cursor-pointer hover:text-amber-800">그냥 사용</button>
+                  </div>
+                </div>
+              )}
+
               {/* Human / Both — input area */}
               {worker.status === 'waiting_input' && onSubmitInput && (
                 <div className="mt-2 space-y-2">
                   {worker.who === 'both' && worker.result && (
                     <div className="text-[10px] text-[var(--text-secondary)] bg-[var(--bg)]/50 rounded-lg p-2 leading-relaxed">
-                      <span className="font-semibold text-[var(--text-primary)]">AI 초안:</span>
+                      <span className="font-semibold text-[var(--text-primary)]">AI가 초안을 잡았습니다.</span>
+                      <span className="text-[var(--text-tertiary)]"> 당신의 맥락을 반영해주세요.</span>
                       <p className="mt-1 whitespace-pre-wrap">{worker.result}</p>
                     </div>
                   )}
