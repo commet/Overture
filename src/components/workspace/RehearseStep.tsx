@@ -12,7 +12,8 @@ import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import { toDisplayError, isAuthError } from '@/lib/error-display';
-import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
+import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
+import { useAgentStore } from '@/stores/useAgentStore';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
@@ -31,9 +32,12 @@ const lazyVitality = () => import('@/lib/judgment-vitality');
 import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
-// Single source of truth: persona-prompt.ts
-const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) =>
-  buildFeedbackSystemPrompt(persona, perspective, intensity);
+/// Single source of truth: persona-prompt.ts (Agent 우선, 없으면 Persona fallback)
+const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
+  const agent = useAgentStore.getState().getAgent(persona.id);
+  if (agent) return buildFeedbackSystemPromptFromAgent(agent, perspective, intensity);
+  return buildFeedbackSystemPrompt(persona, perspective, intensity);
+};
 
 /* ────────────────────────────────────────────
    Phase-based flow (matches Reframe/Recast pattern)

@@ -18,7 +18,8 @@ import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalCond
 import type { FeedbackRecord, RehearsalResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefineLoop } from '@/stores/types';
 import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
-import { buildFeedbackSystemPrompt } from '@/lib/persona-prompt';
+import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
+import { useAgentStore } from '@/stores/useAgentStore';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { buildRecastContext, buildReframeContext, buildRefineContext } from '@/lib/context-chain';
 import { useRecastStore } from '@/stores/useRecastStore';
@@ -170,7 +171,10 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
         personaIds.map(async (personaId) => {
           const persona = getPersona(personaId);
           if (!persona) throw new Error(`Persona ${personaId} not found`);
-          const systemPrompt = buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
+          const agent = useAgentStore.getState().getAgent(personaId);
+          const systemPrompt = agent
+            ? buildFeedbackSystemPromptFromAgent(agent, perspective, intensity, { isReReview: true })
+            : buildFeedbackSystemPrompt(persona, perspective, intensity, { isReReview: true });
           const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
             [{ role: 'user', content: reReviewContent }],
             { system: systemPrompt, maxTokens: 2000, shape: { overall_reaction: 'string', classified_risks: 'array', praise: 'array', concerns: 'array', approval_conditions: 'array' } }

@@ -6,7 +6,8 @@ import { Send, RotateCcw, Bookmark, Check } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
-import { buildBossSystemPrompt, buildFirstMessageContext, buildFollowUpContext } from '@/lib/boss/boss-prompt';
+import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext } from '@/lib/boss/boss-prompt';
+import { useAgentStore } from '@/stores/useAgentStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
@@ -55,9 +56,15 @@ export function BossChat() {
   const sendToLLM = useCallback(async (chatMessages: typeof messages, retry = 0) => {
     if (!typeData) return;
 
-    const bossProfile = { type: typeData, saju: sajuProfile, gender };
     const isFirst = chatMessages.length === 1;
-    const system = buildBossSystemPrompt(bossProfile) + (isFirst ? buildFirstMessageContext() : buildFollowUpContext());
+    const contextSuffix = isFirst ? buildFirstMessageContext() : buildFollowUpContext();
+
+    // Agent에서 로드된 boss면 agent 프롬프트 사용 (Lv.2+ observation 주입)
+    const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
+    const system = (agent?.personality_profile
+      ? buildBossSystemPromptFromAgent(agent)
+      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, gender })
+    ) + contextSuffix;
     const llmMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
 
     abortRef.current = new AbortController();
