@@ -159,12 +159,12 @@ export async function runDeepening(
   const result = onToken
     ? await callLLMStreamThenParse<DeepeningResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 3000, signal },
+        { system, maxTokens: 2000, signal },
         onToken,
       )
     : await callLLMJson<DeepeningResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 3000, signal, shape: { insight: 'string', real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', ready_for_mix: 'boolean' } },
+        { system, maxTokens: 2000, signal, shape: { insight: 'string', real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', ready_for_mix: 'boolean' } },
       );
 
   const snapshot: AnalysisSnapshot = {
@@ -202,9 +202,10 @@ export async function runMix(
   snapshots: AnalysisSnapshot[],
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
+  workerResults?: Array<{ task: string; result: string }>,
 ): Promise<MixResult> {
   const { system, user } = buildMixPrompt(
-    problemText, snapshots, questionsAndAnswers, decisionMaker,
+    problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults,
   );
 
   const result = await callLLMJson<MixResponse>(

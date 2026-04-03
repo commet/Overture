@@ -10,6 +10,7 @@ import { RecastStep } from '@/components/workspace/RecastStep';
 import { RehearseStep } from '@/components/workspace/RehearseStep';
 import { RefineStep } from '@/components/workspace/RefineStep';
 import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
+import { WorkerPanel, WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -23,6 +24,49 @@ import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
 import { useHandoffStore } from '@/stores/useHandoffStore';
+
+/* ─── Progressive Layout: flow + worker panel ─── */
+function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: string; projectName?: string; onReset: () => void }) {
+  const workers = useWorkers();
+  const hasWorkers = workers.length > 0;
+
+  return (
+    <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
+      <StaffLines opacity={0.02} spacing={18} />
+
+      <div className="relative pt-8 md:pt-12 pb-16">
+        {/* Project header */}
+        <div className="max-w-2xl mx-auto mb-6 flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-2">
+            <FolderOpen size={14} className="text-[var(--accent)]" />
+            <span className="text-[13px] font-semibold text-[var(--text-secondary)] truncate max-w-[200px]">
+              {projectName}
+            </span>
+          </div>
+          <button onClick={onReset} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
+            새 프로젝트
+          </button>
+        </div>
+
+        {/* Desktop: flex layout with worker panel */}
+        <div className="flex">
+          {hasWorkers && (
+            <div className="hidden lg:block w-[320px] shrink-0 sticky top-14 h-[calc(100vh-120px)] overflow-y-auto border-r border-[var(--border-subtle)]/50">
+              <WorkerPanel />
+            </div>
+          )}
+          <div className="flex-1 px-4 md:px-6">
+            <ProgressiveFlow projectId={projectId} />
+          </div>
+        </div>
+
+        {/* Mobile: bottom drawer */}
+        {hasWorkers && <WorkerDrawer className="lg:hidden" />}
+      </div>
+    </div>
+  );
+}
 
 /* ─── Step metadata ─── */
 const STEPS: { id: StepId; number: string; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -302,33 +346,10 @@ function WorkspaceContent() {
     }
 
     return (
-      <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
-        <StaffLines opacity={0.02} spacing={18} />
-
-        <div className="relative pt-8 md:pt-12 pb-16 px-4 md:px-6">
-          {/* Project header */}
-          <div className="max-w-2xl mx-auto mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FolderOpen size={14} className="text-[var(--accent)]" />
-              <span className="text-[13px] font-semibold text-[var(--text-secondary)] truncate max-w-[200px]">
-                {currentProject?.name}
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setCurrentProjectId(null);
-                useProgressiveStore.setState({ currentSessionId: null });
-              }}
-              className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-            >
-              새 프로젝트
-            </button>
-          </div>
-
-          <ProgressiveFlow projectId={progressiveSession.project_id} />
-        </div>
-      </div>
+      <ProgressiveLayout projectId={progressiveSession.project_id} projectName={currentProject?.name} onReset={() => {
+        setCurrentProjectId(null);
+        useProgressiveStore.setState({ currentSessionId: null });
+      }} />
     );
   }
 

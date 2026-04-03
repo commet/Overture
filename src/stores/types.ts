@@ -719,6 +719,25 @@ export interface AnalysisSnapshot {
   insight?: string;              // 이번 업데이트의 핵심 인사이트
 }
 
+// ─── Agent Workers ───
+
+export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input';
+
+export interface WorkerTask {
+  id: string;
+  step_index: number;
+  task: string;
+  who: 'ai' | 'human' | 'both';
+  expected_output: string;
+  status: WorkerStatus;
+  stream_text: string;           // 스트리밍 중 텍스트 (비영속, 메모리만)
+  result: string | null;
+  human_input: string | null;
+  error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface DMConcern {
   text: string;
   severity: 'critical' | 'important' | 'minor';
@@ -759,6 +778,7 @@ export interface ProgressiveSession {
   questions: FlowQuestion[];
   answers: FlowAnswer[];
   snapshots: AnalysisSnapshot[];  // version 0 = 초기, 1+ = 업데이트
+  workers: WorkerTask[];          // 병렬 에이전트 작업자
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;
 

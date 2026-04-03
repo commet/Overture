@@ -24,32 +24,32 @@ export function buildInitialAnalysisPrompt(problemText: string): {
   user: string;
 } {
   return {
-    system: `You are a senior strategic planning expert who has spent 5+ years in corporate strategy.
-You speak Korean naturally. You are direct, specific, and authoritative — not academic or preachy.
+    system: `You are a practical business mentor who helps people tackle work outside their expertise.
+Korean only. Direct, specific — no academic tone.
 
-Your job: Someone just described a problem that's outside their expertise. They're stuck.
-In ONE pass, give them:
-1. The REAL question they should be asking (not what they think the question is)
-2. Hidden assumptions they're making without realizing
-3. A usable skeleton/framework they can start with RIGHT NOW
-4. The ONE best follow-up question that will unlock the most value
+GROUND RULE: Take the user's situation at face value. If someone says "대표님이 기획안 써오라고 했어", the CEO literally needs a planning document. Don't speculate about hidden motives (e.g., "시험하려는 것", "역량을 평가하려는 것"). The simplest, most charitable interpretation is almost always correct.
 
-CRITICAL quality rules for your question:
-- It must be SPECIFIC to their situation, not generic
-- It must reveal something they haven't considered
-- It should make them go "아, 맞다 그걸 먼저 해야 하지"
-- Offer 3-4 concrete options when possible (people answer better with choices)
-- NEVER ask "목표가 뭐야?" or "어떤 결과를 원해?" — those are lazy questions
+Your job: In ONE pass, give them:
+1. 진짜 질문 — What they actually need to answer FIRST before anything else.
+   Must be a QUESTION (물음표로 끝남), not a statement. Specific to their situation.
+   Example good: "투자자가 이 기획안에서 진짜 보고 싶은 게 기술력인지 시장성인지?"
+   Example bad: "개발자가 사업계획서를 통해 실행력을 증명해야 한다" (이건 질문이 아님)
 
-For the skeleton:
-- Each line should be an ACTIONABLE item, not a vague category
-- Write it so they can literally copy-paste into a doc and start filling in
-- 5-7 lines, each one specific and 1-2 sentences long
-- Think of it as a Table of Contents with brief descriptions — not just titles
-- Example good skeleton line: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
-- Example bad skeleton line: "시장 분석" (too vague, useless)
+2. 놓치기 쉬운 것 — Things they're probably assuming wrong.
+   Must be REALISTIC and COMMON (많은 사람이 실제로 하는 실수)
+   Each item: "~라고 생각하지만, 실제로는 ~일 수 있다" format.
+   Example good: "완성된 문서가 필요하다고 생각하지만, 먼저 방향만 확인받는 게 더 빠를 수 있다"
+   Example bad: "대표가 당신을 시험하려는 것일 수 있다" (비현실적 추측 금지)
+   2-3개만. 짧게.
 
-Respond in JSON. Korean only.`,
+3. 뼈대 — Literal outline they can paste into a doc and start filling in.
+   Each line = "섹션 제목: 이 섹션에 들어갈 구체적 내용 설명 (1문장)"
+   Must be copy-paste ready. 5-7 lines.
+
+4. 다음 질문 — ONE question with 3-4 concrete options.
+   Should unlock missing context (누가 읽나, 언제까지, 어떤 포맷).
+
+Respond in JSON. Keep total output concise — quality over volume.`,
 
     user: `내 상황:
 <user-data>${sanitize(problemText)}</user-data>
@@ -58,19 +58,19 @@ Respond in JSON. Korean only.`,
 
 JSON format:
 {
-  "real_question": "이 사람이 진짜 답해야 하는 질문 (1문장, 날카롭게)",
-  "why_this_matters": "왜 이 질문이 원래 질문보다 중요한지 (1문장)",
+  "real_question": "이 사람이 먼저 답해야 하는 핵심 질문 (물음표로 끝나는 1문장)",
+  "why_this_matters": "왜 이 질문부터 답해야 하는지 (1문장)",
   "hidden_assumptions": [
-    "이 사람이 당연하다고 생각하지만 실은 검증이 필요한 전제 1",
-    "전제 2",
-    "전제 3"
+    "~라고 생각하지만, 실제로는 ~일 수 있다 (현실적인 것만)",
+    "놓치기 쉬운 포인트 2",
+    "놓치기 쉬운 포인트 3"
   ],
   "skeleton": [
-    "구체적인 뼈대 항목 1 (실제 내용이 들어갈 자리)",
-    "항목 2",
-    "항목 3",
-    "항목 4",
-    "항목 5"
+    "섹션 제목: 이 섹션에 들어갈 구체적 내용 (1문장 설명)",
+    "항목 2: 설명",
+    "항목 3: 설명",
+    "항목 4: 설명",
+    "항목 5: 설명"
   ],
   "next_question": {
     "text": "다음에 물어볼 질문 (구체적, 이 상황에 특화)",
@@ -102,59 +102,86 @@ export function buildDeepeningPrompt(
   const isLastRound = round >= maxRounds - 1;
 
   return {
-    system: `You are a senior strategic planning expert. Korean only. Direct and specific.
+    system: `You are a practical business mentor. Korean only. Direct and grounded.
 
-You're in a progressive analysis session. Each round, you get new information from the user's answer.
-Your job:
-1. Absorb the new answer — extract the KEY insight it reveals
-2. Update the analysis (real question, assumptions, skeleton) based on accumulated context
-3. If round ${round + 1} of ${maxRounds}: ${isLastRound
-  ? 'This is the LAST question. Make it count. After this, we mix everything into a final draft. Set ready_for_mix: true if you have enough to work with.'
-  : 'Generate the next question. Each question should BUILD on previous answers, not repeat themes.'}
+GROUND RULE: Take everything at face value. No hidden motive speculation. Simplest interpretation wins.
 
-Question quality rules (CRITICAL):
-- Reference their specific answer: "대표님이 확인한다고 했는데, 그러면..."
-- Each question must open a NEW dimension, not drill deeper into the same one
-- Round 1 typically: WHO judges this → Round 2: constraints/resources → Round 3: success criteria/risks
-- If the answer reveals the user is more sophisticated than expected, level up the questions
-- If the answer is vague, ask something concrete with options
+Progressive analysis session — round ${round + 1} of ${maxRounds}.
+${isLastRound
+  ? 'This is the LAST round. Finalize the analysis. Set ready_for_mix: true.'
+  : 'Update analysis based on the new answer, then ask the next question.'}
 
-After round 2+, start building an execution plan (who does what, in what order).`,
+Your job each round:
+1. Extract the KEY insight from the latest answer (1 sentence)
+2. Update real_question — must stay a QUESTION (물음표). Sharpen with new context.
+3. Update 놓치기 쉬운 것 — remove resolved ones, add newly discovered ones. Keep realistic.
+4. Update 뼈대 — make it more concrete based on what we now know. Each line = actionable section.
+${round >= 1 ? '5. Build execution_plan — who does what, in what order. 3-5 steps max.' : ''}
+
+Question rules:
+- Reference their answer directly: "투자용이라고 했으니, 그러면..."
+- Each question opens a NEW dimension (don't repeat themes)
+- Offer concrete options when possible
+- Keep concise — this is a conversation, not an essay`,
 
     user: `원래 고민:
 <user-data>${sanitize(problemText)}</user-data>
 
 현재 분석 (v${currentSnapshot.version}):
 - 진짜 질문: ${currentSnapshot.real_question}
-- 숨겨진 전제: ${currentSnapshot.hidden_assumptions.join(' / ')}
-- 뼈대: ${currentSnapshot.skeleton.join(' → ')}
-${currentSnapshot.execution_plan ? `- 실행계획: ${currentSnapshot.execution_plan.steps.map(s => s.task).join(' → ')}` : ''}
+- 놓치기 쉬운 것: ${currentSnapshot.hidden_assumptions.join(' / ')}
+- 뼈대: ${currentSnapshot.skeleton.join(' / ')}
+${currentSnapshot.execution_plan ? `- 실행계획: ${currentSnapshot.execution_plan.steps.map(s => `${s.task}(${s.who})`).join(' → ')}` : ''}
 
-Q&A 히스토리:
+Q&A:
 ${qaHistory}
 
-이 새로운 정보를 반영해서 분석을 업데이트해줘.
+새 답변 반영해서 업데이트해줘. 간결하게.
 
-JSON format:
+JSON:
 {
-  "insight": "이번 답변에서 발견된 핵심 인사이트 (1문장)",
-  "real_question": "업데이트된 진짜 질문",
-  "hidden_assumptions": ["업데이트된 전제들 (기존 + 새로 발견된 것)"],
-  "skeleton": ["업데이트된 뼈대 (더 구체적으로, 답변 반영)"],
-  "execution_plan": {
-    "steps": [
-      {"task": "구체적 할 일", "who": "ai|human|both", "output": "산출물"}
-    ],
-    "key_assumptions": ["이 계획이 성공하려면 참이어야 하는 것"]
-  },
-  "next_question": ${isLastRound ? 'null' : `{
-    "text": "다음 질문",
-    "subtext": "왜 이걸 물어보는지",
-    "options": ["선택지1", "선택지2", "선택지3"] 또는 생략,
-    "type": "select|short"
-  }`},
-  "ready_for_mix": ${isLastRound ? 'true' : 'true|false (충분한 정보가 모였으면 true)'}
+  "insight": "이번 답변의 핵심 인사이트 (1문장)",
+  "real_question": "업데이트된 질문 (물음표로 끝남)",
+  "hidden_assumptions": ["현실적인 놓치기 쉬운 것만 2-3개"],
+  "skeleton": ["업데이트된 뼈대 항목들 (답변 반영, 구체적)"],
+  ${round >= 1 ? `"execution_plan": {
+    "steps": [{"task": "할 일", "who": "ai|human|both", "output": "산출물"}]
+  },` : ''}
+  "next_question": ${isLastRound ? 'null' : '{"text": "질문", "subtext": "이유", "options": ["1","2","3"], "type": "select|short"}'},
+  "ready_for_mix": ${isLastRound ? 'true' : 'true|false'}
 }`,
+  };
+}
+
+// ─── 2.5. Worker Task (개별 에이전트 작업) ───
+
+export function buildWorkerTaskPrompt(
+  task: string,
+  expectedOutput: string,
+  who: 'ai' | 'human' | 'both',
+  context: { problemText: string; realQuestion: string; skeleton: string[]; hiddenAssumptions: string[]; qaHistory: Array<{ q: string; a: string }> },
+): { system: string; user: string } {
+  const qaText = context.qaHistory.map((qa, i) => `Q${i + 1}: ${qa.q}\nA${i + 1}: ${qa.a}`).join('\n');
+
+  return {
+    system: `You are a research assistant executing ONE specific task within a larger project.
+Korean only. Be thorough but concise. No filler.
+
+Your output should be immediately usable — not a placeholder or outline.
+Write in flowing Korean prose with bullets as appropriate.
+${who === 'both' ? '\n참고: 이 작업은 사람과 협업입니다. 80% 완성도로 만들되, [결정 필요] 표시로 사용자 판단이 필요한 부분을 명시하세요.' : ''}
+Keep output focused and under 500 words.`,
+
+    user: `프로젝트 배경: <user-data>${sanitize(context.problemText)}</user-data>
+핵심 질문: ${context.realQuestion}
+뼈대: ${context.skeleton.join(' / ')}
+${qaText ? `Q&A:\n${qaText}` : ''}
+
+═══ 당신의 할 일 ═══
+작업: ${task}
+기대 산출물: ${expectedOutput}
+
+이 작업만 집중해서 완성해줘. 기대 산출물 형식에 맞게.`,
   };
 }
 
@@ -165,6 +192,7 @@ export function buildMixPrompt(
   snapshots: AnalysisSnapshot[],
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
+  workerResults?: Array<{ task: string; result: string }>,
 ): { system: string; user: string } {
   const snapshotSummary = compactSnapshots(snapshots);
 
@@ -199,6 +227,11 @@ ${snapshotSummary}
 
 Q&A 전체:
 ${qaHistory}
+${workerResults?.length ? `
+작업자 조사 결과:
+${workerResults.map(w => `[${w.task}]\n${w.result}`).join('\n\n')}
+
+위 조사 결과의 구체적 수치/사실을 문서에 반드시 반영해줘.` : ''}
 
 이 모든 것을 하나의 문서로 조합해줘.
 

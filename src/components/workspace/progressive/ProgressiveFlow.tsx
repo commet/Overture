@@ -9,6 +9,7 @@ import {
   runDMFeedback,
   runFinalDeliverable,
 } from '@/lib/progressive-engine';
+import { runAllAIWorkers, type WorkerContext } from '@/lib/worker-engine';
 import { track } from '@/lib/analytics';
 import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult } from '@/stores/types';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, Copy, CheckCheck, UserCheck, ArrowRight } from 'lucide-react';
@@ -104,15 +105,15 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
   const removedCount = skeletonDiff.filter(d => d.status === 'removed').length + assumptionDiff.filter(d => d.status === 'removed').length;
 
   return (
-    <motion.div layout className="rounded-[1.75rem]"
+    <motion.div layout className="rounded-2xl"
       style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-      <div className={`rounded-[1.75rem] p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
-        <div className="rounded-[calc(1.75rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+      <div className={`rounded-2xl p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           {isActive && <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />}
-          <div className="p-7 md:p-9 space-y-6">
+          <div className="p-5 md:p-7">
             {/* Eyebrow + change summary */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">진짜 질문</span>
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">진짜 질문</span>
               {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
               {hasChanges && (newCount > 0 || removedCount > 0) && (
                 <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
@@ -122,18 +123,18 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
             </div>
 
             {/* Real question — shows change if updated */}
-            <div>
+            <div className="mb-4">
               {questionChanged && (
                 <motion.p initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 2, ease: EASE }}
-                  className="text-[14px] text-[var(--text-tertiary)] line-through mb-2 leading-relaxed"
+                  className="text-[13px] text-[var(--text-tertiary)] line-through mb-1.5 leading-relaxed"
                   style={{ fontFamily: 'var(--font-display)' }}>
                   {prevSnapshot.real_question}
                 </motion.p>
               )}
               <AnimatePresence mode="wait">
-                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.5, ease: EASE }}
-                  className="text-[20px] md:text-[26px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight"
+                  className="text-[18px] md:text-[22px] font-bold text-[var(--text-primary)] leading-[1.35] tracking-tight"
                   style={{ fontFamily: 'var(--font-display)' }}>
                   {snapshot.real_question}
                 </motion.h2>
@@ -144,39 +145,41 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
             <AnimatePresence>
               {snapshot.insight && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden">
-                  <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/8">
-                    <Sparkles size={13} className="text-[var(--accent)] mt-0.5 shrink-0" />
-                    <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{snapshot.insight}</p>
+                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
+                  <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/8">
+                    <Sparkles size={12} className="text-[var(--accent)] mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{snapshot.insight}</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Two-column: Assumptions | Skeleton — with diff indicators */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
-                <div>
-                  <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">숨겨진 전제</p>
-                  <div className="space-y-2.5">
+                <div className="rounded-xl bg-[var(--bg)]/60 p-4">
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />놓치기 쉬운 것
+                  </p>
+                  <div className="space-y-1.5">
                     <AnimatePresence>
                       {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
                         <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.8, ease: EASE }}
-                          className="flex items-start gap-2.5 text-[13px] text-red-300 line-through leading-relaxed overflow-hidden">
-                          <span className="w-[18px] h-[18px] rounded-full bg-red-50 text-red-300 flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5">−</span>
+                          className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                          <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">−</span>
                           <span>{d.text}</span>
                         </motion.div>
                       ))}
                     </AnimatePresence>
                     {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                      <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.08, duration: 0.4, ease: EASE }}
-                        className={`flex items-start gap-2.5 text-[13px] leading-relaxed rounded-lg px-2 py-1 -mx-2 transition-colors duration-1000 ${
+                      <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
+                        className={`flex items-start gap-2 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
                           d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                         }`}>
-                        <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5 ${
-                          d.status === 'new' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-50 text-red-400'
+                        <span className={`text-[9px] font-bold shrink-0 mt-1 ${
+                          d.status === 'new' ? 'text-emerald-500' : 'text-red-400/50'
                         }`}>{d.status === 'new' ? '+' : '?'}</span>
                         <span>{d.text}</span>
                       </motion.div>
@@ -184,27 +187,29 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
                   </div>
                 </div>
               )}
-              <div>
-                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">뼈대</p>
-                <div className="space-y-2.5">
+              <div className="rounded-xl bg-[var(--bg)]/60 p-4">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />뼈대
+                </p>
+                <div className="space-y-1">
                   <AnimatePresence>
                     {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
                       <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.8, ease: EASE }}
-                        className="flex items-start gap-2.5 text-[13px] text-red-300 line-through leading-relaxed overflow-hidden">
-                        <span className="text-red-300 font-mono text-[10px] w-4 text-right shrink-0 mt-1">−</span>
+                        className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                        <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">−</span>
                         <span>{d.text}</span>
                       </motion.div>
                     ))}
                   </AnimatePresence>
                   {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                    <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.06, duration: 0.4, ease: EASE }}
-                      className={`flex items-start gap-2.5 text-[13px] leading-relaxed rounded-lg px-2 py-1 -mx-2 transition-colors duration-1000 ${
+                    <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
+                      className={`flex items-start gap-2.5 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
                         d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
                       }`}>
-                      <span className={`font-mono text-[10px] w-4 text-right shrink-0 mt-1 ${
-                        d.status === 'new' ? 'text-emerald-500' : 'text-[var(--accent)]/60'
+                      <span className={`font-mono text-[10px] w-3.5 text-right shrink-0 mt-0.5 ${
+                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/40'
                       }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
                       <span>{d.text}</span>
                     </motion.div>
@@ -213,22 +218,19 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
               </div>
             </div>
 
-            {/* Execution plan */}
+            {/* Execution plan — compact indicator (workers handle the detail) */}
             <AnimatePresence>
-              {snapshot.execution_plan && (
+              {snapshot.execution_plan && snapshot.execution_plan.steps.length > 0 && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.5, ease: EASE }} className="overflow-hidden">
-                  <div className="pt-5 border-t border-[var(--border-subtle)]">
-                    <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">실행 계획</p>
-                    <div className="space-y-2.5">
+                  <div className="pt-4 border-t border-[var(--border-subtle)]">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">실행 계획:</span>
                       {snapshot.execution_plan.steps.map((step, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.08, duration: 0.4, ease: EASE }} className="flex items-start gap-3 text-[13px]">
-                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            step.who === 'ai' ? 'bg-blue-50 text-blue-600' : step.who === 'human' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'
-                          }`}>{step.who === 'ai' ? 'AI' : step.who === 'human' ? '직접' : '협업'}</span>
-                          <span className="leading-relaxed"><span className="text-[var(--text-primary)]">{step.task}</span><span className="text-[var(--text-tertiary)]"> → {step.output}</span></span>
-                        </motion.div>
+                        <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          step.who === 'ai' ? 'bg-blue-50 text-blue-600' : step.who === 'human' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'
+                        }`}>{step.task}</span>
                       ))}
+                      <span className="text-[10px] text-[var(--text-tertiary)]">← 좌측 패널에서 진행 중</span>
                     </div>
                   </div>
                 </motion.div>
@@ -282,44 +284,44 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
   const goText = () => { if (!input.trim() || disabled || submitted) return; setSubmitted(true); onAnswer(input.trim()); };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6, ease: EASE }}
-      className="rounded-[1.5rem] bg-[var(--accent)]/[0.02] border border-[var(--accent)]/10 p-6 md:p-8">
-      <div className="flex items-start gap-3.5 mb-6">
-        <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
-          <ArrowRight size={14} className="text-[var(--accent)]" />
+    <motion.div initial={{ opacity: 0, y: 12, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-xl bg-[var(--accent)]/[0.02] border border-[var(--accent)]/10 p-4 md:p-5">
+      <div className="flex items-start gap-2.5 mb-3.5">
+        <div className="w-6 h-6 rounded-full bg-[var(--accent)]/10 flex items-center justify-center shrink-0 mt-0.5">
+          <ArrowRight size={11} className="text-[var(--accent)]" />
         </div>
-        <div className="pt-1">
-          <p className="text-[16px] md:text-[18px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{question.text}</p>
-          {question.subtext && <p className="mt-2 text-[12px] text-[var(--text-tertiary)] leading-relaxed">{question.subtext}</p>}
+        <div>
+          <p className="text-[14px] md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{question.text}</p>
+          {question.subtext && <p className="mt-1 text-[11px] text-[var(--text-secondary)] leading-relaxed">{question.subtext}</p>}
         </div>
       </div>
 
       {question.options?.length ? (
-        <div className="space-y-2.5">
+        <div className="space-y-1.5 pl-8.5">
           {question.options.map((opt, i) => (
             <motion.button key={i} onClick={() => go(opt)} disabled={disabled || submitted} whileTap={{ scale: 0.98 }}
-              className={`w-full text-left px-5 py-4 rounded-2xl text-[14px] leading-relaxed border cursor-pointer ${
+              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-normal border cursor-pointer ${
                 selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text-primary)] font-medium' :
                 submitted ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-30' :
                 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40'
               }`} style={{ transitionProperty: 'all', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
           ))}
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-0.5">
             <input value={input} onChange={e => setInput(e.target.value)} placeholder="또는 직접 입력..." disabled={disabled || submitted}
-              className="flex-1 px-4 py-3 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
+              className="flex-1 px-3.5 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
             {input.trim() && <motion.button onClick={goText} disabled={disabled || submitted} whileTap={{ scale: 0.95 }}
-              className="shrink-0 px-5 py-3 text-white rounded-2xl text-[13px] font-semibold cursor-pointer disabled:opacity-30"
+              className="shrink-0 px-4 py-2 text-white rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-30"
               style={{ background: 'var(--gradient-gold)' }}>확인</motion.button>}
           </div>
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex gap-2 pl-8.5">
           <input value={input} onChange={e => setInput(e.target.value)} placeholder="입력..." autoFocus disabled={disabled || submitted}
-            className="flex-1 px-5 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
+            className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
           <motion.button onClick={goText} disabled={disabled || !input.trim() || submitted} whileTap={{ scale: 0.95 }}
-            className="shrink-0 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
+            className="shrink-0 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
             style={{ background: 'var(--gradient-gold)' }}>확인</motion.button>
         </div>
       )}
@@ -527,6 +529,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const workersRef = useRef<Promise<void> | null>(null);
   const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
 
   const phase = session?.phase ?? 'input';
@@ -561,6 +564,37 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const r = await runDeepening(session.problem_text, latest, qa, round, maxR, (text) => setStreamingText(text), abortRef.current.signal);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
+      // Spawn workers when execution_plan first appears
+      const workers = store.currentSession()?.workers ?? [];
+      if (r.snapshot.execution_plan && r.snapshot.execution_plan.steps.length > 0 && workers.length === 0) {
+        store.initWorkers(r.snapshot.execution_plan.steps);
+        const ctx: WorkerContext = {
+          problemText: session.problem_text,
+          realQuestion: r.snapshot.real_question,
+          skeleton: r.snapshot.skeleton,
+          hiddenAssumptions: r.snapshot.hidden_assumptions,
+          qaHistory: qa.map(q => ({ q: q.question.text, a: q.answer.value })),
+        };
+        // Workers run independently of Q&A loop, but we track the promise for onMix
+        workersRef.current = runAllAIWorkers(
+          store.currentSession()!.workers,
+          ctx,
+          {
+            onStart: (id) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
+            onStream: (id, text) => store.setWorkerStreamText(id, text),
+            onComplete: (id, result) => {
+              const w = store.currentSession()?.workers.find(ww => ww.id === id);
+              if (w?.who === 'both') {
+                store.updateWorker(id, { status: 'waiting_input', result, stream_text: '' });
+              } else {
+                store.updateWorker(id, { status: 'done', result, stream_text: '', completed_at: new Date().toISOString() });
+              }
+            },
+            onError: (id, error) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
+          },
+          abortRef.current?.signal,
+        ).catch(() => { /* individual errors handled per-worker via callbacks */ });
+      }
       r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '분석 실패'); store.setPhase('conversing'); }
     finally { setBusy(false); abortRef.current = null; scroll(); }
@@ -569,8 +603,16 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const onMix = async () => {
     setBusy(true); setError(null); store.setPhase('mixing'); scroll();
     try {
+      // Wait for any running workers to finish before collecting results
+      if (workersRef.current) {
+        await workersRef.current;
+        workersRef.current = null;
+      }
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
-      const m = await runMix(session!.problem_text, snapshots, qa, dm);
+      const workerResults = (store.currentSession()?.workers ?? [])
+        .filter(w => w.status === 'done' && w.result)
+        .map(w => ({ task: w.task, result: w.result! }));
+      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined);
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round });
     } catch (e) { setError(e instanceof Error ? e.message : '초안 생성 실패'); store.setPhase('conversing'); }
     finally { setBusy(false); scroll(); }
@@ -635,7 +677,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
           {/* Loading states */}
-          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '숨겨진 전제를 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
+          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '놓치기 쉬운 것을 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
           {phase === 'analyzing' && snapshots.length > 0 && !streamingText && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
               <Loader2 size={16} className="animate-spin text-[var(--accent)]" />

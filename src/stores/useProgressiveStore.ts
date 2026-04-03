@@ -11,6 +11,7 @@ import type {
   MixResult,
   DMFeedbackResult,
   DMConcern,
+  WorkerTask,
 } from '@/stores/types';
 
 interface ProgressiveState {
@@ -43,6 +44,12 @@ interface ProgressiveState {
   // Final
   setFinalDeliverable: (text: string) => void;
 
+  // Workers
+  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[]) => void;
+  updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
+  setWorkerStreamText: (workerId: string, text: string) => void;
+  submitHumanInput: (workerId: string, input: string) => void;
+
   // Cleanup
   deleteSession: (id: string) => void;
 }
@@ -72,7 +79,14 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
   loadSessions: () => {
     const local = getStorage<ProgressiveSession[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []);
-    set({ sessions: local });
+    // Migration: reset running workers to pending (stream_text lost on reload)
+    const migrated = local.map(s => ({
+      ...s,
+      workers: (s.workers || []).map(w =>
+        w.status === 'running' ? { ...w, status: 'pending' as const, stream_text: '' } : { ...w, stream_text: '' },
+      ),
+    }));
+    set({ sessions: migrated });
   },
 
   createSession: (projectId, problemText) => {
@@ -89,6 +103,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       questions: [],
       answers: [],
       snapshots: [],
+      workers: [],
       mix: null,
       dm_feedback: null,
       final_deliverable: null,
@@ -214,6 +229,64 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     const sessions = updateSession(get().sessions, currentSessionId, () => ({
       final_deliverable: text,
       phase: 'complete' as ProgressivePhase,
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  // ─── Workers ───
+
+  initWorkers: (steps) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const workers: WorkerTask[] = steps.map((step, i) => ({
+      id: generateId(),
+      step_index: i,
+      task: step.task,
+      who: step.who,
+      expected_output: step.output,
+      status: step.who === 'human' ? 'waiting_input' : 'pending',
+      stream_text: '',
+      result: null,
+      human_input: null,
+      error: null,
+      started_at: null,
+      completed_at: null,
+    }));
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({ workers }));
+    persist(sessions);
+    set({ sessions });
+    track('workers_initialized', { count: workers.length });
+  },
+
+  updateWorker: (workerId, partial) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => w.id === workerId ? { ...w, ...partial } : w),
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  setWorkerStreamText: (workerId, text) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    // No persist — called on every token, avoid localStorage thrashing
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => w.id === workerId ? { ...w, stream_text: text } : w),
+    }));
+    set({ sessions });
+  },
+
+  submitHumanInput: (workerId, input) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const now = new Date().toISOString();
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => w.id === workerId ? {
+        ...w, human_input: input, result: input, status: 'done' as const, completed_at: now,
+      } : w),
     }));
     persist(sessions);
     set({ sessions });
