@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { SajuProfile } from '@/lib/boss/saju-interpreter';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 import { getPersonalityType } from '@/lib/boss/personality-types';
+import { useAgentStore } from '@/stores/useAgentStore';
+import type { Agent } from '@/stores/agent-types';
 
 // ━━━ Types ━━━
 
@@ -40,6 +42,9 @@ interface BossState {
   // Phase: 'setup' → 'chat'
   phase: 'setup' | 'chat';
 
+  // Agent 연동
+  loadedAgentId: string | null;   // 저장된 boss agent를 불러왔을 때
+
   // Actions
   setAxis: (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => void;
   setGender: (g: '남' | '여') => void;
@@ -52,6 +57,10 @@ interface BossState {
   commitAssistantMessage: () => void;
   getPersonalityType: () => PersonalityType | undefined;
   reset: () => void;
+
+  // Agent 연동 액션
+  saveAsAgent: (name?: string) => string | null;
+  loadBossFromAgent: (agentId: string) => void;
 }
 
 const INITIAL_STATE = {
@@ -66,6 +75,7 @@ const INITIAL_STATE = {
   isStreaming: false,
   streamingText: '',
   phase: 'setup' as const,
+  loadedAgentId: null as string | null,
 };
 
 export const useBossStore = create<BossState>((set, get) => ({
@@ -142,4 +152,58 @@ export const useBossStore = create<BossState>((set, get) => ({
   },
 
   reset: () => set({ ...INITIAL_STATE }),
+
+  // ─── Agent 연동 ───
+
+  saveAsAgent: (name) => {
+    const { axes, gender, sajuProfile } = get();
+    const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
+    const personalityType = getPersonalityType(typeCode);
+    if (!personalityType) return null;
+
+    const agentStore = useAgentStore.getState();
+    if (agentStore.agents.length === 0) agentStore.loadAgents();
+
+    const agentId = agentStore.createBossAgent({
+      name: name || `${personalityType.name} 팀장`,
+      typeCode,
+      gender,
+      personalityProfile: {
+        communicationStyle: personalityType.communicationStyle,
+        decisionPattern: personalityType.decisionPattern,
+        conflictStyle: personalityType.conflictStyle,
+        feedbackStyle: personalityType.feedbackStyle,
+        triggers: personalityType.triggers,
+        speechPatterns: personalityType.speechPatterns,
+        bossVibe: personalityType.bossVibe,
+      },
+      sajuProfile: sajuProfile ?? undefined,
+    });
+
+    set({ loadedAgentId: agentId });
+    return agentId;
+  },
+
+  loadBossFromAgent: (agentId) => {
+    const agentStore = useAgentStore.getState();
+    if (agentStore.agents.length === 0) agentStore.loadAgents();
+
+    const agent = agentStore.getAgent(agentId);
+    if (!agent || !agent.personality_code) return;
+
+    const code = agent.personality_code;
+    set({
+      axes: {
+        ei: (code[0] as 'E' | 'I') || 'E',
+        sn: (code[1] as 'S' | 'N') || 'S',
+        tf: (code[2] as 'T' | 'F') || 'T',
+        jp: (code[3] as 'J' | 'P') || 'J',
+      },
+      gender: agent.boss_gender || '남',
+      sajuProfile: agent.saju_profile as SajuProfile | null,
+      phase: 'chat',
+      messages: [],
+      loadedAgentId: agentId,
+    });
+  },
 }));

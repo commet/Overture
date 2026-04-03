@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { interpretSaju } from '@/lib/boss/saju-interpreter';
+import { validateContentType, validateOrigin } from '@/lib/api-security';
 
 export async function POST(req: NextRequest) {
+  const ctError = validateContentType(req);
+  if (ctError) return ctError;
+  const originError = validateOrigin(req);
+  if (originError) return originError;
+
   try {
     const { year, month, day, hour, minute, gender } = await req.json();
 

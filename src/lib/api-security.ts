@@ -25,7 +25,10 @@ export function validateOrigin(req: NextRequest): NextResponse | null {
   const referer = req.headers.get('referer');
 
   // Server-to-server or non-browser clients won't send Origin/Referer.
-  // We allow these because they require a valid auth token anyway.
+  // We allow these only because all endpoints using this check also require
+  // a valid auth token or user-provided API key.
+  // Note: endpoints without auth (e.g. /api/boss/saju) should NOT rely on
+  // this function alone for CSRF protection.
   if (!origin && !referer) return null;
 
   const host = req.headers.get('host') || '';

@@ -13,8 +13,13 @@ import {
 import { assessConvergence } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
 import { runAllAIWorkers, type WorkerContext } from '@/lib/worker-engine';
+import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
-import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics } from '@/stores/types';
+import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask } from '@/stores/types';
+import { WorkerReportBlock } from './WorkerCard';
+import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
+import { useWorkerActions } from '@/hooks/useWorkerActions';
+import { useWorkerContext } from './WorkerPanel';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, Copy, CheckCheck, UserCheck, ArrowRight } from 'lucide-react';
 
 /* ═══ Design tokens ═══ */
@@ -233,7 +238,10 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
                           step.who === 'ai' ? 'bg-blue-50 text-blue-600' : step.who === 'human' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'
                         }`}>{step.task}</span>
                       ))}
-                      <span className="text-[10px] text-[var(--text-tertiary)]">← 좌측 패널에서 진행 중</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)]">
+                        <span className="hidden lg:inline">← 좌측 패널에서 진행 중</span>
+                        <span className="lg:hidden">↓ 하단 팀 탭에서 진행 중</span>
+                      </span>
                     </div>
                   </div>
                 </motion.div>
@@ -501,6 +509,50 @@ function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
   );
 }
 
+/* ═══ Team Deploy Banner — 팀 구성 확인 ═══ */
+function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDeploy: () => void }) {
+  const names = workers.map(w => w.persona?.name || 'AI').filter(Boolean);
+  const nameStr = names.length <= 3
+    ? names.join(', ')
+    : `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}명`;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
+      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-4">
+
+      {/* Avatars row + warm intro */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <AvatarRow personas={workers.map(w => w.persona)} />
+        <p className="text-[14px] font-medium text-[var(--text-primary)] truncate">
+          {nameStr}이(가) 함께합니다
+        </p>
+      </div>
+
+      {/* Member list */}
+      <div className="space-y-2">
+        {workers.map(w => (
+          <div key={w.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
+            <WorkerAvatar persona={w.persona} size="md" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-medium text-[var(--text-primary)]">
+                {w.persona?.name || 'AI'}
+                <span className="text-[var(--text-secondary)] font-normal ml-1.5 text-[12px]">{w.persona?.role}</span>
+              </p>
+              <p className="text-[13px] text-[var(--text-secondary)] line-clamp-2 mt-0.5" title={w.task}>{w.task}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
+        className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
+        style={{ background: 'var(--gradient-gold)' }}>
+        시작 <ChevronRight size={14} />
+      </motion.button>
+    </motion.div>
+  );
+}
+
 /* ═══ Mix Trigger ═══ */
 function MixTrigger({ onMix, onMore, busy }: { onMix: () => void; onMore: () => void; busy: boolean }) {
   return (
@@ -637,8 +689,16 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
   const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
+
+  // Cleanup: abort workers on unmount
+  useEffect(() => {
+    return () => {
+      workerAbortRef.current?.abort();
+    };
+  }, []);
 
   const phase = session?.phase ?? 'input';
   const snapshots = session?.snapshots ?? [];
@@ -655,8 +715,59 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const curQ = questions.length > answers.length ? questions[questions.length - 1] : null;
   const latest = snapshots[snapshots.length - 1] || null;
   const shouldMix = showMix || (phase === 'conversing' && snapshots.length > 0 && !curQ && !mix && !busy);
+  const deployPhase = session?.worker_deploy_phase ?? 'none';
+  const workers = session?.workers ?? [];
+  const workerContext = useWorkerContext();
+  const workerActions = useWorkerActions(workerContext);
+
+  // Workers that have completed (for inline display in flow)
+  const completedWorkers = workers.filter(w => w.status === 'done' || w.status === 'waiting_input' || w.status === 'error');
 
   if (!session) return null;
+
+  /* Deploy workers — user confirmed the team */
+  const onDeployWorkers = () => {
+    if (deployPhase === 'deployed') return; // Guard: prevent double-click
+    const ws = store.currentSession()?.workers ?? [];
+    if (ws.length === 0) return;
+    store.deployWorkers();
+    const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
+    const ctx: WorkerContext = {
+      problemText: session.problem_text,
+      realQuestion: latest?.real_question ?? '',
+      skeleton: latest?.skeleton ?? [],
+      hiddenAssumptions: latest?.hidden_assumptions ?? [],
+      qaHistory: qa.map(q => ({ q: q.question.text, a: q.answer.value })),
+    };
+    // Clean up any previous controller before creating new one
+    workerAbortRef.current?.abort();
+    workerAbortRef.current = new AbortController();
+    workersRef.current = runAllAIWorkers(
+      ws,
+      ctx,
+      {
+        onStart: (id) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
+        onStream: (id, text) => store.setWorkerStreamText(id, text),
+        onComplete: (id, result) => {
+          const w = store.currentSession()?.workers.find(ww => ww.id === id);
+          const persona = w?.persona;
+          const note = persona
+            ? getCompletionNote(persona.id)
+            : null;
+          if (w?.who === 'both') {
+            store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completion_note: note });
+          } else {
+            store.updateWorker(id, { status: 'done', result, stream_text: '', completion_note: note, completed_at: new Date().toISOString() });
+          }
+          scroll(); // Auto-scroll to show new worker report
+        },
+        onError: (id, error) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
+      },
+      workerAbortRef.current.signal,
+    ).catch((err) => {
+      console.error('[Worker orchestration error]', err);
+    });
+  };
 
   /* Handlers */
   const onAnswer = async (value: string) => {
@@ -672,39 +783,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
-      // Spawn workers when execution_plan first appears
-      const workers = store.currentSession()?.workers ?? [];
-      if (r.snapshot.execution_plan && r.snapshot.execution_plan.steps.length > 0 && workers.length === 0) {
+      // Prepare workers when execution_plan first appears (user must confirm to deploy)
+      const existingWorkers = store.currentSession()?.workers ?? [];
+      if (r.snapshot.execution_plan && r.snapshot.execution_plan.steps.length > 0 && existingWorkers.length === 0) {
         store.initWorkers(r.snapshot.execution_plan.steps);
-        const ctx: WorkerContext = {
-          problemText: session.problem_text,
-          realQuestion: r.snapshot.real_question,
-          skeleton: r.snapshot.skeleton,
-          hiddenAssumptions: r.snapshot.hidden_assumptions,
-          qaHistory: qa.map(q => ({ q: q.question.text, a: q.answer.value })),
-        };
-        // Workers run independently of Q&A loop, but we track the promise for onMix
-        workersRef.current = runAllAIWorkers(
-          store.currentSession()!.workers,
-          ctx,
-          {
-            onStart: (id) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
-            onStream: (id, text) => store.setWorkerStreamText(id, text),
-            onComplete: (id, result, validation) => {
-              const w = store.currentSession()?.workers.find(ww => ww.id === id);
-              if (w?.who === 'both') {
-                store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', validation_score: validation?.score, validation_passed: validation?.passed });
-              } else if (validation && !validation.passed) {
-                store.updateWorker(id, { status: 'validation_failed', result, stream_text: '', validation_score: validation.score, validation_feedback: validation.issues.join(', '), validation_passed: false, completed_at: new Date().toISOString() });
-              } else {
-                store.updateWorker(id, { status: 'done', result, stream_text: '', validation_score: validation?.score, validation_passed: validation?.passed ?? true, completed_at: new Date().toISOString() });
-              }
-            },
-            onValidationFailed: async () => 'accept' as const,
-            onError: (id, error) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
-          },
-          abortRef.current?.signal,
-        ).catch(() => { /* individual errors handled per-worker via callbacks */ });
+        // Workers are now in 'ready' phase — TeamDeployBanner will show
+        // Actual execution happens when user clicks "팀 시작하기"
+        // Quality validation handled via WorkerTaskResult in worker-engine
       }
       r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '분석 실패'); store.setPhase('conversing'); }
@@ -714,15 +799,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const onMix = async () => {
     setBusy(true); setError(null); store.setPhase('mixing'); scroll();
     try {
-      // Wait for any running workers to finish before collecting results
+      // Wait for any running AI workers to finish before collecting results
       if (workersRef.current) {
         await workersRef.current;
         workersRef.current = null;
       }
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
-      const workerResults = (store.currentSession()?.workers ?? [])
-        .filter(w => w.status === 'done' && w.result)
-        .map(w => ({ task: w.task, result: w.result! }));
+      // Collect approved worker results (approved=true or null=unreviewed; excluded=false)
+      const workerResults = store.approvedWorkerResults()
+        .map(w => ({ task: w.task, result: w.result }));
       const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined);
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round });
     } catch (e) { setError(e instanceof Error ? e.message : '초안 생성 실패'); store.setPhase('conversing'); }
@@ -783,8 +868,54 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <p className="text-[13px] text-[var(--text-secondary)] truncate">{session.problem_text}</p>
           </motion.div>
 
+          {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
+          {deployPhase === 'ready' && workers.length > 0 && (
+            <TeamDeployBanner workers={workers} onDeploy={onDeployWorkers} />
+          )}
+
           {/* Question FIRST — user action at the top, not buried below */}
           {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} />}
+
+          {/* Inline worker reports — appear in main flow as conversations */}
+          {deployPhase === 'deployed' && completedWorkers.length > 0 && !final_ && (
+            <div className="space-y-4">
+              {/* Running workers — subtle indicators */}
+              {workers.filter(w => w.status === 'running').map(w => (
+                <WorkerReportBlock key={w.id} worker={w} />
+              ))}
+              {/* Completed/waiting workers — full report blocks */}
+              {completedWorkers.map(w => (
+                <WorkerReportBlock
+                  key={w.id}
+                  worker={w}
+                  onSubmitInput={w.status === 'waiting_input' ? workerActions.handleSubmit : undefined}
+                  onRetry={w.status === 'error' ? workerActions.handleRetry : undefined}
+                  onApprove={w.status === 'done' ? workerActions.handleApprove : undefined}
+                  onReject={w.status === 'done' ? workerActions.handleReject : undefined}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Worker status summary before mix — with persona names */}
+          {shouldMix && !busy && phase === 'conversing' && !curQ && workers.length > 0 && (() => {
+            const items = workers.map(w => {
+              const name = w.persona?.name || 'AI';
+              if (w.approved === true) return `${name} ✓`;
+              if (w.approved === false) return `${name} ✗`;
+              if (w.status === 'done') return `${name} ⏳`;
+              if (w.status === 'running') return `${name} ●`;
+              return null;
+            }).filter(Boolean);
+            return items.length > 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--bg)]/60 text-[12px] text-[var(--text-secondary)]">
+                <AvatarRow personas={workers.map(w => w.persona)} maxShow={5} />
+                <span>{items.join(' · ')}</span>
+              </motion.div>
+            ) : null;
+          })()}
+
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
           {/* Loading states */}

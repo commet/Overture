@@ -4,6 +4,8 @@ import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
 import { track } from '@/lib/analytics';
+import { useAgentStore } from '@/stores/useAgentStore';
+import { agentToPersona, personaToAgentInput } from '@/lib/agent-adapters';
 
 const DEFAULT_PERSONAS: Omit<Persona, 'id' | 'created_at' | 'updated_at' | 'feedback_logs'>[] = [
   {
@@ -75,11 +77,24 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
   loadData: () => {
     const localPersonas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
     const localFeedback = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
-    set({ personas: localPersonas, feedbackHistory: localFeedback });
+
+    // Agent store의 people 그룹을 Persona로 변환해서 합침
+    const agentStore = useAgentStore.getState();
+    if (agentStore.agents.length === 0) agentStore.loadAgents();
+    const agentPersonas = agentStore.agents
+      .filter(a => a.group === 'people' && !a.archived)
+      .map(agentToPersona);
+    const localIds = new Set(localPersonas.map(p => p.id));
+    const merged = [
+      ...localPersonas,
+      ...agentPersonas.filter(ap => !localIds.has(ap.id)),
+    ];
+
+    set({ personas: merged, feedbackHistory: localFeedback });
     loadAndMerge<Persona>('personas', STORAGE_KEYS.PERSONAS)
-      .then((merged) => set({ personas: merged }));
+      .then((supabaseMerged) => set({ personas: supabaseMerged }));
     loadAndMerge<FeedbackRecord>('feedback_records', STORAGE_KEYS.FEEDBACK_HISTORY)
-      .then((merged) => set({ feedbackHistory: merged }));
+      .then((fbMerged) => set({ feedbackHistory: fbMerged }));
   },
 
   createPersona: (data) => {
@@ -108,6 +123,18 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     setStorage(STORAGE_KEYS.PERSONAS, personas);
     upsertToSupabase('personas', newPersona);
     track('persona_created', { influence: newPersona.influence, has_traits: newPersona.extracted_traits.length > 0 });
+
+    // Agent store에도 동기화
+    const agentInput = personaToAgentInput(newPersona);
+    useAgentStore.getState().createAgent({
+      ...agentInput,
+      id: newPersona.id,
+      name: agentInput.name || newPersona.name,
+      role: agentInput.role || newPersona.role,
+      emoji: agentInput.emoji || '👤',
+      color: agentInput.color || '#6B7280',
+    });
+
     return newPersona.id;
   },
 
@@ -174,7 +201,15 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     if (updated) upsertToSupabase('feedback_records', updated);
   },
 
-  getPersona: (id) => get().personas.find((p) => p.id === id),
+  getPersona: (id) => {
+    const local = get().personas.find((p) => p.id === id);
+    if (local) return local;
+
+    // Agent store fallthrough
+    const agent = useAgentStore.getState().getAgent(id);
+    if (agent && agent.group === 'people') return agentToPersona(agent);
+    return undefined;
+  },
 
   seedDefaultPersonas: () => {
     if (get().personas.length > 0) return;

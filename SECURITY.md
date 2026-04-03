@@ -24,14 +24,20 @@ Overture uses a **client-first architecture** with Supabase as the backend:
 
 | Endpoint | Auth | Rate Limited | Description |
 |---|---|---|---|
-| `POST /api/llm` | JWT required | 5/day per user | Proxy mode (server's API key) |
+| `POST /api/llm` | JWT (optional — anon trial) | 10/day (auth), 8/day (anon IP) | Proxy mode (server's API key) |
 | `POST /api/llm/direct` | None (user's own key) | No | Direct mode (user provides key) |
+| `POST /api/boss/saju` | None (public) | No | Saju analysis (no LLM call) |
+| `POST /api/slack/send` | JWT required | No | Send to Slack channel |
+| `GET /api/slack/channels` | JWT required | No | List Slack channels |
+| `GET /api/slack/oauth` | JWT (query param) | No | Initiate Slack OAuth |
+| `GET /api/slack/callback` | HMAC state | No | Slack OAuth callback |
+| `GET /api/cron/daily-report` | CRON_SECRET | No | Daily report email |
 
 ## Known limitations & trade-offs
 
 1. **localStorage as primary storage**: Data is stored in localStorage first, then synced to Supabase asynchronously. If sync fails, data exists only in the browser. This trade-off prioritizes speed and offline capability over durability.
 
-2. **No Content-Security-Policy**: CSP is not configured due to the complexity of inline styles from Tailwind CSS. `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` are set.
+2. **Content-Security-Policy**: CSP is configured in `middleware.ts` with per-request nonce. `script-src 'nonce-{nonce}' 'strict-dynamic'` prevents inline script injection. `style-src 'unsafe-inline'` is allowed for Tailwind CSS. Additional headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` with preload.
 
 3. **Client-side prompt construction**: System prompts are built client-side with user-provided data (persona names, feedback logs, etc.) interpolated directly. This is acceptable because users are constructing prompts for their own LLM calls — there is no shared prompt context between users.
 

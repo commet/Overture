@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, RotateCcw } from 'lucide-react';
+import { Send, RotateCcw, Bookmark, Check } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
@@ -26,9 +26,11 @@ export function BossChat() {
     messages, isStreaming, streamingText,
     setStreaming, updateStreamingText, commitAssistantMessage,
     addUserMessage, getPersonalityType, reset,
+    loadedAgentId, saveAsAgent,
   } = useBossStore();
 
   const [input, setInput] = useState('');
+  const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -136,9 +138,33 @@ export function BossChat() {
             )}
           </div>
         </div>
-        <button type="button" onClick={handleReset} className="bc-reset" title="다시">
-          <RotateCcw size={14} />
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* 저장 버튼 — 첫 대화 후, 아직 저장 안 했을 때 */}
+          {messages.length >= 2 && !saved && !loadedAgentId && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bc-reset"
+              title="이 팀장 저장하기"
+              onClick={() => {
+                const id = saveAsAgent();
+                if (id) setSaved(true);
+              }}
+              style={{ color: 'var(--accent)' }}
+            >
+              <Bookmark size={14} />
+            </motion.button>
+          )}
+          {saved && (
+            <span style={{ fontSize: 10, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Check size={10} /> 저장됨
+            </span>
+          )}
+          <button type="button" onClick={handleReset} className="bc-reset" title="다시">
+            <RotateCcw size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

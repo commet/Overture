@@ -730,7 +730,19 @@ export interface AnalysisSnapshot {
 
 // ─── Agent Workers ───
 
+export interface WorkerPersona {
+  id: string;
+  name: string;           // 한국 이름 (e.g., "수진")
+  role: string;           // 역할 (e.g., "리서치 애널리스트")
+  emoji: string;          // 아바타 이모지
+  expertise: string;      // 전문 영역 설명 (프롬프트용)
+  tone: string;           // 말투 특성 (프롬프트용)
+  color: string;          // UI 액센트 hex
+}
+
 export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input' | 'validation_failed';
+
+export type AgentLevel = 'junior' | 'senior' | 'guru';
 
 export interface WorkerTask {
   id: string;
@@ -739,10 +751,15 @@ export interface WorkerTask {
   who: 'ai' | 'human' | 'both';
   expected_output: string;
   status: WorkerStatus;
+  persona: WorkerPersona | null;
+  level: AgentLevel;
+  agent_id?: string;             // Agent 참조. 있으면 persona 대신 agent 사용
   stream_text: string;           // 스트리밍 중 텍스트 (비영속, 메모리만)
   result: string | null;
   human_input: string | null;
   error: string | null;
+  approved: boolean | null;      // null=미확인, true=반영, false=제외
+  completion_note: string | null; // 페르소나 음성의 완료 멘트
   started_at: string | null;
   completed_at: string | null;
 
@@ -752,6 +769,9 @@ export interface WorkerTask {
   validation_passed?: boolean;      // true if score >= 70
   retry_count?: number;             // 재시도 횟수
 }
+
+// Workers 배치 단계
+export type WorkerDeployPhase = 'none' | 'ready' | 'deployed';
 
 export interface DMConcern {
   text: string;
@@ -794,6 +814,7 @@ export interface ProgressiveSession {
   answers: FlowAnswer[];
   snapshots: AnalysisSnapshot[];  // version 0 = 초기, 1+ = 업데이트
   workers: WorkerTask[];          // 병렬 에이전트 작업자
+  worker_deploy_phase: WorkerDeployPhase;
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;
 

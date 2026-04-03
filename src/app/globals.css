@@ -1153,3 +1153,285 @@ button, a, input, textarea {
 [data-theme="dark"] .bc-avatar-ring {
   background: var(--surface);
 }
+
+/* ━━━ Agent Hub ━━━ */
+
+.agent-hub {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.agent-hub-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.agent-hub-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+}
+
+/* ── Section Row ── */
+
+.agent-section {
+  margin-bottom: 36px;
+}
+.agent-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.agent-section-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.agent-section-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--bg-hover);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Chain progress bar ── */
+
+.chain-progress {
+  height: 3px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  flex: 1;
+  max-width: 120px;
+}
+.chain-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.6s var(--ease-spring);
+}
+
+/* ── Agent Card Grid ── */
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* ── Agent Card ── */
+
+.agent-card {
+  position: relative;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s ease;
+}
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+}
+.agent-card:active {
+  transform: scale(0.98);
+}
+
+/* Card — locked state */
+.agent-card-locked {
+  opacity: 0.5;
+  cursor: default;
+  background: var(--bg);
+}
+.agent-card-locked:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border);
+}
+
+/* Card inner layout */
+.agent-card-emoji {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.agent-card-role {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.agent-card-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+/* Level badge */
+.agent-lv {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+.agent-lv[data-level="4"],
+.agent-lv[data-level="5"] {
+  background: linear-gradient(135deg, rgba(184,150,62,0.12), rgba(212,185,104,0.12));
+  color: var(--accent);
+}
+
+/* XP Progress bar */
+.agent-xp-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.agent-xp-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s var(--ease-spring);
+}
+
+/* Lock overlay */
+.agent-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px;
+  text-align: center;
+}
+.agent-lock-icon {
+  font-size: 24px;
+  opacity: 0.3;
+}
+.agent-lock-text {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+/* ── People section ── */
+
+.agent-people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+/* ── Concertmaster special card ── */
+
+.agent-card-concertmaster {
+  border-style: dashed;
+  border-color: var(--accent);
+  border-width: 1.5px;
+  background: linear-gradient(180deg, var(--surface) 0%, rgba(184,150,62,0.03) 100%);
+}
+.agent-card-concertmaster.agent-card-locked {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+/* ── Unlock animation ── */
+
+@keyframes agent-unlock {
+  0% { opacity: 0; transform: scale(0.9); }
+  50% { transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.agent-card-unlocking {
+  animation: agent-unlock 0.6s var(--ease-spring) forwards;
+}
+
+/* ── Dark mode ── */
+
+[data-theme="dark"] .agent-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .agent-card:hover {
+  border-color: var(--accent);
+}
+[data-theme="dark"] .agent-card-locked {
+  background: var(--bg);
+}
+
+/* ━━━ Unlock Toast ━━━ */
+
+.unlock-toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.unlock-toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 28px 14px 20px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(184, 150, 62, 0.12);
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+.unlock-toast:hover {
+  box-shadow: var(--shadow-lg), 0 0 50px rgba(184, 150, 62, 0.2);
+}
+.unlock-toast-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(184, 150, 62, 0.08), rgba(212, 185, 104, 0.03));
+  pointer-events: none;
+}
+.unlock-toast-emoji {
+  font-size: 30px;
+  z-index: 1;
+  line-height: 1;
+}
+.unlock-toast-body {
+  z-index: 1;
+}
+.unlock-toast-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.unlock-toast-role {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 2px;
+}

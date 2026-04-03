@@ -46,10 +46,19 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     const userId = await getCurrentUserId();
     if (!userId) return;
 
+    // Load only teams where user is a member (defense-in-depth; RLS also enforces)
+    const { data: memberRows } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId);
+
+    const teamIds = (memberRows || []).map(r => r.team_id);
+    if (teamIds.length === 0) { set({ teams: [] }); return; }
 
     const { data } = await supabase
       .from('teams')
       .select('*')
+      .in('id', teamIds)
       .order('created_at', { ascending: false });
 
     if (data) set({ teams: data });
@@ -82,6 +91,19 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   setCurrentTeam: (teamId) => set({ currentTeamId: teamId }),
 
   loadMembers: async (teamId: string) => {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    // Verify user is a member of this team before loading (defense-in-depth; RLS also enforces)
+    const { data: self } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+
+    if (!self) { set({ members: [] }); return; }
 
     const { data } = await supabase
       .from('team_members')
@@ -118,11 +140,17 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     // Client-side permission guard (RLS is the real enforcer)
     if (!await get()._isAdminOrOwner()) return;
 
-    await supabase.from('team_members').delete().eq('id', memberId);
+    const { currentTeamId } = get();
+    if (!currentTeamId) return;
+
+    // Scope deletion to current team to prevent IDOR across teams
+    await supabase.from('team_members').delete().eq('id', memberId).eq('team_id', currentTeamId);
     set({ members: get().members.filter(m => m.id !== memberId) });
   },
 
   loadInvites: async (teamId: string) => {
+    // Only admin/owner should see invites — client guard (RLS also enforces)
+    if (!await get()._isAdminOrOwner()) { set({ invites: [] }); return; }
 
     const { data } = await supabase
       .from('team_invites')
@@ -171,11 +199,15 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   loadMyInvites: async () => {
+    // Only load invites addressed to current user's email
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) return [];
 
     const { data } = await supabase
       .from('team_invites')
       .select('*')
       .eq('status', 'pending')
+      .eq('email', user.email.toLowerCase())
       .order('created_at', { ascending: false });
 
     return data || [];
@@ -184,6 +216,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   // ── Review Inputs (Structured Team Feedback) ──
 
   loadReviewInputs: async (projectId: string) => {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
 
     const { data } = await supabase
       .from('team_review_inputs')

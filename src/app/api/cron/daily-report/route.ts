@@ -67,7 +67,8 @@ export async function GET(req: Request) {
     .from('user_events')
     .select('session_id, event_name')
     .gte('created_at', utcStart)
-    .lt('created_at', utcEnd);
+    .lt('created_at', utcEnd)
+    .limit(10000);
 
   const sessions = new Set(traffic?.map(e => e.session_id) || []);
   const events = traffic || [];

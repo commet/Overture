@@ -18,6 +18,10 @@ export const STORAGE_KEYS = {
   VITALITY_ASSESSMENTS: 'sot_vitality_assessments',
   SETTINGS: 'sot_settings',
   PROGRESSIVE_SESSIONS: 'sot_progressive_sessions',
+  WORKER_PERSONAS: 'sot_worker_personas',
+  AGENTS: 'sot_agents',
+  AGENT_CHAINS: 'sot_agent_chains',
+  AGENT_ACTIVITIES: 'sot_agent_activities',
 } as const;
 
 export function getStorage<T>(key: string, fallback: T): T {

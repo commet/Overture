@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -16,7 +16,7 @@ import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { runInitialAnalysis } from '@/lib/progressive-engine';
-import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown } from 'lucide-react';
+import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { RefineLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
@@ -24,6 +24,10 @@ import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
 import { useHandoffStore } from '@/stores/useHandoffStore';
+import { getPersonaPool } from '@/lib/worker-personas';
+import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { WorkerPersona } from '@/stores/types';
 
 /* ─── Progressive Layout: flow + worker panel ─── */
 function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: string; projectName?: string; onReset: () => void }) {
@@ -56,13 +60,267 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
               <WorkerPanel />
             </div>
           )}
-          <div className="flex-1 px-4 md:px-6">
+          <div className={`flex-1 px-4 md:px-6 ${hasWorkers ? 'pb-[60px] lg:pb-0' : ''}`}>
             <ProgressiveFlow projectId={projectId} />
           </div>
         </div>
 
         {/* Mobile: bottom drawer */}
         {hasWorkers && <WorkerDrawer className="lg:hidden" />}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Scenarios for hero ─── */
+const SCENARIOS = [
+  { icon: '📋', title: '기획안 작성', desc: '개발자가 만드는 설득력 있는 기획안', prompt: '나는 백엔드 개발자인데 대표님이 "AI 고객 응대 챗봇" 서비스 기획안을 2주 안에 만들어오라고 했어. 기획 경험은 없어.' },
+  { icon: '💰', title: '투자 유치 준비', desc: 'IR 자료부터 시장 분석까지', prompt: 'B2B SaaS 마케팅 자동화 서비스를 운영 중인데, 시리즈A 투자 유치를 위한 IR 자료를 준비해야 해. MAU 3,000 정도이고 월 매출 2천만원 수준이야.' },
+  { icon: '🔍', title: '신규 사업 검토', desc: '시장성과 실행 가능성 분석', prompt: '회사에서 중소기업 대상 AI 세무 자동화 서비스를 새 사업으로 검토하라고 했어. 기존에 회계 소프트웨어를 만들고 있고, 기술팀은 10명이야.' },
+];
+
+const EASE_HERO = [0.32, 0.72, 0, 1] as const;
+
+/* ─── HeroFlow: idle → assembling → analyzing → ready ─── */
+type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
+
+function HeroFlow({ onReady, projects, user }: {
+  onReady: (projectId: string) => void;
+  projects: Array<{ id: string; name: string }>;
+  user: unknown;
+}) {
+  const [phase, setPhase] = useState<HeroPhase>('idle');
+  const [problemInput, setProblemInput] = useState('');
+  const [streamingText, setStreamingText] = useState('');
+  const [previewPersonas, setPreviewPersonas] = useState<WorkerPersona[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const { createProject, setCurrentProjectId } = useProjectStore();
+  const progressiveStore = useProgressiveStore();
+  const phaseRef = React.useRef<HeroPhase>('idle');
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep ref in sync for use inside async callback
+  phaseRef.current = phase;
+
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  const handleSubmit = async (directText?: string) => {
+    const text = (directText || problemInput).trim();
+    if (!text || phase !== 'idle') return;
+    if (directText) setProblemInput(text);
+
+    // 1. idle → assembling: 팀 등장
+    setPhase('assembling');
+    setError(null);
+    const pool = getPersonaPool();
+    setPreviewPersonas(pool.slice(0, 4));
+
+    // 2. 프로젝트 + 세션 생성
+    const pid = createProject(text.slice(0, 40));
+    setCurrentProjectId(pid);
+    progressiveStore.createSession(pid, text);
+    track('workspace_problem_submit', { text_length: text.length, source: 'hero_flow' });
+
+    // 3. assembling → analyzing (타이머 또는 첫 토큰)
+    timerRef.current = setTimeout(() => {
+      if (phaseRef.current === 'assembling') setPhase('analyzing');
+    }, 2000);
+
+    try {
+      // 4. 스트리밍 분석
+      const result = await runInitialAnalysis(text, (token) => {
+        setStreamingText(token);
+        if (phaseRef.current === 'assembling') {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setPhase('analyzing');
+        }
+      });
+
+      // 5. 결과 저장
+      progressiveStore.addSnapshot(result.snapshot);
+      if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
+      progressiveStore.addQuestion(result.question);
+      progressiveStore.setPhase('conversing');
+
+      // 6. ready → ProgressiveFlow로 전환
+      setPhase('ready');
+      onReady(pid);
+    } catch (err) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Cleanup
+      const sid = progressiveStore.currentSessionId;
+      if (sid) progressiveStore.deleteSession(sid);
+      setCurrentProjectId(null);
+      setError(err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.');
+      setPhase('idle');
+      setStreamingText('');
+      track('workspace_start_error', { error: String(err) });
+    }
+  };
+
+  return (
+    <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-warm-vignette)' }} />
+      <StaffLines opacity={0.03} spacing={14} />
+
+      <div className="relative max-w-2xl mx-auto px-5 md:px-6 pt-8 md:pt-16 pb-16">
+        <AnimatePresence mode="wait">
+          {/* ═══ IDLE: 시나리오 선택 + 입력 ═══ */}
+          {phase === 'idle' && (
+            <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: EASE_HERO }}>
+
+              {/* Returning user: previous projects */}
+              {projects.length > 0 && (
+                <div className="mb-8">
+                  <div className="space-y-2">
+                    {projects.slice(0, 3).map((p) => (
+                      <button key={p.id} onClick={() => onReady(p.id)}
+                        className="w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all">
+                        <FolderOpen size={14} className="text-[var(--accent)] shrink-0" />
+                        <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">{p.name}</span>
+                        <ChevronRight size={14} className="text-[var(--text-tertiary)] shrink-0 ml-auto" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-6 mb-8 flex items-center gap-4">
+                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                    <span className="text-[11px] text-[var(--text-tertiary)]">새로 시작하기</span>
+                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                  </div>
+                </div>
+              )}
+
+              {/* Anonymous trial banner */}
+              {!user && (
+                <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
+                    <span className="text-[var(--text-primary)]">로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회</span>
+                  </div>
+                  <Link href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">로그인</Link>
+                </div>
+              )}
+
+              {/* Heading */}
+              <div className="mb-8 text-center">
+                <h1 className="text-display-lg text-[var(--text-primary)]">
+                  상황을 던지면,<br /><span className="text-gold-gradient">팀이 움직입니다</span>
+                </h1>
+                <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed">
+                  클릭 한 번이면 전문 에이전트 팀이 함께 풀어드립니다.
+                </p>
+              </div>
+
+              {/* Scenario cards — click = instant start */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+                {SCENARIOS.map(s => (
+                  <button key={s.title} onClick={() => handleSubmit(s.prompt)}
+                    className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
+                    <span className="text-[22px] block mb-3">{s.icon}</span>
+                    <p className="text-[14px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{s.title}</p>
+                    <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">{s.desc}</p>
+                    <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
+                      바로 시작 <ChevronRight size={11} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Direct input — collapsed, expandable */}
+              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
+                <div className="p-4 md:p-5">
+                  <div className="flex items-center gap-3">
+                    <textarea value={problemInput} onChange={(e) => setProblemInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+                      placeholder="또는 내 상황을 직접 입력..."
+                      rows={1} maxLength={5000}
+                      onFocus={(e) => { e.target.rows = 3; }}
+                      onBlur={(e) => { if (!e.target.value) e.target.rows = 1; }}
+                      className="flex-1 px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-all placeholder:text-[var(--text-tertiary)]" />
+                    <button onClick={() => handleSubmit()} disabled={!problemInput.trim()}
+                      className="shrink-0 px-5 py-3 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] transition-shadow hover:shadow-[var(--shadow-md)]"
+                      style={{ background: 'var(--gradient-gold)' }}>
+                      시작 <ChevronRight size={12} className="inline ml-1" />
+                    </button>
+                  </div>
+
+                  {error && (
+                    <div className="mt-3 px-3 py-2.5 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 text-[13px] text-[var(--text-primary)] flex items-start gap-2">
+                      <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ ASSEMBLING: 팀 등장 ═══ */}
+          {phase === 'assembling' && (
+            <motion.div key="assembling" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: EASE_HERO }} className="pt-8 md:pt-16">
+
+              {/* 축소된 입력 */}
+              <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] w-fit max-w-full mb-8">
+                <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
+                  <span className="text-[var(--bg)] text-[9px] font-bold">나</span>
+                </div>
+                <p className="text-[13px] text-[var(--text-secondary)] truncate">{problemInput}</p>
+              </motion.div>
+
+              {/* 팀 등장 */}
+              <div className="space-y-3">
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+                  className="text-[13px] text-[var(--text-tertiary)] mb-4">팀을 구성하고 있습니다...</motion.p>
+                {previewPersonas.map((p, i) => (
+                  <motion.div key={p.id}
+                    initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + i * 0.25, duration: 0.5, ease: EASE_HERO }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--surface)]/80 border border-[var(--border-subtle)]">
+                    <WorkerAvatar persona={p} size="md" />
+                    <div>
+                      <p className="text-[14px] font-medium text-[var(--text-primary)]">
+                        {p.name} <span className="text-[var(--text-secondary)] font-normal text-[12px] ml-1">{p.role}</span>
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ ANALYZING: 스트리밍 분석 ═══ */}
+          {phase === 'analyzing' && (
+            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: EASE_HERO }} className="pt-8 md:pt-12">
+
+              {/* 상단: 팀 아바타 + 문제 */}
+              <div className="flex items-center gap-3 mb-6">
+                <AvatarRow personas={previewPersonas} />
+                <p className="text-[13px] text-[var(--text-secondary)] truncate flex-1">{problemInput}</p>
+              </div>
+
+              {/* 스트리밍 분석 */}
+              <div className="rounded-2xl border border-[var(--accent)]/12 bg-[var(--surface)] p-5 md:p-7">
+                <div className="flex items-center gap-2 mb-4">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
+                    <Sparkles size={14} className="text-[var(--accent)]" />
+                  </motion.div>
+                  <span className="text-[12px] font-medium text-[var(--accent)]">분석 중</span>
+                </div>
+                <div className="text-[14px] md:text-[15px] leading-[1.85] text-[var(--text-primary)] whitespace-pre-wrap break-words min-h-[80px]">
+                  {streamingText || '상황을 파악하고 있습니다...'}
+                  <span className="inline-block w-[2px] h-[18px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -206,151 +464,14 @@ function WorkspaceContent() {
 
   const currentStepMeta = STEPS.find(s => s.id === activeStep)!;
 
-  /* ─── Empty state: Hero-matching welcome ─── */
+  /* ─── Empty state: HeroFlow with morphing transition ─── */
   if (!currentProjectId) {
     return (
-      <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
-        {/* Concert hall atmosphere */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-warm-vignette)' }} />
-        <StaffLines opacity={0.03} spacing={14} />
-
-        <div className="relative max-w-2xl mx-auto px-5 md:px-6 pt-12 md:pt-24 pb-16">
-          {/* Anonymous trial banner */}
-          {!user && (
-            <div className="mb-8 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
-              <div className="flex items-center gap-2 text-[13px]">
-                <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
-                <span className="text-[var(--text-primary)]">
-                  로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회
-                </span>
-              </div>
-              <Link
-                href="/login"
-                className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all"
-              >
-                로그인
-              </Link>
-            </div>
-          )}
-
-          {/* Heading */}
-          <div className="phrase-entrance text-center mb-10">
-            <h1 className="text-display-lg text-[var(--text-primary)]">
-              무엇을 <span className="text-gold-gradient">고민</span>하고 있나요?
-            </h1>
-            <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed">
-              질문 하나 던지면, 30초 안에 뼈대가 나옵니다.
-            </p>
-          </div>
-
-          {/* Input card — hero-matching */}
-          <div className="phrase-entrance" style={{ animationDelay: '150ms' }}>
-            <div className="relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden">
-              <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
-
-              <div className="p-5 md:p-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-section-label text-[var(--text-tertiary)]">고민 입력</span>
-                </div>
-
-                <textarea
-                  value={problemInput}
-                  onChange={(e) => setProblemInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleStartWithProblem();
-                    }
-                  }}
-                  placeholder="예: 나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어"
-                  rows={3}
-                  className="w-full px-4 py-3.5 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[15px] md:text-[17px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-colors placeholder:text-[var(--text-tertiary)]"
-                  autoFocus
-                />
-
-                <details className="mb-2 group">
-                  <summary className="text-[11px] text-[var(--text-tertiary)] cursor-pointer hover:text-[var(--accent)] transition-colors select-none">
-                    이렇게 쓰면 더 정확합니다 ↓
-                  </summary>
-                  <div className="mt-2 px-3 py-2.5 rounded-lg bg-[var(--bg)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-1">
-                    <p><strong className="text-[var(--text-primary)]">좋은 예:</strong> &quot;나는 마케팅 팀장인데, CEO가 3개월 신제품 론칭 전략을 요청했다. 시장 조사도 안 했고 팀도 작다.&quot;</p>
-                    <p><strong className="text-[var(--text-primary)]">포인트:</strong> 역할 + 상황 + 제약조건이 있으면 분석이 정확해집니다.</p>
-                  </div>
-                </details>
-
-                {startError && (
-                  <div className="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 flex items-start gap-2">
-                    <span className="shrink-0 mt-0.5">⚠</span>
-                    <span>{startError}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-subtle)]">
-                  <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z"/></svg>
-                    인지과학 + 전략기획 실무 기반
-                  </p>
-                  <button
-                    onClick={handleStartWithProblem}
-                    disabled={!problemInput.trim() || isStarting}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-[14px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 disabled:opacity-40 cursor-pointer"
-                    style={{ background: 'var(--gradient-gold)' }}
-                  >
-                    {isStarting ? '분석 중... (약 30초)' : '시작하기'}
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* How it works — mini version of ProcessFlow */}
-          <div className="mt-12 phrase-entrance" style={{ animationDelay: '300ms' }}>
-            <div className="flex items-center justify-center gap-6 md:gap-8 text-center">
-              {STEPS.slice(0, 3).map((step, i) => (
-                <div key={step.id} className="flex items-center gap-4 md:gap-6">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-bold"
-                      style={{ backgroundColor: `${step.color}12`, color: step.color }}
-                    >
-                      {step.number}
-                    </div>
-                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{step.label}</span>
-                  </div>
-                  {i < 2 && (
-                    <CrescendoHairpin width={20} height={8} color="var(--accent)" className="opacity-30 mt-[-12px]" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Existing projects */}
-          {projects.length > 0 && (
-            <div className="mt-12 phrase-entrance" style={{ animationDelay: '400ms' }}>
-              <p className="text-section-label text-[var(--text-tertiary)] text-center mb-3">이전 프로젝트</p>
-              <div className="space-y-2 max-w-sm mx-auto">
-                {projects.slice(0, 5).map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setCurrentProjectId(p.id)}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] text-[13px] font-medium text-[var(--text-primary)] cursor-pointer transition-all"
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Treble clef watermark */}
-        <div className="absolute bottom-8 right-8 pointer-events-none hidden md:block">
-          <TrebleClef size={100} color="var(--accent)" opacity={0.03} />
-        </div>
-      </div>
+      <HeroFlow
+        onReady={(pid) => setCurrentProjectId(pid)}
+        projects={projects}
+        user={user}
+      />
     );
   }
 

@@ -3,6 +3,7 @@
  *
  * execution_plan의 각 step을 실제로 실행하는 엔진.
  * AI 작업은 병렬 스트리밍, human 작업은 사용자 입력 대기.
+ * 각 worker는 페르소나를 가지고 전문화된 프롬프트로 실행된다.
  * 완료 후 품질 검증 → 실패 시 재시도 or 사용자 선택.
  */
 
@@ -10,6 +11,10 @@ import { callLLMStream } from '@/lib/llm';
 import { buildWorkerTaskPrompt } from '@/lib/progressive-prompts';
 import { validateWorkerOutput, type ValidationResult } from '@/lib/worker-quality';
 import type { WorkerTask } from '@/stores/types';
+import { LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
+import { useAgentStore } from '@/stores/useAgentStore';
+import { XP_REWARDS } from '@/stores/agent-types';
+import { buildSearchContext, type SearchResult } from '@/lib/agent-prompt-builder';
 
 // ─── Context ───
 
@@ -19,6 +24,7 @@ export interface WorkerContext {
   skeleton: string[];
   hiddenAssumptions: string[];
   qaHistory: Array<{ q: string; a: string }>;
+  sessionId?: string;
 }
 
 // ─── Types ───
@@ -36,17 +42,45 @@ export async function runWorkerTask(
   onStream: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<WorkerTaskResult> {
+  const baseLevel = task.level || 'junior';
+
+  // Agent 조회 (있으면 agent context가 프롬프트에 주입됨)
+  const agent = task.agent_id
+    ? useAgentStore.getState().getAgent(task.agent_id)
+    : undefined;
+
+  // Agent 레벨을 반영한 effective level
+  const level = agent ? numericLevelToAgentLevel(agent.level) : baseLevel;
+
   const { system, user } = buildWorkerTaskPrompt(
     task.task,
     task.expected_output,
     task.who,
     context,
+    task.persona ?? undefined,
+    level,
+    agent,
   );
+
+  // 웹 검색: web_search capability가 있는 에이전트만
+  let searchContext = '';
+  if (agent?.capabilities.includes('web_search')) {
+    try {
+      const results = await fetchSearchResults(task.task);
+      searchContext = buildSearchContext(results);
+    } catch {
+      // 검색 실패 시 무시 — 작업 자체는 계속 진행
+    }
+  }
+
+  const finalUser = searchContext
+    ? `${user}\n\n${searchContext}`
+    : user;
 
   const text = await new Promise<string>((resolve, reject) => {
     callLLMStream(
-      [{ role: 'user', content: user }],
-      { system, maxTokens: 1000, signal },
+      [{ role: 'user', content: finalUser }],
+      { system, maxTokens: LEVEL_CONFIGS[level].maxTokens, signal },
       {
         onToken: (fullText) => onStream(fullText),
         onComplete: (fullText) => resolve(fullText),
@@ -63,6 +97,16 @@ export async function runWorkerTask(
     } catch {
       // 검증 자체 실패 → 비차단, 결과 그대로 사용
     }
+  }
+
+  // 작업 완료 activity 기록
+  if (task.agent_id) {
+    useAgentStore.getState().recordActivity(
+      task.agent_id,
+      'task_completed',
+      task.task,
+      context.sessionId,
+    );
   }
 
   return { text, validation };
@@ -142,6 +186,7 @@ export async function runAllAIWorkers(
             break;
           }
         } catch (err) {
+          if (signal?.aborted) return;
           callbacks.onError(worker.id, err instanceof Error ? err.message : String(err));
           break;
         }
@@ -159,4 +204,21 @@ export async function runAllAIWorkers(
   );
 
   await Promise.allSettled(slots);
+}
+
+// ─── Web Search ───
+
+async function fetchSearchResults(query: string): Promise<SearchResult[]> {
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query.slice(0, 300) }),
+    });
+    if (!res.ok) return [];
+    const { results } = await res.json();
+    return results || [];
+  } catch {
+    return [];
+  }
 }

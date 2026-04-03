@@ -44,6 +44,7 @@ export const Field = forwardRef<HTMLTextAreaElement, FieldProps>(
               ${className}
             `}
             rows={3}
+            maxLength={5000}
             {...props}
             placeholder={animatedPlaceholders ? undefined : props.placeholder}
           />

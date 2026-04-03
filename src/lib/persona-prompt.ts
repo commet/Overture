@@ -6,15 +6,28 @@
  */
 
 import type { Persona } from '@/stores/types';
+import type { Agent } from '@/stores/agent-types';
 import { buildPersonaAccuracyContext } from './context-builder';
+import { agentToPersona } from '@/lib/agent-adapters';
+import { buildAgentContext } from '@/lib/agent-prompt-builder';
 
 /**
- * Strip XML-like tags from user input to prevent prompt injection.
- * Users could embed </user-data> or <system> tags to break out of delimiters.
+ * Sanitize user input for safe embedding in LLM prompts.
+ *
+ * Defends against:
+ * - XML/HTML tag injection (break out of <user-data> delimiters)
+ * - Newline injection (insert fake system instructions)
+ * - Bracket-based instruction injection ([SYSTEM], [END CONTEXT], etc.)
+ * - Excessive whitespace used to visually separate injected text
  */
-function sanitizeForPrompt(text: string): string {
+export function sanitizeForPrompt(text: string): string {
   if (!text) return '';
-  return text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  return text
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '')        // XML/HTML tags
+    .replace(/\[\/?\s*(?:SYSTEM|END|INST|USER|ASSISTANT|CONTEXT)[^\]]*\]/gi, '') // bracket directives
+    .replace(/[\r\n]+/g, ' ')                   // collapse newlines to single space
+    .replace(/\s{3,}/g, '  ')                   // collapse excessive whitespace
+    .trim();
 }
 
 const DECISION_STYLE_MAP: Record<string, string> = {
@@ -137,4 +150,36 @@ ${persona.influence === 'high' ? '- ⚠️ 이 사람의 영향력이 높습니�
 ${buildPersonaAccuracyContext(persona.id)}
 
 반드시 JSON만 응답하세요.`;
+}
+
+/**
+ * Agent 기반 feedback 프롬프트.
+ * Agent → Persona 변환 후 기존 buildFeedbackSystemPrompt 호출.
+ * Boss personality 있으면 추가 주입. 레벨 2+ 이면 observation 컨텍스트 주입.
+ */
+export function buildFeedbackSystemPromptFromAgent(
+  agent: Agent,
+  perspective: string,
+  intensity: string,
+  options?: { isReReview?: boolean },
+): string {
+  const persona = agentToPersona(agent);
+  let prompt = buildFeedbackSystemPrompt(persona, perspective, intensity, options);
+
+  // Boss personality가 있으면 커뮤니케이션 스타일 보강
+  if (agent.personality_profile) {
+    const pp = agent.personality_profile;
+    prompt = prompt.replace(
+      '</user-data>\n\n<user-data context="feedback-history">',
+      `- 커뮤니케이션: ${sanitizeForPrompt(pp.communicationStyle)}\n- 의사결정: ${sanitizeForPrompt(pp.decisionPattern)}\n- 짜증 트리거: ${sanitizeForPrompt(pp.triggers)}\n</user-data>\n\n<user-data context="feedback-history">`,
+    );
+  }
+
+  // Agent 경험 컨텍스트 (Lv.2+)
+  const agentCtx = buildAgentContext(agent);
+  if (agentCtx) {
+    prompt += `\n\n${agentCtx}`;
+  }
+
+  return prompt;
 }

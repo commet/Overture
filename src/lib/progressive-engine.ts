@@ -13,6 +13,7 @@ import {
 } from '@/lib/progressive-prompts';
 import { assessConvergence } from '@/lib/progressive-convergence';
 import { generateId } from '@/lib/uuid';
+import { useAgentStore } from '@/stores/useAgentStore';
 import type {
   AnalysisSnapshot,
   ConvergenceMetrics,
@@ -216,8 +217,14 @@ export async function runDeepening(
   readyForMix: boolean;
   convergenceMetrics: ConvergenceMetrics;
 }> {
+  // 지휘자: 해금된 에이전트 목록을 LLM에 전달 → 팀 구성 인식 태스크 분해
+  const agentStore = useAgentStore.getState();
+  const availableAgents = agentStore.getUnlockedAgents()
+    .filter(a => a.capabilities.includes('task_execution'))
+    .map(a => ({ name: a.name, role: a.role, specialty: a.expertise?.split('.')[0] || a.role }));
+
   const { system, user } = buildDeepeningPrompt(
-    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds,
+    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents,
   );
 
   const result = onToken

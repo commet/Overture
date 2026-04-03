@@ -1,40 +1,110 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, AlertTriangle, ChevronDown, RotateCw, Loader2 } from 'lucide-react';
+import { Check, AlertTriangle, ChevronDown, RotateCw, Loader2, ExternalLink, X } from 'lucide-react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { WorkerTask } from '@/stores/types';
+import { WorkerAvatar } from './WorkerAvatar';
+import { useAgentStore } from '@/stores/useAgentStore';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
-const WHO_BADGE: Record<string, { label: string; cls: string }> = {
-  ai: { label: 'AI', cls: 'bg-blue-50 text-blue-600' },
-  human: { label: '직접', cls: 'bg-amber-50 text-amber-600' },
-  both: { label: '협업', cls: 'bg-purple-50 text-purple-600' },
-};
+/* ═══ Result Detail Modal ═══ */
+function ResultModal({ worker, onClose, onApprove, onReject }: {
+  worker: WorkerTask;
+  onClose: () => void;
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.3, ease: EASE }}
+        className="relative w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[80vh] rounded-t-2xl sm:rounded-2xl bg-[var(--surface)] shadow-[var(--shadow-xl)] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-[var(--border-subtle)] shrink-0">
+          <WorkerAvatar persona={worker.persona} size="lg" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-semibold text-[var(--text-primary)] truncate">
+              {worker.persona?.name || 'AI'}
+            </p>
+            <p className="text-[13px] text-[var(--text-secondary)] truncate">
+              {worker.persona?.role} · {worker.task}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="닫기">
+            <X size={18} className="text-[var(--text-tertiary)]" />
+          </button>
+        </div>
 
-const STATUS_DOT: Record<string, string> = {
-  pending: 'bg-[var(--text-tertiary)]',
-  running: 'bg-blue-500 animate-pulse',
-  done: 'bg-emerald-500',
-  error: 'bg-red-500',
-  waiting_input: 'bg-[var(--accent)] animate-pulse',
-};
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+          {worker.completion_note && (
+            <p className="text-[13px] text-[var(--text-secondary)] mb-4 leading-relaxed line-clamp-3">
+              &ldquo;{worker.completion_note.replace(/^[^:]+:\s*/, '')}&rdquo;
+            </p>
+          )}
+          <div className="text-[14px] text-[var(--text-primary)] leading-[1.85] whitespace-pre-wrap break-words">
+            {worker.result}
+          </div>
+        </div>
 
-export function WorkerCard({
+        {/* Footer — approve/reject */}
+        {(onApprove || onReject) && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-[var(--border-subtle)] shrink-0">
+            <span className="text-[13px] text-[var(--text-secondary)]">
+              {worker.approved === true ? '초안에 반영됩니다' : worker.approved === false ? '초안에서 제외됩니다' : '반영 여부를 선택하세요'}
+            </span>
+            <div className="flex gap-2.5">
+              {onReject && worker.approved !== false && (
+                <button onClick={() => onReject(worker.id)}
+                  className="flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-[13px] text-red-600 dark:text-red-400 hover:bg-[var(--bg)] rounded-xl border border-[var(--border-subtle)] cursor-pointer transition-colors min-h-[44px]">
+                  제외
+                </button>
+              )}
+              {onApprove && worker.approved !== true && (
+                <button onClick={() => onApprove(worker.id)}
+                  className="flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-[13px] text-white font-semibold rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow min-h-[44px]"
+                  style={{ background: 'var(--gradient-gold)' }}>
+                  반영
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ═══ Inline Report Block — 대화 흐름 속 보고 ═══ */
+
+export const WorkerReportBlock = memo(function WorkerReportBlock({
   worker,
   onSubmitInput,
   onRetry,
+  onApprove,
+  onReject,
 }: {
   worker: WorkerTask;
   onSubmitInput?: (id: string, input: string) => void;
   onRetry?: (id: string) => void;
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
 }) {
   const store = useProgressiveStore();
-  const [expanded, setExpanded] = useState(worker.status === 'waiting_input' || worker.status === 'validation_failed');
+  const [showModal, setShowModal] = useState(false);
   const [inputVal, setInputVal] = useState(worker.who === 'both' && worker.result ? worker.result : '');
-  const badge = WHO_BADGE[worker.who];
+  const persona = worker.persona;
 
   const statusLabel = {
     pending: '대기 중',
@@ -45,170 +115,240 @@ export function WorkerCard({
     validation_failed: '품질 확인 필요',
   }[worker.status];
 
-  const previewText = worker.status === 'running'
-    ? worker.stream_text.slice(0, 120)
-    : worker.status === 'done'
-      ? (worker.result || '').slice(0, 120)
-      : null;
+  useEffect(() => {
+    if (worker.who === 'both' && worker.result && !inputVal) {
+      setInputVal(worker.result);
+    }
+  }, [worker.result]);
+
+  // Running state — subtle inline indicator
+  if (worker.status === 'running') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+        className="flex items-center gap-3 pl-1">
+        <div className="w-px h-8 bg-[var(--border-subtle)]" />
+        <WorkerAvatar persona={persona} size="sm" pulse />
+        <span className="text-[12px] text-[var(--text-secondary)]">
+          {persona?.name || 'AI'}
+          <span className="text-[var(--text-tertiary)]"> · {worker.task}</span>
+        </span>
+        <Loader2 size={12} className="animate-spin text-[var(--text-tertiary)]" />
+      </motion.div>
+    );
+  }
+
+  // Pending state — quiet
+  if (worker.status === 'pending') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} className="flex items-center gap-3 pl-1">
+        <div className="w-px h-6 bg-[var(--border-subtle)]" />
+        <WorkerAvatar persona={persona} size="sm" />
+        <span className="text-[12px] text-[var(--text-tertiary)]">
+          {persona?.name || 'AI'} · 대기 중
+        </span>
+      </motion.div>
+    );
+  }
+
+  // Error state
+  if (worker.status === 'error') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+        className="flex items-start gap-3 pl-1">
+        <div className="w-px self-stretch bg-red-300" />
+        <WorkerAvatar persona={persona} size="sm" />
+        <div className="flex-1">
+          <span className="text-[13px] text-red-600 font-medium">{persona?.name || 'AI'}: 작업 중 문제가 생겼어요</span>
+          <p className="text-[12px] text-red-600 mt-0.5">{worker.error}</p>
+        </div>
+        {onRetry && (
+          <button onClick={() => onRetry(worker.id)}
+            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 shrink-0 cursor-pointer">
+            <RotateCw size={11} /> 재시도
+          </button>
+        )}
+      </motion.div>
+    );
+  }
+
+  // Validation failed state
+  if (worker.status === 'validation_failed') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+        <div className="flex items-start gap-3">
+          <div className="w-px self-stretch mt-1" style={{ backgroundColor: persona?.color || 'var(--accent)' }} />
+          <WorkerAvatar persona={persona} size="md" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-[var(--text-primary)]">
+              {persona?.name || 'AI'}
+              <span className="text-[var(--text-tertiary)] font-normal ml-1.5 text-[11px]">{persona?.role}</span>
+            </p>
+            <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-[11px] font-semibold text-amber-900 mb-1">품질 확인이 필요합니다</p>
+              {worker.validation_feedback && <p className="text-[10px] text-amber-700 mb-2">{worker.validation_feedback}</p>}
+              <div className="flex gap-2">
+                {onRetry && <button onClick={() => onRetry(worker.id)}
+                  className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-50">다시 생성</button>}
+                <button onClick={() => store.updateWorker(worker.id, { status: 'done', completed_at: new Date().toISOString() })}
+                  className="text-[10px] px-2.5 py-1 rounded-lg text-amber-600 cursor-pointer hover:text-amber-800">그냥 사용</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Waiting input (human / both)
+  if (worker.status === 'waiting_input' && onSubmitInput) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+        <div className="flex items-start gap-3">
+          <div className="w-px self-stretch mt-1" style={{ backgroundColor: persona?.color || 'var(--accent)' }} />
+          <WorkerAvatar persona={persona} size="md" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-[var(--text-primary)]">
+              {persona?.name || 'AI'}
+              <span className="text-[var(--text-tertiary)] font-normal ml-1.5 text-[11px]">{persona?.role}</span>
+            </p>
+
+            {worker.who === 'both' && worker.result && (
+              <div className="mt-2 text-[12px] text-[var(--text-secondary)] bg-[var(--bg)]/60 rounded-xl p-3 leading-[1.7]">
+                <p className="text-[10px] font-medium text-[var(--text-tertiary)] mb-1">초안 작성함</p>
+                <p className="whitespace-pre-wrap line-clamp-4">{worker.result}</p>
+              </div>
+            )}
+
+            <div className="mt-2">
+              <textarea value={inputVal} onChange={(e) => setInputVal(e.target.value)}
+                placeholder={worker.who === 'both' ? '수정하거나 그대로 확인...' : '내용을 입력해주세요...'}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 resize-none min-h-[70px] max-h-[150px]"
+                rows={3} maxLength={5000}
+                aria-label={`${persona?.name || 'AI'} 작업 입력`} />
+              <div className="flex justify-end gap-2 mt-2">
+                {worker.who === 'both' && worker.result && (
+                  <button onClick={() => onSubmitInput(worker.id, worker.result!)}
+                    className="px-3.5 py-2.5 text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl border border-[var(--border-subtle)] cursor-pointer min-h-[44px]">
+                    초안 그대로
+                  </button>
+                )}
+                <button onClick={() => { if (inputVal.trim()) onSubmitInput(worker.id, inputVal.trim()); }}
+                  disabled={!inputVal.trim()}
+                  className="px-3.5 py-2 text-[12px] text-white font-semibold rounded-xl disabled:opacity-30 cursor-pointer"
+                  style={{ background: 'var(--gradient-gold)' }}>
+                  확인
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Done state — the main report block
+  const isRejected = worker.approved === false;
+  const isApproved = worker.approved === true;
+  const previewText = (worker.result || '').slice(0, 150);
+  const agentLevel = worker.agent_id
+    ? useAgentStore.getState().getAgent(worker.agent_id)?.level
+    : undefined;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: EASE }}
-      className={`rounded-xl border overflow-hidden transition-colors duration-300 ${
-        worker.status === 'waiting_input'
-          ? 'border-[var(--accent)]/30 bg-[var(--accent)]/[0.03]'
-          : worker.status === 'error'
-            ? 'border-red-200 bg-red-50/30'
-            : 'border-[var(--border-subtle)] bg-[var(--surface)]'
-      }`}
-    >
-      {/* Header — always visible */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left cursor-pointer"
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: EASE }}
+        className={`group transition-opacity duration-500 ${isRejected ? 'opacity-40' : ''}`}
       >
-        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[worker.status]}`} />
-        <span className={`text-[9px] font-bold px-1.5 py-px rounded shrink-0 ${badge.cls}`}>
-          {badge.label}
-        </span>
-        <span className="flex-1 text-[12px] text-[var(--text-primary)] font-medium truncate">
-          {worker.task}
-        </span>
-        <span className="text-[10px] text-[var(--text-secondary)] shrink-0">{statusLabel}</span>
-        <ChevronDown
-          size={12}
-          className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-        />
-      </button>
+        <div className="flex items-start gap-3">
+          {/* Color line */}
+          <div className="w-px self-stretch mt-1 transition-colors duration-500"
+            style={{ backgroundColor: isRejected ? 'var(--border-subtle)' : (persona?.color || 'var(--accent)') }} />
+          <WorkerAvatar persona={persona} size="md" />
+          <div className="flex-1 min-w-0">
+            {/* Name + role */}
+            <p className="text-[14px] font-medium text-[var(--text-primary)]">
+              {persona?.name || 'AI'}
+              <span className="text-[var(--text-secondary)] font-normal ml-1.5 text-[12px]">{persona?.role}</span>
+              {agentLevel != null && agentLevel >= 2 && (
+                <span className="agent-lv ml-1.5" data-level={agentLevel} style={{ fontSize: 10, padding: '1px 6px' }}>
+                  Lv.{agentLevel}
+                </span>
+              )}
+              {isApproved && <span className="ml-2 text-[11px] text-emerald-600 font-medium">반영</span>}
+              {isRejected && <span className="ml-2 text-[11px] text-red-500 font-medium">제외</span>}
+            </p>
 
-      {/* Preview line (when collapsed, for running/done) */}
-      {!expanded && previewText && (
-        <div className="px-3 pb-2 -mt-1">
-          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
-            {previewText}{previewText.length >= 120 ? '...' : ''}
-          </p>
-        </div>
-      )}
-
-      {/* Expanded content */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 border-t border-[var(--border-subtle)]">
-              <p className="text-[10px] text-[var(--text-secondary)] mt-2 mb-1.5">
-                산출물: {worker.expected_output}
+            {/* Completion note — persona's voice */}
+            {worker.completion_note && (
+              <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed line-clamp-2">
+                &ldquo;{worker.completion_note.replace(/^[^:]+:\s*/, '')}&rdquo;
               </p>
+            )}
 
-              {/* Streaming text */}
-              {worker.status === 'running' && worker.stream_text && (
-                <div className="text-[11px] text-[var(--text-primary)] leading-[1.7] max-h-[200px] overflow-y-auto whitespace-pre-wrap bg-[var(--bg)]/50 rounded-lg p-2.5 mt-1">
-                  {worker.stream_text}
-                  <span className="inline-block w-1.5 h-3 bg-[var(--accent)] ml-0.5 animate-pulse rounded-sm" />
-                </div>
-              )}
-
-              {/* Running indicator */}
-              {worker.status === 'running' && !worker.stream_text && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Loader2 size={12} className="animate-spin text-blue-500" />
-                  <span className="text-[11px] text-[var(--text-secondary)]">조사 중...</span>
-                </div>
-              )}
-
-              {/* Done — result */}
-              {worker.status === 'done' && worker.result && (
-                <div className="text-[11px] text-[var(--text-primary)] leading-[1.7] max-h-[200px] overflow-y-auto whitespace-pre-wrap bg-[var(--bg)]/50 rounded-lg p-2.5 mt-1">
-                  {worker.result}
-                </div>
-              )}
-
-              {/* Error */}
-              {worker.status === 'error' && (
-                <div className="flex items-center gap-2 mt-2">
-                  <AlertTriangle size={12} className="text-red-500 shrink-0" />
-                  <span className="text-[11px] text-red-600 flex-1">{worker.error || '작업 실패'}</span>
-                  {onRetry && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onRetry(worker.id); }}
-                      className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 cursor-pointer"
-                    >
-                      <RotateCw size={10} /> 재시도
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Validation failed */}
-              {worker.status === 'validation_failed' && (
-                <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-                  <p className="text-[11px] font-semibold text-amber-900 mb-1">품질 확인이 필요합니다</p>
-                  {worker.validation_feedback && <p className="text-[10px] text-amber-700 mb-2">{worker.validation_feedback}</p>}
-                  <div className="flex gap-2">
-                    {onRetry && <button onClick={(e) => { e.stopPropagation(); onRetry(worker.id); }}
-                      className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-50">다시 생성</button>}
-                    <button onClick={(e) => { e.stopPropagation(); store.updateWorker(worker.id, { status: 'done', completed_at: new Date().toISOString() }); }}
-                      className="text-[10px] px-2.5 py-1 rounded-lg text-amber-600 cursor-pointer hover:text-amber-800">그냥 사용</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Human / Both — input area */}
-              {worker.status === 'waiting_input' && onSubmitInput && (
-                <div className="mt-2 space-y-2">
-                  {worker.who === 'both' && worker.result && (
-                    <div className="text-[10px] text-[var(--text-secondary)] bg-[var(--bg)]/50 rounded-lg p-2 leading-relaxed">
-                      <span className="font-semibold text-[var(--text-primary)]">AI가 초안을 잡았습니다.</span>
-                      <span className="text-[var(--text-tertiary)]"> 당신의 맥락을 반영해주세요.</span>
-                      <p className="mt-1 whitespace-pre-wrap">{worker.result}</p>
-                    </div>
-                  )}
-                  <textarea
-                    value={inputVal}
-                    onChange={(e) => setInputVal(e.target.value)}
-                    placeholder={worker.who === 'both' ? '수정하거나 그대로 확인...' : '내용을 입력해주세요...'}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 resize-none min-h-[60px]"
-                    rows={3}
-                  />
-                  <div className="flex justify-end gap-2">
-                    {worker.who === 'both' && worker.result && (
-                      <button
-                        onClick={() => onSubmitInput(worker.id, worker.result!)}
-                        className="px-3 py-1.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg border border-[var(--border-subtle)] cursor-pointer"
-                      >
-                        AI 초안 그대로
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { if (inputVal.trim()) onSubmitInput(worker.id, inputVal.trim()); }}
-                      disabled={!inputVal.trim()}
-                      className="px-3 py-1.5 text-[11px] text-white font-semibold rounded-lg disabled:opacity-30 cursor-pointer"
-                      style={{ background: 'var(--gradient-gold)' }}
-                    >
-                      <Check size={10} className="inline mr-1" />확인
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Done checkmark for human tasks */}
-              {worker.status === 'done' && worker.who !== 'ai' && worker.human_input && (
-                <div className="text-[11px] text-[var(--text-primary)] leading-[1.7] whitespace-pre-wrap bg-[var(--bg)]/50 rounded-lg p-2.5 mt-1">
-                  {worker.human_input}
-                </div>
+            {/* Result preview */}
+            <div className={`mt-2.5 text-[13px] leading-[1.75] rounded-xl p-3.5 sm:p-4 break-words ${
+              isRejected
+                ? 'bg-[var(--bg)]/30 text-[var(--text-tertiary)] line-through'
+                : 'bg-[var(--bg)]/60 text-[var(--text-primary)]'
+            }`}>
+              <p className="whitespace-pre-wrap">{previewText}{(worker.result || '').length > 150 ? '...' : ''}</p>
+              {(worker.result || '').length > 150 && (
+                <button onClick={() => setShowModal(true)}
+                  className="flex items-center gap-1 mt-2 text-[11px] text-[var(--accent)] hover:underline cursor-pointer">
+                  <ExternalLink size={10} /> 전문 보기
+                </button>
               )}
             </div>
-          </motion.div>
+
+            {/* Approve / Reject actions */}
+            {(onApprove || onReject) && (
+              <div className="flex items-center gap-2.5 mt-3">
+                {onApprove && !isApproved && (
+                  <button onClick={() => onApprove(worker.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-white rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
+                    style={{ background: 'var(--gradient-gold)' }}>
+                    <Check size={12} /> 반영
+                  </button>
+                )}
+                {onReject && !isRejected && (
+                  <button onClick={() => onReject(worker.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-[12px] text-red-600 hover:bg-red-50 rounded-xl border border-red-200 hover:border-red-400 cursor-pointer transition-colors">
+                    제외
+                  </button>
+                )}
+                {(isApproved || isRejected) && (
+                  <button onClick={() => isApproved ? onReject?.(worker.id) : onApprove?.(worker.id)}
+                    className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                    변경
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Full result modal */}
+      <AnimatePresence>
+        {showModal && (
+          <ResultModal worker={worker} onClose={() => setShowModal(false)} onApprove={onApprove} onReject={onReject} />
         )}
       </AnimatePresence>
-    </motion.div>
+    </>
   );
-}
+}, (prev, next) => {
+  if (prev.worker.status === 'running' && next.worker.status === 'running') {
+    return Math.abs(prev.worker.stream_text.length - next.worker.stream_text.length) < 20
+      && prev.worker.id === next.worker.id;
+  }
+  return prev.worker === next.worker
+    && prev.onSubmitInput === next.onSubmitInput
+    && prev.onRetry === next.onRetry
+    && prev.onApprove === next.onApprove
+    && prev.onReject === next.onReject;
+});
+
+/* ═══ Legacy export for WorkerPanel sidebar (compact) ═══ */
+export { WorkerReportBlock as WorkerCard };

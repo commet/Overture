@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-async function getSlackToken(userId: string): Promise<string | null> {
+/** Fetch Slack token using user's authenticated Supabase client (respects RLS). */
+async function getSlackToken(userToken: string): Promise<string | null> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${userToken}` } } },
   );
   const { data } = await supabase
     .from('slack_connections')
     .select('access_token')
-    .eq('user_id', userId)
     .limit(1)
     .single();
   return data?.access_token || null;
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const slackToken = await getSlackToken(user.id);
+  const slackToken = await getSlackToken(token);
   if (!slackToken) {
     return NextResponse.json({ error: 'Slack not connected' }, { status: 404 });
   }
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
       );
-      await admin.from('slack_connections').delete().eq('user_id', user.id);
+      await admin.from('slack_connections').delete().eq('user_id', user.id).eq('access_token', slackToken);
       return NextResponse.json({ error: 'Slack connection expired. Please reconnect.' }, { status: 401 });
     }
     console.error('[slack/channels] Slack API error:', data.error);

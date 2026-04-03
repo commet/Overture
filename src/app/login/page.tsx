@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const AUTH_ERRORS: Record<string, string> = {
   auth_failed: '로그인에 실패했습니다. 다시 시도해주세요.',
@@ -22,6 +25,8 @@ function LoginContent() {
   const [submitting, setSubmitting] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   // Handle error/redirect params from middleware or callback
   useEffect(() => {
@@ -54,9 +59,11 @@ function LoginContent() {
         setMessage('비밀번호 재설정 링크를 보냈습니다. 이메일을 확인해주세요.');
       }
     } else if (isSignUp) {
-      const { error } = await signUpWithEmail(email, password);
+      const { error } = await signUpWithEmail(email, password, captchaToken || undefined);
       if (error) {
         setError(error);
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
       } else {
         setMessage('확인 메일을 보냈습니다. 이메일을 확인해주세요.');
       }
@@ -203,9 +210,21 @@ function LoginContent() {
               </div>
             )}
 
+            {isSignUp && TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center pt-1">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={setCaptchaToken}
+                  onExpire={() => setCaptchaToken('')}
+                  options={{ theme: 'auto', size: 'normal' }}
+                />
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={submitting || (isSignUp && (!agreedTerms || !agreedPrivacy))}
+              disabled={submitting || (isSignUp && (!agreedTerms || !agreedPrivacy || (!!TURNSTILE_SITE_KEY && !captchaToken)))}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[14px] font-semibold hover:bg-[var(--primary-light)] disabled:opacity-50 transition-colors cursor-pointer"
             >
               {submitting ? '처리 중...' : isReset ? '재설정 링크 보내기' : isSignUp ? '회원가입' : '로그인'}

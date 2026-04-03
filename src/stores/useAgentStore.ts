@@ -1,0 +1,653 @@
+/**
+ * 통합 에이전트 스토어
+ *
+ * 체인 에이전트 (리서치, 전략): 해금 시스템
+ * 독립 에이전트 (카피, 숫자, 기술, PM, 리스크, UX, 법률): 처음부터 사용 가능
+ * 모든 에이전트: Lv.1 시작, XP 누적 성장
+ *
+ * localStorage first, Supabase async (기존 패턴 따름).
+ */
+
+import { create } from 'zustand';
+import { generateId } from '@/lib/uuid';
+import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
+import { loadAndMerge, upsertToSupabase, syncToSupabase, insertToSupabase } from '@/lib/db';
+import type { Persona } from '@/stores/types';
+import { personaToAgentInput } from '@/lib/agent-adapters';
+import {
+  type Agent,
+  type AgentChain,
+  type AgentObservation,
+  type AgentActivity,
+  type AgentActivityType,
+  type AgentCapability,
+  type AgentGroup,
+  calculateLevel,
+  XP_REWARDS,
+  CHAIN_UNLOCK_THRESHOLDS,
+  CONCERTMASTER_UNLOCK_THRESHOLD,
+} from '@/stores/agent-types';
+
+// ─── Builtin Agent Definitions ───
+
+const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_at' | 'created_at' | 'updated_at'>[] = [
+  // ── 리서치 체인 ──
+  {
+    id: 'hayoon', name: '하윤', role: '리서치 인턴', emoji: '📝', color: '#06B6D4',
+    origin: 'builtin', capabilities: ['task_execution', 'web_search'],
+    group: 'research', chain_id: 'research',
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '기초 자료 정리, 벤치마킹, 사례 수집을 담당합니다. 열정적으로 찾아옵니다.',
+    tone: '공손하고 열심히, 찾은 것을 빠짐없이 정리해서 보고합니다.',
+    keywords: ['조사', '리서치', '자료', '사례', '벤치마크', '현황'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'sujin', name: '수진', role: '리서치 애널리스트', emoji: '🔍', color: '#3B82F6',
+    origin: 'builtin', capabilities: ['task_execution', 'web_search'],
+    group: 'research', chain_id: 'research',
+    unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
+    expertise: '자료 조사, 시장 분석, 데이터 수집에 강합니다. 빠짐없이 꼼꼼하게 찾아냅니다.',
+    tone: '팩트 중심으로 간결하게, 출처를 명시하며 신뢰감 있게 정리합니다.',
+    keywords: ['분석', '시장', '트렌드', '데이터', '출처'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'research_director', name: '도윤', role: '리서치 디렉터', emoji: '🧠', color: '#1D4ED8',
+    origin: 'builtin', capabilities: ['task_execution', 'review', 'web_search'],
+    group: 'research', chain_id: 'research',
+    unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
+    expertise: '종합적 인사이트 도출, 데이터 간 패턴 발견, 전략적 함의 제시에 강합니다.',
+    tone: '핵심 인사이트를 먼저 제시하고, 근거를 간결하게 뒷받침합니다.',
+    keywords: ['인사이트', '종합', '패턴', '함의', '해석'],
+    is_builtin: true, archived: false,
+  },
+
+  // ── 전략 체인 ──
+  {
+    id: 'strategy_jr', name: '지호', role: '전략 주니어', emoji: '🗺️', color: '#A78BFA',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'strategy', chain_id: 'strategy',
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '경쟁 비교, SWOT 정리, 기본 포지셔닝을 담당합니다.',
+    tone: '구조적으로 정리하고, 핵심 비교 포인트를 명확히 제시합니다.',
+    keywords: ['경쟁', '비교', 'SWOT', '포지셔닝'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'hyunwoo', name: '현우', role: '전략가', emoji: '🎯', color: '#8B5CF6',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'strategy', chain_id: 'strategy',
+    unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
+    expertise: '전략 수립, 포지셔닝, 경쟁 분석의 전문가입니다. 큰 그림을 그립니다.',
+    tone: '핵심만 짚되, 왜 그런지 한 줄로 설득력 있게 설명합니다.',
+    keywords: ['전략', '방향', '비전', '로드맵', '차별화'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'chief_strategist', name: '승현', role: '수석 전략가', emoji: '🏛️', color: '#6D28D9',
+    origin: 'builtin', capabilities: ['task_execution', 'review'],
+    group: 'strategy', chain_id: 'strategy',
+    unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
+    expertise: '시나리오 플래닝, 프레임 전환, 의사결정 구조 설계에 강합니다.',
+    tone: '여러 시나리오를 제시하되, 권장안을 명확히 밝히고 논거를 붙입니다.',
+    keywords: ['시나리오', '프레임', '의사결정', '구조'],
+    is_builtin: true, archived: false,
+  },
+
+  // ── 실행 그룹 (독립) ──
+  {
+    id: 'seoyeon', name: '서연', role: '카피라이터', emoji: '✍️', color: '#F59E0B',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'production', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '문서 작성, 카피라이팅, 메시지 설계의 전문가입니다. 읽히는 글을 씁니다.',
+    tone: '독자 관점에서 쓰고, 한 문장이 하나의 메시지를 전달하도록 다듬습니다.',
+    keywords: ['작성', '문서', '카피', '초안', '보고서', '제안서', '정리', '요약', '슬라이드'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'minjae', name: '민재', role: '숫자 분석가', emoji: '📊', color: '#10B981',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'production', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '수치 분석, 재무 모델링, ROI 계산에 능합니다. 숫자로 이야기합니다.',
+    tone: '정량적 근거를 먼저 제시하고, 해석을 덧붙입니다. 표와 수치를 적극 활용합니다.',
+    keywords: ['수치', '숫자', '재무', 'ROI', '비용', '매출', '예산', '계산', '지표', 'KPI'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'junseo', name: '준서', role: '기술 설계자', emoji: '⚙️', color: '#14B8A6',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'production', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '기술 아키텍처, 구현 가능성 검토, 시스템 설계에 강합니다.',
+    tone: '구조적으로 정리하고, 트레이드오프를 명확히 제시합니다.',
+    keywords: ['기술', '개발', '구현', '아키텍처', '시스템', 'API', '인프라', '서버'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'yerin', name: '예린', role: 'PM', emoji: '📋', color: '#A855F7',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'production', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '일정 관리, 이해관계자 조율, 실행 계획 수립에 능합니다.',
+    tone: '액션 아이템 중심으로, 누가·언제·뭘 해야 하는지 명확하게 정리합니다.',
+    keywords: ['일정', '계획', '마일스톤', '타임라인', '실행', '단계', '우선순위'],
+    is_builtin: true, archived: false,
+  },
+
+  // ── 검증 그룹 (독립) ──
+  {
+    id: 'donghyuk', name: '동혁', role: '리스크 검토자', emoji: '⚠️', color: '#EF4444',
+    origin: 'builtin', capabilities: ['task_execution', 'review'],
+    group: 'validation', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '리스크 분석, 반론 검토, 약점 파악의 전문가입니다. 놓치기 쉬운 걸 찾습니다.',
+    tone: '직설적이지만 건설적으로, "이건 위험하다" 다음에 반드시 "대신 이렇게"를 제시합니다.',
+    keywords: ['리스크', '위험', '반론', '약점', '검토', '비판', '문제점', '실패'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'jieun', name: '지은', role: 'UX 설계자', emoji: '🎨', color: '#EC4899',
+    origin: 'builtin', capabilities: ['task_execution', 'review'],
+    group: 'validation', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '사용자 경험, 인터페이스 설계, 사용성 평가에 강합니다.',
+    tone: '사용자 입장에서 생각하고, 구체적인 시나리오로 설명합니다.',
+    keywords: ['UX', 'UI', '사용자', '인터페이스', '디자인', '화면', '프로토타입'],
+    is_builtin: true, archived: false,
+  },
+  {
+    id: 'taejun', name: '태준', role: '법률·규정 검토자', emoji: '⚖️', color: '#6B7280',
+    origin: 'builtin', capabilities: ['task_execution', 'review'],
+    group: 'validation', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '법적 리스크, 규정 준수, 계약 조건 검토에 능합니다.',
+    tone: '명확하고 보수적으로, 가능/불가능을 확실히 구분합니다.',
+    keywords: ['법', '규정', '계약', '라이선스', '개인정보', '약관', '컴플라이언스'],
+    is_builtin: true, archived: false,
+  },
+
+  // ── 특수: 악장 ──
+  {
+    id: 'concertmaster', name: '악장', role: 'Concertmaster', emoji: '🎻', color: '#D97706',
+    origin: 'builtin', capabilities: ['review'],
+    group: 'special', chain_id: null,
+    unlock_condition: { type: 'total_tasks', required: CONCERTMASTER_UNLOCK_THRESHOLD }, unlocked: false,
+    expertise: '메타 관찰, 품질 체크, 팀 간 모순 발견, 사용자 성장 미션 제안.',
+    tone: '관조적이고 때로 보수적. 놓치고 있는 관점을 짚어줍니다.',
+    keywords: [],
+    is_builtin: true, archived: false,
+  },
+];
+
+const BUILTIN_CHAINS: Omit<AgentChain, 'total_tasks'>[] = [
+  { id: 'research', name: '리서치', agent_ids: ['hayoon', 'sujin', 'research_director'] },
+  { id: 'strategy', name: '전략', agent_ids: ['strategy_jr', 'hyunwoo', 'chief_strategist'] },
+];
+
+// ─── Helper ───
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+function makeAgent(def: typeof BUILTIN_AGENTS[number]): Agent {
+  const ts = now();
+  return {
+    ...def,
+    xp: 0,
+    level: 1,
+    observations: [],
+    last_used_at: null,
+    created_at: ts,
+    updated_at: ts,
+  };
+}
+
+function persistAgents(agents: Agent[]) {
+  setStorage(STORAGE_KEYS.AGENTS, agents);
+}
+
+function persistChains(chains: AgentChain[]) {
+  setStorage(STORAGE_KEYS.AGENT_CHAINS, chains);
+}
+
+function persistActivities(activities: AgentActivity[]) {
+  // 최근 500개만 localStorage에 보관
+  setStorage(STORAGE_KEYS.AGENT_ACTIVITIES, activities.slice(-500));
+}
+
+// ─── Store ───
+
+interface AgentState {
+  agents: Agent[];
+  chains: AgentChain[];
+  activities: AgentActivity[];
+  lastUnlockedIds: string[];
+
+  // Load
+  loadAgents: () => void;
+
+  // CRUD
+  createAgent: (data: Partial<Agent> & Pick<Agent, 'name' | 'role' | 'emoji' | 'color'>) => string;
+  updateAgent: (id: string, data: Partial<Agent>) => void;
+  archiveAgent: (id: string) => void;
+  getAgent: (id: string) => Agent | undefined;
+
+  // Query
+  getUnlockedAgents: () => Agent[];
+  getAgentsByGroup: (group: AgentGroup) => Agent[];
+  getAgentsByCapability: (cap: AgentCapability) => Agent[];
+  getChain: (chainId: string) => AgentChain | undefined;
+
+  // Activity + XP
+  recordActivity: (agentId: string, type: AgentActivityType, context: string, sessionId?: string) => void;
+
+  // Observations
+  addObservation: (agentId: string, obs: Pick<AgentObservation, 'category' | 'observation'>) => void;
+  reinforceObservation: (agentId: string, obsId: string) => void;
+
+  // 작업 배정
+  assignAgentToTask: (task: string, expectedOutput: string, usedIds: Set<string>) => Agent;
+
+  // Boss 생성
+  createBossAgent: (config: {
+    name: string;
+    typeCode: string;
+    gender: '남' | '여';
+    personalityProfile: Agent['personality_profile'];
+    sajuProfile?: unknown;
+  }) => string;
+
+  // 해금
+  checkUnlocks: () => string[];
+  clearUnlocked: () => void;
+
+  // Seed + Migration
+  seedBuiltinAgents: () => void;
+  migrateFromPersonas: () => void;
+}
+
+export const useAgentStore = create<AgentState>((set, get) => ({
+  agents: [],
+  chains: [],
+  activities: [],
+  lastUnlockedIds: [],
+
+  // ─── Load ───
+
+  loadAgents: () => {
+    const agents = getStorage<Agent[]>(STORAGE_KEYS.AGENTS, []);
+    const chains = getStorage<AgentChain[]>(STORAGE_KEYS.AGENT_CHAINS, []);
+    const activities = getStorage<AgentActivity[]>(STORAGE_KEYS.AGENT_ACTIVITIES, []);
+
+    if (agents.length === 0) {
+      // 최초 실행: seed
+      get().seedBuiltinAgents();
+      return;
+    }
+
+    set({ agents, chains, activities });
+
+    // 기존 Persona 마이그레이션 (아직 안 됐으면)
+    get().migrateFromPersonas();
+
+    // 해금 상태 재계산
+    get().checkUnlocks();
+
+    // Supabase async merge
+    loadAndMerge<Agent>('agents', STORAGE_KEYS.AGENTS)
+      .then((merged) => {
+        if (merged.length > 0) {
+          set({ agents: merged });
+          get().checkUnlocks();
+        }
+      });
+    loadAndMerge<AgentChain>('agent_chains', STORAGE_KEYS.AGENT_CHAINS)
+      .then((merged) => { if (merged.length > 0) set({ chains: merged }); });
+  },
+
+  // ─── CRUD ───
+
+  createAgent: (data) => {
+    const id = data.id || generateId();
+    const ts = now();
+    const agent: Agent = {
+      id,
+      name: data.name,
+      role: data.role,
+      emoji: data.emoji,
+      color: data.color,
+      origin: data.origin || 'custom',
+      capabilities: data.capabilities || ['task_execution'],
+      group: data.group || 'people',
+      chain_id: data.chain_id ?? null,
+      unlock_condition: data.unlock_condition || { type: 'always', required: 0 },
+      unlocked: data.unlocked ?? true,
+      expertise: data.expertise,
+      tone: data.tone,
+      keywords: data.keywords,
+      organization: data.organization,
+      priorities: data.priorities,
+      communication_style: data.communication_style,
+      known_concerns: data.known_concerns,
+      relationship_notes: data.relationship_notes,
+      influence: data.influence,
+      decision_style: data.decision_style,
+      risk_tolerance: data.risk_tolerance,
+      success_metric: data.success_metric,
+      extracted_traits: data.extracted_traits,
+      feedback_logs: data.feedback_logs,
+      personality_code: data.personality_code,
+      personality_profile: data.personality_profile,
+      boss_gender: data.boss_gender,
+      saju_profile: data.saju_profile,
+      xp: data.xp || 0,
+      level: calculateLevel(data.xp || 0),
+      observations: data.observations || [],
+      is_builtin: data.is_builtin || false,
+      is_example: data.is_example,
+      archived: data.archived || false,
+      last_used_at: null,
+      created_at: ts,
+      updated_at: ts,
+    };
+    const agents = [...get().agents, agent];
+    persistAgents(agents);
+    set({ agents });
+    upsertToSupabase('agents', agent);
+    return id;
+  },
+
+  updateAgent: (id, data) => {
+    const agents = get().agents.map(a =>
+      a.id === id ? { ...a, ...data, updated_at: now() } : a,
+    );
+    persistAgents(agents);
+    set({ agents });
+    const updated = agents.find(a => a.id === id);
+    if (updated) upsertToSupabase('agents', updated);
+  },
+
+  archiveAgent: (id) => {
+    get().updateAgent(id, { archived: true });
+  },
+
+  getAgent: (id) => {
+    return get().agents.find(a => a.id === id);
+  },
+
+  // ─── Query ───
+
+  getUnlockedAgents: () => {
+    return get().agents.filter(a => a.unlocked && !a.archived);
+  },
+
+  getAgentsByGroup: (group) => {
+    return get().agents.filter(a => a.group === group && !a.archived);
+  },
+
+  getAgentsByCapability: (cap) => {
+    return get().agents.filter(a => a.capabilities.includes(cap) && !a.archived);
+  },
+
+  getChain: (chainId) => {
+    return get().chains.find(c => c.id === chainId);
+  },
+
+  // ─── Activity + XP ───
+
+  recordActivity: (agentId, type, context, sessionId) => {
+    const agent = get().getAgent(agentId);
+    if (!agent) return;
+
+    const xpKey = type as keyof typeof XP_REWARDS;
+    const xpEarned = XP_REWARDS[xpKey] || 0;
+
+    // Activity 기록
+    const activity: AgentActivity = {
+      id: generateId(),
+      agent_id: agentId,
+      type,
+      context,
+      session_id: sessionId,
+      xp_earned: xpEarned,
+      created_at: now(),
+    };
+    const activities = [...get().activities, activity];
+    persistActivities(activities);
+
+    // XP 적립 + 레벨 재계산
+    const newXP = Math.max(0, agent.xp + xpEarned);
+    const newLevel = calculateLevel(newXP);
+
+    const agents = get().agents.map(a =>
+      a.id === agentId
+        ? { ...a, xp: newXP, level: newLevel, last_used_at: now(), updated_at: now() }
+        : a,
+    );
+    persistAgents(agents);
+
+    // 체인 작업 카운트 (task_completed만)
+    let chains = get().chains;
+    if (type === 'task_completed' && agent.chain_id) {
+      chains = chains.map(c =>
+        c.id === agent.chain_id
+          ? { ...c, total_tasks: c.total_tasks + 1 }
+          : c,
+      );
+      persistChains(chains);
+    }
+
+    set({ agents, chains, activities });
+
+    // Supabase async
+    upsertToSupabase('agents', agents.find(a => a.id === agentId)!);
+    if (type === 'task_completed' && agent.chain_id) {
+      syncToSupabase('agent_chains', chains);
+    }
+    insertToSupabase('agent_activities', activity);
+
+    // 해금 체크
+    if (type === 'task_completed') {
+      get().checkUnlocks();
+    }
+  },
+
+  // ─── Observations ───
+
+  addObservation: (agentId, obs) => {
+    const agent = get().getAgent(agentId);
+    if (!agent) return;
+
+    const newObs: AgentObservation = {
+      id: generateId(),
+      category: obs.category,
+      observation: obs.observation,
+      confidence: 0.3,
+      evidence_count: 1,
+      created_at: now(),
+    };
+
+    // 에이전트당 최대 20개
+    const observations = [...agent.observations, newObs].slice(-20);
+    get().updateAgent(agentId, { observations });
+  },
+
+  reinforceObservation: (agentId, obsId) => {
+    const agent = get().getAgent(agentId);
+    if (!agent) return;
+
+    const observations = agent.observations
+      .map(o => {
+        if (o.id !== obsId) return o;
+        return {
+          ...o,
+          confidence: Math.min(0.95, o.confidence + 0.15),
+          evidence_count: o.evidence_count + 1,
+        };
+      })
+      .filter(o => o.confidence >= 0.1);  // 0.1 미만 자동 삭제
+
+    get().updateAgent(agentId, { observations });
+  },
+
+  // ─── 작업 배정 ───
+
+  assignAgentToTask: (task, expectedOutput, usedIds) => {
+    const unlocked = get().getUnlockedAgents()
+      .filter(a => a.capabilities.includes('task_execution'));
+
+    const text = `${task} ${expectedOutput}`.toLowerCase();
+
+    // 키워드 매칭 점수 계산
+    let bestAgent: Agent | null = null;
+    let bestScore = 0;
+
+    for (const agent of unlocked) {
+      if (usedIds.has(agent.id)) continue;
+      const keywords = agent.keywords || [];
+      const score = keywords.filter(kw => text.includes(kw)).length;
+
+      // 동일 점수면 높은 레벨 우선
+      if (score > bestScore || (score === bestScore && score > 0 && agent.level > (bestAgent?.level || 0))) {
+        bestScore = score;
+        bestAgent = agent;
+      }
+    }
+
+    if (bestAgent) {
+      usedIds.add(bestAgent.id);
+      return bestAgent;
+    }
+
+    // Fallback: 첫 번째 미사용 에이전트
+    const unused = unlocked.find(a => !usedIds.has(a.id));
+    if (unused) {
+      usedIds.add(unused.id);
+      return unused;
+    }
+
+    // 최종 fallback: 하윤 (중복 허용)
+    const hayoon = get().agents.find(a => a.id === 'hayoon');
+    return hayoon || unlocked[0];
+  },
+
+  // ─── Boss 생성 ───
+
+  createBossAgent: (config) => {
+    return get().createAgent({
+      name: config.name,
+      role: '팀장',
+      emoji: '👔',
+      color: '#92400E',
+      origin: 'boss_sim',
+      capabilities: ['boss_chat', 'review'],
+      group: 'people',
+      chain_id: null,
+      unlock_condition: { type: 'always', required: 0 },
+      unlocked: true,
+      personality_code: config.typeCode,
+      personality_profile: config.personalityProfile,
+      boss_gender: config.gender,
+      saju_profile: config.sajuProfile,
+    });
+  },
+
+  // ─── 해금 체크 ───
+
+  checkUnlocks: () => {
+    const { agents, chains } = get();
+    const newlyUnlocked: string[] = [];
+
+    // 전체 작업 수 (모든 에이전트)
+    const totalTasks = chains.reduce((sum, c) => sum + c.total_tasks, 0)
+      + agents
+        .filter(a => !a.chain_id && a.is_builtin)
+        .reduce((sum, a) => {
+          // 독립 에이전트의 task count: activities에서 계산
+          const taskCount = get().activities.filter(
+            act => act.agent_id === a.id && act.type === 'task_completed',
+          ).length;
+          return sum + taskCount;
+        }, 0);
+
+    const updated = agents.map(agent => {
+      if (agent.unlocked || agent.archived) return agent;
+
+      let shouldUnlock = false;
+
+      switch (agent.unlock_condition.type) {
+        case 'always':
+          shouldUnlock = true;
+          break;
+        case 'chain_tasks': {
+          const chain = chains.find(c => c.id === agent.unlock_condition.chain_id);
+          shouldUnlock = (chain?.total_tasks || 0) >= agent.unlock_condition.required;
+          break;
+        }
+        case 'total_tasks':
+          shouldUnlock = totalTasks >= agent.unlock_condition.required;
+          break;
+      }
+
+      if (shouldUnlock) {
+        newlyUnlocked.push(agent.id);
+        return { ...agent, unlocked: true, updated_at: now() };
+      }
+      return agent;
+    });
+
+    if (newlyUnlocked.length > 0) {
+      persistAgents(updated);
+      set({ agents: updated, lastUnlockedIds: newlyUnlocked });
+    }
+
+    return newlyUnlocked;
+  },
+
+  clearUnlocked: () => {
+    set({ lastUnlockedIds: [] });
+  },
+
+  // ─── Seed ───
+
+  seedBuiltinAgents: () => {
+    const existing = get().agents;
+    if (existing.some(a => a.is_builtin)) return; // idempotent
+
+    const agents = BUILTIN_AGENTS.map(makeAgent);
+    const chains: AgentChain[] = BUILTIN_CHAINS.map(c => ({ ...c, total_tasks: 0 }));
+
+    persistAgents(agents);
+    persistChains(chains);
+    set({ agents, chains });
+
+    // Supabase async
+    syncToSupabase('agents', agents);
+    syncToSupabase('agent_chains', chains);
+  },
+
+  // ─── Migration ───
+
+  migrateFromPersonas: () => {
+    const existingPeople = get().agents.filter(a => a.origin === 'stakeholder');
+    if (existingPeople.length > 0) return; // 이미 마이그레이션됨
+
+    const personas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
+    if (personas.length === 0) return;
+
+    for (const persona of personas) {
+      const input = personaToAgentInput(persona);
+      get().createAgent({
+        ...input,
+        name: input.name || persona.name,
+        role: input.role || persona.role,
+        emoji: input.emoji || '👤',
+        color: input.color || '#6B7280',
+      });
+    }
+  },
+}));

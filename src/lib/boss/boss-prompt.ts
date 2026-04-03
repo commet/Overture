@@ -1,7 +1,10 @@
 // ━━━ 팀장 시뮬레이션 프롬프트 빌더 ━━━
 
 import type { PersonalityType } from './personality-types';
+import { getPersonalityType } from './personality-types';
 import type { SajuProfile } from './saju-interpreter';
+import type { Agent } from '@/stores/agent-types';
+import { buildAgentContext } from '@/lib/agent-prompt-builder';
 
 export interface BossProfile {
   type: PersonalityType;
@@ -77,4 +80,39 @@ export function buildFirstMessageContext(): string {
 export function buildFollowUpContext(): string {
   return `\n\n## 상황
 대화가 계속되고 있습니다. 이전 맥락을 이어가세요.`;
+}
+
+/**
+ * Agent 데이터에서 Boss 시스템 프롬프트 생성.
+ * Agent.personality_profile + saju_profile에서 BossProfile을 구성.
+ * Lv.2+이면 축적된 observation 주입.
+ */
+export function buildBossSystemPromptFromAgent(agent: Agent): string {
+  if (!agent.personality_code || !agent.personality_profile) {
+    throw new Error('Agent has no personality data');
+  }
+
+  const baseType = getPersonalityType(agent.personality_code);
+  if (!baseType) {
+    throw new Error(`Unknown personality type: ${agent.personality_code}`);
+  }
+
+  const boss: BossProfile = {
+    type: {
+      ...baseType,
+      ...agent.personality_profile,
+    },
+    saju: (agent.saju_profile as SajuProfile) || null,
+    gender: agent.boss_gender || '남',
+  };
+
+  let prompt = buildBossSystemPrompt(boss);
+
+  // Lv.2+: 에이전트가 파악한 사용자 정보 주입
+  const agentCtx = buildAgentContext(agent);
+  if (agentCtx) {
+    prompt += `\n\n## 이 부하직원에 대해 파악한 것\n${agentCtx}`;
+  }
+
+  return prompt;
 }

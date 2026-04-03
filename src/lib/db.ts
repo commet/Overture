@@ -14,7 +14,8 @@ import { log } from './logger';
 
 type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
   | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refine_loops'
-  | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores';
+  | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores'
+  | 'agents' | 'agent_chains' | 'agent_activities';
 
 /**
  * Strip fields that must only be set by the server/database.
@@ -221,6 +222,7 @@ export async function deleteAllUserData(): Promise<void> {
   if (!userId) return;
 
   const tables: TableName[] = [
+    'agent_activities', 'agent_chains', 'agents',
     'outcome_records', 'retrospective_answers', 'decision_quality_scores',
     'quality_signals', 'accuracy_ratings', 'feedback_records', 'judgment_records',
     'refine_loops', 'reframe_items', 'recast_items',

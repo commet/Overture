@@ -9,11 +9,7 @@ import { callLLMJson } from './llm';
 import type { ReframeItem, RecastItem, Persona, SuggestedReviewer } from '@/stores/types';
 import { generateId } from './uuid';
 
-/** Strip XML-like tags from user input before embedding in prompts. */
-function sanitizeForPrompt(text: string): string {
-  if (!text) return '';
-  return text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-}
+import { sanitizeForPrompt } from './persona-prompt';
 
 export interface AutoPersona {
   name: string;

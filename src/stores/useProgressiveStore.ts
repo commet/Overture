@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { generateId } from '@/lib/uuid';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { track } from '@/lib/analytics';
+import { useAgentStore } from '@/stores/useAgentStore';
+import { agentToWorkerPersona } from '@/lib/agent-adapters';
+import { XP_REWARDS } from '@/stores/agent-types';
 import type {
   ProgressiveSession,
   ProgressivePhase,
@@ -12,6 +15,7 @@ import type {
   DMFeedbackResult,
   DMConcern,
   WorkerTask,
+  WorkerDeployPhase,
 } from '@/stores/types';
 
 interface ProgressiveState {
@@ -53,10 +57,15 @@ interface ProgressiveState {
   linkToRecast: (recastItemId: string) => void;
 
   // Workers
-  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[]) => void;
+  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[]) => WorkerTask[];
+  deployWorkers: () => void;
   updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
   setWorkerStreamText: (workerId: string, text: string) => void;
   submitHumanInput: (workerId: string, input: string) => void;
+  approveWorker: (workerId: string) => void;
+  rejectWorker: (workerId: string) => void;
+  allWorkersDone: () => boolean;
+  approvedWorkerResults: () => Array<{ task: string; result: string; persona: string | null }>;
 
   // Cleanup
   deleteSession: (id: string) => void;
@@ -90,9 +99,16 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     // Migration: reset running workers to pending (stream_text lost on reload)
     const migrated = local.map(s => ({
       ...s,
-      workers: (s.workers || []).map(w =>
-        w.status === 'running' ? { ...w, status: 'pending' as const, stream_text: '' } : { ...w, stream_text: '' },
-      ),
+      worker_deploy_phase: s.worker_deploy_phase ?? (s.workers?.length ? 'deployed' : 'none'),
+      workers: (s.workers || []).map(w => ({
+        ...w,
+        stream_text: '',
+        persona: w.persona ?? null,
+        level: w.level ?? 'junior',
+        approved: w.approved ?? null,
+        completion_note: w.completion_note ?? null,
+        status: w.status === 'running' ? 'pending' as const : w.status,
+      })),
     }));
     set({ sessions: migrated });
   },
@@ -112,6 +128,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       answers: [],
       snapshots: [],
       workers: [],
+      worker_deploy_phase: 'none' as WorkerDeployPhase,
       mix: null,
       dm_feedback: null,
       final_deliverable: null,
@@ -296,25 +313,64 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
   initWorkers: (steps) => {
     const { currentSessionId } = get();
-    if (!currentSessionId) return;
-    const workers: WorkerTask[] = steps.map((step, i) => ({
-      id: generateId(),
-      step_index: i,
-      task: step.task,
-      who: step.who,
-      expected_output: step.output,
-      status: step.who === 'human' ? 'waiting_input' : 'pending',
-      stream_text: '',
-      result: null,
-      human_input: null,
-      error: null,
-      started_at: null,
-      completed_at: null,
+    if (!currentSessionId) return [];
+    const usedAgentIds = new Set<string>();
+    const agentStore = useAgentStore.getState();
+
+    // Agent store 미초기화 시 seed (최초 실행 대비)
+    if (agentStore.agents.length === 0) {
+      agentStore.loadAgents();
+    }
+
+    const workers: WorkerTask[] = steps.map((step, i) => {
+      // Agent store에서 배정 (해금된 에이전트 중 키워드 매칭)
+      const agent = agentStore.assignAgentToTask(step.task, step.output, usedAgentIds);
+
+      return {
+        id: generateId(),
+        step_index: i,
+        task: step.task,
+        who: step.who,
+        expected_output: step.output,
+        status: 'pending' as const,  // All start pending; human workers → waiting_input after deploy
+        persona: agentToWorkerPersona(agent),  // backward compat
+        agent_id: agent.id,
+        level: 'junior' as const,  // Default level; orchestrator can upgrade later
+        stream_text: '',
+        result: null,
+        human_input: null,
+        error: null,
+        approved: null,
+        completion_note: null,
+        started_at: null,
+        completed_at: null,
+      };
+    });
+    // 'ready' = 팀 구성 완료, 사용자 확인 대기
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      workers,
+      worker_deploy_phase: 'ready' as WorkerDeployPhase,
     }));
-    const sessions = updateSession(get().sessions, currentSessionId, () => ({ workers }));
     persist(sessions);
     set({ sessions });
     track('workers_initialized', { count: workers.length });
+    return workers;
+  },
+
+  deployWorkers: () => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      worker_deploy_phase: 'deployed' as WorkerDeployPhase,
+      // Human workers transition to waiting_input now that deploy is confirmed
+      workers: s.workers.map(w =>
+        w.who === 'human' && w.status === 'pending'
+          ? { ...w, status: 'waiting_input' as const }
+          : w
+      ),
+    }));
+    persist(sessions);
+    set({ sessions });
   },
 
   updateWorker: (workerId, partial) => {
@@ -330,10 +386,16 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
   setWorkerStreamText: (workerId, text) => {
     const { currentSessionId } = get();
     if (!currentSessionId) return;
-    // No persist — called on every token, avoid localStorage thrashing
-    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
-      workers: s.workers.map(w => w.id === workerId ? { ...w, stream_text: text } : w),
-    }));
+    // Bypass updateSession — no updated_at stamp, no persist. Minimizes object churn.
+    const sessions = get().sessions.map(s => {
+      if (s.id !== currentSessionId) return s;
+      return {
+        ...s,
+        workers: s.workers.map(w =>
+          w.id === workerId ? { ...w, stream_text: text } : w
+        ),
+      };
+    });
     set({ sessions });
   },
 
@@ -343,11 +405,72 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     const now = new Date().toISOString();
     const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
       workers: s.workers.map(w => w.id === workerId ? {
-        ...w, human_input: input, result: input, status: 'done' as const, completed_at: now,
+        ...w, human_input: input, result: input, status: 'done' as const, approved: true, completed_at: now,
       } : w),
     }));
     persist(sessions);
     set({ sessions });
+  },
+
+  approveWorker: (workerId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const session = get().currentSession();
+    const worker = session?.workers.find(w => w.id === workerId);
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => w.id === workerId ? { ...w, approved: true } : w),
+    }));
+    persist(sessions);
+    set({ sessions });
+
+    // Agent XP 적립
+    if (worker?.agent_id) {
+      useAgentStore.getState().recordActivity(
+        worker.agent_id, 'task_approved', worker.task, currentSessionId,
+      );
+    }
+  },
+
+  rejectWorker: (workerId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const session = get().currentSession();
+    const worker = session?.workers.find(w => w.id === workerId);
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => w.id === workerId ? { ...w, approved: false } : w),
+    }));
+    persist(sessions);
+    set({ sessions });
+
+    // Agent XP 차감
+    if (worker?.agent_id) {
+      useAgentStore.getState().recordActivity(
+        worker.agent_id, 'task_rejected', worker.task, currentSessionId,
+      );
+    }
+  },
+
+  allWorkersDone: () => {
+    const session = get().currentSession();
+    if (!session || session.workers.length === 0) return true;
+    return session.workers.every(w => w.status === 'done');
+  },
+
+  approvedWorkerResults: () => {
+    const session = get().currentSession();
+    if (!session) return [];
+    // 정책: approved=true(명시 승인) + approved=null(미확인, 자동 포함) → mix에 포함
+    // approved=false(명시 제외) → mix에서 빠짐
+    // 미확인 자동 포함은 의도된 동작: Mix 전 요약에서 "⏳ 미확인" 표시로 사용자에게 알림
+    return session.workers
+      .filter(w => w.status === 'done' && w.result && w.approved !== false)
+      .map(w => ({
+        task: w.task,
+        result: w.result!,
+        persona: w.persona?.name ?? null,
+      }));
   },
 
   deleteSession: (id) => {

@@ -8,14 +8,10 @@
  * 4. 판단자 시뮬레이션은 진짜 사람처럼 — 구어체, 핵심만, 줄줄이 나열 금지
  */
 
-import type { AnalysisSnapshot, FlowAnswer, FlowQuestion } from '@/stores/types';
+import type { AnalysisSnapshot, FlowAnswer, FlowQuestion, WorkerPersona } from '@/stores/types';
 import { compactQAHistory, shouldCompact, compactSnapshots, getKeepRecent } from '@/lib/compact-context';
 
-/** Strip XML-like tags from user input to prevent prompt injection. */
-function sanitize(text: string): string {
-  if (!text) return '';
-  return text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-}
+import { sanitizeForPrompt as sanitize } from './persona-prompt';
 
 // ─── 1. 초기 분석 (30초 안에 뼈대) ───
 
@@ -98,6 +94,7 @@ export function buildDeepeningPrompt(
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   round: number,
   maxRounds: number,
+  availableAgents?: Array<{ name: string; role: string; specialty: string }>,
 ): { system: string; user: string } {
   // 컨텍스트 압축: Q&A가 길어지면 오래된 대화를 요약 (후반 라운드일수록 더 많이 보존)
   const keepRecent = getKeepRecent(round);
@@ -108,6 +105,12 @@ export function buildDeepeningPrompt(
       ).join('\n\n');
 
   const isLastRound = round >= maxRounds - 1;
+
+  // 지휘자: 해금된 에이전트 목록 → execution_plan 시 팀 구성 고려
+  const teamBlock = (round >= 1 && availableAgents && availableAgents.length > 0)
+    ? `\n사용 가능한 팀원:\n${availableAgents.map(a => `- ${a.name}(${a.role}): ${a.specialty}`).join('\n')}
+각 step의 task를 팀원의 전문성에 맞게 설계하세요. 리서치는 리서치 전문가에게, 숫자 분석은 숫자 전문가에게.`
+    : '';
 
   return {
     system: `You are a practical business mentor. Korean only. Direct and grounded.
@@ -124,7 +127,7 @@ Your job each round:
 2. Update real_question — must stay a QUESTION (물음표). Sharpen with new context.
 3. Update 놓치기 쉬운 것 — remove resolved ones, add newly discovered ones. Keep realistic.
 4. Update 뼈대 — make it more concrete based on what we now know. Each line = actionable section.
-${round >= 1 ? '5. Build execution_plan — who does what, in what order. 3-5 steps max.' : ''}
+${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. Each step should play to a specific team member's strength.${teamBlock}` : ''}
 
 Question rules:
 - Reference their answer directly: "투자용이라고 했으니, 그러면..."
@@ -163,22 +166,74 @@ JSON:
 
 // ─── 2.5. Worker Task (개별 에이전트 작업) ───
 
+import { getSkillSet, LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
+import type { AgentLevel } from '@/stores/types';
+import type { Agent } from '@/stores/agent-types';
+import { buildAgentContext } from '@/lib/agent-prompt-builder';
+
 export function buildWorkerTaskPrompt(
   task: string,
   expectedOutput: string,
   who: 'ai' | 'human' | 'both',
   context: { problemText: string; realQuestion: string; skeleton: string[]; hiddenAssumptions: string[]; qaHistory: Array<{ q: string; a: string }> },
+  persona?: WorkerPersona,
+  level: AgentLevel = 'junior',
+  agent?: Agent,
 ): { system: string; user: string } {
   const qaText = context.qaHistory.map((qa, i) => `Q${i + 1}: ${qa.q}\nA${i + 1}: ${qa.a}`).join('\n');
+  // Agent 레벨 반영: agent가 있으면 numeric level → AgentLevel 변환
+  const effectiveLevel = agent ? numericLevelToAgentLevel(agent.level) : level;
+  const levelConfig = LEVEL_CONFIGS[effectiveLevel];
+  // 스킬 조회: agent ID 우선, 없으면 persona ID
+  const skillLookupId = agent?.id || persona?.id;
+  const skills = skillLookupId ? getSkillSet(skillLookupId) : undefined;
+
+  // ─── System prompt: persona + skills + level ───
+  let systemParts: string[] = [];
+
+  // 1. Persona identity (agent 우선, 없으면 persona fallback)
+  if (agent) {
+    systemParts.push(`당신은 ${agent.name}, ${agent.role}입니다.
+${agent.expertise || ''}
+${agent.tone || ''}`);
+    const agentCtx = buildAgentContext(agent);
+    if (agentCtx) systemParts.push(agentCtx);
+  } else if (persona) {
+    systemParts.push(`당신은 ${persona.name}, ${persona.role}입니다.
+${persona.expertise}
+${persona.tone}`);
+  }
+
+  // 2. Skill frameworks
+  if (skills) {
+    systemParts.push(`\n당신의 분석 도구:
+${skills.frameworks.map(f => `- ${f}`).join('\n')}`);
+  }
+
+  // 3. Level-specific instruction
+  if (skills) {
+    systemParts.push(`\n[${levelConfig.label} 수준 지시]
+${skills.levelPrompts[effectiveLevel]}`);
+  }
+
+  // 4. Quality checkpoints
+  if (skills) {
+    systemParts.push(`\n반드시 확인:
+${skills.checkpoints.map(c => `☐ ${c}`).join('\n')}`);
+  }
+
+  // 5. Output format
+  if (skills) {
+    systemParts.push(`\n출력 형식:
+${skills.outputFormat}`);
+  }
+
+  // 6. Core rules
+  systemParts.push(`\nKorean only. 바로 쓸 수 있는 결과물을 만들어.
+${who === 'both' ? '참고: 이 작업은 사람과 협업입니다. 80% 완성도로 만들되, [결정 필요] 표시로 사용자 판단이 필요한 부분을 명시하세요.' : ''}`);
 
   return {
-    system: `You are a research assistant executing ONE specific task within a larger project.
-Korean only. Be thorough but concise. No filler.
-
-Your output should be immediately usable — not a placeholder or outline.
-Write in flowing Korean prose with bullets as appropriate.
-${who === 'both' ? '\n참고: 이 작업은 사람과 협업입니다. 80% 완성도로 만들되, [결정 필요] 표시로 사용자 판단이 필요한 부분을 명시하세요.' : ''}
-Keep output focused and under 500 words.`,
+    system: systemParts.join('\n'),
 
     user: `프로젝트 배경: <user-data>${sanitize(context.problemText)}</user-data>
 핵심 질문: ${context.realQuestion}
@@ -189,7 +244,7 @@ ${qaText ? `Q&A:\n${qaText}` : ''}
 작업: ${task}
 기대 산출물: ${expectedOutput}
 
-이 작업만 집중해서 완성해줘. 기대 산출물 형식에 맞게.`,
+이 작업만 집중해서 완성해줘.`,
   };
 }
 

@@ -103,7 +103,9 @@ export async function POST(req: NextRequest) {
     });
 
     const block = response.content.find((b) => b.type === 'text');
-    return NextResponse.json({ text: block ? block.text : '' });
+    const res = NextResponse.json({ text: block ? block.text : '' });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   } catch {
     return NextResponse.json(
       { error: 'LLM 호출 중 오류가 발생했습니다. API 키를 확인해주세요.' },
