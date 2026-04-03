@@ -34,6 +34,11 @@ export function ClosingCTA() {
             이제 나한테 물어보지 말고, Overture에게 물어보세요.
           </p>
 
+          <p className="mt-5 text-[12px] text-white/30 italic max-w-sm mx-auto leading-relaxed">
+            &ldquo;기획서는 생각을 만드는 시간이 오래 걸리는 거지,
+            문서로 정리하는 시간은 짧을 수 있습니다.&rdquo;
+          </p>
+
           <div className="mt-8 md:mt-10">
             <Link
               href="/workspace"

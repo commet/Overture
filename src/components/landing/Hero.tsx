@@ -408,6 +408,34 @@ export function Hero() {
               채울수록 날카로워집니다.
             </p>
 
+            {/* ─── Live Voices: 실제 사용자가 느끼는 고통 ─── */}
+            <div className="mt-6 space-y-2.5 max-w-md">
+              {[
+                { text: 'AI로 뽑아보면 수정이 반이야. 결국 내가 다시 다듬어야 함.', solve: '입력의 질을 높여서 수정을 줄입니다' },
+                { text: '생각 정리가 오래 걸리는 거지, 문서 정리는 짧을 수 있어.', solve: '생각 정리 시간의 질을 높입니다' },
+                { text: '검수 피로도가 너무 높더라고. 결국 다시 다 살펴보게 돼.', solve: '약한 곳을 미리 짚어줍니다' },
+              ].map((v, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 + i * 0.15, duration: 0.5, ease: EASE }}
+                  className="flex items-start gap-2.5 group"
+                >
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--text-tertiary)]/10 flex items-center justify-center mt-0.5">
+                    <span className="text-[8px] text-[var(--text-tertiary)]">&ldquo;</span>
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-[12px] text-[var(--text-tertiary)] italic leading-relaxed">{v.text}</p>
+                    <p className="text-[11px] text-[var(--accent)] font-medium mt-0.5 opacity-0 group-hover:opacity-100"
+                      style={{ transitionProperty: 'opacity', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                      → {v.solve}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
             {/* ─── Inline Input ─── */}
             <div className="mt-8">
               <div
