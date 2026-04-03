@@ -313,6 +313,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   createAgent: (data) => {
     const id = data.id || generateId();
+    // 중복 ID 방지
+    if (get().agents.some(a => a.id === id)) return id;
     const ts = now();
     const agent: Agent = {
       id,

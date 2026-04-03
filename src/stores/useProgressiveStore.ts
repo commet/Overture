@@ -5,6 +5,7 @@ import { track } from '@/lib/analytics';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { agentToWorkerPersona } from '@/lib/agent-adapters';
 import { XP_REWARDS } from '@/stores/agent-types';
+import { numericLevelToAgentLevel } from '@/lib/agent-skills';
 import type {
   ProgressiveSession,
   ProgressivePhase,
@@ -335,7 +336,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         status: 'pending' as const,  // All start pending; human workers → waiting_input after deploy
         persona: agentToWorkerPersona(agent),  // backward compat
         agent_id: agent.id,
-        level: 'junior' as const,  // Default level; orchestrator can upgrade later
+        level: numericLevelToAgentLevel(agent.level),
         stream_text: '',
         result: null,
         human_input: null,

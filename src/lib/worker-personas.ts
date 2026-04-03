@@ -215,49 +215,6 @@ export function getBuiltinPersonas(): WorkerPersona[] {
   return BUILTIN_PERSONAS;
 }
 
-// ─── Assignment ───
-
-/** @deprecated useAgentStore.assignAgentToTask() 사용. 기존 호출처 마이그레이션 후 삭제 예정. */
-export function assignPersona(
-  task: string,
-  expectedOutput: string,
-  usedIds: Set<string>,
-): WorkerPersona {
-  const pool = getPersonaPool();
-  const keywordMap = getKeywordMap();
-  const text = `${task} ${expectedOutput}`.toLowerCase();
-
-  // Score each persona by keyword hits
-  let bestId: string | null = null;
-  let bestScore = 0;
-
-  for (const { keywords, personaId } of keywordMap) {
-    if (usedIds.has(personaId)) continue;
-    if (!pool.find(p => p.id === personaId)) continue;
-    const score = keywords.filter(kw => text.includes(kw)).length;
-    if (score > bestScore) {
-      bestScore = score;
-      bestId = personaId;
-    }
-  }
-
-  if (bestId) {
-    const persona = pool.find(p => p.id === bestId)!;
-    usedIds.add(bestId);
-    return persona;
-  }
-
-  // Fallback: pick first unused
-  const unused = pool.find(p => !usedIds.has(p.id));
-  if (unused) {
-    usedIds.add(unused.id);
-    return unused;
-  }
-
-  // All used — return intern (allow duplicate)
-  return pool.find(p => p.id === 'intern') || pool[0];
-}
-
 // ─── Persona-voiced completion notes ───
 
 const COMPLETION_NOTES: Record<string, string[]> = {

@@ -47,6 +47,7 @@ export function agentToPersona(agent: Agent): Persona {
 /** 기존 Persona → Agent 생성 input. migrateFromPersonas()에서 사용. */
 export function personaToAgentInput(persona: Persona): Partial<Agent> {
   return {
+    id: persona.id,
     name: persona.name,
     role: persona.role,
     emoji: '👤',
