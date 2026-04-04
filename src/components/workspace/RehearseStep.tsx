@@ -94,6 +94,15 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
     seedDefaultPersonas();
   }, [seedDefaultPersonas]);
 
+  // Boss에서 넘어온 경우 preferred reviewer 자동 추가
+  useEffect(() => {
+    const reviewerId = sessionStorage.getItem('overture_preferred_reviewer');
+    if (reviewerId && !autoPersonaIds.includes(reviewerId)) {
+      setAutoPersonaIds(prev => [...prev, reviewerId]);
+      sessionStorage.removeItem('overture_preferred_reviewer');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handle handoff from previous step
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

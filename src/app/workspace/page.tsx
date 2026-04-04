@@ -26,6 +26,8 @@ import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/Musica
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { getPersonaPool } from '@/lib/worker-personas';
 import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
+import { DemoShowcase } from '@/components/workspace/DemoShowcase';
+import { DEMO_SCENARIOS } from '@/lib/demo-scenarios';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
 
@@ -90,6 +92,7 @@ function HeroFlow({ onReady, projects, user }: {
   user: unknown;
 }) {
   const [phase, setPhase] = useState<HeroPhase>('idle');
+  const [demoScenario, setDemoScenario] = useState<typeof DEMO_SCENARIOS[number] | null>(null);
   const [problemInput, setProblemInput] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [previewPersonas, setPreviewPersonas] = useState<WorkerPersona[]>([]);
@@ -161,6 +164,27 @@ function HeroFlow({ onReady, projects, user }: {
     }
   };
 
+  // Demo mode — show showcase
+  if (demoScenario) {
+    return (
+      <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
+        <StaffLines opacity={0.02} spacing={18} />
+        <div className="relative h-[calc(100vh-56px)]">
+          <DemoShowcase
+            scenario={demoScenario}
+            onStartReal={() => {
+              setProblemInput(demoScenario.problemText);
+              setDemoScenario(null);
+              // Pre-fill and let user review before starting
+            }}
+            onBack={() => setDemoScenario(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-[calc(100vh-56px)] overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
@@ -216,16 +240,16 @@ function HeroFlow({ onReady, projects, user }: {
                 </p>
               </div>
 
-              {/* Scenario cards — click = instant start */}
+              {/* Scenario cards — click = demo showcase */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-                {SCENARIOS.map(s => (
-                  <button key={s.title} onClick={() => handleSubmit(s.prompt)}
+                {DEMO_SCENARIOS.map(s => (
+                  <button key={s.id} onClick={() => setDemoScenario(s)}
                     className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
                     <span className="text-[22px] block mb-3">{s.icon}</span>
                     <p className="text-[14px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{s.title}</p>
                     <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">{s.desc}</p>
                     <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
-                      바로 시작 <ChevronRight size={11} />
+                      체험해보기 <ChevronRight size={11} />
                     </div>
                   </button>
                 ))}
@@ -350,6 +374,14 @@ function WorkspaceContent() {
   // Use legacy mode if ?step= is explicitly set
   const explicitStep = searchParams.get('step') as StepId | null;
   const useLegacyMode = explicitStep && ['reframe', 'recast', 'rehearse', 'refine'].includes(explicitStep);
+
+  // Boss에서 넘어온 경우 reviewer agent 저장
+  const reviewerParam = searchParams.get('reviewer');
+  useEffect(() => {
+    if (reviewerParam) {
+      sessionStorage.setItem('overture_preferred_reviewer', reviewerParam);
+    }
+  }, [reviewerParam]);
 
   useEffect(() => {
     loadProjects();

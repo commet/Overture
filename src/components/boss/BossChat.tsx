@@ -186,7 +186,7 @@ export function BossChat() {
                 <Check size={10} /> 저장됨
               </span>
               <Link
-                href="/workspace"
+                href={`/workspace?reviewer=${loadedAgentId || ''}`}
                 style={{ fontSize: 10, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                 title="이 팀장이 리뷰어로 활용됩니다"
               >
@@ -251,8 +251,16 @@ export function BossChat() {
           </p>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             <Link
-              href="/workspace"
-              onClick={() => { if (!loadedAgentId) saveAsAgent(); }}
+              href={`/workspace?reviewer=${loadedAgentId || 'pending'}`}
+              onClick={() => {
+                if (!loadedAgentId) {
+                  const id = saveAsAgent();
+                  if (id) {
+                    // URL을 동적으로 업데이트
+                    sessionStorage.setItem('overture_preferred_reviewer', id);
+                  }
+                }
+              }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '5px 12px', borderRadius: 99,
