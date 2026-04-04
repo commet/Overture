@@ -10,7 +10,6 @@ import { SyncStatus } from '@/components/ui/SyncStatus';
 
 const navItems = [
   { href: '/workspace', label: '워크스페이스', primary: true },
-  { href: '/boss', label: '팀장' },
   { href: '/agents', label: '에이전트' },
   { href: '/project', label: '프로젝트' },
   { href: '/guide', label: '가이드' },

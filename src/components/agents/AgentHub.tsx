@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { useAgentStore } from '@/stores/useAgentStore';
 import type { Agent, AgentChain } from '@/stores/agent-types';
 import { AgentCard } from './AgentCard';
@@ -86,14 +87,27 @@ export function AgentHub() {
         onSelect={setSelectedAgent}
       />
 
-      {/* 사람들 */}
-      {peopleAgents.length > 0 && (
-        <GroupSection
-          agents={peopleAgents}
-          meta={GROUP_META.people}
-          onSelect={setSelectedAgent}
-        />
-      )}
+      {/* 사람들 + 팀장 시뮬레이터 진입 */}
+      <section className="agent-section">
+        <SectionHeader meta={GROUP_META.people} />
+        <div className="agent-grid">
+          {peopleAgents.map(agent => (
+            <AgentCard key={agent.id} agent={agent} onClick={() => agent.unlocked && setSelectedAgent(agent)} />
+          ))}
+          <Link href="/boss" className="agent-card agent-card-boss-cta" style={{ textDecoration: 'none' }}>
+            <div className="agent-card-emoji">👔</div>
+            <div className="agent-card-role">팀장 시뮬레이터</div>
+            <div className="agent-card-name">내 팀장은 뭐라고 할까?</div>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+              marginTop: 6,
+            }}>
+              시작하기 →
+            </span>
+          </Link>
+        </div>
+      </section>
 
       {/* 악장 */}
       {concertmaster && (

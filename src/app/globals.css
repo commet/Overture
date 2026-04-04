@@ -1352,6 +1352,18 @@ button, a, input, textarea {
   background: var(--bg);
 }
 
+/* ── Boss simulator CTA card ── */
+.agent-card-boss-cta {
+  border-style: dashed;
+  border-color: var(--accent);
+  border-width: 1.5px;
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(184,150,62,0.04) 100%);
+}
+.agent-card-boss-cta:hover {
+  border-style: solid;
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(184,150,62,0.08) 100%);
+}
+
 /* ── Unlock animation ── */
 
 @keyframes agent-unlock {
