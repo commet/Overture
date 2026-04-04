@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, RotateCcw, Bookmark, Check } from 'lucide-react';
+import { Send, RotateCcw, Bookmark, Check, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { ChatMessage } from './ChatMessage';
 import { useBossStore } from '@/stores/useBossStore';
@@ -12,6 +12,21 @@ import { useAgentStore } from '@/stores/useAgentStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
+
+// 업무/의사결정 관련 대화인지 감지 (키워드 3개 이상 매칭 시 true)
+const WORK_SIGNALS = [
+  '기획', '보고', '제안', '예산', '일정', '프로젝트', '전략', '실행',
+  '검토', '승인', '피드백', '수정', '방향', '목표', '성과', '발표',
+  '회의', '결정', '판단', '계획', '분석', '데이터', '숫자', '시장',
+  '고객', '매출', '비용', '투자', '경쟁', '리스크', '문서', '슬라이드',
+  '부족', '다시 해', '이 부분', '보완', '개선', '준비', '마감',
+];
+
+function isWorkRelated(messages: Array<{ role: string; content: string }>): boolean {
+  const allText = messages.map(m => m.content).join(' ').toLowerCase();
+  const hits = WORK_SIGNALS.filter(kw => allText.includes(kw));
+  return hits.length >= 3;
+}
 
 const FOLLOW_UP_EXAMPLES = [
   '그래도 저는 할 말은 해야겠는데요',
@@ -33,6 +48,7 @@ export function BossChat() {
 
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -212,6 +228,49 @@ export function BossChat() {
         )}
         <div ref={chatEndRef} />
       </div>
+
+      {/* 스마트 전환 CTA — 업무/의사결정 대화 감지 시만 */}
+      {!ctaDismissed && !saved && !isStreaming
+        && messages.filter(m => m.role === 'assistant').length >= 2
+        && isWorkRelated(messages) && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.4 }}
+          style={{
+            margin: '0 16px 8px',
+            padding: '12px 16px',
+            borderRadius: 14,
+            background: 'rgba(184,150,62,0.04)',
+            border: '1px solid rgba(184,150,62,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}
+        >
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            이 피드백을 반영한 기획안을 만들어볼 수 있어요
+          </p>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            <Link
+              href="/workspace"
+              onClick={() => { if (!loadedAgentId) saveAsAgent(); }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 12px', borderRadius: 99,
+                background: 'var(--gradient-gold)', color: 'white',
+                fontSize: 11, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+              }}
+            >
+              시작 <ArrowRight size={10} />
+            </Link>
+            <button
+              onClick={() => setCtaDismissed(true)}
+              style={{ fontSize: 10, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            >
+              ✕
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Input */}
       <div className="bc-input-bar">
