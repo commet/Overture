@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/Card';
-import { Layers, Map, Users, RefreshCw, ArrowRight, Link2 } from 'lucide-react';
+import { Layers, Map, Users, RefreshCw, ArrowRight, Link2, Zap, Bot } from 'lucide-react';
 import Link from 'next/link';
 
 const tools = [
@@ -82,18 +82,72 @@ export default function GuidePage() {
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">사용 가이드</h1>
         <p className="text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed max-w-2xl">
-          Overture는 네 단계로 작동합니다. 각 단계는 독립적으로 사용할 수 있지만,
-          순서대로 진행하면 이전 단계의 맥락이 다음 단계에 전달됩니다.
+          고민을 입력하면 에이전트 팀이 분석·조사·작성을 수행하고, 제출 가능한 문서를 만들어줍니다.
         </p>
-        <div className="mt-4 flex items-start gap-2.5 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c]">
+      </div>
+
+      {/* 빠른 시작 */}
+      <Card>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+            <Zap size={18} className="text-white" />
+          </div>
+          <h2 className="text-[18px] font-bold text-[var(--text-primary)]">빠른 시작</h2>
+        </div>
+        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-4">
+          워크스페이스에서 고민을 입력하면 바로 시작됩니다. 질문 몇 개에 답하면 에이전트 팀이 병렬로 작업하고, 초안이 완성됩니다.
+        </p>
+        <div className="space-y-2 mb-4">
+          {['고민 입력 → 30초 안에 분석 뼈대', '질문 2~3개 응답 → 에이전트 팀 자동 배정', '팀이 병렬 작업 → 결과 승인/거부', '초안 조합 + 의사결정자 시뮬레이션'].map((step, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <span className="text-[12px] font-bold tabular-nums leading-none pt-1 shrink-0 select-none" style={{ color: 'var(--accent)' }}>{i + 1}</span>
+              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{step}</p>
+            </div>
+          ))}
+        </div>
+        <Link href="/workspace" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] hover:underline">
+          워크스페이스로 가기 <ArrowRight size={14} />
+        </Link>
+      </Card>
+
+      {/* 에이전트 팀 */}
+      <Card>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--surface)] border border-[var(--border)]">
+            <Bot size={18} className="text-[var(--text-secondary)]" />
+          </div>
+          <h2 className="text-[18px] font-bold text-[var(--text-primary)]">에이전트 팀</h2>
+        </div>
+        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-3">
+          14명의 전문 에이전트가 각자의 방법론으로 작업합니다. 사용할수록 레벨업하고, 당신의 선호를 학습합니다.
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-[12px] text-[var(--text-primary)] mb-4">
+          <div><span className="text-[var(--text-tertiary)]">리서치:</span> 하윤 → 수진 → 도윤 (해금)</div>
+          <div><span className="text-[var(--text-tertiary)]">전략:</span> 지호 → 현우 → 승현 (해금)</div>
+          <div><span className="text-[var(--text-tertiary)]">실행:</span> 서연 · 민재 · 준서 · 예린</div>
+          <div><span className="text-[var(--text-tertiary)]">검증:</span> 동혁 · 지은 · 태준</div>
+        </div>
+        <div className="rounded-lg px-4 py-3 bg-[var(--bg)]">
+          <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+            <strong>Tip:</strong> 에이전트 결과를 승인/거부하면 XP가 쌓이고 레벨업합니다. Lv.2부터 당신의 패턴을 학습해서 결과가 달라집니다.
+          </p>
+        </div>
+        <Link href="/agents" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] hover:underline mt-4">
+          에이전트 허브 <ArrowRight size={14} />
+        </Link>
+      </Card>
+
+      {/* 4R 상세 도구 */}
+      <div>
+        <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">상세 도구</h2>
+        <p className="text-[13px] text-[var(--text-secondary)] mb-4">
+          빠른 시작 외에, 각 단계를 독립적으로 사용할 수도 있습니다. 순서대로 진행하면 맥락이 이어집니다.
+        </p>
+        <div className="flex items-start gap-2.5 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c] mb-6">
           <Link2 size={14} className="shrink-0 mt-0.5" />
           <p>
             <strong>맥락 체인:</strong> 악보 해석의 결과가 편곡으로, 편곡의 결과가 리허설로 이어집니다.
-            각 단계에서 쌓인 판단이 다음 단계의 품질을 높입니다.
           </p>
-        </div>
-        <div className="mt-3 text-[13px] text-[var(--text-secondary)]">
-          처음이라면 <Link href="/demo" className="underline font-semibold text-[var(--accent)]">5분 데모</Link>를 먼저 체험해보세요.
         </div>
       </div>
 

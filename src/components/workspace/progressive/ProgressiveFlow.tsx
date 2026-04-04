@@ -14,6 +14,9 @@ import {
 } from '@/lib/progressive-engine';
 import { assessConvergence } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
+import { useReframeStore } from '@/stores/useReframeStore';
+import { useRecastStore } from '@/stores/useRecastStore';
+import { useProjectStore } from '@/stores/useProjectStore';
 import { runAllAIWorkers, type WorkerContext } from '@/lib/worker-engine';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
@@ -1027,8 +1030,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               onReframe={() => {
                 try {
                   const item = exportProgressiveAsReframe(session);
+                  // 실제 store에 저장 + 프로젝트 연결
+                  useReframeStore.getState().addItem(item);
                   store.linkToReframe(item.id);
-                  // Navigate to reframe — store the item in handoff
+                  if (session.project_id) {
+                    useProjectStore.getState().addRef(session.project_id, {
+                      tool: 'reframe', itemId: item.id, label: session.problem_text.slice(0, 30),
+                    });
+                  }
                   track('progressive_exit_to_reframe', { round });
                   window.location.href = `/workspace?step=reframe&handoff=progressive&itemId=${item.id}`;
                 } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }
@@ -1036,6 +1045,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               onRehearse={() => {
                 try {
                   const item = exportProgressiveAsRecast(session);
+                  // 실제 store에 저장 + 프로젝트 연결
+                  useRecastStore.getState().addItem(item);
+                  store.linkToRecast(item.id);
+                  if (session.project_id) {
+                    useProjectStore.getState().addRef(session.project_id, {
+                      tool: 'recast', itemId: item.id, label: session.problem_text.slice(0, 30),
+                    });
+                  }
                   track('progressive_exit_to_rehearse', { round });
                   window.location.href = `/workspace?step=rehearse&handoff=progressive&itemId=${item.id}`;
                 } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }

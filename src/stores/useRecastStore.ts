@@ -9,6 +9,7 @@ interface RecastState {
   currentId: string | null;
   loadItems: () => void;
   createItem: () => string;
+  addItem: (item: RecastItem) => void;
   updateItem: (id: string, data: Partial<RecastItem>) => void;
   deleteItem: (id: string) => void;
   setCurrentId: (id: string | null) => void;
@@ -46,6 +47,14 @@ export const useRecastStore = create<RecastState>((set, get) => ({
     setStorage(STORAGE_KEYS.RECAST_LIST, items);
     upsertToSupabase('recast_items', newItem);
     return newItem.id;
+  },
+
+  addItem: (item) => {
+    if (get().items.some(i => i.id === item.id)) return;
+    const items = [...get().items, item];
+    set({ items, currentId: item.id });
+    setStorage(STORAGE_KEYS.RECAST_LIST, items);
+    upsertToSupabase('recast_items', item);
   },
 
   updateItem: (id, data) => {
