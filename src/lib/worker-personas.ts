@@ -228,10 +228,24 @@ const COMPLETION_NOTES: Record<string, string[]> = {
   intern: ['열심히 찾았어요! 확인 부탁드립니다.', '정리 다 했습니다!', '최대한 꼼꼼하게 모았어요.'],
   engineer: ['기술 검토 끝났습니다.', '구현 관점에서 정리했어요.', '아키텍처 분석 완료.'],
   pm: ['실행 계획 정리했습니다.', '일정 잡아봤어요.', '액션 아이템 뽑았습니다.'],
+  // 체인 에이전트 (신규)
+  research_director: ['인사이트 정리 완료했습니다.', '교차 분석 끝났어요.', '핵심 발견 3가지 추렸습니다.'],
+  strategy_jr: ['비교 정리 다 했습니다.', '표로 깔끔하게 정리했어요.', '핵심 차이 뽑았습니다.'],
+  chief_strategist: ['시나리오별로 정리했습니다.', '의사결정 구조 잡았어요.', '권장 경로 제시합니다.'],
+  concertmaster: ['전체적으로 한번 봤습니다.', '팀 결과물 검토 완료.'],
+};
+
+// agent ID → skill ID 매핑 (agent-skills.ts와 동기화)
+const AGENT_ID_TO_NOTE: Record<string, string> = {
+  hayoon: 'intern', sujin: 'researcher', research_director: 'research_director',
+  strategy_jr: 'strategy_jr', hyunwoo: 'strategist', chief_strategist: 'chief_strategist',
+  seoyeon: 'copywriter', minjae: 'numbers', junseo: 'engineer', yerin: 'pm',
+  donghyuk: 'critic', jieun: 'ux', taejun: 'legal', concertmaster: 'concertmaster',
 };
 
 export function getCompletionNote(personaId: string): string {
-  const notes = COMPLETION_NOTES[personaId];
+  const noteId = AGENT_ID_TO_NOTE[personaId] || personaId;
+  const notes = COMPLETION_NOTES[noteId];
   if (!notes || notes.length === 0) return '작업 완료했습니다.';
   return notes[Math.floor(Math.random() * notes.length)];
 }

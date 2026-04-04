@@ -713,7 +713,7 @@ export interface AnalysisSnapshot {
   hidden_assumptions: string[];
   skeleton: string[];
   execution_plan?: {
-    steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[];
+    steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[];
     key_assumptions: string[];
   };
   insight?: string;              // 이번 업데이트의 핵심 인사이트

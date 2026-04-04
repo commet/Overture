@@ -156,7 +156,7 @@ JSON:
   "hidden_assumptions": ["현실적인 놓치기 쉬운 것만 2-3개"],
   "skeleton": ["업데이트된 뼈대 항목들 (답변 반영, 구체적)"],
   ${round >= 1 ? `"execution_plan": {
-    "steps": [{"task": "할 일", "who": "ai|human|both", "output": "산출물"}]
+    "steps": [{"task": "할 일", "who": "ai|human|both", "output": "산출물", "agent_hint": "팀원 이름 (있으면)"}]
   },` : ''}
   "next_question": ${isLastRound ? 'null' : '{"text": "질문", "subtext": "이유", "options": ["1","2","3"], "type": "select|short"}'},
   "ready_for_mix": ${isLastRound ? 'true' : 'true|false'}

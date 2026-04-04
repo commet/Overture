@@ -59,7 +59,7 @@ interface ProgressiveState {
   linkToRecast: (recastItemId: string) => void;
 
   // Workers
-  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[]) => WorkerTask[];
+  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[]) => WorkerTask[];
   deployWorkers: () => void;
   updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
   setWorkerStreamText: (workerId: string, text: string) => void;
@@ -325,8 +325,12 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     }
 
     const workers: WorkerTask[] = steps.map((step, i) => {
-      // Agent store에서 배정 (해금된 에이전트 중 키워드 매칭)
-      const agent = agentStore.assignAgentToTask(step.task, step.output, usedAgentIds);
+      // 지휘자 힌트 우선 → 키워드 매칭 fallback
+      let agent = step.agent_hint
+        ? agentStore.getUnlockedAgents().find(a => a.name === step.agent_hint && !usedAgentIds.has(a.id))
+        : undefined;
+      if (!agent) agent = agentStore.assignAgentToTask(step.task, step.output, usedAgentIds);
+      else usedAgentIds.add(agent.id);
 
       return {
         id: generateId(),
