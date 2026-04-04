@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, RotateCcw, Bookmark, Check } from 'lucide-react';
+import { Send, RotateCcw, Bookmark, Check, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { ChatMessage } from './ChatMessage';
 import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
@@ -32,6 +33,7 @@ export function BossChat() {
 
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -164,9 +166,13 @@ export function BossChat() {
             </motion.button>
           )}
           {saved && (
-            <span style={{ fontSize: 10, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Link
+              href="/agents"
+              style={{ fontSize: 10, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none' }}
+              title="에이전트 허브에서 확인"
+            >
               <Check size={10} /> 저장됨
-            </span>
+            </Link>
           )}
           <button type="button" onClick={handleReset} className="bc-reset" title="다시">
             <RotateCcw size={14} />
@@ -202,6 +208,53 @@ export function BossChat() {
         )}
         <div ref={chatEndRef} />
       </div>
+
+      {/* 전환 CTA — 대화 4회 이상 후 */}
+      {messages.filter(m => m.role === 'assistant').length >= 2 && !isStreaming && !ctaDismissed && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          style={{
+            margin: '0 16px 8px',
+            padding: '14px 18px',
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(184,150,62,0.06), rgba(212,185,104,0.03))',
+            border: '1px solid var(--accent)',
+            borderColor: 'rgba(184,150,62,0.2)',
+          }}
+        >
+          <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 4 }}>
+            이 피드백 반영해서 실제 기획안 만들어볼까요?
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.5 }}>
+            이 팀장이 리뷰어로 자동 설정됩니다.
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link
+              href="/workspace"
+              onClick={() => {
+                // 아직 저장 안 했으면 자동 저장
+                if (!saved && !loadedAgentId) saveAsAgent();
+              }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 99,
+                background: 'var(--gradient-gold)', color: 'white',
+                fontSize: 12, fontWeight: 600, textDecoration: 'none',
+              }}
+            >
+              기획안 만들기 <ArrowRight size={12} />
+            </Link>
+            <button
+              onClick={() => setCtaDismissed(true)}
+              style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+            >
+              계속 대화하기
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Input */}
       <div className="bc-input-bar">
