@@ -202,53 +202,22 @@
 
 ## 6. 미구현 항목 — 완벽을 위해 남은 것
 
-### 6-1. Observation 자동 생성 (핵심)
+### ~~6-1. Observation 자동 생성~~ → 구현 완료 (2026-04-04)
 
-**현재:** `addObservation()`, `reinforceObservation()` 메서드만 존재. 아무것도 호출하지 않음.
+`src/lib/observation-engine.ts` 생성:
+- 규칙 기반: 승인 3회 → 선호도 observation, 거부 2회 → 톤 조정 observation, 도메인 키워드 추출
+- LLM 배치: 에이전트당 5회마다 비동기 분석 (maxTokens: 150, 비차단)
+- `useProgressiveStore`의 approve/reject에서 자동 트리거
 
-**필요한 것:** 에이전트가 작업을 완료하면 결과를 분석해서 사용자에 대한 관찰을 축적.
+### ~~6-2. Boss 대화 XP 기록~~ → 구현 완료 (2026-04-04)
 
-```
-작업 완료 → 결과 분석 (LLM 또는 규칙) → observation 생성
-예: "이 사용자는 숫자보다 내러티브를 선호한다" (confidence: 0.3)
-    "기술 용어를 잘 이해한다" (confidence: 0.3)
+`useBossStore.ts` `commitAssistantMessage()`에 `recordActivity('boss_chat')` 추가.
 
-사용자 승인 → 해당 작업의 observation reinforce (+0.15)
-사용자 거부 → 해당 작업의 observation contradict (-0.2)
-```
+### ~~6-3. 악장(Concertmaster) 실제 호출~~ → 구현 완료 (2026-04-04)
 
-**구현 방안:**
-- A) 규칙 기반: 승인/거부 패턴으로 간단한 observation 생성 (예: "거부율이 높은 에이전트 → 톤 조절 필요")
-- B) LLM 기반: 작업 결과 + 사용자 피드백을 짧은 LLM 호출로 분석 → observation 도출 (토큰 비용 발생)
-- C) 하이브리드: 기본은 규칙, 일정 작업 수 도달 시 LLM 분석
-
-**영향:** Lv.2+ 프롬프트 차별화의 전제 조건. 이것 없으면 레벨업해도 프롬프트가 안 바뀜.
-
-### 6-2. Boss 대화 XP 기록
-
-**현재:** `commitAssistantMessage()`에서 `recordActivity('boss_chat')` 호출 없음.
-
-**수정:** `commitAssistantMessage()` 끝에 추가:
-```typescript
-if (get().loadedAgentId) {
-  useAgentStore.getState().recordActivity(get().loadedAgentId!, 'boss_chat', '대화', undefined);
-}
-```
-
-### 6-3. 악장(Concertmaster) 실제 호출
-
-**현재:** 해금 조건(30회) + 스킬셋은 있지만, 실제 flow에서 악장을 호출하는 코드 없음.
-
-**필요한 것:** 모든 에이전트 작업이 완료된 후, 악장이 결과물 전체를 메타 리뷰.
-
-```
-모든 worker 완료 → 악장 해금 상태 확인
-→ 해금됨이면: 전체 결과물 모아서 악장에게 전달
-→ 악장 프롬프트로 메타 리뷰 생성
-→ UI에 "악장의 한마디" 표시
-```
-
-**구현 위치:** `ProgressiveFlow.tsx`의 모든 worker 완료 후, 또는 Mix 단계 전.
+- `buildConcertmasterReviewPrompt()` — 전체 결과물 대상 모순/빈틈/품질 판단 프롬프트
+- `runConcertmasterReview()` — 악장 해금 시만 실행, review_given XP 적립
+- `ProgressiveFlow.tsx` MixPreview — "악장의 한마디" UI 섹션 (Mix 직전 비동기 호출)
 
 ### 6-4. Supabase 테이블 실제 생성
 
@@ -326,11 +295,11 @@ supabase/
 
 ## 8. 우선순위 정리
 
-| 순위 | 항목 | 이유 | 난이도 |
+| 순위 | 항목 | 상태 | 난이도 |
 |------|------|------|--------|
-| 1 | Observation 자동 생성 | 에이전트 성장의 핵심. 없으면 레벨업 의미 없음 | 중 |
-| 2 | Boss 대화 XP 기록 | 5줄 수정. 빠짐 | 하 |
-| 3 | 악장 메타 리뷰 호출 | 30회 달성 사용자에게 보상 | 중 |
+| ~~1~~ | ~~Observation 자동 생성~~ | **완료** | ~~중~~ |
+| ~~2~~ | ~~Boss 대화 XP 기록~~ | **완료** | ~~하~~ |
+| ~~3~~ | ~~악장 메타 리뷰 호출~~ | **완료** | ~~중~~ |
 | 4 | Supabase 마이그레이션 적용 | SQL 실행만 하면 됨 | 하 |
 | 5 | 검색 API 키 설정 | 환경변수 추가 | 하 |
 | 6 | 지휘자 LLM 승격 | 현재 키워드 매칭도 충분히 작동 | 상 |
