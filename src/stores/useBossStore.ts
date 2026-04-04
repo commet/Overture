@@ -143,6 +143,12 @@ export const useBossStore = create<BossState>((set, get) => ({
       streamingText: '',
       isStreaming: false,
     }));
+
+    // Agent XP 기록
+    const { loadedAgentId } = get();
+    if (loadedAgentId) {
+      useAgentStore.getState().recordActivity(loadedAgentId, 'boss_chat', '대화');
+    }
   },
 
   getPersonalityType: () => {

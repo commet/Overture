@@ -10,6 +10,7 @@ import {
   buildMixPrompt,
   buildDMFeedbackPrompt,
   buildFinalDeliverablePrompt,
+  buildConcertmasterReviewPrompt,
 } from '@/lib/progressive-prompts';
 import { assessConvergence } from '@/lib/progressive-convergence';
 import { generateId } from '@/lib/uuid';
@@ -436,4 +437,37 @@ function formatMixAsMarkdown(mix: MixResult, changes?: string[]): string {
   }
 
   return lines.join('\n');
+}
+
+// ─── Concertmaster 메타 리뷰 ───
+
+export interface ConcertmasterReview {
+  overall: string;
+  contradictions: string[];
+  blind_spots: string[];
+  verdict: string;
+}
+
+export async function runConcertmasterReview(
+  problemText: string,
+  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string }>,
+): Promise<ConcertmasterReview | null> {
+  const concertmaster = useAgentStore.getState().getAgent('concertmaster');
+  if (!concertmaster?.unlocked) return null;
+
+  const { system, user } = buildConcertmasterReviewPrompt(problemText, workerResults);
+
+  try {
+    const result = await callLLMJson<ConcertmasterReview>(
+      [{ role: 'user', content: user }],
+      { system, maxTokens: 500, shape: { overall: 'string', contradictions: 'array', blind_spots: 'array', verdict: 'string' } },
+    );
+
+    // 악장 XP 적립
+    useAgentStore.getState().recordActivity('concertmaster', 'review_given', problemText.slice(0, 100));
+
+    return result;
+  } catch {
+    return null;
+  }
 }

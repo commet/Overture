@@ -9,6 +9,8 @@ import {
   runMix,
   runDMFeedback,
   runFinalDeliverable,
+  runConcertmasterReview,
+  type ConcertmasterReview,
 } from '@/lib/progressive-engine';
 import { assessConvergence } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
@@ -341,7 +343,7 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
 }
 
 /* ═══ Mix Preview ═══ */
-function MixPreview({ mix, dm, onDM, onSkip, busy }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean }) {
+function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null }) {
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
@@ -366,6 +368,28 @@ function MixPreview({ mix, dm, onDM, onSkip, busy }: { mix: MixResult; dm: strin
                 <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">다음 단계</p>
                 {mix.next_steps.map((s, i) => <div key={i} className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)] mb-2 leading-relaxed"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-2 shrink-0" /><span>{s}</span></div>)}
               </div>
+            )}
+
+            {cmReview && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.6 }}
+                className="pt-5 border-t border-dashed border-[var(--accent)]/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <span style={{ fontSize: 18 }}>🎻</span>
+                  <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em]">악장의 한마디</p>
+                </div>
+                <p className="text-[13px] text-[var(--text-primary)] leading-relaxed mb-2">{cmReview.overall}</p>
+                {cmReview.contradictions.length > 0 && (
+                  <div className="mb-2">
+                    {cmReview.contradictions.map((c, i) => <p key={i} className="text-[12px] text-[var(--danger)] flex items-start gap-2 mb-1"><span className="shrink-0 mt-0.5">⚡</span>{c}</p>)}
+                  </div>
+                )}
+                {cmReview.blind_spots.length > 0 && (
+                  <div className="mb-2">
+                    {cmReview.blind_spots.map((b, i) => <p key={i} className="text-[12px] text-[var(--text-secondary)] flex items-start gap-2 mb-1"><span className="shrink-0 mt-0.5">👁</span>{b}</p>)}
+                  </div>
+                )}
+                <p className="text-[12px] text-[var(--text-tertiary)] italic mt-2">{cmReview.verdict}</p>
+              </motion.div>
             )}
 
             <div className="pt-6 border-t border-[var(--border-subtle)] space-y-3">
@@ -688,6 +712,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
@@ -808,6 +833,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       // Collect approved worker results (approved=true or null=unreviewed; excluded=false)
       const workerResults = store.approvedWorkerResults()
         .map(w => ({ task: w.task, result: w.result }));
+
+      // 악장 메타 리뷰 (해금 시만, 비차단)
+      if (workerResults.length > 0) {
+        const cmWorkers = session!.workers
+          .filter(w => w.approved !== false && w.result)
+          .map(w => ({ agentName: w.persona?.name || '에이전트', agentRole: w.persona?.role || '', task: w.task, result: w.result || '' }));
+        runConcertmasterReview(session!.problem_text, cmWorkers)
+          .then(r => { if (r) setCmReview(r); })
+          .catch(() => {});
+      }
+
       const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined);
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round });
     } catch (e) { setError(e instanceof Error ? e.message : '초안 생성 실패'); store.setPhase('conversing'); }
@@ -1009,7 +1045,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Answered Q&A history — collapsed at bottom */}
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
-          {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} />}
+          {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} />}
           {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} busy={busy} />}
 
           {final_ && <>

@@ -6,6 +6,7 @@ import { useAgentStore } from '@/stores/useAgentStore';
 import { agentToWorkerPersona } from '@/lib/agent-adapters';
 import { XP_REWARDS } from '@/stores/agent-types';
 import { numericLevelToAgentLevel } from '@/lib/agent-skills';
+import { onTaskApproved, onTaskRejected } from '@/lib/observation-engine';
 import type {
   ProgressiveSession,
   ProgressivePhase,
@@ -425,11 +426,12 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     persist(sessions);
     set({ sessions });
 
-    // Agent XP 적립
+    // Agent XP 적립 + Observation
     if (worker?.agent_id) {
       useAgentStore.getState().recordActivity(
         worker.agent_id, 'task_approved', worker.task, currentSessionId,
       );
+      onTaskApproved(worker.agent_id, worker.task, worker.result || '');
     }
   },
 
@@ -445,11 +447,12 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     persist(sessions);
     set({ sessions });
 
-    // Agent XP 차감
+    // Agent XP 차감 + Observation
     if (worker?.agent_id) {
       useAgentStore.getState().recordActivity(
         worker.agent_id, 'task_rejected', worker.task, currentSessionId,
       );
+      onTaskRejected(worker.agent_id, worker.task);
     }
   },
 
