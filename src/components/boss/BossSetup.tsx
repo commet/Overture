@@ -38,7 +38,7 @@ const fadeUp: Variants = {
 };
 
 export function BossSetup() {
-  const { axes, gender, birthYear, birthMonth, birthDay, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
+  const { axes, gender, birthYear, birthMonth, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
 
@@ -60,8 +60,8 @@ export function BossSetup() {
     }
   };
 
-  const isBirthValid = birthYear >= 1940 && birthYear <= 2006 && birthMonth >= 1 && birthMonth <= 12 && birthDay >= 1 && birthDay <= 31;
-  const isReady = situation.trim().length > 0 && isBirthValid;
+  // MBTI + 상황만 필수. 연/월은 선택.
+  const isReady = situation.trim().length > 0;
 
   return (
     <motion.div
@@ -107,36 +107,8 @@ export function BossSetup() {
           )}
         </AnimatePresence>
 
-        {/* Birth + Gender — one compact row */}
+        {/* 선택 요소: 성별 + 연도(띠) + 월(별자리) */}
         <div className="bs-meta-row">
-          <div className="bs-birth">
-            <input
-              type="number"
-              placeholder="1975"
-              value={birthYear || ''}
-              onChange={(e) => setBirth(Number(e.target.value), birthMonth, birthDay)}
-              className="bs-num bs-num-y"
-              min={1940} max={2006}
-            />
-            <span className="bs-dot">.</span>
-            <input
-              type="number"
-              placeholder="3"
-              value={birthMonth || ''}
-              onChange={(e) => setBirth(birthYear, Number(e.target.value), birthDay)}
-              className="bs-num bs-num-m"
-              min={1} max={12}
-            />
-            <span className="bs-dot">.</span>
-            <input
-              type="number"
-              placeholder="15"
-              value={birthDay || ''}
-              onChange={(e) => setBirth(birthYear, birthMonth, Number(e.target.value))}
-              className="bs-num bs-num-m"
-              min={1} max={31}
-            />
-          </div>
           <div className="bs-gender">
             {(['남', '여'] as const).map((g) => (
               <button
@@ -150,10 +122,29 @@ export function BossSetup() {
               </button>
             ))}
           </div>
+          <div className="bs-birth">
+            <input
+              type="number"
+              placeholder="연도"
+              value={birthYear || ''}
+              onChange={(e) => setBirth(Number(e.target.value), birthMonth)}
+              className="bs-num bs-num-y"
+              min={1940} max={2006}
+            />
+            <input
+              type="number"
+              placeholder="월"
+              value={birthMonth || ''}
+              onChange={(e) => setBirth(birthYear, Number(e.target.value))}
+              className="bs-num bs-num-m"
+              min={1} max={12}
+            />
+          </div>
         </div>
+        <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>연도와 월은 선택 — 넣으면 띠와 별자리가 반영돼요</p>
 
-        {/* Saju instant preview */}
-        <SajuPreview year={birthYear} />
+        {/* 띠 + 별자리 프리뷰 */}
+        <SajuPreview year={birthYear} month={birthMonth} />
       </motion.div>
 
       {/* ── The Main Input ── */}
@@ -202,7 +193,7 @@ export function BossSetup() {
             </>
           )}
         </motion.button>
-        <p className="bs-fine">성격유형 + 사주 기반 AI 시뮬레이션 · 실제와 다를 수 있음</p>
+        <p className="bs-fine">성격유형 기반 AI 시뮬레이션 · 실제와 다를 수 있음</p>
       </motion.div>
     </motion.div>
   );

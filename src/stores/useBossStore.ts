@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { SajuProfile } from '@/lib/boss/saju-interpreter';
+import type { SajuProfile, YearMonthProfile } from '@/lib/boss/saju-interpreter';
+import { buildYearMonthProfile } from '@/lib/boss/saju-interpreter';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useAgentStore } from '@/stores/useAgentStore';
@@ -12,7 +13,6 @@ export interface BossConfig {
   gender: '남' | '여';
   birthYear: number;
   birthMonth: number;
-  birthDay: number;
 }
 
 export interface ChatMessage {
@@ -28,9 +28,9 @@ interface BossState {
   gender: '남' | '여';
   birthYear: number;
   birthMonth: number;
-  birthDay: number;
 
-  // Saju (loaded from API)
+  // 사주 연월주 프로필 (클라이언트 계산) + full 사주 (API, optional)
+  yearMonthProfile: YearMonthProfile | null;
   sajuProfile: SajuProfile | null;
   sajuLoading: boolean;
 
@@ -48,7 +48,7 @@ interface BossState {
   // Actions
   setAxis: (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => void;
   setGender: (g: '남' | '여') => void;
-  setBirth: (y: number, m: number, d: number) => void;
+  setBirth: (y: number, m?: number) => void;
   loadSaju: () => Promise<void>;
   startChat: () => void;
   addUserMessage: (content: string) => void;
@@ -66,9 +66,9 @@ interface BossState {
 const INITIAL_STATE = {
   axes: { ei: 'E' as const, sn: 'S' as const, tf: 'T' as const, jp: 'J' as const },
   gender: '남' as const,
-  birthYear: 1975,
-  birthMonth: 1,
-  birthDay: 1,
+  birthYear: 0,
+  birthMonth: 0,
+  yearMonthProfile: null,
   sajuProfile: null,
   sajuLoading: false,
   messages: [] as ChatMessage[],
@@ -86,25 +86,33 @@ export const useBossStore = create<BossState>((set, get) => ({
 
   setGender: (g) => set({ gender: g }),
 
-  setBirth: (y, m, d) => set({ birthYear: y, birthMonth: m, birthDay: d }),
+  setBirth: (y, m?) => {
+    const newState: Partial<BossState> = { birthYear: y, birthMonth: m || 0 };
+    // 연월주 프로필 즉시 계산 (클라이언트, API 호출 없음)
+    if (y >= 1940 && y <= 2006) {
+      newState.yearMonthProfile = buildYearMonthProfile(y, m && m >= 1 && m <= 12 ? m : undefined);
+    }
+    set(newState);
+  },
 
   loadSaju: async () => {
-    const { birthYear, birthMonth, birthDay, gender } = get();
+    const { birthYear, birthMonth, gender } = get();
+    // 연월주 프로필은 이미 클라이언트에서 계산됨
+    // full 사주는 day가 있을 때만 의미 (현재는 미사용)
+    if (!birthYear || birthYear < 1940) return;
     set({ sajuLoading: true });
     try {
-      const res = await fetch('/api/boss/saju', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year: birthYear,
-          month: birthMonth,
-          day: birthDay,
-          gender,
-        }),
-      });
-      if (res.ok) {
-        const profile = await res.json();
-        set({ sajuProfile: profile });
+      if (birthMonth >= 1 && birthMonth <= 12) {
+        // 연+월 있으면 API에 month pillar도 요청
+        const res = await fetch('/api/boss/saju', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year: birthYear, month: birthMonth, gender }),
+        });
+        if (res.ok) {
+          const profile = await res.json();
+          set({ sajuProfile: profile });
+        }
       }
     } catch {
       // Saju is optional — chat works without it

@@ -39,7 +39,7 @@ const FOLLOW_UP_EXAMPLES = [
 
 export function BossChat() {
   const {
-    axes, gender, birthYear, sajuProfile,
+    axes, gender, birthYear, sajuProfile, yearMonthProfile,
     messages, isStreaming, streamingText,
     setStreaming, updateStreamingText, commitAssistantMessage,
     addUserMessage, getPersonalityType, reset,
@@ -57,6 +57,7 @@ export function BossChat() {
   const typeData = getPersonalityType();
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const elementInfo = getYearElement(birthYear);
+  const ymp = yearMonthProfile;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,7 +81,7 @@ export function BossChat() {
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
     const system = (agent?.personality_profile
       ? buildBossSystemPromptFromAgent(agent)
-      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, gender })
+      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, gender })
     ) + contextSuffix;
     const llmMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
 
@@ -155,9 +156,10 @@ export function BossChat() {
               <span className="bc-type-name">{typeData?.name}</span>
             </div>
             <span className="bc-vibe">{typeData?.bossVibe}</span>
-            {elementInfo && (
-              <span className="bc-element" style={{ color: elementInfo.color }}>
-                {elementInfo.emoji} {elementInfo.stem}{elementInfo.element} · {elementInfo.nature}
+            {ymp && (
+              <span className="bc-element" style={{ color: ymp.yearElement.color }}>
+                {ymp.animal.emoji} {ymp.animal.animal}띠
+                {ymp.zodiacSign ? ` · ${ymp.zodiacSign.emoji} ${ymp.zodiacSign.sign}` : ''}
               </span>
             )}
           </div>

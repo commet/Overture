@@ -2,13 +2,14 @@
 
 import type { PersonalityType } from './personality-types';
 import { getPersonalityType } from './personality-types';
-import type { SajuProfile } from './saju-interpreter';
+import type { SajuProfile, YearMonthProfile } from './saju-interpreter';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
 
 export interface BossProfile {
   type: PersonalityType;
   saju: SajuProfile | null;
+  yearMonth: YearMonthProfile | null;
   gender: '남' | '여';
 }
 
@@ -17,9 +18,10 @@ export interface BossProfile {
  * MBTI 성격유형 + 사주 기반 성향을 결합해 현실감 있는 상사 페르소나를 구성.
  */
 export function buildBossSystemPrompt(boss: BossProfile): string {
-  const { type, saju, gender } = boss;
+  const { type, saju, yearMonth, gender } = boss;
   const genderLabel = gender === '남' ? '남성' : '여성';
 
+  // 사주 기반 성향 (full saju > 연월주 > 없음)
   let sajuSection = '';
   if (saju) {
     sajuSection = `
@@ -31,7 +33,14 @@ ${saju.raw}
 - 기질 강약: ${saju.strength}
 - 격국: ${saju.structure}
 - 용신: ${saju.useful}
-사주는 표면적 성격(성격유형)의 "이면"으로 작동합니다. 성격유형이 겉에 보이는 행동이라면, 사주는 무의식적 판단 기준과 에너지 패턴입니다.`;
+사주는 표면적 성격(성격유형)의 "이면"으로 작동합니다.`;
+  } else if (yearMonth) {
+    sajuSection = `
+## 기질 성향
+- ${yearMonth.summary}
+- 연주 천간: ${yearMonth.yearStem} (${yearMonth.yearElement.nature}) — ${yearMonth.yearElement.trait}
+- ${yearMonth.animal.emoji} ${yearMonth.animal.animal}띠: ${yearMonth.animal.trait}${yearMonth.monthElement ? `\n- 월주: ${yearMonth.monthStem} (${yearMonth.monthElement.nature}) — ${yearMonth.monthElement.trait}` : ''}${yearMonth.zodiacSign ? `\n- ${yearMonth.zodiacSign.emoji} ${yearMonth.zodiacSign.sign}: ${yearMonth.zodiacSign.trait}` : ''}
+이 기질 성향은 성격유형(MBTI)의 "이면"으로 작동합니다. 무의식적 판단 기준과 에너지 패턴.`;
   }
 
   return `당신은 한국 직장의 ${genderLabel} 상사(팀장급)입니다.
@@ -103,6 +112,7 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
       ...agent.personality_profile,
     },
     saju: (agent.saju_profile as SajuProfile) || null,
+    yearMonth: null, // Agent에서 로드 시 연월주는 saju_profile에 포함
     gender: agent.boss_gender || '남',
   };
 
