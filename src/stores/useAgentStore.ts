@@ -259,6 +259,8 @@ interface AgentState {
     gender: '남' | '여';
     personalityProfile: Agent['personality_profile'];
     sajuProfile?: unknown;
+    birthYear?: number;
+    birthMonth?: number;
   }) => string;
 
   // 해금
@@ -345,6 +347,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       personality_code: data.personality_code,
       personality_profile: data.personality_profile,
       boss_gender: data.boss_gender,
+      birth_year: data.birth_year,
+      birth_month: data.birth_month,
       saju_profile: data.saju_profile,
       xp: data.xp || 0,
       level: calculateLevel(data.xp || 0),
@@ -554,6 +558,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       personality_code: config.typeCode,
       personality_profile: config.personalityProfile,
       boss_gender: config.gender,
+      birth_year: config.birthYear,
+      birth_month: config.birthMonth,
       saju_profile: config.sajuProfile,
     });
   },

@@ -87,10 +87,11 @@ export const useBossStore = create<BossState>((set, get) => ({
   setGender: (g) => set({ gender: g }),
 
   setBirth: (y, m?) => {
-    const newState: Partial<BossState> = { birthYear: y, birthMonth: m || 0 };
-    // 연월주 프로필 즉시 계산 (클라이언트, API 호출 없음)
-    if (y >= 1940 && y <= 2006) {
-      newState.yearMonthProfile = buildYearMonthProfile(y, m && m >= 1 && m <= 12 ? m : undefined);
+    const yearNum = isNaN(y) ? 0 : Math.floor(y);
+    const monthNum = m && !isNaN(m) ? Math.floor(m) : 0;
+    const newState: Partial<BossState> = { birthYear: yearNum, birthMonth: monthNum, yearMonthProfile: null };
+    if (yearNum >= 1940 && yearNum <= 2006) {
+      newState.yearMonthProfile = buildYearMonthProfile(yearNum, monthNum >= 1 && monthNum <= 12 ? monthNum : undefined);
     }
     set(newState);
   },
@@ -178,6 +179,7 @@ export const useBossStore = create<BossState>((set, get) => ({
     const agentStore = useAgentStore.getState();
     if (agentStore.agents.length === 0) agentStore.loadAgents();
 
+    const { birthYear, birthMonth } = get();
     const agentId = agentStore.createBossAgent({
       name: name || `${personalityType.name} 팀장`,
       typeCode,
@@ -192,6 +194,8 @@ export const useBossStore = create<BossState>((set, get) => ({
         bossVibe: personalityType.bossVibe,
       },
       sajuProfile: sajuProfile ?? undefined,
+      birthYear: birthYear || undefined,
+      birthMonth: birthMonth || undefined,
     });
 
     set({ loadedAgentId: agentId });
@@ -206,6 +210,8 @@ export const useBossStore = create<BossState>((set, get) => ({
     if (!agent || !agent.personality_code) return;
 
     const code = agent.personality_code;
+    const bYear = agent.birth_year || 0;
+    const bMonth = agent.birth_month || 0;
     set({
       axes: {
         ei: (code[0] as 'E' | 'I') || 'E',
@@ -214,6 +220,9 @@ export const useBossStore = create<BossState>((set, get) => ({
         jp: (code[3] as 'J' | 'P') || 'J',
       },
       gender: agent.boss_gender || '남',
+      birthYear: bYear,
+      birthMonth: bMonth,
+      yearMonthProfile: bYear >= 1940 ? buildYearMonthProfile(bYear, bMonth >= 1 ? bMonth : undefined) : null,
       sajuProfile: agent.saju_profile as SajuProfile | null,
       phase: 'chat',
       messages: [],

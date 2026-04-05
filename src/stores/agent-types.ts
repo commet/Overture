@@ -83,6 +83,8 @@ export interface Agent {
     bossVibe: string;
   };
   boss_gender?: '남' | '여';
+  birth_year?: number;
+  birth_month?: number;
   saju_profile?: unknown;    // SajuProfile — import cycle 방지
 
   // Growth

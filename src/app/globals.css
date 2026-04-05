@@ -684,6 +684,7 @@ button, a, input, textarea {
 .bs-num::-webkit-outer-spin-button,
 .bs-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .bs-num:focus { border-bottom-color: var(--accent); }
+.bs-num::placeholder { color: var(--text-tertiary); font-weight: 400; opacity: 1; font-size: 12px; }
 .bs-num-y { width: 56px; }
 .bs-num-m { width: 36px; }
 
@@ -956,6 +957,16 @@ button, a, input, textarea {
   border-radius: 20px 20px 4px 20px;
   box-shadow: var(--shadow-sm);
 }
+.bm-tail-user {
+  position: absolute;
+  right: -4px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  background: var(--text-primary);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+[data-theme="dark"] .bm-tail-user { background: var(--accent); }
 
 .bm-bubble-boss {
   background: linear-gradient(170deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 90%, var(--bg)) 100%);

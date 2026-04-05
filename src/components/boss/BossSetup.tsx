@@ -141,7 +141,7 @@ export function BossSetup() {
             />
           </div>
         </div>
-        <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>연도와 월은 선택 — 넣으면 띠와 별자리가 반영돼요</p>
+        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.4 }}>연도와 월은 선택 — 넣으면 띠와 별자리가 반영돼요</p>
 
         {/* 띠 + 별자리 프리뷰 */}
         <SajuPreview year={birthYear} month={birthMonth} />

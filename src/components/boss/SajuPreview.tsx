@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getYearElement, getZodiacAnimal, getZodiacSign } from '@/lib/boss/saju-interpreter';
 
@@ -10,19 +11,26 @@ interface SajuPreviewProps {
 
 /**
  * 연도 → 띠 + 오행, 월 → 별자리 프리뷰.
- * 입력 즉시 표시, 서버 호출 없음.
+ * 입력 디바운스(300ms) 후 표시, 서버 호출 없음.
  */
 export function SajuPreview({ year, month }: SajuPreviewProps) {
-  const element = getYearElement(year);
-  const animal = getZodiacAnimal(year);
-  const sign = month ? getZodiacSign(month) : null;
+  const [displayed, setDisplayed] = useState({ year: 0, month: 0 });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDisplayed({ year, month: month || 0 }), 300);
+    return () => clearTimeout(timer);
+  }, [year, month]);
+
+  const element = getYearElement(displayed.year);
+  const animal = getZodiacAnimal(displayed.year);
+  const sign = displayed.month ? getZodiacSign(displayed.month) : null;
 
   if (!element && !animal && !sign) return null;
 
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={`${year}-${month}`}
+        key={`${displayed.year}-${displayed.month}`}
         className="saju-preview"
         initial={{ opacity: 0, y: 8, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
