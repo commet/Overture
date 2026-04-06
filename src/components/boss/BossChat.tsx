@@ -9,6 +9,7 @@ import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
 import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext } from '@/lib/boss/boss-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { applyBossCalibration, applyExplicitCalibration } from '@/lib/observation-engine';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
@@ -50,6 +51,7 @@ export function BossChat() {
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
   const [ctaDismissed, setCtaDismissed] = useState(false);
   const [bossState, setBossState] = useState<'idle' | 'reading' | 'typing'>('idle');
+  const [calibrationStep, setCalibrationStep] = useState<'none' | 'similarity' | 'detail' | 'done'>('none');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -183,7 +185,13 @@ export function BossChat() {
               title="이 팀장 저장하기"
               onClick={() => {
                 const id = saveAsAgent();
-                if (id) setSaved(true);
+                if (id) {
+                  setSaved(true);
+                  // 패시브 교정 즉시 적용
+                  applyBossCalibration(id, messages);
+                  // 캘리브레이션 플로우 시작
+                  setCalibrationStep('similarity');
+                }
               }}
               style={{ color: 'var(--accent)' }}
             >
@@ -301,6 +309,62 @@ export function BossChat() {
           </div>
         </motion.div>
       )}
+
+      {/* 저장 후 캘리브레이션 */}
+      <AnimatePresence>
+        {calibrationStep === 'similarity' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="bc-calibration"
+          >
+            <p className="bc-cal-q">실제 팀장이랑 얼마나 비슷해?</p>
+            <div className="bc-cal-options">
+              <button onClick={() => { setCalibrationStep('detail'); }} className="bc-cal-btn">😐 좀 다름</button>
+              <button onClick={() => { setCalibrationStep('done'); }} className="bc-cal-btn bc-cal-btn-active">🤔 꽤 비슷</button>
+              <button onClick={() => { setCalibrationStep('done'); }} className="bc-cal-btn bc-cal-btn-active">😮 소름</button>
+            </div>
+          </motion.div>
+        )}
+        {calibrationStep === 'detail' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="bc-calibration"
+          >
+            <p className="bc-cal-q">어떤 점이 달라?</p>
+            <div className="bc-cal-options">
+              <button
+                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_direct'); setCalibrationStep('done'); }}
+                className="bc-cal-btn"
+              >실제로 더 직설적</button>
+              <button
+                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_soft'); setCalibrationStep('done'); }}
+                className="bc-cal-btn"
+              >실제로 더 부드러움</button>
+              <button
+                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'different_tone'); setCalibrationStep('done'); }}
+                className="bc-cal-btn"
+              >말투가 좀 다름</button>
+            </div>
+          </motion.div>
+        )}
+        {calibrationStep === 'done' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="bc-calibration"
+            onAnimationComplete={() => setTimeout(() => setCalibrationStep('none'), 2000)}
+          >
+            <p style={{ fontSize: 12, color: 'var(--accent)', textAlign: 'center' }}>
+              ✓ 반영됨 — 다음 대화부터 적용돼요
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input */}
       <div className="bc-input-bar">

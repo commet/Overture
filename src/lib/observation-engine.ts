@@ -287,3 +287,151 @@ export function onBossReviewCompleted(agentId: string, feedback: DMFeedbackResul
     }
   }
 }
+
+// ─── Boss 패시브 교정 — 유저 반응 패턴 분석 ───
+
+type ReactionType = 'accept' | 'pushback' | 'amused' | 'disengage' | 'neutral';
+
+const REACTION_PATTERNS: Array<{ type: ReactionType; keywords: string[] }> = [
+  { type: 'accept', keywords: ['네', '알겠', '그렇죠', '맞습니다', '이해했', '그럴게요', '감사합니다', '확인했'] },
+  { type: 'pushback', keywords: ['너무', '좀 그건', '아닌데', '아닌 것 같', '너무하', '심한', '과하', '좀 다른', '그건 아닌', '동의 못'] },
+  { type: 'amused', keywords: ['ㅋㅋ', 'ㅎㅎ', '진짜요', '소름', '맞아', '딱 그래', '실화', '대박', '웃기', '찐이'] },
+  { type: 'disengage', keywords: ['그건 그렇고', '다른 얘기', '아무튼', '넘어가', '됐고'] },
+];
+
+/**
+ * 유저 메시지에서 boss에 대한 반응 분류.
+ * 짧은 메시지(20자 이하)일수록 반응 신호가 강함.
+ */
+export function classifyUserReaction(userMessage: string): ReactionType {
+  const text = userMessage.toLowerCase().trim();
+
+  for (const pattern of REACTION_PATTERNS) {
+    if (pattern.keywords.some(kw => text.includes(kw))) {
+      return pattern.type;
+    }
+  }
+  return 'neutral';
+}
+
+/**
+ * 대화 전체의 반응 패턴 요약.
+ * Boss 교정에 사용: 어떤 톤이 잘 맞고 어떤 톤이 반발을 사는지.
+ */
+export function analyzeBossCalibration(
+  messages: Array<{ role: string; content: string }>,
+): { dominant: ReactionType; counts: Record<ReactionType, number> } {
+  const counts: Record<ReactionType, number> = {
+    accept: 0, pushback: 0, amused: 0, disengage: 0, neutral: 0,
+  };
+
+  // 유저 메시지만 분석 (assistant 메시지 제외)
+  for (const msg of messages) {
+    if (msg.role !== 'user') continue;
+    const reaction = classifyUserReaction(msg.content);
+    counts[reaction]++;
+  }
+
+  // 가장 빈번한 반응
+  const dominant = (Object.entries(counts) as Array<[ReactionType, number]>)
+    .filter(([type]) => type !== 'neutral')
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral';
+
+  return { dominant, counts };
+}
+
+/**
+ * 대화 종료 시 반응 패턴을 boss agent observation으로 저장.
+ * 사용자가 아무것도 안 해도 자동 실행.
+ */
+export function applyBossCalibration(agentId: string, messages: Array<{ role: string; content: string }>): void {
+  const store = useAgentStore.getState();
+  const agent = store.getAgent(agentId);
+  if (!agent || messages.length < 4) return; // 최소 2회 교환 필요
+
+  const { dominant, counts } = analyzeBossCalibration(messages);
+
+  // 반응 기반 교정 observation
+  if (dominant === 'pushback' && counts.pushback >= 2) {
+    const existing = agent.observations.find(o => o.observation.includes('톤을 조절'));
+    if (existing) {
+      store.reinforceObservation(agentId, existing.id);
+    } else {
+      store.addObservation(agentId, {
+        category: 'communication_style',
+        observation: '이 팀장의 톤을 조절해야 한다 — 사용자가 반발하는 경향',
+      });
+    }
+  }
+
+  if (dominant === 'amused' && counts.amused >= 2) {
+    const existing = agent.observations.find(o => o.observation.includes('톤이 잘 맞'));
+    if (existing) {
+      store.reinforceObservation(agentId, existing.id);
+    } else {
+      store.addObservation(agentId, {
+        category: 'communication_style',
+        observation: '이 팀장의 현재 톤이 잘 맞는다 — 사용자가 공감하는 경향',
+      });
+    }
+  }
+
+  if (dominant === 'accept' && counts.accept >= 3) {
+    const existing = agent.observations.find(o => o.observation.includes('현재 강도가 적절'));
+    if (existing) {
+      store.reinforceObservation(agentId, existing.id);
+    } else {
+      store.addObservation(agentId, {
+        category: 'communication_style',
+        observation: '이 팀장의 현재 강도가 적절하다 — 사용자가 자연스럽게 수용',
+      });
+    }
+  }
+
+  if (counts.disengage >= 2) {
+    store.addObservation(agentId, {
+      category: 'communication_style',
+      observation: '이 팀장이 주제를 벗어나거나 관심 밖의 반응을 할 때가 있다',
+    });
+  }
+}
+
+/**
+ * 저장 시 캘리브레이션 — "좀 다름" 선택 시 세부 교정.
+ */
+export function applyExplicitCalibration(
+  agentId: string,
+  calibration: 'more_direct' | 'more_soft' | 'different_tone',
+): void {
+  const store = useAgentStore.getState();
+  const agent = store.getAgent(agentId);
+  if (!agent) return;
+
+  const calibrationMap: Record<string, string> = {
+    more_direct: '실제 팀장은 이 프로필보다 더 직설적이고 단호하다',
+    more_soft: '실제 팀장은 이 프로필보다 더 부드럽고 우회적이다',
+    different_tone: '실제 팀장의 말투는 이 프로필과 다소 다르다',
+  };
+
+  // 기존 캘리브레이션 observation 교체
+  const existing = agent.observations.find(o => o.observation.includes('실제 팀장은'));
+  if (existing) {
+    const updated = agent.observations.map(o =>
+      o.id === existing.id
+        ? { ...o, observation: calibrationMap[calibration], confidence: 0.6 }
+        : o,
+    );
+    store.updateAgent(agentId, { observations: updated });
+  } else {
+    store.addObservation(agentId, {
+      category: 'communication_style',
+      observation: calibrationMap[calibration],
+    });
+    // 캘리브레이션 observation은 confidence 높게 시작
+    const added = store.getAgent(agentId)?.observations.find(o => o.observation === calibrationMap[calibration]);
+    if (added) {
+      store.reinforceObservation(agentId, added.id); // 0.3 → 0.45
+      store.reinforceObservation(agentId, added.id); // 0.45 → 0.6
+    }
+  }
+}

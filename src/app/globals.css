@@ -1041,6 +1041,44 @@ button, a, input, textarea {
   font-style: italic;
 }
 
+/* ── Calibration ── */
+.bc-calibration {
+  margin: 0 16px 8px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+}
+.bc-cal-q {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.bc-cal-options {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.bc-cal-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.bc-cal-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.bc-cal-btn-active:hover {
+  background: rgba(184,150,62,0.08);
+}
+
 /* ── Chat Input ── */
 .bc-input-bar {
   padding: 10px 0 max(12px, env(safe-area-inset-bottom));

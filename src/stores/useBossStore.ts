@@ -4,7 +4,7 @@ import { buildYearMonthProfile } from '@/lib/boss/saju-interpreter';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useAgentStore } from '@/stores/useAgentStore';
-import { summarizeBossChatTopic, extractBossChatObservation } from '@/lib/observation-engine';
+import { summarizeBossChatTopic, extractBossChatObservation, applyBossCalibration } from '@/lib/observation-engine';
 import type { Agent } from '@/stores/agent-types';
 
 // ━━━ Types ━━━
@@ -174,7 +174,14 @@ export const useBossStore = create<BossState>((set, get) => ({
     return getPersonalityType(code);
   },
 
-  reset: () => set({ ...INITIAL_STATE }),
+  reset: () => {
+    // 리셋 전 패시브 교정 적용 (대화가 있었으면)
+    const { loadedAgentId, messages } = get();
+    if (loadedAgentId && messages.length >= 4) {
+      applyBossCalibration(loadedAgentId, messages);
+    }
+    set({ ...INITIAL_STATE });
+  },
 
   // ─── Agent 연동 ───
 
