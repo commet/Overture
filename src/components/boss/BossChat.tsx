@@ -66,6 +66,16 @@ export function BossChat() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
+  // 컴포넌트 언마운트 시 패시브 교정 자동 적용
+  useEffect(() => {
+    return () => {
+      const { loadedAgentId: agentId, messages: msgs } = useBossStore.getState();
+      if (agentId && msgs.length >= 4) {
+        applyBossCalibration(agentId, msgs);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (messages.length === 1 && messages[0].role === 'user' && !hasTriggeredFirst.current) {
       hasTriggeredFirst.current = true;
@@ -321,9 +331,28 @@ export function BossChat() {
           >
             <p className="bc-cal-q">실제 팀장이랑 얼마나 비슷해?</p>
             <div className="bc-cal-options">
-              <button onClick={() => { setCalibrationStep('detail'); }} className="bc-cal-btn">😐 좀 다름</button>
-              <button onClick={() => { setCalibrationStep('done'); }} className="bc-cal-btn bc-cal-btn-active">🤔 꽤 비슷</button>
-              <button onClick={() => { setCalibrationStep('done'); }} className="bc-cal-btn bc-cal-btn-active">😮 소름</button>
+              <button onClick={() => setCalibrationStep('detail')} className="bc-cal-btn">😐 좀 다름</button>
+              <button onClick={() => {
+                // "꽤 비슷" = 패시브 교정만 유지, 추가 교정 불필요
+                if (loadedAgentId) {
+                  const agent = useAgentStore.getState().getAgent(loadedAgentId);
+                  const tonObs = agent?.observations.find(o => o.observation.includes('톤이 잘 맞'));
+                  if (tonObs) useAgentStore.getState().reinforceObservation(loadedAgentId, tonObs.id);
+                }
+                setCalibrationStep('done');
+              }} className="bc-cal-btn bc-cal-btn-active">🤔 꽤 비슷</button>
+              <button onClick={() => {
+                // "소름" = 현재 프로필 강하게 reinforce
+                if (loadedAgentId) {
+                  const agent = useAgentStore.getState().getAgent(loadedAgentId);
+                  agent?.observations.forEach(o => {
+                    if (o.category === 'communication_style' && o.observation.includes('잘 맞')) {
+                      useAgentStore.getState().reinforceObservation(loadedAgentId!, o.id);
+                    }
+                  });
+                }
+                setCalibrationStep('done');
+              }} className="bc-cal-btn bc-cal-btn-active">😮 소름</button>
             </div>
           </motion.div>
         )}

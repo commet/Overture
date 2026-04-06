@@ -126,12 +126,14 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
     prompt += `\n\n## 이 부하직원에 대해 파악한 것\n${agentCtx}`;
   }
 
-  // 캘리브레이션 교정 사항 (communication_style 관찰 중 "실제 팀장은" 패턴)
-  const calibrations = agent.observations.filter(o =>
-    o.category === 'communication_style' && o.observation.includes('실제 팀장'),
-  );
-  if (calibrations.length > 0) {
-    prompt += `\n\n## 교정 사항 (이 사용자의 실제 상사 기반 — 반드시 반영)\n${calibrations.map(c => `- ${c.observation}`).join('\n')}`;
+  // 캘리브레이션 교정 사항 (명시적 교정 + 패시브 반응 분석)
+  const allCalibrations = agent.observations.filter(o => o.category === 'communication_style');
+  if (allCalibrations.length > 0) {
+    const explicit = allCalibrations.filter(c => c.observation.includes('실제 팀장'));
+    const passive = allCalibrations.filter(c => !c.observation.includes('실제 팀장'));
+    const sorted = [...explicit, ...passive]; // 명시적 교정 우선
+    const label = explicit.length > 0 ? '교정 사항 (사용자 피드백 기반 — 반드시 반영)' : '교정 사항 (대화 패턴 분석 기반)';
+    prompt += `\n\n## ${label}\n${sorted.map(c => `- ${c.observation}`).join('\n')}`;
   }
 
   return prompt;

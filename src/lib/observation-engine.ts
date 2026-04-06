@@ -293,10 +293,10 @@ export function onBossReviewCompleted(agentId: string, feedback: DMFeedbackResul
 type ReactionType = 'accept' | 'pushback' | 'amused' | 'disengage' | 'neutral';
 
 const REACTION_PATTERNS: Array<{ type: ReactionType; keywords: string[] }> = [
-  { type: 'accept', keywords: ['네', '알겠', '그렇죠', '맞습니다', '이해했', '그럴게요', '감사합니다', '확인했'] },
-  { type: 'pushback', keywords: ['너무', '좀 그건', '아닌데', '아닌 것 같', '너무하', '심한', '과하', '좀 다른', '그건 아닌', '동의 못'] },
-  { type: 'amused', keywords: ['ㅋㅋ', 'ㅎㅎ', '진짜요', '소름', '맞아', '딱 그래', '실화', '대박', '웃기', '찐이'] },
-  { type: 'disengage', keywords: ['그건 그렇고', '다른 얘기', '아무튼', '넘어가', '됐고'] },
+  { type: 'accept', keywords: ['네', '알겠', '그렇죠', '맞습니다', '이해했', '그럴게요', '감사합니다', '확인했', 'ㅇㅇ', '넵', '네네'] },
+  { type: 'pushback', keywords: ['너무', '좀 그건', '아닌데', '아닌 것 같', '너무하', '심한', '과하', '좀 다른', '그건 아닌', '동의 못', '에이', '아니'] },
+  { type: 'amused', keywords: ['ㅋㅋ', 'ㅋ', 'ㅎㅎ', 'ㅎ', '진짜요', '소름', '맞아', '딱 그래', '실화', '대박', '웃기', '찐이', '와'] },
+  { type: 'disengage', keywords: ['그건 그렇고', '다른 얘기', '아무튼', '넘어가', '됐고', '그냥'] },
 ];
 
 /**
