@@ -125,6 +125,72 @@ async function validateWithLLM(
   };
 }
 
+// ─── Specificity Check (구체성 검증) ───
+
+const GENERIC_PHRASES = [
+  '시장 상황에 따라',
+  '일반적으로',
+  '다양한 요인',
+  '추가 분석이 필요',
+  '면밀한 검토가 필요',
+  '상황을 주시',
+  '모니터링하겠습니다',
+  '종합적으로 고려',
+  '여러 가지 관점',
+  '케이스 바이 케이스',
+  '경우에 따라 다를 수',
+  '다각도로 검토',
+];
+
+/**
+ * 결과물의 구체성을 검증.
+ * - 사용자 입력 참조 횟수
+ * - 제네릭 문구 감지
+ * - 수치 구체성 (숫자/% 포함)
+ */
+export function checkSpecificity(output: string, userInput: string): { score: number; issues: string[] } {
+  const issues: string[] = [];
+  let score = 50; // 기본 중립
+
+  // 1. 사용자 입력 참조 (핵심 명사 추출 후 output에서 탐색)
+  const inputNouns = userInput.match(/[가-힣]{2,}/g) || [];
+  const uniqueNouns = [...new Set(inputNouns)].filter(n => n.length >= 2);
+  const referencedCount = uniqueNouns.filter(n => output.includes(n)).length;
+  const referenceRate = uniqueNouns.length > 0 ? referencedCount / Math.min(uniqueNouns.length, 10) : 0;
+
+  if (referenceRate >= 0.3) score += 20;
+  else if (referenceRate >= 0.1) score += 10;
+  else {
+    issues.push('사용자 입력의 키워드를 거의 참조하지 않습니다');
+    score -= 15;
+  }
+
+  // 2. 제네릭 문구 감지
+  const genericCount = GENERIC_PHRASES.filter(p => output.includes(p)).length;
+  if (genericCount >= 3) {
+    issues.push(`제네릭한 표현이 ${genericCount}개 발견됨`);
+    score -= genericCount * 5;
+  } else if (genericCount >= 1) {
+    score -= genericCount * 3;
+  }
+
+  // 3. 수치 구체성
+  const numericPattern = /\d[\d,.]*\s*(%|만|억|조|원|달러|불|개월|년|명|건|개|배|\$|M|K|B)/g;
+  const numericCount = (output.match(numericPattern) || []).length;
+  if (numericCount >= 3) score += 15;
+  else if (numericCount >= 1) score += 5;
+  else {
+    issues.push('구체적인 수치가 없습니다');
+  }
+
+  // 4. 고유명사 밀도 (회사명, 제품명, 사람 이름 등)
+  const properNouns = output.match(/[A-Z][a-z]+(?:\s[A-Z][a-z]+)*|[가-힣]{2,}(?:사|그룹|은행|대학|팀)/g) || [];
+  if (properNouns.length >= 2) score += 10;
+
+  score = Math.max(0, Math.min(100, score));
+  return { score, issues };
+}
+
 // ─── Public API ───
 
 /**

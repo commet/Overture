@@ -9,8 +9,9 @@
 
 import { callLLMStream } from '@/lib/llm';
 import { buildWorkerTaskPrompt } from '@/lib/progressive-prompts';
-import { validateWorkerOutput, type ValidationResult } from '@/lib/worker-quality';
-import type { WorkerTask } from '@/stores/types';
+import { validateWorkerOutput, checkSpecificity, type ValidationResult } from '@/lib/worker-quality';
+import { validateByFramework } from '@/lib/guard-rails';
+import type { WorkerTask, PipelineStage } from '@/stores/types';
 import { LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { XP_REWARDS } from '@/stores/agent-types';
@@ -60,6 +61,7 @@ export async function runWorkerTask(
     task.persona ?? undefined,
     level,
     agent,
+    task.framework,  // orchestrator가 배정한 프레임워크
   );
 
   // 웹 검색: web_search capability가 있는 에이전트만
@@ -94,6 +96,26 @@ export async function runWorkerTask(
   if (task.who === 'ai') {
     try {
       validation = await validateWorkerOutput(task.task, task.expected_output, text);
+
+      // 프레임워크별 guard-rails 추가 검증
+      if (task.framework && validation) {
+        const guardResult = validateByFramework(task.framework, text);
+        if (!guardResult.passed) {
+          validation.score = Math.min(validation.score, guardResult.score);
+          validation.issues = [...validation.issues, ...guardResult.issues];
+          validation.passed = validation.score >= 70;
+        }
+      }
+
+      // 구체성 검증
+      if (validation) {
+        const specificity = checkSpecificity(text, context.problemText);
+        if (specificity.score < 30) {
+          validation.issues = [...validation.issues, ...specificity.issues];
+          validation.score = Math.min(validation.score, specificity.score + 20);
+          validation.passed = validation.score >= 70;
+        }
+      }
     } catch {
       // 검증 자체 실패 → 비차단, 결과 그대로 사용
     }
@@ -204,6 +226,87 @@ export async function runAllAIWorkers(
   );
 
   await Promise.allSettled(slots);
+}
+
+// ─── Pipeline execution (Phase 3) ───
+
+/**
+ * 스테이지 기반 파이프라인 실행.
+ * 스테이지 순서대로 실행하며, 이전 스테이지 결과를 다음 스테이지에 전달.
+ * 스테이지 내부에서는 기존 runAllAIWorkers의 병렬 실행 재사용.
+ */
+export async function runPipeline(
+  workers: WorkerTask[],
+  stages: PipelineStage[],
+  context: WorkerContext,
+  callbacks: {
+    onStart: (id: string) => void;
+    onStream: (id: string, text: string) => void;
+    onComplete: (id: string, result: string, validation?: ValidationResult) => void;
+    onValidationFailed?: (id: string, validation: ValidationResult) => Promise<'retry' | 'skip' | 'accept'>;
+    onError: (id: string, error: string) => void;
+    onStageComplete?: (stageId: string, results: Map<string, string>) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  // 스테이지가 없으면 기존 방식으로 폴백
+  if (!stages || stages.length === 0) {
+    return runAllAIWorkers(workers, context, callbacks, signal);
+  }
+
+  // 스테이지 순서대로 실행 (dependsOnStageId 기반 정렬)
+  const sortedStages = [...stages].sort((a, b) => {
+    if (a.dependsOnStageId && !b.dependsOnStageId) return 1;
+    if (!a.dependsOnStageId && b.dependsOnStageId) return -1;
+    return 0;
+  });
+
+  const stageResults = new Map<string, Map<string, string>>(); // stageId → (workerId → result text)
+
+  for (const stage of sortedStages) {
+    if (signal?.aborted) return;
+
+    const stageWorkers = workers.filter(w => w.stage_id === stage.id);
+    if (stageWorkers.length === 0) continue;
+
+    // 이전 스테이지 결과를 context에 주입
+    let enrichedContext = context;
+    if (stage.dependsOnStageId) {
+      const priorResults = stageResults.get(stage.dependsOnStageId);
+      if (priorResults) {
+        const priorText = Array.from(priorResults.entries())
+          .map(([wId, text]) => {
+            const w = workers.find(w2 => w2.id === wId);
+            return `[${w?.persona?.name || '팀원'}의 분석]\n${text}`;
+          })
+          .join('\n\n---\n\n');
+
+        enrichedContext = {
+          ...context,
+          // 이전 스테이지 결과를 hiddenAssumptions에 추가 (프롬프트에 자연스럽게 주입)
+          qaHistory: [
+            ...context.qaHistory,
+            { q: '이전 팀원들의 분석 결과', a: priorText },
+          ],
+        };
+      }
+    }
+
+    // 현재 스테이지의 결과 수집용
+    const currentStageResults = new Map<string, string>();
+
+    // 기존 runAllAIWorkers 패턴으로 스테이지 내 병렬 실행
+    await runAllAIWorkers(stageWorkers, enrichedContext, {
+      ...callbacks,
+      onComplete: (id, result, validation) => {
+        currentStageResults.set(id, result);
+        callbacks.onComplete(id, result, validation);
+      },
+    }, signal);
+
+    stageResults.set(stage.id, currentStageResults);
+    callbacks.onStageComplete?.(stage.id, currentStageResults);
+  }
 }
 
 // ─── Web Search ───

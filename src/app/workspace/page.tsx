@@ -227,36 +227,45 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
               {/* Heading */}
               <div className="mb-8 text-center">
                 <h1 className="text-display-lg text-[var(--text-primary)]">
-                  상황을 던지면,<br /><span className="text-gold-gradient">팀이 움직입니다</span>
+                  막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span>
                 </h1>
-                <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed">
-                  클릭 한 번이면 전문 에이전트 팀이 함께 풀어드립니다.
+                <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+                  상황을 알려주세요. AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />
+                  의사결정권자 반응까지 시뮬레이션합니다.
                 </p>
               </div>
 
               {/* Scenario cards — click = demo showcase */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-                {DEMO_SCENARIOS.map(s => (
-                  <button key={s.id} onClick={() => setDemoScenario(s)}
-                    className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
-                    <span className="text-[22px] block mb-3">{s.icon}</span>
-                    <p className="text-[14px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{s.title}</p>
-                    <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">{s.desc}</p>
-                    <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
-                      체험해보기 <ChevronRight size={11} />
-                    </div>
-                  </button>
-                ))}
+              <div className="mb-6">
+                <p className="text-[12px] text-[var(--text-tertiary)] mb-3">이런 상황이라면, 체험해보세요</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {DEMO_SCENARIOS.map(s => (
+                    <button key={s.id} onClick={() => setDemoScenario(s)}
+                      className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-[18px]">{s.icon}</span>
+                        <span className="text-[13px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{s.title}</span>
+                      </div>
+                      <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">&ldquo;{s.problemText}&rdquo;</p>
+                      <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
+                        체험해보기 <ChevronRight size={11} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Direct input — collapsed, expandable */}
+              {/* Direct input */}
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
                 <div className="p-4 md:p-5">
-                  <div className="flex items-center gap-3">
+                  <p className="text-[12px] text-[var(--text-tertiary)] mb-2.5">
+                    {problemInput.trim() ? '수정하거나 그대로 시작하세요' : '내 상황을 직접 입력할 수도 있어요'}
+                  </p>
+                  <div className="flex items-start gap-3">
                     <textarea value={problemInput} onChange={(e) => setProblemInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-                      placeholder="또는 내 상황을 직접 입력..."
-                      rows={1} maxLength={5000}
+                      placeholder="예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어"
+                      rows={problemInput.trim() ? 3 : 1} maxLength={5000}
                       onFocus={(e) => { e.target.rows = 3; }}
                       onBlur={(e) => { if (!e.target.value) e.target.rows = 1; }}
                       className="flex-1 px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-all placeholder:text-[var(--text-tertiary)]" />

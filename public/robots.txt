@@ -5,5 +5,8 @@ Disallow: /auth/
 Disallow: /workspace/
 Disallow: /settings
 Disallow: /teams
+Disallow: /project
+Disallow: /agents
+Disallow: /boss
 
 Sitemap: https://overture.so/sitemap.xml

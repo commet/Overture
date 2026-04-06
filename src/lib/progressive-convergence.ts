@@ -1,10 +1,11 @@
 /**
  * Progressive Convergence — 진짜 질문이 수렴하고 있는지 측정
  *
- * 3가지 신호를 종합:
+ * 4가지 신호를 종합:
  * 1. 질문 안정성: real_question이 라운드마다 얼마나 바뀌는지
  * 2. 가정 감소 추세: hidden_assumptions가 줄어들고 있는지
  * 3. 프레이밍 확신도: LLM의 자기 평가
+ * 4. 워커 품질 신호: 워커 결과물의 검증 점수 + 승인률 (Phase 4)
  */
 
 import type { AnalysisSnapshot, ConvergenceMetrics } from '@/stores/types';
@@ -120,5 +121,58 @@ export function assessConvergence(snapshots: AnalysisSnapshot[]): ConvergenceMet
     is_converged,
     estimated_rounds_left,
     guidance,
+  };
+}
+
+/* ─── Phase 4: Worker-informed convergence ─── */
+
+export interface WorkerQualityInput {
+  validationScore?: number;
+  approved: boolean | null;
+}
+
+/**
+ * 워커 결과를 반영한 수렴 메트릭.
+ * 기존 3신호(질문/가정/확신)를 80점으로 축소하고, 워커 품질을 20점으로 추가.
+ */
+export function assessConvergenceWithWorkers(
+  snapshots: AnalysisSnapshot[],
+  workerResults?: WorkerQualityInput[],
+): ConvergenceMetrics {
+  const base = assessConvergence(snapshots);
+
+  // 워커 결과 없으면 기존 로직 그대로
+  if (!workerResults || workerResults.length === 0) return base;
+
+  // 워커 품질 신호 (0-20점)
+  const scored = workerResults.filter(w => w.validationScore !== undefined);
+  const approved = workerResults.filter(w => w.approved === true);
+  const rejected = workerResults.filter(w => w.approved === false);
+
+  let workerQualityScore = 10; // 중립
+  if (scored.length > 0) {
+    const avgScore = scored.reduce((sum, w) => sum + (w.validationScore || 0), 0) / scored.length;
+    if (avgScore >= 80 && rejected.length === 0) workerQualityScore = 20;
+    else if (avgScore >= 60 && approved.length > rejected.length) workerQualityScore = 15;
+    else if (rejected.length > approved.length) workerQualityScore = 0;
+    else workerQualityScore = 10;
+  } else if (approved.length > 0 && rejected.length === 0) {
+    workerQualityScore = 15;
+  } else if (rejected.length > approved.length) {
+    workerQualityScore = 0;
+  }
+
+  // 기존 점수를 80% 스케일로 축소하고 워커 품질 추가
+  const adjustedBase = Math.round(base.score * 0.8);
+  const totalScore = Math.min(100, adjustedBase + workerQualityScore);
+  const is_converged = totalScore >= 75;
+  const estimated_rounds_left = is_converged ? 0 : totalScore >= 60 ? 1 : totalScore >= 40 ? 2 : 3;
+
+  return {
+    ...base,
+    score: totalScore,
+    is_converged,
+    estimated_rounds_left,
+    guidance: is_converged ? base.guidance : (workerQualityScore < 10 ? '워커 결과 품질이 낮습니다. 추가 라운드를 고려하세요.' : base.guidance),
   };
 }

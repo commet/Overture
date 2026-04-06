@@ -1,0 +1,91 @@
+/**
+ * orchestrator-classify.ts — 입력 분류 (결정론적, LLM 호출 없음)
+ *
+ * 사용자 입력 + interview signals를 기반으로 stakes/domain/decisionType을 결정.
+ * 이 분류가 에이전트 선택과 프레임워크 배정의 기준이 된다.
+ */
+
+import type { InterviewSignals } from '@/stores/types';
+
+/* ─── Types ─── */
+
+export type Domain = 'research' | 'strategy' | 'numbers' | 'legal' | 'ux' | 'tech' | 'copy' | 'pm' | 'risk';
+export type Stakes = 'routine' | 'important' | 'critical';
+
+export interface InputClassification {
+  stakes: Stakes;
+  domains: Domain[];
+  decisionType: string;   // signals.nature 기반
+  agentCount: number;     // stakes → 배정 에이전트 수 상한
+}
+
+/* ─── Domain Keyword Map ─── */
+
+const DOMAIN_KEYWORDS: Record<Domain, string[]> = {
+  research: ['조사', '리서치', '자료', '사례', '시장', '트렌드', '벤치마크', '분석', '데이터', '현황', 'research', 'benchmark'],
+  strategy: ['전략', '방향', '비전', '포지셔닝', '경쟁', '차별화', '로드맵', '진입', 'strategy', 'positioning'],
+  numbers: ['숫자', '재무', '비용', '매출', '수익', 'ROI', 'BEP', '단가', '예산', '투자', 'TAM', 'revenue', 'unit economics'],
+  legal: ['법률', '규제', '계약', '특허', '라이선스', '컴플라이언스', '약관', 'legal', 'compliance', 'regulation'],
+  ux: ['UX', 'UI', '사용자', '경험', '인터페이스', '프로토타입', '사용성', '접근성', 'user experience', 'usability'],
+  tech: ['기술', '아키텍처', '구현', '인프라', '스택', 'API', '성능', '확장', 'architecture', 'implementation'],
+  copy: ['문서', '기획안', '보고서', '카피', '메시지', '슬라이드', '발표', '제안서', 'document', 'proposal'],
+  pm: ['일정', '타임라인', '마일스톤', '리소스', '우선순위', '스프린트', '로드맵', 'timeline', 'milestone', 'priority'],
+  risk: ['리스크', '위험', '실패', '장애', '취약', '대응', 'risk', 'failure', 'vulnerability'],
+};
+
+/* ─── Stakes Mapping ─── */
+
+function classifyStakes(signals?: InterviewSignals): Stakes {
+  if (!signals?.stakes) return 'important'; // 기본값: important
+  switch (signals.stakes) {
+    case 'irreversible': return 'critical';
+    case 'important': return 'important';
+    case 'experiment': return 'routine';
+    case 'unknown_stakes': return 'important';
+    default: return 'important';
+  }
+}
+
+function stakesToAgentCount(stakes: Stakes, stepCount: number): number {
+  const maxByStakes = stakes === 'critical' ? 4 : stakes === 'important' ? 3 : 2;
+  return Math.min(maxByStakes, stepCount);
+}
+
+/* ─── Domain Extraction ─── */
+
+function extractDomains(texts: string[]): Domain[] {
+  const combined = texts.join(' ').toLowerCase();
+  const scores: [Domain, number][] = [];
+
+  for (const [domain, keywords] of Object.entries(DOMAIN_KEYWORDS) as [Domain, string[]][]) {
+    const count = keywords.filter(kw => combined.includes(kw.toLowerCase())).length;
+    if (count > 0) scores.push([domain, count]);
+  }
+
+  scores.sort((a, b) => b[1] - a[1]);
+  // 상위 3개 도메인까지만 (너무 많으면 의미 없음)
+  return scores.slice(0, 3).map(s => s[0]);
+}
+
+/* ─── Decision Type ─── */
+
+function classifyDecisionType(signals?: InterviewSignals): string {
+  if (!signals?.nature) return 'needs_analysis';
+  return signals.nature; // known_path | needs_analysis | no_answer | on_fire
+}
+
+/* ─── Main ─── */
+
+export function classifyInput(
+  problemText: string,
+  steps: { task: string; output: string }[],
+  signals?: InterviewSignals,
+): InputClassification {
+  const stakes = classifyStakes(signals);
+  const allTexts = [problemText, ...steps.map(s => `${s.task} ${s.output}`)];
+  const domains = extractDomains(allTexts);
+  const decisionType = classifyDecisionType(signals);
+  const agentCount = stakesToAgentCount(stakes, steps.length);
+
+  return { stakes, domains, decisionType, agentCount };
+}

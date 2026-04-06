@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               문제가 발생했습니다
             </h2>
             <p className="text-sm text-[var(--text-secondary)]">
-              {this.state.error?.message || '예기치 않은 오류가 발생했습니다.'}
+              예기치 않은 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.
             </p>
             <button
               onClick={this.handleRetry}

@@ -697,6 +697,30 @@ export function getSkillSet(idOrPersonaId: string): AgentSkillSet | undefined {
   return AGENT_SKILLS.find(s => s.personaId === skillId);
 }
 
+/**
+ * getFrameworkSkill — 특정 프레임워크만 추출
+ * orchestrator가 배정한 프레임워크에 대한 지침만 꺼내서 프롬프트에 주입.
+ * 전체 스킬셋 대신 1개 프레임워크만 주입하여 토큰 절약 + 집중도 향상.
+ */
+export function getFrameworkSkill(
+  agentIdOrPersonaId: string,
+  frameworkName: string,
+): { framework: string; checkpoints: string[]; levelPrompts: Record<AgentLevel, string>; outputFormat: string } | undefined {
+  const skillSet = getSkillSet(agentIdOrPersonaId);
+  if (!skillSet) return undefined;
+
+  const fwLower = frameworkName.toLowerCase();
+  const matched = skillSet.frameworks.find(f => f.toLowerCase().includes(fwLower));
+  if (!matched) return undefined;
+
+  return {
+    framework: matched,
+    checkpoints: skillSet.checkpoints,
+    levelPrompts: skillSet.levelPrompts,
+    outputFormat: skillSet.outputFormat,
+  };
+}
+
 export function getAvailableTools(personaId: string, level: AgentLevel): AgentTool[] {
   const skills = getSkillSet(personaId);
   const levelOrder: Record<AgentLevel, number> = { junior: 0, senior: 1, guru: 2 };
