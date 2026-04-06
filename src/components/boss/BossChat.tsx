@@ -287,7 +287,16 @@ export function BossChat() {
               <strong className="bc-name">{typeCode}</strong>
               <span className="bc-type-name">{typeData?.name}</span>
             </div>
-            <span className="bc-vibe">{typeData?.bossVibe}</span>
+            <span className="bc-vibe" style={{
+              color: bossMood === 'warming' ? 'var(--success)' : bossMood === 'cooling' ? 'var(--danger)' : undefined,
+              transition: 'color 0.6s',
+            }}>
+              {bossMood === 'warming' ? '관심을 보이고 있다...'
+                : bossMood === 'cooling' ? '불만족스러워 보인다...'
+                : bossMood === 'convinced' ? '납득한 표정이다'
+                : bossMood === 'rejected' ? '안 된다는 표정이다'
+                : typeData?.bossVibe}
+            </span>
             {ymp && (
               <span className="bc-element" style={{ color: ymp.yearElement.color }}>
                 {ymp.animal.emoji} {ymp.animal.animal}띠
