@@ -16,49 +16,73 @@ import { getYearElement } from '@/lib/boss/saju-interpreter';
 
 // ─── 대화 온도 추적 ───
 
-type Reaction = 'strong' | 'weak' | 'emotional' | 'logical' | 'neutral';
+type Reaction = 'strong' | 'weak' | 'emotional' | 'passive' | 'neutral';
 
-const STRONG_SIGNALS = ['데이터', '숫자', '근거', '조사', '사례', '계획', '대안', '비교', '분석', '수치', '기한', '마감'];
-const WEAK_SIGNALS = ['그냥', '모르겠', '아마', '일단', '좀', '글쎄', '아직'];
-const EMOTIONAL_SIGNALS = ['너무', '진짜', '솔직히', '힘들', '지쳐', '불안', '걱정', '화나', '답답'];
-const LOGICAL_SIGNALS = ['왜냐하면', '이유는', '근거는', '기준', '원칙', '합리', '논리', '따지면'];
+// 근거/논리가 있는 발언
+const STRONG_SIGNALS = [
+  '데이터', '숫자', '근거', '조사', '사례', '계획', '대안', '비교', '분석', '수치',
+  '기한', '마감', '성과', '매출', '실적', '제안', '경쟁사', '오퍼', '시장',
+  '왜냐하면', '이유는', '기준', '원칙', '합리', '논리', '따지면',
+  '준비', '확인', '검토', '일하고 싶', '기여', '책임',
+];
+// 감정적 발언 (캐주얼/감정 공존)
+const EMOTIONAL_SIGNALS = ['힘들', '지쳐', '불안', '걱정', '화나', '답답', '솔직히', '속상'];
+// 수동적/짧은 수용
+const PASSIVE_SIGNALS = ['네', '알겠', '그렇죠', 'ㅇㅇ', '넵', '네네', '그럴게'];
 
 function classifyReaction(text: string): Reaction {
-  const t = text.toLowerCase();
-  const strong = STRONG_SIGNALS.filter(kw => t.includes(kw)).length;
-  const weak = WEAK_SIGNALS.filter(kw => t.includes(kw)).length;
-  const emotional = EMOTIONAL_SIGNALS.filter(kw => t.includes(kw)).length;
-  const logical = LOGICAL_SIGNALS.filter(kw => t.includes(kw)).length;
+  const t = text.toLowerCase().trim();
+  const len = t.length;
 
-  if (strong >= 2 || logical >= 1) return 'logical';
-  if (emotional >= 2) return 'emotional';
-  if (strong >= 1) return 'strong';
-  if (weak >= 2) return 'weak';
+  // 극히 짧은 답변(10자 이하) = 수동적
+  if (len <= 10 && PASSIVE_SIGNALS.some(kw => t.includes(kw))) return 'passive';
+
+  // 감정적 발언
+  const emotionalHits = EMOTIONAL_SIGNALS.filter(kw => t.includes(kw)).length;
+  if (emotionalHits >= 2 || (emotionalHits >= 1 && len < 30)) return 'emotional';
+
+  // 근거/논리
+  const strongHits = STRONG_SIGNALS.filter(kw => t.includes(kw)).length;
+  if (strongHits >= 2) return 'strong';
+  // 긴 답변(50자+)은 노력의 신호 — strong 1개만 있어도 인정
+  if (strongHits >= 1 && len >= 50) return 'strong';
+  // 긴 답변 자체가 설득 노력 (키워드 없어도)
+  if (len >= 80) return 'strong';
+
+  // 짧고 키워드 없음 = neutral (캐주얼 대화 포함)
   return 'neutral';
 }
 
 function updateMood(current: BossMood, reaction: Reaction, round: number): BossMood {
-  // 이미 결론 상태면 유지
   if (current === 'convinced' || current === 'rejected') return current;
 
-  // 반응에 따른 mood 전환
-  if (reaction === 'logical' || reaction === 'strong') {
-    if (current === 'cooling') return 'neutral'; // 만회
+  // 강한 논거 → warming
+  if (reaction === 'strong') {
+    if (current === 'cooling') return 'neutral';
     return 'warming';
   }
-  if (reaction === 'weak') {
-    if (current === 'warming') return 'neutral'; // 아까 좋았는데...
-    return 'cooling';
-  }
+
+  // 감정적 → 약간 warming (진심이 보이므로)
   if (reaction === 'emotional') {
-    // 감정적 접근: 타입에 따라 다르지만, 일단 neutral 유지
-    return current;
+    if (current === 'cooling') return 'neutral';
+    // 이미 warming이면 유지, neutral이면 약간 warming
+    return current === 'neutral' ? 'warming' : current;
   }
 
-  // 7라운드 이상이면 현재 mood에서 결론으로
+  // 수동적 → 약간 cooling (대화에 참여 안 함)
+  if (reaction === 'passive') {
+    if (current === 'warming') return 'neutral';
+    return 'cooling';
+  }
+
+  // neutral → 변화 없음 (캐주얼 대화 시 과잉 반응 방지)
+
+  // 7라운드 이상이면 결론으로
   if (round >= 7) {
     if (current === 'warming') return 'convinced';
     if (current === 'cooling') return 'rejected';
+    // neutral 상태로 7라운드 = 대화가 진전 없음 → conditional
+    return 'convinced'; // boss가 "일단 해봐" 스타일로 마무리
   }
 
   return current;
@@ -142,16 +166,18 @@ export function BossChat() {
     const isFirst = chatMessages.length === 1;
     const round = Math.floor(chatMessages.filter(m => m.role === 'user').length);
 
-    // 유저 반응에서 mood 업데이트 (마지막 유저 메시지 기준)
+    // mood를 동기적으로 계산 (setState 비동기 문제 해결)
+    let currentMood = bossMood;
     const lastUserMsg = [...chatMessages].reverse().find(m => m.role === 'user');
     if (lastUserMsg && !isFirst) {
       const reaction = classifyReaction(lastUserMsg.content);
-      setBossMood(prev => updateMood(prev, reaction, round));
+      currentMood = updateMood(currentMood, reaction, round);
+      setBossMood(currentMood); // UI 반영용 (프롬프트에는 이미 currentMood 사용)
     }
 
     const contextSuffix = isFirst
       ? buildFirstMessageContext()
-      : buildFollowUpContext(round, bossMood);
+      : buildFollowUpContext(round, currentMood);
 
     // Agent에서 로드된 boss면 agent 프롬프트 사용 (Lv.2+ observation 주입)
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
