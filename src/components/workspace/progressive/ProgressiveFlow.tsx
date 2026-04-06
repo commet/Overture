@@ -52,7 +52,7 @@ function getParticle(name: string): string {
 }
 
 /* ═══ Progress line ═══ */
-const PHASES = ['문제 파악', '설계', '검증', '완성'] as const;
+const PHASES = ['상황 분석', '팀 작업', '피드백', '완성'] as const;
 
 function phaseIdx(phase: string, round: number, hasMix: boolean): number {
   if (phase === 'complete') return 4;
@@ -163,9 +163,12 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
               {snapshot.insight && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
-                  <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/8">
-                    <Sparkles size={12} className="text-[var(--accent)] mt-0.5 shrink-0" />
-                    <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{snapshot.insight}</p>
+                  <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Sparkles size={11} className="text-[var(--accent)]" />
+                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">핵심</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
                   </div>
                 </motion.div>
               )}
@@ -365,7 +368,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
               {mix.sections.map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08, duration: 0.5, ease: EASE }}>
                   <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-1.5">{s.heading}</h3>
-                  <p className="text-[13px] text-[var(--text-secondary)] leading-[1.8]">{renderInline(s.content)}</p>
+                  <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(s.content)}</p>
                 </motion.div>
               ))}
             </div>
@@ -444,6 +447,18 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
 /* ═══ DM Feedback ═══ */
 function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/types').DMFeedbackResult; onToggle: (i: number) => void; onFinalize: () => void; busy: boolean }) {
   return (
+    <div className="space-y-5">
+      {/* Transition divider */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.5 }}
+        className="flex items-center gap-4 py-1">
+        <div className="flex-1 h-px bg-[var(--accent)]/15" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <UserCheck size={12} className="text-[var(--accent)]/60" />
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">의사결정권자의 반응</span>
+        </div>
+        <div className="flex-1 h-px bg-[var(--accent)]/15" />
+      </motion.div>
+
     <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
         <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
@@ -490,9 +505,11 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
               {fb.would_ask.map((q, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-[var(--accent)] shrink-0">?</span>{q}</p>)}
             </div>}
 
-            <div className="pt-4 border-t border-[var(--border-subtle)]">
-              <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-1.5">통과 조건</p>
-              <p className="text-[15px] text-[var(--text-primary)] font-medium leading-relaxed">{fb.approval_condition}</p>
+            <div className="pt-4 mt-2 border-t border-[var(--border-subtle)]">
+              <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
+                <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">통과 조건</p>
+                <p className="text-[15px] text-[var(--text-primary)] font-semibold leading-relaxed">{fb.approval_condition}</p>
+              </div>
             </div>
 
             <motion.button onClick={onFinalize} disabled={busy} whileTap={{ scale: 0.98 }}
@@ -504,6 +521,7 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
         </div>
       </div>
     </motion.div>
+    </div>
   );
 }
 
@@ -614,7 +632,7 @@ function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDepl
 function MixTrigger({ onMix, onMore, busy }: { onMix: () => void; onMore: () => void; busy: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="space-y-4 py-2">
-      <p className="text-[12px] text-[var(--text-tertiary)] text-center tracking-wide">분석이 충분히 쌓였습니다</p>
+      <p className="text-[12px] text-[var(--text-tertiary)] text-center tracking-wide">초안을 만들 준비가 되었습니다</p>
       <div className="flex flex-col sm:flex-row gap-3">
         <motion.button onClick={onMix} disabled={busy} whileTap={{ scale: 0.98 }}
           className="flex-1 flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-2xl text-[15px] font-semibold shadow-[var(--shadow-md)] cursor-pointer disabled:opacity-50"
@@ -1037,7 +1055,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
           {/* Loading states */}
-          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 파악하고 있습니다...', '놓치기 쉬운 것을 찾는 중...', '뼈대를 만들고 있습니다...', '거의 다 됐습니다...']} />}
+          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 읽고 있습니다...', '당신이 놓치고 있는 걸 찾는 중...', '문서 뼈대를 잡고 있습니다...', '거의 다 됐습니다...']} />}
           {phase === 'analyzing' && snapshots.length > 0 && !streamingText && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
               <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
@@ -1050,7 +1068,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
             </motion.div>
           )}
-          {phase === 'mixing' && <LoadingState text="조합 중..." steps={['분석을 종합하고 있습니다...', '문서를 구성하는 중...', '마무리 중...']} />}
+          {phase === 'mixing' && <LoadingState text="초안 작성 중..." steps={['팀의 분석을 하나로 엮는 중...', '문서 구조를 잡고 있습니다...', '거의 완성입니다...']} />}
 
           {/* Version indicator — shows what round we're on */}
           {snapshots.length > 1 && !final_ && (
@@ -1063,7 +1081,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {/* Living Analysis — the evolving draft with visible diffs */}
           {latest && !final_ && (
             <LiveAnalysis
-              key={latest.version}
               snapshot={latest}
               prevSnapshot={snapshots.length > 1 ? snapshots[snapshots.length - 2] : null}
               isActive={!mix}
@@ -1149,9 +1166,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} busy={busy} />}
 
           {final_ && <>
+            {/* Completion moment */}
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
+              className="flex items-center justify-center gap-2 py-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+                <Check size={14} className="text-white" />
+              </div>
+              <p className="text-[14px] font-medium text-[var(--text-primary)]">
+                {dmFb && dmFb.concerns.filter((c: DMConcern) => c.applied).length > 0
+                  ? `피드백 ${dmFb.concerns.filter((c: DMConcern) => c.applied).length}건 반영 완료`
+                  : '최종 문서 완성'}
+              </p>
+            </motion.div>
             <FinalCard content={final_} />
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
-              <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">문서를 복사해서 바로 사용하세요.</p>
+              <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">복사해서 바로 사용하세요.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="/workspace" onClick={() => useProgressiveStore.setState({ currentSessionId: null })}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-[13px] font-semibold cursor-pointer"

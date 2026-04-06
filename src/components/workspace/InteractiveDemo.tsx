@@ -1,0 +1,863 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, Sparkles, Check, ArrowRight, UserCheck } from 'lucide-react';
+import { WorkerAvatar } from './progressive/WorkerAvatar';
+import type { DemoScenario } from '@/lib/demo-data';
+import { applyPatch, buildFinal } from '@/lib/demo-data';
+import type { AnalysisSnapshot, DMConcern } from '@/stores/types';
+import { track } from '@/lib/analytics';
+
+/* ═══ Constants ═══ */
+const EASE = [0.32, 0.72, 0, 1] as const;
+const SPRING = { type: 'spring' as const, stiffness: 400, damping: 30 };
+
+/* ═══ Phase State Machine ═══ */
+type DemoPhase =
+  | 'typing'
+  | 'team'
+  | 'analysis'
+  | 'q1'
+  | 'update1'
+  | 'q2'
+  | 'update2'
+  | 'workers'
+  | 'draft'
+  | 'dm'
+  | 'final';
+
+const PHASE_ORDER: DemoPhase[] = ['typing', 'team', 'analysis', 'q1', 'update1', 'q2', 'update2', 'workers', 'draft', 'dm', 'final'];
+const phaseGte = (current: DemoPhase, target: DemoPhase) => PHASE_ORDER.indexOf(current) >= PHASE_ORDER.indexOf(target);
+
+/* ═══ Diff utility ═══ */
+function diffItems(prev: string[], curr: string[]): Array<{ text: string; status: 'new' | 'same' | 'removed' }> {
+  const prevSet = new Set(prev);
+  const currSet = new Set(curr);
+  const result: Array<{ text: string; status: 'new' | 'same' | 'removed' }> = [];
+  for (const item of prev) {
+    if (!currSet.has(item)) result.push({ text: item, status: 'removed' });
+  }
+  for (const item of curr) {
+    result.push({ text: item, status: prevSet.has(item) ? 'same' : 'new' });
+  }
+  return result;
+}
+
+/* ═══ Markdown renderer (from ProgressiveFlow) ═══ */
+function renderInline(text: string): React.ReactNode {
+  const p = text.split(/(\*\*[^*]+\*\*)/g);
+  if (p.length === 1) return text;
+  return p.map((s, i) => s.startsWith('**') && s.endsWith('**') ? <strong key={i} className="font-semibold text-[var(--text-primary)]">{s.slice(2, -2)}</strong> : s);
+}
+
+function renderMd(c: string) {
+  return c.split('\n').map((l, k) => {
+    if (l.startsWith('# ')) return <h1 key={k} className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] mt-1 mb-4 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{l.slice(2)}</h1>;
+    if (l.startsWith('### ')) return <h3 key={k} className="text-[14px] font-bold text-[var(--text-primary)] mt-5 mb-1.5">{l.slice(4)}</h3>;
+    if (l.startsWith('## ')) return <h2 key={k} className="text-[16px] font-bold text-[var(--text-primary)] mt-7 mb-2 tracking-tight">{l.slice(3)}</h2>;
+    if (l.startsWith('> ')) return <blockquote key={k} className="border-l-[3px] border-[var(--accent)]/20 pl-5 py-1 text-[14px] text-[var(--text-secondary)] italic my-3 leading-relaxed">{renderInline(l.slice(2))}</blockquote>;
+    if (l.startsWith('- ')) return <div key={k} className="flex items-start gap-2.5 text-[14px] text-[var(--text-primary)] ml-1 leading-[1.8]"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/50 mt-2.5 shrink-0" /><span>{renderInline(l.slice(2))}</span></div>;
+    if (l.startsWith('| ')) return <p key={k} className="text-[13px] text-[var(--text-secondary)] font-mono leading-[1.8]">{l}</p>;
+    if (l.startsWith('---') || l.startsWith('|--')) return <hr key={k} className="border-[var(--border-subtle)] my-1" />;
+    if (l.match(/^\d+\. /)) return <div key={k} className="flex items-start gap-2.5 text-[14px] text-[var(--text-primary)] ml-1 leading-[1.8]"><span className="text-[var(--accent)]/60 font-mono text-[12px] mt-0.5 shrink-0">{l.match(/^\d+/)![0]}.</span><span>{renderInline(l.replace(/^\d+\.\s*/, ''))}</span></div>;
+    if (l.startsWith('<!--')) return null;
+    if (l.trim() === '') return <div key={k} className="h-3" />;
+    return <p key={k} className="text-[14px] text-[var(--text-primary)] leading-[1.85]">{renderInline(l)}</p>;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TYPING INPUT — char-by-char animation
+   ═══════════════════════════════════════════════════════════ */
+
+function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
+  const [typed, setTyped] = useState(0);
+  const doneRef = useRef(false);
+  const typedRef = useRef(0);
+
+  useEffect(() => {
+    let frame: number;
+    const charDelay = () => 35 + Math.random() * 40; // 35-75ms
+    let nextAt = performance.now() + 300; // initial pause
+    typedRef.current = 0;
+    doneRef.current = false;
+
+    const tick = (now: number) => {
+      if (now >= nextAt && typedRef.current < text.length) {
+        typedRef.current += 1;
+        setTyped(typedRef.current);
+        if (typedRef.current >= text.length && !doneRef.current) {
+          doneRef.current = true;
+          setTimeout(onDone, 600);
+        }
+        nextAt = now + charDelay();
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+      className="flex items-start gap-3 px-5 py-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] w-full">
+      <div className="w-6 h-6 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0 mt-0.5">
+        <span className="text-[var(--bg)] text-[10px] font-bold">나</span>
+      </div>
+      <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
+        {text.slice(0, typed)}
+        {typed < text.length && <span className="inline-block w-[2px] h-[16px] bg-[var(--accent)] ml-0.5 align-middle animate-pulse" />}
+      </p>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEAM ENTRANCE — stagger avatars
+   ═══════════════════════════════════════════════════════════ */
+
+function TeamEntrance({ scenario, onDone }: { scenario: DemoScenario; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/10 p-4 space-y-2.5">
+      {scenario.team.map((p, i) => (
+        <motion.div key={p.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 + i * 0.3, duration: 0.4, ease: EASE }}
+          className="flex items-center gap-3">
+          <WorkerAvatar persona={p} size="sm" />
+          <span className="text-[13px] font-medium text-[var(--text-primary)]">{p.name}</span>
+          <span className="text-[11px] text-[var(--text-tertiary)]">{p.role}</span>
+        </motion.div>
+      ))}
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.4 }}
+        className="text-[11px] text-[var(--text-tertiary)] pt-1">
+        팀이 구성되었습니다. 상황을 분석합니다...
+      </motion.p>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYSIS CARD — with diff highlights (from LiveAnalysis)
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoAnalysisCard({ snapshot, prevSnapshot }: {
+  snapshot: AnalysisSnapshot;
+  prevSnapshot: AnalysisSnapshot | null;
+}) {
+  const hasChanges = prevSnapshot && snapshot.version > (prevSnapshot.version ?? 0);
+  const questionChanged = hasChanges && prevSnapshot.real_question !== snapshot.real_question;
+
+  const skeletonDiff = hasChanges
+    ? diffItems(prevSnapshot.skeleton, snapshot.skeleton)
+    : snapshot.skeleton.map(s => ({ text: s, status: 'same' as const }));
+  const assumptionDiff = hasChanges
+    ? diffItems(prevSnapshot.hidden_assumptions, snapshot.hidden_assumptions)
+    : snapshot.hidden_assumptions.map(a => ({ text: a, status: 'same' as const }));
+
+  const newCount = skeletonDiff.filter(d => d.status === 'new').length + assumptionDiff.filter(d => d.status === 'new').length;
+  const removedCount = skeletonDiff.filter(d => d.status === 'removed').length + assumptionDiff.filter(d => d.status === 'removed').length;
+
+  return (
+    <motion.div
+      initial={prevSnapshot ? { opacity: 0.85 } : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prevSnapshot ? 0.3 : 0.6, ease: EASE }}
+      className="rounded-2xl">
+      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5">
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+          <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
+          <div className="p-5 md:p-7">
+            {/* Eyebrow */}
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">진짜 질문</span>
+              {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
+              {hasChanges && (newCount > 0 || removedCount > 0) && (
+                <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                  {newCount > 0 && `+${newCount} 추가`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} 제거`}
+                </span>
+              )}
+            </div>
+
+            {/* Real question with change */}
+            <div className="mb-4">
+              {questionChanged && (
+                <motion.p initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 2, ease: EASE }}
+                  className="text-[13px] text-[var(--text-tertiary)] line-through mb-1.5 leading-relaxed"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+                  {prevSnapshot.real_question}
+                </motion.p>
+              )}
+              <AnimatePresence mode="wait">
+                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.5, ease: EASE }}
+                  className="text-[18px] md:text-[22px] font-bold text-[var(--text-primary)] leading-[1.35] tracking-tight"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+                  {snapshot.real_question}
+                </motion.h2>
+              </AnimatePresence>
+            </div>
+
+            {/* Insight — the most quotable line */}
+            <AnimatePresence>
+              {snapshot.insight && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
+                  <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Sparkles size={11} className="text-[var(--accent)]" />
+                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">핵심</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Two-column: Assumptions | Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
+                <div className="rounded-xl bg-[var(--bg)]/60 p-4">
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />놓치기 쉬운 것
+                  </p>
+                  <div className="space-y-1.5">
+                    <AnimatePresence>
+                      {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
+                        <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.8, ease: EASE }}
+                          className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                          <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">&minus;</span>
+                          <span>{d.text}</span>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
+                      <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
+                        className={`flex items-start gap-2 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
+                          d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
+                        }`}>
+                        <span className={`text-[9px] font-bold shrink-0 mt-1 ${
+                          d.status === 'new' ? 'text-emerald-500' : 'text-red-400/50'
+                        }`}>{d.status === 'new' ? '+' : '?'}</span>
+                        <span>{d.text}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-xl bg-[var(--bg)]/60 p-4">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />뼈대
+                </p>
+                <div className="space-y-1">
+                  <AnimatePresence>
+                    {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
+                      <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.8, ease: EASE }}
+                        className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                        <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">&minus;</span>
+                        <span>{d.text}</span>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
+                    <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
+                      className={`flex items-start gap-2.5 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
+                        d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
+                      }`}>
+                      <span className={`font-mono text-[10px] w-3.5 text-right shrink-0 mt-0.5 ${
+                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/40'
+                      }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
+                      <span>{d.text}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   QUESTION CARD — select only, no free text in demo
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoQuestionCard({ text, subtext, options, onSelect }: {
+  text: string;
+  subtext?: string;
+  options: string[];
+  onSelect: (v: string) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const go = (v: string) => { if (selected) return; setSelected(v); setTimeout(() => onSelect(v), 300); };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-xl bg-[var(--accent)]/[0.02] border border-[var(--accent)]/10 p-4 md:p-5">
+      <div className="flex items-start gap-2.5 mb-3.5">
+        <div className="w-6 h-6 rounded-full bg-[var(--accent)]/10 flex items-center justify-center shrink-0 mt-0.5">
+          <ArrowRight size={11} className="text-[var(--accent)]" />
+        </div>
+        <div>
+          <p className="text-[14px] md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{text}</p>
+          {subtext && <p className="mt-1.5 text-[12px] text-[var(--text-secondary)] leading-relaxed italic">{subtext}</p>}
+        </div>
+      </div>
+      <div className="space-y-1.5 pl-8.5">
+        {options.map((opt, i) => (
+          <motion.button key={i} onClick={() => go(opt)} disabled={!!selected} whileTap={{ scale: 0.98 }}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-normal border cursor-pointer ${
+              selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text-primary)] font-medium' :
+              selected ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-30' :
+              'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40'
+            }`} style={{ transitionProperty: 'all', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WORKER MINI BAR — inline status indicator
+   ═══════════════════════════════════════════════════════════ */
+
+function WorkerMiniBar({ scenario, visibleCount }: { scenario: DemoScenario; visibleCount: number }) {
+  const total = scenario.workers.length;
+  const pct = total > 0 ? Math.round((visibleCount / total) * 100) : 0;
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+      className="rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] overflow-hidden">
+      {/* Progress bar */}
+      <div className="h-[2px] bg-[var(--border-subtle)]">
+        <motion.div className="h-full" style={{ background: 'var(--gradient-gold)' }}
+          initial={{ width: '0%' }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: EASE }} />
+      </div>
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        {scenario.workers.map((w, i) => (
+          <div key={w.persona.id} className="flex items-center gap-1.5">
+            <WorkerAvatar persona={w.persona} size="sm" pulse={i >= visibleCount} />
+            <span className={`text-[11px] transition-colors duration-300 ${i < visibleCount ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-tertiary)]'}`}>
+              {w.persona.name}
+            </span>
+            {i < visibleCount && <Check size={10} className="text-emerald-500" />}
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WORKER REPORT — inline report block
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoWorkerReport({ worker }: { worker: DemoScenario['workers'][number] }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+      <div className="flex items-start gap-3">
+        <div className="w-[3px] self-stretch rounded-full mt-1 shrink-0" style={{ backgroundColor: worker.persona.color + '40' }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <WorkerAvatar persona={worker.persona} size="sm" />
+            <span className="text-[13px] font-semibold text-[var(--text-primary)]">{worker.persona.name}</span>
+            <span className="text-[11px] text-[var(--text-tertiary)]">{worker.persona.role}</span>
+          </div>
+          <p className="text-[11px] text-[var(--accent)] mb-2 pl-0.5">{worker.task}</p>
+          {worker.completionNote && (
+            <p className="text-[12px] text-[var(--text-secondary)] mb-2 italic pl-0.5">
+              &ldquo;{worker.completionNote}&rdquo;
+            </p>
+          )}
+          <div className="text-[13px] leading-[1.75] rounded-xl p-4 bg-[var(--bg)]/60 text-[var(--text-primary)] space-y-0.5">
+            {renderMd(worker.result)}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAFT CARD — mix preview
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoDraftCard({ draft }: { draft: DemoScenario['draft'] }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
+      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)]">
+          <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
+          <div className="p-5 md:p-8 space-y-5">
+            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] bg-[var(--accent)]/8 px-3 py-1 rounded-full">초안</span>
+            <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-tight">{draft.title}</h2>
+            <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[14px] text-[var(--text-secondary)] italic leading-relaxed">
+              {renderInline(draft.executive_summary)}
+            </blockquote>
+            {draft.sections.slice(0, 3).map((s, i) => (
+              <div key={i}>
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-1.5">{s.heading}</h3>
+                <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(s.content)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DM FEEDBACK — with interactive toggles
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
+  fb: DemoScenario['dmVariants'][string];
+  onToggle: (i: number) => void;
+  onDone: () => void;
+  showDoneButton?: boolean;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
+      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
+        <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+          <div className="p-5 md:p-8 space-y-6">
+            {/* Persona */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
+                <UserCheck size={18} className="text-[var(--accent)]" />
+              </div>
+              <div>
+                <p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p>
+                <p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
+              </div>
+            </div>
+
+            {/* Reaction */}
+            <blockquote className="text-[16px] text-[var(--text-primary)] leading-relaxed italic pl-5 border-l-[3px] border-[var(--text-tertiary)]/15">
+              &ldquo;{fb.first_reaction}&rdquo;
+            </blockquote>
+
+            {/* Good parts */}
+            {fb.good_parts.length > 0 && (
+              <div>
+                <p className="text-[9px] font-bold text-green-600 uppercase tracking-[0.2em] mb-2">좋은 점</p>
+                {fb.good_parts.map((g, i) => (
+                  <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed">
+                    <span className="text-green-500 shrink-0 mt-0.5">&#10003;</span>{g}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Concerns with toggles */}
+            {fb.concerns.length > 0 && (
+              <div>
+                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">우려 + 수정 제안</p>
+                <div className="space-y-3">
+                  {fb.concerns.map((c: DMConcern, i: number) => (
+                    <div key={i} className={`rounded-2xl border p-4 transition-all duration-500 ${
+                      c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'
+                    }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${
+                          c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
+                        }`}>{c.severity === 'critical' ? '필수' : c.severity === 'important' ? '권장' : '참고'}</span>
+                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
+                      </div>
+                      <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">&rarr; {c.fix_suggestion}</p>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? '반영' : '스킵'}</span>
+                        <button onClick={() => onToggle(i)}
+                          className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                          style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                          <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 24 : 4 }} transition={SPRING} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Would ask */}
+            {fb.would_ask.length > 0 && (
+              <div>
+                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2">이것도 물어볼 거다</p>
+                {fb.would_ask.map((q, i) => (
+                  <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed">
+                    <span className="text-[var(--accent)] shrink-0">?</span>{q}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Approval condition — the punchline */}
+            <div className="pt-4 mt-2 border-t border-[var(--border-subtle)]">
+              <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
+                <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">통과 조건</p>
+                <p className="text-[15px] text-[var(--text-primary)] font-semibold leading-relaxed">{fb.approval_condition}</p>
+              </div>
+            </div>
+
+            {/* Done button */}
+            {showDoneButton && (
+              <motion.button onClick={onDone} whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer"
+                style={{ background: 'var(--gradient-gold)' }}>
+                반영하고 최종 문서 보기 <ChevronRight size={14} />
+              </motion.button>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FINAL CARD — with variant swap
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoFinalCard({ content }: { content: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
+      <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
+        <div className="rounded-[calc(1rem-2px)] md:rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
+          <div className="h-[3px]" style={{ background: 'var(--gradient-gold)' }} />
+          <div className="px-5 md:px-7 py-5 flex items-center gap-3 border-b border-[var(--border-subtle)]">
+            <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
+              <Check size={14} className="text-[var(--accent)]" />
+            </div>
+            <span className="text-[14px] font-semibold text-[var(--text-primary)]">최종 산출물</span>
+            <span className="text-[11px] text-[var(--text-tertiary)]">데모</span>
+          </div>
+          <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════════ */
+
+interface InteractiveDemoProps {
+  scenario: DemoScenario;
+  onStartReal: () => void;
+  onBack: () => void;
+}
+
+export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDemoProps) {
+  const [phase, setPhase] = useState<DemoPhase>('typing');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Snapshot history
+  const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
+  const [q1Answer, setQ1Answer] = useState<string | null>(null);
+  const [q2Answer, setQ2Answer] = useState<string | null>(null);
+  const [dmKey, setDmKey] = useState<string>('ceo');
+  const [concerns, setConcerns] = useState<DMConcern[]>([]);
+  const [visibleWorkers, setVisibleWorkers] = useState(0);
+
+  // Track for analytics
+  const entryRef = useRef(Date.now());
+  useEffect(() => {
+    track('demo_enter', { scenario: scenario.id });
+  }, [scenario.id]);
+
+  // Auto-scroll on phase change
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 150);
+  }, []);
+
+  useEffect(() => { scrollToBottom(); }, [phase, visibleWorkers, scrollToBottom]);
+
+  // Auto-advance for non-interactive phases
+  const advance = useCallback((nextPhase: DemoPhase, delay: number) => {
+    const t = setTimeout(() => setPhase(nextPhase), delay);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Phase: analysis → show v0 then pause at q1
+  useEffect(() => {
+    if (phase === 'analysis') {
+      setSnapshots([scenario.analysis]);
+      return advance('q1', 1200);
+    }
+  }, [phase, scenario.analysis, advance]);
+
+  // Phase: update1 → apply Q1 patch, show diff, then pause at q2
+  useEffect(() => {
+    if (phase !== 'update1' || !q1Answer) return;
+    const effect = scenario.q1.effects[q1Answer];
+    if (effect) {
+      setSnapshots(s => {
+        const prev = s[s.length - 1];
+        return [...s, applyPatch(prev, effect.snapshotPatch)];
+      });
+      setDmKey(effect.dmKey);
+    }
+    return advance('q2', 1500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, q1Answer]);
+
+  // Phase: update2 → apply Q2 patch, show diff, then move to workers
+  useEffect(() => {
+    if (phase !== 'update2' || !q2Answer) return;
+    const effect = scenario.q2.effects[q2Answer];
+    if (effect) {
+      setSnapshots(s => {
+        const prev = s[s.length - 1];
+        return [...s, applyPatch(prev, effect.snapshotPatch)];
+      });
+    }
+    return advance('workers', 1500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, q2Answer]);
+
+  // Phase: workers → stagger reveal
+  useEffect(() => {
+    if (phase !== 'workers') return;
+    setVisibleWorkers(0);
+    const total = scenario.workers.length;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const delays = [800, 1400, 2000]; // stagger
+    for (let i = 0; i < total; i++) {
+      timers.push(setTimeout(() => setVisibleWorkers(i + 1), delays[i]));
+    }
+    timers.push(setTimeout(() => setPhase('draft'), delays[total - 1] + 800));
+    return () => timers.forEach(clearTimeout);
+  }, [phase, scenario.workers.length]);
+
+  // Phase: draft → auto to dm
+  useEffect(() => {
+    if (phase === 'draft') {
+      // Initialize concerns from DM variant
+      const dm = scenario.dmVariants[dmKey];
+      if (dm) {
+        setConcerns(dm.concerns.map(c => ({ ...c, applied: false })));
+      }
+      return advance('dm', 2000);
+    }
+  }, [phase, scenario.dmVariants, dmKey, advance]);
+
+  // Handlers
+  const handleQ1 = (v: string) => {
+    setQ1Answer(v);
+    track('demo_q1', { scenario: scenario.id, answer: v });
+    setTimeout(() => setPhase('update1'), 400);
+  };
+
+  const handleQ2 = (v: string) => {
+    setQ2Answer(v);
+    track('demo_q2', { scenario: scenario.id, answer: v });
+    setTimeout(() => setPhase('update2'), 400);
+  };
+
+  const handleToggle = (i: number) => {
+    setConcerns(prev => prev.map((c, j) => j === i ? { ...c, applied: !c.applied } : c));
+  };
+
+  const handleDMDone = () => {
+    track('demo_complete', {
+      scenario: scenario.id,
+      q1: q1Answer,
+      q2: q2Answer,
+      concerns_applied: concerns.filter(c => c.applied).length,
+      time_ms: Date.now() - entryRef.current,
+    });
+    setPhase('final');
+  };
+
+  const currentSnapshot = snapshots[snapshots.length - 1] || null;
+  const prevSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
+  const dm = scenario.dmVariants[dmKey];
+  const isDone = phase === 'final';
+  const finalContent = buildFinal(scenario, concerns);
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] shrink-0 bg-[var(--surface)]/80 backdrop-blur-sm z-10">
+        <button onClick={onBack} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+          &larr; 돌아가기
+        </button>
+        <span className="text-[11px] text-[var(--text-tertiary)]">
+          {scenario.icon} {scenario.title} 데모
+        </span>
+        <div className="w-16" />
+      </div>
+
+      {/* Scrollable content */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-5 md:px-6 py-6 space-y-5">
+
+          {/* 1. Typing input */}
+          {phaseGte(phase, 'typing') && (
+            <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} />
+          )}
+
+          {/* 2. Team entrance */}
+          {phaseGte(phase, 'team') && (
+            <TeamEntrance scenario={scenario} onDone={() => setPhase('analysis')} />
+          )}
+
+          {/* 3. Analysis card (v0) */}
+          {phaseGte(phase, 'analysis') && currentSnapshot && (
+            <DemoAnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
+          )}
+
+          {/* 4. Q1 */}
+          {phase === 'q1' && (
+            <DemoQuestionCard
+              text={scenario.q1.question.text}
+              subtext={scenario.q1.question.subtext}
+              options={scenario.q1.question.options || []}
+              onSelect={handleQ1}
+            />
+          )}
+
+          {/* Q1 answer pill */}
+          {q1Answer && phaseGte(phase, 'update1') && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+              <Check size={10} className="text-[var(--accent)]" />
+              <span className="text-[var(--text-primary)] font-medium">{q1Answer}</span>
+            </motion.div>
+          )}
+
+          {/* 5. Q2 */}
+          {phase === 'q2' && (
+            <DemoQuestionCard
+              text={scenario.q2.question.text}
+              subtext={scenario.q2.question.subtext}
+              options={scenario.q2.question.options || []}
+              onSelect={handleQ2}
+            />
+          )}
+
+          {/* Q2 answer pill */}
+          {q2Answer && phaseGte(phase, 'update2') && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+              <Check size={10} className="text-[var(--accent)]" />
+              <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
+            </motion.div>
+          )}
+
+          {/* 6. Workers */}
+          {phaseGte(phase, 'workers') && (
+            <>
+              <WorkerMiniBar scenario={scenario} visibleCount={visibleWorkers} />
+              {scenario.workers.slice(0, visibleWorkers).map((w, i) => (
+                <DemoWorkerReport key={w.persona.id} worker={w} />
+              ))}
+            </>
+          )}
+
+          {/* 7. Draft */}
+          {phaseGte(phase, 'draft') && (
+            <DemoDraftCard draft={scenario.draft} />
+          )}
+
+          {/* Transition: draft → dm */}
+          {phaseGte(phase, 'dm') && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
+              className="flex items-center gap-4 py-3">
+              <div className="flex-1 h-px bg-[var(--accent)]/15" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <UserCheck size={12} className="text-[var(--accent)]/60" />
+                <span className="text-[11px] text-[var(--text-secondary)] font-medium">의사결정권자가 뭐라고 할까?</span>
+              </div>
+              <div className="flex-1 h-px bg-[var(--accent)]/15" />
+            </motion.div>
+          )}
+
+          {/* 8. DM Feedback */}
+          {phaseGte(phase, 'dm') && dm && (
+            <DemoDMFeedback
+              fb={{ ...dm, concerns }}
+              onToggle={handleToggle}
+              onDone={handleDMDone}
+              showDoneButton={phase !== 'final'}
+            />
+          )}
+
+          {/* 9. Final */}
+          {phase === 'final' && (
+            <>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
+                className="flex items-center justify-center gap-2 py-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+                  <Check size={14} className="text-white" />
+                </div>
+                <p className="text-[14px] font-medium text-[var(--text-primary)]">
+                  {concerns.filter(c => c.applied).length > 0
+                    ? `피드백 ${concerns.filter(c => c.applied).length}건 반영 완료`
+                    : '초안 그대로 완성'}
+                </p>
+              </motion.div>
+              <AnimatePresence mode="wait">
+                <DemoFinalCard key={concerns.map(c => c.applied ? '1' : '0').join('')} content={finalContent} />
+              </AnimatePresence>
+            </>
+          )}
+
+          <div ref={bottomRef} className="h-4" />
+        </div>
+      </div>
+
+      {/* Bottom CTA */}
+      <div className={`shrink-0 border-t border-[var(--border-subtle)] bg-[var(--surface)] transition-all duration-500 ${
+        isDone ? 'shadow-[var(--glow-gold)]' : ''
+      }`}>
+        {/* Phase progress dots */}
+        <div className="max-w-2xl mx-auto px-5 pt-3 flex items-center justify-center gap-1.5">
+          {(['상황 파악', '질문', '팀 작업', '피드백', '완성'] as const).map((label, i) => {
+            const milestones: DemoPhase[] = ['analysis', 'q2', 'workers', 'dm', 'final'];
+            const reached = phaseGte(phase, milestones[i]);
+            const current = i === milestones.findIndex(m => !phaseGte(phase, m)) || (isDone && i === milestones.length - 1);
+            return (
+              <div key={i} className="flex items-center gap-1.5">
+                {i > 0 && <div className={`w-4 h-px transition-colors duration-500 ${reached ? 'bg-[var(--accent)]/40' : 'bg-[var(--border-subtle)]'}`} />}
+                <div className={`flex items-center gap-1 transition-all duration-300 ${current ? 'opacity-100' : reached ? 'opacity-60' : 'opacity-25'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${reached ? 'bg-[var(--accent)]' : 'bg-[var(--text-tertiary)]'}`} />
+                  <span className={`text-[9px] ${current ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-tertiary)]'}`}>{label}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="max-w-2xl mx-auto px-5 pb-3 pt-2.5 flex items-center justify-between gap-3">
+          <p className="text-[12px] text-[var(--text-secondary)]">
+            {isDone ? '내 상황으로 해보면 어떨까요?' : ''}
+          </p>
+          <button onClick={onStartReal}
+            className={`inline-flex items-center gap-2 px-6 py-3 text-white rounded-full text-[14px] font-semibold cursor-pointer min-h-[44px] transition-all duration-300 ${
+              isDone ? 'shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px]' : 'opacity-60 hover:opacity-90'
+            }`}
+            style={{ background: 'var(--gradient-gold)' }}>
+            내 상황으로 시작하기 <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

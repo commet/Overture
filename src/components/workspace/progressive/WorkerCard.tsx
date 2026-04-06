@@ -279,6 +279,8 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
               {isApproved && <span className="ml-2 text-[11px] text-emerald-600 font-medium">반영</span>}
               {isRejected && <span className="ml-2 text-[11px] text-red-500 font-medium">제외</span>}
             </p>
+            {/* Task name */}
+            <p className="text-[11px] text-[var(--accent)] mt-0.5">{worker.task}</p>
 
             {/* Completion note — persona's voice */}
             {worker.completion_note && (
