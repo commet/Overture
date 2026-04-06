@@ -7,12 +7,62 @@ import Link from 'next/link';
 import { ChatMessage } from './ChatMessage';
 import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
-import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext } from '@/lib/boss/boss-prompt';
+import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext, type BossMood } from '@/lib/boss/boss-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { applyBossCalibration, applyExplicitCalibration } from '@/lib/observation-engine';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
+
+// ─── 대화 온도 추적 ───
+
+type Reaction = 'strong' | 'weak' | 'emotional' | 'logical' | 'neutral';
+
+const STRONG_SIGNALS = ['데이터', '숫자', '근거', '조사', '사례', '계획', '대안', '비교', '분석', '수치', '기한', '마감'];
+const WEAK_SIGNALS = ['그냥', '모르겠', '아마', '일단', '좀', '글쎄', '아직'];
+const EMOTIONAL_SIGNALS = ['너무', '진짜', '솔직히', '힘들', '지쳐', '불안', '걱정', '화나', '답답'];
+const LOGICAL_SIGNALS = ['왜냐하면', '이유는', '근거는', '기준', '원칙', '합리', '논리', '따지면'];
+
+function classifyReaction(text: string): Reaction {
+  const t = text.toLowerCase();
+  const strong = STRONG_SIGNALS.filter(kw => t.includes(kw)).length;
+  const weak = WEAK_SIGNALS.filter(kw => t.includes(kw)).length;
+  const emotional = EMOTIONAL_SIGNALS.filter(kw => t.includes(kw)).length;
+  const logical = LOGICAL_SIGNALS.filter(kw => t.includes(kw)).length;
+
+  if (strong >= 2 || logical >= 1) return 'logical';
+  if (emotional >= 2) return 'emotional';
+  if (strong >= 1) return 'strong';
+  if (weak >= 2) return 'weak';
+  return 'neutral';
+}
+
+function updateMood(current: BossMood, reaction: Reaction, round: number): BossMood {
+  // 이미 결론 상태면 유지
+  if (current === 'convinced' || current === 'rejected') return current;
+
+  // 반응에 따른 mood 전환
+  if (reaction === 'logical' || reaction === 'strong') {
+    if (current === 'cooling') return 'neutral'; // 만회
+    return 'warming';
+  }
+  if (reaction === 'weak') {
+    if (current === 'warming') return 'neutral'; // 아까 좋았는데...
+    return 'cooling';
+  }
+  if (reaction === 'emotional') {
+    // 감정적 접근: 타입에 따라 다르지만, 일단 neutral 유지
+    return current;
+  }
+
+  // 5라운드 이상이면 현재 mood에서 결론으로
+  if (round >= 5) {
+    if (current === 'warming') return 'convinced';
+    if (current === 'cooling') return 'rejected';
+  }
+
+  return current;
+}
 
 // 업무/의사결정 관련 대화인지 감지 (키워드 3개 이상 매칭 시 true)
 const WORK_SIGNALS = [
@@ -52,6 +102,8 @@ export function BossChat() {
   const [ctaDismissed, setCtaDismissed] = useState(false);
   const [bossState, setBossState] = useState<'idle' | 'reading' | 'typing'>('idle');
   const [calibrationStep, setCalibrationStep] = useState<'none' | 'similarity' | 'detail' | 'done'>('none');
+  const [bossMood, setBossMood] = useState<BossMood>('neutral');
+  const [verdict, setVerdict] = useState<{ verdict: string; reason: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -88,7 +140,18 @@ export function BossChat() {
     if (!typeData) return;
 
     const isFirst = chatMessages.length === 1;
-    const contextSuffix = isFirst ? buildFirstMessageContext() : buildFollowUpContext();
+    const round = Math.floor(chatMessages.filter(m => m.role === 'user').length);
+
+    // 유저 반응에서 mood 업데이트 (마지막 유저 메시지 기준)
+    const lastUserMsg = [...chatMessages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg && !isFirst) {
+      const reaction = classifyReaction(lastUserMsg.content);
+      setBossMood(prev => updateMood(prev, reaction, round));
+    }
+
+    const contextSuffix = isFirst
+      ? buildFirstMessageContext()
+      : buildFollowUpContext(round, bossMood);
 
     // Agent에서 로드된 boss면 agent 프롬프트 사용 (Lv.2+ observation 주입)
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
@@ -112,7 +175,19 @@ export function BossChat() {
       { system, maxTokens: 500, signal: abortRef.current.signal },
       {
         onToken: (text) => updateStreamingText(text),
-        onComplete: () => { commitAssistantMessage(); setBossState('idle'); },
+        onComplete: () => {
+          // Verdict JSON 추출 (응답 끝에 있을 수 있음)
+          const raw = useBossStore.getState().streamingText;
+          const verdictMatch = raw.match(/\{"verdict"\s*:\s*"(approved|rejected|conditional)"\s*,\s*"reason"\s*:\s*"([^"]+)"\s*\}/);
+          if (verdictMatch) {
+            setVerdict({ verdict: verdictMatch[1], reason: verdictMatch[2] });
+            // JSON을 대화에서 제거
+            const clean = raw.replace(verdictMatch[0], '').trim();
+            useBossStore.getState().updateStreamingText(clean);
+          }
+          commitAssistantMessage();
+          setBossState('idle');
+        },
         onError: async (err) => {
           const msg = err instanceof Error ? err.message : String(err);
           const isOverloaded = msg.includes('과부하') || msg.includes('503') || msg.includes('529') || msg.includes('서버');
@@ -262,6 +337,26 @@ export function BossChat() {
                   <span /><span /><span />
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+        {/* Verdict 카드 — boss가 결론을 내렸을 때 */}
+        {verdict && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="bc-verdict"
+            data-result={verdict.verdict}
+          >
+            <div className="bc-verdict-icon">
+              {verdict.verdict === 'approved' ? '✅' : verdict.verdict === 'conditional' ? '🤔' : '❌'}
+            </div>
+            <div className="bc-verdict-body">
+              <p className="bc-verdict-label">
+                {verdict.verdict === 'approved' ? '승인' : verdict.verdict === 'conditional' ? '조건부 승인' : '반려'}
+              </p>
+              <p className="bc-verdict-reason">{verdict.reason}</p>
             </div>
           </motion.div>
         )}

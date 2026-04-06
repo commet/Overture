@@ -1041,6 +1041,41 @@ button, a, input, textarea {
   font-style: italic;
 }
 
+/* ── Verdict card ── */
+.bc-verdict {
+  margin: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1.5px solid var(--border);
+}
+.bc-verdict[data-result="approved"] {
+  background: rgba(29, 125, 63, 0.06);
+  border-color: rgba(29, 125, 63, 0.2);
+}
+.bc-verdict[data-result="conditional"] {
+  background: rgba(184, 150, 62, 0.06);
+  border-color: rgba(184, 150, 62, 0.2);
+}
+.bc-verdict[data-result="rejected"] {
+  background: rgba(220, 53, 69, 0.06);
+  border-color: rgba(220, 53, 69, 0.2);
+}
+.bc-verdict-icon { font-size: 24px; line-height: 1; }
+.bc-verdict-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.bc-verdict-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* ── Calibration ── */
 .bc-calibration {
   margin: 0 16px 8px;

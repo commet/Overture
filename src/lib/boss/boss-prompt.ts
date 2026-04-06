@@ -85,13 +85,39 @@ export function buildFirstMessageContext(): string {
 }
 
 /**
- * 후속 대화용. 이전 대화 맥락이 messages 배열에 이미 있으므로
- * 시스템 프롬프트는 동일하게 유지.
+ * 후속 대화용 — 대화 라운드 + 온도에 따라 boss 행동 변화.
  */
-export function buildFollowUpContext(): string {
-  return `\n\n## 상황
-대화가 계속되고 있습니다. 이전 맥락을 이어가세요.`;
+export function buildFollowUpContext(round: number, mood: BossMood): string {
+  // 대화 단계별 boss 행동 가이드
+  const phaseGuide = round <= 2
+    ? '아직 탐색 중이다. 부하직원의 의도를 파악하려고 질문을 던져라.'
+    : round <= 4
+    ? '대화가 깊어지고 있다. 부하직원의 논리가 충분한지 판단하라.'
+    : '대화가 길어졌다. 곧 결론을 내야 한다. 한두 번 더 교환 후 판정을 내려라.';
+
+  // 온도별 태도
+  const moodGuide: Record<BossMood, string> = {
+    neutral: '아직 판단 중이다. 중립적으로 듣고 있다.',
+    warming: '부하직원의 말에 일리가 있다. 조금 누그러졌지만 아직 확신은 없다. 관심을 보여라.',
+    cooling: '부하직원의 논리가 약하다. 더 날카롭게 질문하고 압박하라. 실망감을 보여라.',
+    convinced: '충분히 납득됐다. 승인 방향으로 가되, 조건이나 주의사항을 붙여라.',
+    rejected: '안 된다고 판단했다. 이유를 설명하고, 다음에 뭘 가져오면 되는지 알려줘라.',
+  };
+
+  return `\n\n## 대화 상태
+- 라운드: ${round}회째 교환
+- ${phaseGuide}
+- 현재 기분: ${moodGuide[mood]}
+
+## 중요
+- 대화가 5회 이상이면 자연스럽게 결론으로 이끌어라.
+- 결론을 내릴 때 JSON 블록을 응답 끝에 추가하라: \`{"verdict":"approved"|"rejected"|"conditional","reason":"한 줄 이유"}\`
+- 결론 전에는 JSON을 넣지 마라. 대화만 하라.
+- 부하직원이 좋은 포인트를 내면 인정해줘라 ("오 그건 생각 못했네", "그 부분은 괜찮은데").
+- 약한 포인트에는 구체적으로 왜 약한지 짚어라.`;
 }
+
+export type BossMood = 'neutral' | 'warming' | 'cooling' | 'convinced' | 'rejected';
 
 /**
  * Agent 데이터에서 Boss 시스템 프롬프트 생성.
