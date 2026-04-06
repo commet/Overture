@@ -9,6 +9,7 @@
  */
 
 import type { TaskType, ContextDomain, OutputType } from './task-classifier';
+import { getCapabilityDelta } from './capability-tuner';
 
 /* ─── Types ─── */
 
@@ -197,9 +198,14 @@ export function scoreAgentForTask(
   const domainScore = rankScore(contextDomain, cap.domains);
   const outputScore = rankScore(outputType, cap.outputTypes);
 
-  return (
+  const baseScore =
     taskScore * WEIGHTS.taskType +
     domainScore * WEIGHTS.domain +
-    outputScore * WEIGHTS.output
-  );
+    outputScore * WEIGHTS.output;
+
+  // 자동 튜닝 보정치 적용 (AutoAgent 패턴)
+  // hit-rate 데이터가 쌓이면 capability-tuner가 이 값을 조정
+  const tuningDelta = getCapabilityDelta(agentId, taskType);
+
+  return baseScore + tuningDelta;
 }

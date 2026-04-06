@@ -7,6 +7,7 @@
  */
 
 import { getStorage, setStorage } from '@/lib/storage';
+import type { TaskType } from './task-classifier';
 
 /* ─── Types ─── */
 
@@ -54,6 +55,16 @@ export function recordHitReaction(
   // 최근 200건만 유지 (메모리 관리)
   if (records.length > 200) records.splice(0, records.length - 200);
   saveRecords(records);
+
+  // 자동 튜닝 트리거: 10건마다 capability 재보정
+  const agentRecords = records.filter(r => r.agent_id === agentId);
+  if (agentRecords.length % 10 === 0) {
+    // 동적 import로 순환 참조 방지
+    import('./capability-tuner').then(({ recalibrateCapabilities }) => {
+      const allTaskTypes: TaskType[] = ['research', 'analysis', 'synthesis', 'strategy', 'calculation', 'writing', 'critique', 'design', 'legal_review', 'planning'];
+      recalibrateCapabilities([agentId], allTaskTypes);
+    }).catch(() => {});
+  }
 }
 
 /**
