@@ -17,7 +17,7 @@
  */
 
 import { getStorage, setStorage } from '@/lib/storage';
-import { getAgentHitRate } from './hit-rate';
+import { getAgentHitRate, getAgentTaskTypeHitRate } from './hit-rate';
 import type { TaskType } from './task-classifier';
 
 /* ─── Types ─── */
@@ -70,7 +70,8 @@ export function recalibrateCapabilities(agentIds: string[], taskTypes: TaskType[
 
   for (const agentId of agentIds) {
     for (const taskType of taskTypes) {
-      const hitRate = getAgentHitRate(agentId, 20); // 최근 20건
+      // task type별 히트레이트 사용 (전체 대신 per-type)
+      const hitRate = getAgentTaskTypeHitRate(agentId, taskType, 20);
       if (hitRate.total < 5) continue; // 데이터 부족하면 건너뜀
 
       const existing = adjustments.find(a => a.agentId === agentId && a.taskType === taskType);

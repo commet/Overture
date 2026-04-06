@@ -170,18 +170,19 @@ import { getSkillSet, getFrameworkSkill, LEVEL_CONFIGS, numericLevelToAgentLevel
 import type { AgentLevel } from '@/stores/types';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
+import { selectContextStrategy, assembleContext, type ContextStrategy } from '@/lib/context-strategy';
 
 export function buildWorkerTaskPrompt(
   task: string,
   expectedOutput: string,
   who: 'ai' | 'human' | 'both',
-  context: { problemText: string; realQuestion: string; skeleton: string[]; hiddenAssumptions: string[]; qaHistory: Array<{ q: string; a: string }> },
+  context: { problemText: string; realQuestion: string; skeleton: string[]; hiddenAssumptions: string[]; qaHistory: Array<{ q: string; a: string }>; peerResults?: string },
   persona?: WorkerPersona,
   level: AgentLevel = 'junior',
   agent?: Agent,
-  framework?: string,  // orchestrator가 배정한 프레임워크 (있으면 해당 프레임워크만 주입)
+  framework?: string,
+  taskType?: string,  // task-classifier의 TaskType (context 전략 결정에 사용)
 ): { system: string; user: string } {
-  const qaText = context.qaHistory.map((qa, i) => `Q${i + 1}: ${qa.q}\nA${i + 1}: ${qa.a}`).join('\n');
   // Agent 레벨 반영: agent가 있으면 numeric level → AgentLevel 변환
   const effectiveLevel = agent ? numericLevelToAgentLevel(agent.level) : level;
   const levelConfig = LEVEL_CONFIGS[effectiveLevel];
@@ -244,13 +245,27 @@ ${outputSource.outputFormat}`);
   systemParts.push(`\nKorean only. 바로 쓸 수 있는 결과물을 만들어.
 ${who === 'both' ? '참고: 이 작업은 사람과 협업입니다. 80% 완성도로 만들되, [결정 필요] 표시로 사용자 판단이 필요한 부분을 명시하세요.' : ''}`);
 
+  // ─── User prompt: 적응형 context 전략 기반 조립 ───
+  // task type에 따라 에이전트가 받는 정보의 종류와 양이 달라짐
+  const ctxStrategy = taskType
+    ? selectContextStrategy(taskType as import('./task-classifier').TaskType, agent?.id)
+    : { strategy: 'full' as ContextStrategy, reason: 'taskType 미지정 → full fallback' };
+
+  const assembled = assembleContext(ctxStrategy.strategy, {
+    problemText: sanitize(context.problemText),
+    realQuestion: sanitize(context.realQuestion),
+    skeleton: context.skeleton.map(s => sanitize(s)),
+    hiddenAssumptions: context.hiddenAssumptions.map(a => sanitize(a)),
+    qaHistory: context.qaHistory,
+    peerResults: context.peerResults,
+  });
+
+  const contextText = assembled.userPromptParts.join('\n\n');
+
   return {
     system: systemParts.join('\n'),
 
-    user: `프로젝트 배경: <user-data>${sanitize(context.problemText)}</user-data>
-핵심 질문: ${sanitize(context.realQuestion)}
-뼈대: ${context.skeleton.map(s => sanitize(s)).join(' / ')}
-${qaText ? `Q&A:\n${qaText}` : ''}
+    user: `${contextText}
 
 ═══ 당신의 할 일 ═══
 작업: ${task}

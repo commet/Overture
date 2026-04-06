@@ -26,6 +26,7 @@ export interface WorkerContext {
   skeleton: string[];
   hiddenAssumptions: string[];
   qaHistory: Array<{ q: string; a: string }>;
+  peerResults?: string;  // 이전 스테이지 완료 결과 (context-strategy의 'focused' 모드에서 사용)
   sessionId?: string;
 }
 
@@ -62,7 +63,8 @@ export async function runWorkerTask(
     task.persona ?? undefined,
     level,
     agent,
-    task.framework,  // orchestrator가 배정한 프레임워크
+    task.framework,
+    task.task_type,   // context 전략 결정용
   );
 
   // 에이전트 도구 컨텍스트 (메모리 회상, 관찰 요약 등)
@@ -288,7 +290,7 @@ export async function runPipeline(
 
         enrichedContext = {
           ...context,
-          // 이전 스테이지 결과를 hiddenAssumptions에 추가 (프롬프트에 자연스럽게 주입)
+          peerResults: priorText,  // context-strategy 'focused' 모드에서 사용
           qaHistory: [
             ...context.qaHistory,
             { q: '이전 팀원들의 분석 결과', a: priorText },

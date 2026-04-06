@@ -17,6 +17,7 @@ export interface HitRecord {
   task_id: string;
   reaction: 'hit' | 'miss' | 'irrelevant';
   domain_tag?: string;
+  task_type?: string;   // task-classifier의 TaskType (per-type 자기개선용)
   created_at: string;
 }
 
@@ -42,6 +43,7 @@ export function recordHitReaction(
   taskId: string,
   reaction: 'hit' | 'miss' | 'irrelevant',
   domainTag?: string,
+  taskType?: string,
 ): void {
   const records = getRecords();
   records.push({
@@ -50,6 +52,7 @@ export function recordHitReaction(
     task_id: taskId,
     reaction,
     domain_tag: domainTag,
+    task_type: taskType,
     created_at: new Date().toISOString(),
   });
   // 최근 200건만 유지 (메모리 관리)
@@ -82,6 +85,26 @@ export function getAgentHitRate(
   const hits = records.filter(r => r.reaction === 'hit').length;
   const total = records.length;
   const rate = total > 0 ? hits / total : 0.5; // 데이터 없으면 중립
+
+  return { hits, total, rate };
+}
+
+/**
+ * 에이전트 + task type별 히트레이트.
+ * capability-tuner에서 per-type 보정에 사용.
+ */
+export function getAgentTaskTypeHitRate(
+  agentId: string,
+  taskType: string,
+  windowSize: number = 20,
+): { hits: number; total: number; rate: number } {
+  const records = getRecords()
+    .filter(r => r.agent_id === agentId && r.task_type === taskType)
+    .slice(-windowSize);
+
+  const hits = records.filter(r => r.reaction === 'hit').length;
+  const total = records.length;
+  const rate = total > 0 ? hits / total : 0.5;
 
   return { hits, total, rate };
 }

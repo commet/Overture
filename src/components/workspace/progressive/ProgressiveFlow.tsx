@@ -902,13 +902,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           .then(r => { if (r) setCmReview(r); })
           .catch(() => {});
 
-        // Critical stakes: Cross-Agent Debate (비차단)
+        // Critical stakes: Cross-Agent Debate (mix 전에 실행하여 결과를 반영)
         const stages = session?.stages;
         if (stages && stages.length > 1) {
           const debateWorkers = cmWorkers.map(w => ({ ...w, framework: session!.workers.find(ww => ww.persona?.name === w.agentName)?.framework || null }));
-          runDebate(session!.problem_text, debateWorkers)
-            .then(r => { if (r) setDebateResult(r); })
-            .catch(() => {});
+          try {
+            const debateRes = await runDebate(session!.problem_text, debateWorkers);
+            if (debateRes) {
+              setDebateResult(debateRes);
+              // debate 결과를 workerResults에 추가하여 mix에 반영
+              workerResults.push({
+                task: `[팀 내 반론] ${debateRes.targetAgent}의 분석에 대한 비판`,
+                result: `${debateRes.challenge}\n\n약점: ${debateRes.weakestClaim}\n\n대안: ${debateRes.alternativeView}`,
+              });
+            }
+          } catch { /* debate 실패해도 mix는 진행 */ }
         }
       }
 

@@ -11,6 +11,7 @@ import { classifyInput } from './orchestrator-classify';
 import type { InputClassification } from './orchestrator-classify';
 import { selectAgents } from './orchestrator-select';
 import { assignFramework } from './orchestrator-framework';
+import { classifySteps } from './task-classifier';
 
 /* ─── Types ─── */
 
@@ -21,7 +22,8 @@ export interface PlannedWorker {
   expectedOutput: string;
   who: string;
   stepIndex: number;
-  stageId: string;             // 소속 스테이지
+  stageId: string;
+  taskType: string | null;     // task-classifier의 TaskType (context 전략 결정)
 }
 
 export interface OrchestratorResult {
@@ -101,11 +103,18 @@ export function planWorkers(
   // 2. 에이전트 선택 (3-layer: task classification → capability scoring → experience)
   const agentMap = selectAgents(steps, classification, unlockedAgents, observations, problemText);
 
-  // 3. 프레임워크 배정
+  // 3. Task 분류 (context 전략 결정용)
+  const taskClassifications = classifySteps(
+    steps.map(s => ({ task: s.task, output: s.output })),
+    problemText,
+  );
+
+  // 4. 프레임워크 배정 + task type 설정
   const rawWorkers: PlannedWorker[] = steps.map((step, i) => {
     const agent = agentMap.get(i);
     const agentId = agent?.id || '';
     const framework = agent ? assignFramework(agentId, step.task, classification) : null;
+    const tc = taskClassifications[i];
 
     return {
       agentId,
@@ -114,7 +123,8 @@ export function planWorkers(
       expectedOutput: step.output,
       who: step.who,
       stepIndex: i,
-      stageId: 'stage_1', // 기본값, buildStages에서 재배정
+      stageId: 'stage_1',
+      taskType: tc?.taskType || null,
     };
   });
 

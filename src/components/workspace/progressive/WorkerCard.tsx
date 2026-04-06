@@ -8,12 +8,14 @@ import type { WorkerTask } from '@/stores/types';
 import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { recordHitReaction } from '@/lib/hit-rate';
+import { recordStrategyOutcome } from '@/lib/context-strategy';
+import { selectContextStrategy } from '@/lib/context-strategy';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
 /* ═══ Hit Reaction Bar — 자기개선 데이터 수집 ═══ */
 
-function HitReactionBar({ workerId, agentId }: { workerId: string; agentId?: string }) {
+function HitReactionBar({ workerId, agentId, taskType }: { workerId: string; agentId?: string; taskType?: string }) {
   const [reacted, setReacted] = useState<'hit' | 'miss' | 'irrelevant' | null>(null);
 
   if (!agentId || reacted) {
@@ -25,7 +27,12 @@ function HitReactionBar({ workerId, agentId }: { workerId: string; agentId?: str
   }
 
   const react = (reaction: 'hit' | 'miss' | 'irrelevant') => {
-    recordHitReaction(agentId, workerId, reaction);
+    recordHitReaction(agentId, workerId, reaction, undefined, taskType);
+    // context 전략 자기개선: 이 반응이 어떤 전략에서 나왔는지 기록
+    if (taskType) {
+      const strategy = selectContextStrategy(taskType as import('@/lib/task-classifier').TaskType, agentId);
+      recordStrategyOutcome(agentId, taskType as import('@/lib/task-classifier').TaskType, strategy.strategy, reaction === 'hit');
+    }
     setReacted(reaction);
   };
 
@@ -368,7 +375,7 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
             )}
 
             {/* Hit-rate: 이 분석이 도움이 됐는지 (자기개선 데이터 수집) */}
-            <HitReactionBar workerId={worker.id} agentId={worker.agent_id} />
+            <HitReactionBar workerId={worker.id} agentId={worker.agent_id} taskType={worker.task_type} />
           </div>
         </div>
       </motion.div>

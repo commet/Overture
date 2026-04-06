@@ -349,6 +349,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         level: numericLevelToAgentLevel(fallbackAgent.level),
         framework: pw.framework || undefined,
         stage_id: pw.stageId || undefined,
+        task_type: pw.taskType || undefined,
         stream_text: '',
         result: null,
         human_input: null,
