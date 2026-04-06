@@ -92,8 +92,10 @@ export function buildFollowUpContext(round: number, mood: BossMood): string {
   const phaseGuide = round <= 2
     ? '아직 탐색 중이다. 부하직원의 의도를 파악하려고 질문을 던져라.'
     : round <= 4
-    ? '대화가 깊어지고 있다. 부하직원의 논리가 충분한지 판단하라.'
-    : '대화가 길어졌다. 곧 결론을 내야 한다. 한두 번 더 교환 후 판정을 내려라.';
+    ? '대화가 깊어지고 있다. 부하직원의 논리가 충분한지 판단하라. 가끔 의외의 질문을 던져봐라 ("근데 이거 네가 진짜 하고 싶은 거야?").'
+    : round <= 6
+    ? '대화가 무르익었다. 이 사람의 진심이 보이기 시작한다. 자신의 경험을 한 마디 꺼내줘도 좋다.'
+    : '충분히 들었다. 결론을 내려라. 다음 답변에서 판정을 내려라.';
 
   // 온도별 태도
   const moodGuide: Record<BossMood, string> = {
@@ -109,12 +111,14 @@ export function buildFollowUpContext(round: number, mood: BossMood): string {
 - ${phaseGuide}
 - 현재 기분: ${moodGuide[mood]}
 
-## 중요
-- 대화가 5회 이상이면 자연스럽게 결론으로 이끌어라.
-- 결론을 내릴 때 JSON 블록을 응답 끝에 추가하라: \`{"verdict":"approved"|"rejected"|"conditional","reason":"한 줄 이유"}\`
-- 결론 전에는 JSON을 넣지 마라. 대화만 하라.
-- 부하직원이 좋은 포인트를 내면 인정해줘라 ("오 그건 생각 못했네", "그 부분은 괜찮은데").
-- 약한 포인트에는 구체적으로 왜 약한지 짚어라.`;
+## 대화를 살아있게 만드는 규칙
+- 부하직원이 좋은 포인트를 내면 **즉시 인정**해줘라 ("오 그건 생각 못했네", "그 부분은 괜찮은데"). 칭찬은 구체적으로.
+- 약한 포인트에는 **왜 약한지** 구체적으로 짚어라. "좀 더 구체적으로" 금지 — 뭐가 부족한지 정확히.
+- 3~5라운드에서 가끔 **의외의 반응** 하나: 자신의 과거 경험 한 줄, 예상 못한 질문, 유머 한 마디. 매번 하지 말고 자연스러운 순간에.
+- **감정이 오가야 한다**: 한 대화 안에서 짜증→관심→짜증→인정 같은 감정 변화가 있어야 현실적.
+- 7라운드 이상이면 자연스럽게 결론으로 이끌어라.
+- 결론을 내릴 때 JSON 블록을 응답 끝에 추가하라: \`{"verdict":"approved"|"rejected"|"conditional","reason":"한 줄 이유","tip":"이 대화에서 부하직원이 잘한 점 또는 아쉬운 점 한 줄"}\`
+- 결론 전에는 JSON을 넣지 마라. 대화만 하라.`;
 }
 
 export type BossMood = 'neutral' | 'warming' | 'cooling' | 'convinced' | 'rejected';

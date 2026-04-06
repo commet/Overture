@@ -55,8 +55,8 @@ function updateMood(current: BossMood, reaction: Reaction, round: number): BossM
     return current;
   }
 
-  // 5라운드 이상이면 현재 mood에서 결론으로
-  if (round >= 5) {
+  // 7라운드 이상이면 현재 mood에서 결론으로
+  if (round >= 7) {
     if (current === 'warming') return 'convinced';
     if (current === 'cooling') return 'rejected';
   }
@@ -103,7 +103,7 @@ export function BossChat() {
   const [bossState, setBossState] = useState<'idle' | 'reading' | 'typing'>('idle');
   const [calibrationStep, setCalibrationStep] = useState<'none' | 'similarity' | 'detail' | 'done'>('none');
   const [bossMood, setBossMood] = useState<BossMood>('neutral');
-  const [verdict, setVerdict] = useState<{ verdict: string; reason: string } | null>(null);
+  const [verdict, setVerdict] = useState<{ verdict: string; reason: string; tip?: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -163,10 +163,11 @@ export function BossChat() {
 
     abortRef.current = new AbortController();
 
-    // "읽는 중" → 짧은 딜레이 → "타이핑"
+    // "읽는 중" → 짧은 딜레이 → "타이핑" (첫 메시지는 빠르게)
     setBossState('reading');
     setStreaming(true);
-    await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+    const readDelay = isFirst ? 400 : 500 + Math.random() * 500;
+    await new Promise(r => setTimeout(r, readDelay));
     if (abortRef.current?.signal.aborted) return;
     setBossState('typing');
 
@@ -178,11 +179,13 @@ export function BossChat() {
         onComplete: () => {
           // Verdict JSON 추출 (응답 끝에 있을 수 있음)
           const raw = useBossStore.getState().streamingText;
-          const verdictMatch = raw.match(/\{"verdict"\s*:\s*"(approved|rejected|conditional)"\s*,\s*"reason"\s*:\s*"([^"]+)"\s*\}/);
-          if (verdictMatch) {
-            setVerdict({ verdict: verdictMatch[1], reason: verdictMatch[2] });
-            // JSON을 대화에서 제거
-            const clean = raw.replace(verdictMatch[0], '').trim();
+          const jsonMatch = raw.match(/\{[^{}]*"verdict"\s*:\s*"(approved|rejected|conditional)"[^{}]*\}/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              setVerdict({ verdict: parsed.verdict, reason: parsed.reason || '', tip: parsed.tip });
+            } catch { /* JSON 파싱 실패 시 무시 */ }
+            const clean = raw.replace(jsonMatch[0], '').trim();
             useBossStore.getState().updateStreamingText(clean);
           }
           commitAssistantMessage();
@@ -242,7 +245,15 @@ export function BossChat() {
       {/* Header — boss identity card */}
       <div className="bc-header">
         <div className="bc-profile-strip">
-          <div className="bc-avatar-ring" style={elementInfo ? { borderColor: elementInfo.color, boxShadow: `0 0 12px ${elementInfo.glow}` } : {}}>
+          <div className="bc-avatar-ring" style={{
+            borderColor: bossMood === 'warming' || bossMood === 'convinced' ? '#2d8a4e'
+              : bossMood === 'cooling' || bossMood === 'rejected' ? '#dc3545'
+              : elementInfo?.color || 'var(--border)',
+            boxShadow: bossMood === 'warming' ? '0 0 12px rgba(45,138,78,0.3)'
+              : bossMood === 'cooling' ? '0 0 12px rgba(220,53,69,0.2)'
+              : elementInfo ? `0 0 12px ${elementInfo.glow}` : 'none',
+            transition: 'border-color 0.6s, box-shadow 0.6s',
+          }}>
             <span className="bc-avatar-em">{typeData?.emoji || '👔'}</span>
           </div>
           <div className="bc-identity">
@@ -357,6 +368,9 @@ export function BossChat() {
                 {verdict.verdict === 'approved' ? '승인' : verdict.verdict === 'conditional' ? '조건부 승인' : '반려'}
               </p>
               <p className="bc-verdict-reason">{verdict.reason}</p>
+              {verdict.tip && (
+                <p className="bc-verdict-tip">💡 {verdict.tip}</p>
+              )}
             </div>
           </motion.div>
         )}
