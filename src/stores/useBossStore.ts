@@ -175,11 +175,7 @@ export const useBossStore = create<BossState>((set, get) => ({
   },
 
   reset: () => {
-    // 리셋 전 패시브 교정 적용 (대화가 있었으면)
-    const { loadedAgentId, messages } = get();
-    if (loadedAgentId && messages.length >= 4) {
-      applyBossCalibration(loadedAgentId, messages);
-    }
+    // 패시브 교정은 BossChat 언마운트 cleanup에서만 실행 (이중 호출 방지)
     set({ ...INITIAL_STATE });
   },
 

@@ -406,7 +406,7 @@ export function BossChat() {
             className="bc-textarea"
             rows={1}
             maxLength={500}
-            disabled={isStreaming}
+            disabled={isStreaming || calibrationStep !== 'none'}
           />
           <AnimatedPlaceholder
             texts={FOLLOW_UP_EXAMPLES}
@@ -417,7 +417,7 @@ export function BossChat() {
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isStreaming || calibrationStep !== 'none'}
             className="bc-send"
           >
             <Send size={15} />
