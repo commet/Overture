@@ -98,7 +98,7 @@ export function buildConcertmasterProfile(): ConcertmasterProfile {
   // Dominant strategy from recent performance
   const perf = analyzeStrategyPerformance();
   const dominant = perf.length > 0
-    ? perf.sort((a, b) => b.sample_count - a.sample_count)[0].strategy
+    ? [...perf].sort((a, b) => b.sample_count - a.sample_count)[0].strategy
     : null;
 
   const tier: 1 | 2 | 3 = sessionCount >= 10 && projectCount >= 2
@@ -112,15 +112,15 @@ export function buildConcertmasterProfile(): ConcertmasterProfile {
   if (sessionCount === 0) {
     const demoSeeds = getSignals().filter(s => s.signal_type === 'demo_seed');
     if (demoSeeds.length > 0) {
-      const latest = demoSeeds[demoSeeds.length - 1];
+      const latest = [...demoSeeds].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
       const d = latest.signal_data as Record<string, unknown>;
       demoSeedData = {
-        doubted_count: (d.doubted_count as number) || 0,
-        total_premises: (d.total_premises as number) || 3,
-        ai_only_steps: (d.ai_only_steps as number) || 0,
-        human_only_steps: (d.human_only_steps as number) || 0,
-        total_steps: (d.total_steps as number) || 4,
-        completed: (d.completed as boolean) || false,
+        doubted_count: typeof d.doubted_count === 'number' ? d.doubted_count : 0,
+        total_premises: typeof d.total_premises === 'number' ? d.total_premises : 3,
+        ai_only_steps: typeof d.ai_only_steps === 'number' ? d.ai_only_steps : 0,
+        human_only_steps: typeof d.human_only_steps === 'number' ? d.human_only_steps : 0,
+        total_steps: typeof d.total_steps === 'number' ? d.total_steps : 4,
+        completed: typeof d.completed === 'boolean' ? d.completed : false,
       };
     }
   }
@@ -147,10 +147,11 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
 
   // ── Tier 1+: Session insights (last strategy + pattern) ──
   const sessionInsights = getSessionInsights();
-  for (const si of sessionInsights) {
+  for (let idx = 0; idx < sessionInsights.length; idx++) {
+    const si = sessionInsights[idx];
     if (si.type === 'last_strategy') {
       insights.push({
-        id: 'session_last_strategy',
+        id: `session_last_strategy_${idx}`,
         category: 'pattern',
         message: si.message,
         tier: 1,
@@ -159,7 +160,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
     }
     if (si.type === 'pattern' && profile.tier >= 2) {
       insights.push({
-        id: 'session_pattern',
+        id: `session_pattern_${idx}`,
         category: 'pattern',
         message: si.message,
         tier: 2,
@@ -168,7 +169,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
     }
     if (si.type === 'tip') {
       insights.push({
-        id: 'session_tip',
+        id: `session_tip_${idx}`,
         category: 'growth',
         message: si.message,
         tier: 1,
@@ -332,13 +333,14 @@ export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfil
       candidates = [];
   }
   // Vitality coaching — max 1, only if vitality concerns exist (tier 2+)
+  // Insert at front so it survives the slice(0, 2) truncation
   if (profile.tier >= 2) {
     const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
     const latest = vitalityAssessments[vitalityAssessments.length - 1];
     if (latest && latest.signals?.length > 0) {
       const vc = getVitalityStepCoaching(step, latest.signals, vitalityAssessments.slice(0, -1));
       if (vc) {
-        candidates.push({ message: vc.message, detail: vc.detail, tone: vc.tone });
+        candidates.unshift({ message: vc.message, detail: vc.detail, tone: vc.tone });
       }
     }
   }
@@ -467,7 +469,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   if (profile.totalJudgments < 3) {
     // Cross-stage: check reframe for unverified assumptions (always show if available)
     const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
-    const latestReframe = reframeItems.filter(d => d.status === 'done').pop();
+    const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
     if (latestReframe?.analysis) {
       const uncertain = latestReframe.analysis.hidden_assumptions.filter(
         a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
@@ -513,14 +515,14 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
 
   // Cross-stage: check reframe for unverified assumptions
   const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
-  const latestReframe = reframeItems.filter(d => d.status === 'done').pop();
+  const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
   if (latestReframe?.analysis) {
     const uncertain = latestReframe.analysis.hidden_assumptions.filter(
       a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
     );
     if (uncertain.length > 0) {
       results.push({
-        message: `악보 해석에서 불확실한 가정 ${uncertain.length}건 — 실행 설계에 검증 단계를 포함하세요.`,
+        message: t('coaching.recast.uncertainAssumptions', { count: uncertain.length }),
         detail: uncertain.slice(0, 2).map(a => a.assumption).join(' / '),
       });
     }
@@ -561,7 +563,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
 
   // Cross-stage: check recast for key assumptions to test
   const recastItems = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []);
-  const latestRecast = recastItems.filter(o => o.status === 'done').pop();
+  const latestRecast = recastItems.filter(o => o.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
   if (latestRecast?.analysis?.key_assumptions) {
     const highImportance = latestRecast.analysis.key_assumptions.filter(ka => ka.importance === 'high');
     if (highImportance.length > 0) {
@@ -681,7 +683,7 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   // Check if there are active refine loops
   const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
   if (loops.length > 0) {
-    const activeLoop = loops[loops.length - 1];
+    const activeLoop = [...loops].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
     const iterationCount = Array.isArray(activeLoop?.iterations) ? activeLoop.iterations.length : 0;
 
     if (iterationCount > 0) {
@@ -759,15 +761,13 @@ export function buildLearningCurve(): LearningCurve {
   const sorted = [...dqScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   // ── DQ points with project names ──
-  const dq_points: LearningCurvePoint[] = sorted.map(s => {
-    const proj = projects.find(p => p.id === s.project_id);
-    return {
-      project_id: s.project_id,
-      project_name: proj?.name || '프로젝트',
-      overall_dq: s.overall_dq,
-      date: s.created_at,
-    };
-  });
+  const projectNameMap = new Map(projects.map(p => [p.id, p.name]));
+  const dq_points: LearningCurvePoint[] = sorted.map(s => ({
+    project_id: s.project_id,
+    project_name: projectNameMap.get(s.project_id) || '프로젝트',
+    overall_dq: s.overall_dq,
+    date: s.created_at,
+  }));
 
   // ── Element trends ──
   const element_trends: Record<string, number[]> = {};
@@ -825,8 +825,8 @@ export function buildLearningCurve(): LearningCurve {
     for (const assumption of item.analysis!.hidden_assumptions || []) {
       if (assumption.axis && assumption.axis in axisCounts) {
         axisCounts[assumption.axis]++;
+        totalAssumptions++;
       }
-      totalAssumptions++;
     }
   }
 
