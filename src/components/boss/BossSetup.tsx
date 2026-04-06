@@ -103,6 +103,7 @@ export function BossSetup() {
               <span className="bs-badge-name">{typeData.name}</span>
               <span className="bs-badge-sep">·</span>
               <span className="bs-badge-vibe">{typeData.bossVibe}</span>
+              <p className="bs-badge-trigger">⚡ 짜증 트리거: {typeData.triggers}</p>
             </motion.div>
           )}
         </AnimatePresence>

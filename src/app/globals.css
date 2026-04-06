@@ -597,10 +597,23 @@ button, a, input, textarea {
   display: flex;
   gap: 6px;
 }
+.bt-axis {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bt-desc {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.3;
+  min-height: 26px;
+  transition: color 0.2s;
+}
 
 .bt-pair {
   display: flex;
-  flex: 1;
   border-radius: 10px;
   background: var(--bg);
   border: 1px solid var(--border-subtle);
@@ -653,6 +666,13 @@ button, a, input, textarea {
 .bs-badge-name { font-weight: 600; color: var(--accent); }
 .bs-badge-sep { color: var(--border); }
 .bs-badge-vibe { color: var(--text-secondary); }
+.bs-badge-trigger {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
 
 /* Meta row (birth + gender) */
 .bs-meta-row {

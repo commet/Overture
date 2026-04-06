@@ -244,10 +244,10 @@ export function getAllTypes(): PersonalityType[] {
   return Object.values(PERSONALITY_TYPES);
 }
 
-/** 4축 설명 (토글 UI용) */
+/** 4축 설명 (토글 UI용) — boss 맥락 힌트 포함 */
 export const AXES = [
-  { key: 'ei' as const, left: { code: 'E', label: '외향', desc: '사람에게서 에너지' }, right: { code: 'I', label: '내향', desc: '혼자서 에너지' } },
-  { key: 'sn' as const, left: { code: 'S', label: '감각', desc: '현실과 사실 중심' }, right: { code: 'N', label: '직관', desc: '가능성과 패턴 중심' } },
-  { key: 'tf' as const, left: { code: 'T', label: '사고', desc: '논리와 원칙으로 판단' }, right: { code: 'F', label: '감정', desc: '사람과 가치로 판단' } },
-  { key: 'jp' as const, left: { code: 'J', label: '판단', desc: '계획적이고 체계적' }, right: { code: 'P', label: '인식', desc: '유연하고 즉흥적' } },
+  { key: 'ei' as const, left: { code: 'E', label: '외향', desc: '회의에서 말 많고 즉석 피드백' }, right: { code: 'I', label: '내향', desc: '메일/메시지로 지시, 조용히 관찰' } },
+  { key: 'sn' as const, left: { code: 'S', label: '감각', desc: '숫자·근거·사실 요구' }, right: { code: 'N', label: '직관', desc: '큰 그림·방향성 중시' } },
+  { key: 'tf' as const, left: { code: 'T', label: '사고', desc: '논리로 판단, 감정 별로' }, right: { code: 'F', label: '감정', desc: '분위기·관계 먼저 챙김' } },
+  { key: 'jp' as const, left: { code: 'J', label: '판단', desc: '계획·마감·체계 집착' }, right: { code: 'P', label: '인식', desc: '유연하고 즉흥적, "일단 해봐"' } },
 ] as const;

@@ -90,7 +90,7 @@ export function BossChat() {
 
     await callLLMStream(
       llmMessages,
-      { system, maxTokens: 300, signal: abortRef.current.signal },
+      { system, maxTokens: 500, signal: abortRef.current.signal },
       {
         onToken: (text) => updateStreamingText(text),
         onComplete: () => commitAssistantMessage(),
