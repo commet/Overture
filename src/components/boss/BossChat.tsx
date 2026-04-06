@@ -103,7 +103,7 @@ function isWorkRelated(messages: Array<{ role: string; content: string }>): bool
   return hits.length >= 3;
 }
 
-const FOLLOW_UP_EXAMPLES = [
+const FOLLOW_UP_NEUTRAL = [
   '그래도 저는 할 말은 해야겠는데요',
   '진짜요? 다른 팀은 안 그러던데',
   '그건 좀 아닌 것 같은데...',
@@ -111,6 +111,26 @@ const FOLLOW_UP_EXAMPLES = [
   '솔직히 말해도 되는 겁니까',
   '그 말씀은 좀 너무하신 것 같은데요',
 ];
+
+const FOLLOW_UP_WARMING = [
+  '구체적인 숫자를 더 준비해왔는데요',
+  '사실 이것 말고도 하나 더 말씀드릴 게 있어요',
+  '그 부분은 이렇게 해결할 수 있을 것 같습니다',
+  '감사합니다, 추가로 제안 하나만 더요',
+];
+
+const FOLLOW_UP_COOLING = [
+  '잠깐만요, 근거를 하나 더 말씀드려도 될까요',
+  '다른 각도에서 다시 설명드리겠습니다',
+  '제가 좀 더 준비해서 다시 말씀드릴게요',
+  '아, 그 부분은 제가 잘못 전달한 것 같습니다',
+];
+
+function getFollowUps(mood: BossMood): string[] {
+  if (mood === 'warming' || mood === 'convinced') return FOLLOW_UP_WARMING;
+  if (mood === 'cooling' || mood === 'rejected') return FOLLOW_UP_COOLING;
+  return FOLLOW_UP_NEUTRAL;
+}
 
 export function BossChat() {
   const {
@@ -553,7 +573,7 @@ export function BossChat() {
             disabled={isStreaming || calibrationStep !== 'none'}
           />
           <AnimatedPlaceholder
-            texts={FOLLOW_UP_EXAMPLES}
+            texts={getFollowUps(bossMood)}
             visible={!input && !isStreaming}
             interval={3500}
             className="bc-placeholder"
