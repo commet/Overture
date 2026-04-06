@@ -9,6 +9,7 @@ import { ReframeStep } from '@/components/workspace/ReframeStep';
 import { RecastStep } from '@/components/workspace/RecastStep';
 import { RehearseStep } from '@/components/workspace/RehearseStep';
 import { RefineStep } from '@/components/workspace/RefineStep';
+import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
 import { WorkerPanel, WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
@@ -16,7 +17,7 @@ import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { runInitialAnalysis } from '@/lib/progressive-engine';
-import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle, Layers } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { RefineLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
@@ -30,6 +31,21 @@ import { InteractiveDemo } from '@/components/workspace/InteractiveDemo';
 import { DEMO_SCENARIOS } from '@/lib/demo-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
+
+/* ─── Step-level error fallback ─── */
+function StepErrorFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <AlertTriangle size={28} className="text-[var(--text-tertiary)] mb-3" />
+      <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-1">이 단계에서 오류가 발생했습니다</p>
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">다른 단계는 정상적으로 사용할 수 있습니다.</p>
+      <button onClick={() => window.location.reload()} className="px-4 py-2 text-[13px] font-medium rounded-lg bg-[var(--accent)] text-white hover:shadow-sm transition-all cursor-pointer">
+        새로고침
+      </button>
+    </div>
+  );
+}
 
 /* ─── Progressive Layout: flow + worker panel ─── */
 function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: string; projectName?: string; onReset: () => void }) {
@@ -63,7 +79,9 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
             </div>
           )}
           <div className={`flex-1 px-4 md:px-6 ${hasWorkers ? 'pb-[60px] lg:pb-0' : ''}`}>
-            <ProgressiveFlow projectId={projectId} />
+            <ErrorBoundary fallback={<StepErrorFallback />}>
+              <ProgressiveFlow projectId={projectId} />
+            </ErrorBoundary>
           </div>
         </div>
 
@@ -354,10 +372,11 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
 
 /* ─── Step metadata ─── */
 const STEPS: { id: StepId; number: string; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
-  { id: 'reframe', number: '01', label: '문제 재정의', desc: '숨겨진 전제 발견', icon: <MessageSquare size={16} />, color: '#2d4a7c' },
-  { id: 'recast',  number: '02', label: '실행 설계',   desc: '구조와 역할 배분', icon: <Sliders size={16} />,        color: '#8b6914' },
-  { id: 'rehearse',number: '03', label: '사전 검증',   desc: '판단자 시뮬레이션', icon: <UserCheck size={16} />,      color: '#6b4c9a' },
-  { id: 'refine',  number: '04', label: '수정 반영',   desc: '피드백 수렴',       icon: <RefreshCw size={16} />,      color: '#2d6b2d' },
+  { id: 'reframe',    number: '01', label: '문제 재정의', desc: '숨겨진 전제 발견', icon: <MessageSquare size={16} />, color: '#2d4a7c' },
+  { id: 'recast',     number: '02', label: '실행 설계',   desc: '구조와 역할 배분', icon: <Sliders size={16} />,        color: '#8b6914' },
+  { id: 'rehearse',   number: '03', label: '사전 검증',   desc: '판단자 시뮬레이션', icon: <UserCheck size={16} />,      color: '#6b4c9a' },
+  { id: 'refine',     number: '04', label: '수정 반영',   desc: '피드백 수렴',       icon: <RefreshCw size={16} />,      color: '#2d6b2d' },
+  { id: 'synthesize', number: '05', label: '종합',       desc: '다중 관점 통합',     icon: <Layers size={16} />,         color: '#9b5de5' },
 ];
 
 function WorkspaceContent() {
@@ -375,7 +394,7 @@ function WorkspaceContent() {
 
   // Use legacy mode if ?step= is explicitly set
   const explicitStep = searchParams.get('step') as StepId | null;
-  const useLegacyMode = explicitStep && ['reframe', 'recast', 'rehearse', 'refine'].includes(explicitStep);
+  const useLegacyMode = explicitStep && ['reframe', 'recast', 'rehearse', 'refine', 'synthesize'].includes(explicitStep);
 
   // Boss에서 넘어온 경우 reviewer agent ID
   const reviewerParam = searchParams.get('reviewer');
@@ -629,10 +648,13 @@ function WorkspaceContent() {
 
         {/* Step component */}
         <div className="relative p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
-          {activeStep === 'reframe' && <ReframeStep onNavigate={handleNavigate} />}
-          {activeStep === 'recast' && <RecastStep onNavigate={handleNavigate} />}
-          {activeStep === 'rehearse' && <RehearseStep onNavigate={handleNavigate} />}
-          {activeStep === 'refine' && <RefineStep onNavigate={handleNavigate} />}
+          <ErrorBoundary fallback={<StepErrorFallback />}>
+            {activeStep === 'reframe' && <ReframeStep onNavigate={handleNavigate} />}
+            {activeStep === 'recast' && <RecastStep onNavigate={handleNavigate} />}
+            {activeStep === 'rehearse' && <RehearseStep onNavigate={handleNavigate} />}
+            {activeStep === 'refine' && <RefineStep onNavigate={handleNavigate} />}
+            {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -705,9 +727,20 @@ function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
   );
 }
 
+function SuspenseFallback() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="text-center space-y-3">
+        <div className="w-8 h-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin mx-auto" />
+        <p className="text-[13px] text-[var(--text-secondary)]">워크스페이스 준비 중...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function WorkspacePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<SuspenseFallback />}>
       <WorkspaceContent />
     </Suspense>
   );

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 /**
- * Tests for middleware route matching logic.
+ * Tests for proxy route matching logic.
  * Verifies public vs protected route classification.
  */
 
@@ -13,7 +13,7 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
 }
 
-describe('middleware route matching', () => {
+describe('proxy route matching', () => {
   // Public routes — should NOT require auth
   it.each([
     '/',

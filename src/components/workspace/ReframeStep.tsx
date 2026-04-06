@@ -1065,6 +1065,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                               value={a.evaluation_reason || ''}
                               onChange={(e) => handleEvaluationReason(i, e.target.value)}
                               className="mt-2 w-full px-3 py-1.5 rounded-lg text-[12px] border border-[var(--border-subtle)] bg-[var(--bg)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                              maxLength={500}
                             />
                           )}
                         </div>
@@ -1221,6 +1222,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                                 onChange={(e) => { setCustomQuestion(e.target.value); handleSelectQuestion(e.target.value); }}
                                 placeholder="직접 질문을 작성하세요..."
                                 className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
+                                maxLength={500}
                               />
                             ) : (
                               <p className="text-[14px] text-[var(--text-tertiary)]">직접 질문 작성하기...</p>

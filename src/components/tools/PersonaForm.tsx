@@ -515,6 +515,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               onChange={(e) => setFreeText(e.target.value)}
               className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-4 py-3 text-[15px] leading-[1.7] placeholder:text-[var(--text-secondary)] placeholder:text-[14px] focus:outline-none focus:border-[var(--accent)] resize-none"
               rows={5}
+              maxLength={2000}
             />
           </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

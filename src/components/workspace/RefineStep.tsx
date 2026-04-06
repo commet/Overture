@@ -26,6 +26,7 @@ import { useRecastStore } from '@/stores/useRecastStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { recordSignal } from '@/lib/signal-recorder';
 import { generateRetrospectiveQuestions, saveRetrospectiveAnswer } from '@/lib/retrospective';
+import { useHandoffStore } from '@/stores/useHandoffStore';
 // Heavy module: eval-engine loaded on-demand (only at step completion)
 const lazyEvalEngine = () => import('@/lib/eval-engine');
 // decision-quality used in render, must be static
@@ -584,6 +585,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                         placeholder="이슈 해결 방향이나 추가 맥락을 입력하세요"
                         className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
                         rows={2}
+                        maxLength={2000}
                       />
                     </div>
                   )}
@@ -669,6 +671,30 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
 
               {/* Outcome recording (Phase 1) */}
               <OutcomeRecordingCard loop={activeLoop} feedbackHistory={feedbackHistory} />
+
+              {/* Next step: Synthesize */}
+              {latestIteration && (
+                <Card className="!border-[#9b5de5]/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[13px] font-bold text-[var(--text-primary)]">다음 단계: 종합</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">여러 관점의 결과를 비교·통합하여 최종 판단을 내립니다.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        useHandoffStore.getState().setHandoff({
+                          from: 'refine',
+                          content: latestIteration.revised_plan,
+                        });
+                        onNavigate('synthesize');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b5de5] text-white text-[13px] font-semibold shadow-sm hover:shadow-md hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer"
+                    >
+                      종합 <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </Card>
+              )}
             </>
           )}
         </div>
@@ -749,6 +775,7 @@ function RetrospectiveCard({ loop, feedbackHistory }: { loop: RefineLoop; feedba
               placeholder="선택 사항 — 건너뛰어도 됩니다"
               className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none"
               rows={2}
+              maxLength={1000}
             />
           </div>
         ))}
@@ -1066,7 +1093,7 @@ function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefineLoop; fee
             </button>
           ))}
         </div>
-        <textarea value={hypothesisNotes} onChange={e => setHypothesisNotes(e.target.value)} placeholder="가설에 대한 메모 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} />
+        <textarea value={hypothesisNotes} onChange={e => setHypothesisNotes(e.target.value)} placeholder="가설에 대한 메모 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} maxLength={1000} />
       </div>
 
       {/* Risk materialization checklist */}
@@ -1090,7 +1117,7 @@ function OutcomeRecordingCard({ loop, feedbackHistory }: { loop: RefineLoop; fee
       {/* Key learnings */}
       <div className="mb-4">
         <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">핵심 배운 점</p>
-        <textarea value={keyLearnings} onChange={e => setKeyLearnings(e.target.value)} placeholder="이 프로젝트에서 가장 중요하게 배운 것 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} />
+        <textarea value={keyLearnings} onChange={e => setKeyLearnings(e.target.value)} placeholder="이 프로젝트에서 가장 중요하게 배운 것 (선택)" className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[12px] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none resize-none" rows={2} maxLength={1000} />
       </div>
 
       <div className="flex justify-end">

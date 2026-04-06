@@ -22,6 +22,7 @@ interface TeamState {
   // Invites
   loadInvites: (teamId: string) => Promise<void>;
   acceptInvite: (inviteId: string) => Promise<boolean>;
+  declineInvite: (inviteId: string) => Promise<boolean>;
   loadMyInvites: () => Promise<TeamInvite[]>;
 
   // Review inputs (structured team feedback)
@@ -196,6 +197,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     // Reload teams
     await get().loadTeams();
     return true;
+  },
+
+  declineInvite: async (inviteId: string) => {
+    const { error } = await supabase
+      .from('team_invites')
+      .update({ status: 'declined' })
+      .eq('id', inviteId);
+    return !error;
   },
 
   loadMyInvites: async () => {

@@ -13,6 +13,7 @@ const STEP_MAP: Record<string, string> = {
   'recast': '편곡',
   'rehearse': '리허설',
   'refine': '합주 연습',
+  'synthesize': '종합',
 };
 
 export const useHandoffStore = create<HandoffState>((set) => ({

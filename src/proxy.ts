@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Middleware: generates a per-request CSP nonce.
+ * Proxy: generates a per-request CSP nonce.
  *
  * - Nonce replaces 'unsafe-inline' in script-src (XSS mitigation)
  * - 'strict-dynamic' allows Next.js chunk loading from nonce-tagged scripts
  * - style-src keeps 'unsafe-inline' (needed for Tailwind/styled-jsx)
  * - Auth is handled client-side (Supabase + AuthGuard + RLS)
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // Use getRandomValues (guaranteed in Edge Runtime) instead of randomUUID
   const nonceBytes = new Uint8Array(16);
   crypto.getRandomValues(nonceBytes);

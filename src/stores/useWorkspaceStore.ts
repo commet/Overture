@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type StepId = 'reframe' | 'recast' | 'rehearse' | 'refine';
+export type StepId = 'reframe' | 'recast' | 'rehearse' | 'refine' | 'synthesize';
 
 interface WorkspaceState {
   activeStep: StepId;

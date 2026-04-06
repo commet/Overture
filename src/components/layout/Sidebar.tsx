@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User } from 'lucide-react';
+import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User, Sparkles } from 'lucide-react';
 
 const processSteps = [
   { step: 'reframe', label: '악보 해석', subtitle: '문제 재정의', icon: Layers, color: '#2d4a7c' },
   { step: 'recast', label: '편곡', subtitle: '실행 설계', icon: Map, color: '#8b6914' },
   { step: 'rehearse', label: '리허설', subtitle: '사전 검증', icon: Users, color: '#6b4c9a' },
   { step: 'refine', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw, color: '#2d6b2d' },
+  { step: 'synthesize', label: '종합', subtitle: '다중 관점 통합', icon: Sparkles, color: '#9b5de5' },
 ];
 
 const utilityItems = [
@@ -33,8 +34,8 @@ export function Sidebar() {
 
   const currentProject = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
 
-  // Hide on landing, demo, login
-  if (pathname === '/' || pathname === '/demo' || pathname === '/login' || pathname.startsWith('/auth')) return null;
+  // Hide on landing, login
+  if (pathname === '/' || pathname === '/login' || pathname.startsWith('/auth')) return null;
 
   // Determine which step is active (from workspace URL or tool page path)
   const activeStep = pathname.startsWith('/tools/')

@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/Card';
-import { Layers, Map, Users, RefreshCw, ArrowRight, Link2, Zap, Bot } from 'lucide-react';
+import { Layers, Map, Users, RefreshCw, ArrowRight, Link2, Zap, Bot, Sparkles, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 
 const tools = [
@@ -74,6 +74,24 @@ const tools = [
     ],
     tip: '핵심은 "반복" 자체가 아니라 맥락 누적입니다. 각 반복에서 발견한 사실이 다음 반복의 제약조건이 됩니다.',
   },
+  {
+    icon: Sparkles,
+    number: '05',
+    title: '종합',
+    subtitle: '다중 관점 통합',
+    color: '#9b5de5',
+    bg: '#f3ecff',
+    href: '/workspace?step=synthesize',
+    why: '여러 분석 결과나 의견이 있을 때, 단순히 합치면 핵심이 묻힙니다. 이 단계에서 합의점과 쟁점을 구조화하고, 쟁점별로 직접 판단을 내려 최종 결론을 완성합니다.',
+    flow: [
+      '비교할 소스(AI 분석 결과, 전문가 의견 등)를 입력합니다',
+      '각 소스의 핵심 주장을 추출하고 정리합니다',
+      '합의점과 충돌 쟁점을 자동으로 분류합니다',
+      '각 쟁점에서 어느 쪽을 취할지 직접 결정합니다',
+      '최종 종합 문서가 생성됩니다',
+    ],
+    tip: '이전 단계(합주 연습)에서 넘어오면 맥락이 자동으로 연결됩니다. 독립적으로 사용할 때는 소스를 직접 붙여넣으세요.',
+  },
 ];
 
 export default function GuidePage() {
@@ -122,14 +140,17 @@ export default function GuidePage() {
           14명의 전문 에이전트가 각자의 방법론으로 작업합니다. 사용할수록 레벨업하고, 당신의 선호를 학습합니다.
         </p>
         <div className="grid grid-cols-2 gap-2 text-[12px] text-[var(--text-primary)] mb-4">
-          <div><span className="text-[var(--text-tertiary)]">리서치:</span> 하윤 → 수진 → 도윤 (해금)</div>
-          <div><span className="text-[var(--text-tertiary)]">전략:</span> 지호 → 현우 → 승현 (해금)</div>
+          <div><span className="text-[var(--text-tertiary)]">리서치:</span> 하윤 → 수진 → 도윤</div>
+          <div><span className="text-[var(--text-tertiary)]">전략:</span> 지호 → 현우 → 승현</div>
           <div><span className="text-[var(--text-tertiary)]">실행:</span> 서연 · 민재 · 준서 · 예린</div>
           <div><span className="text-[var(--text-tertiary)]">검증:</span> 동혁 · 지은 · 태준</div>
         </div>
-        <div className="rounded-lg px-4 py-3 bg-[var(--bg)]">
+        <div className="rounded-lg px-4 py-3 bg-[var(--bg)] space-y-2">
           <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
             <strong>Tip:</strong> 에이전트 결과를 승인/거부하면 XP가 쌓이고 레벨업합니다. Lv.2부터 당신의 패턴을 학습해서 결과가 달라집니다.
+          </p>
+          <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+            <strong>해금:</strong> 일부 에이전트(도윤, 승현 등)는 체인 내 다른 에이전트의 작업 횟수가 일정 수에 도달하면 자동으로 해금됩니다.
           </p>
         </div>
         <Link href="/agents" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] hover:underline mt-4">
@@ -146,10 +167,35 @@ export default function GuidePage() {
         <div className="flex items-start gap-2.5 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c] mb-6">
           <Link2 size={14} className="shrink-0 mt-0.5" />
           <p>
-            <strong>맥락 체인:</strong> 악보 해석의 결과가 편곡으로, 편곡의 결과가 리허설로 이어집니다.
+            <strong>맥락 체인:</strong> 악보 해석 → 편곡 → 리허설 → 합주 → 종합으로 맥락이 이어집니다.
           </p>
         </div>
       </div>
+
+      {/* 팀장 시뮬레이터 */}
+      <Card>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50 border border-red-100">
+            <MessageSquare size={18} className="text-red-500" />
+          </div>
+          <h2 className="text-[18px] font-bold text-[var(--text-primary)]">팀장 시뮬레이터</h2>
+        </div>
+        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-3">
+          MBTI + 사주 기반으로 실제 팀장의 성격을 설정하고, 보고 연습을 할 수 있습니다.
+          팀장의 기분이 실시간으로 변하며, 입력창 힌트로 코칭을 받습니다.
+        </p>
+        <div className="space-y-2 mb-4">
+          {['팀장의 MBTI 4축 + 생년월일 입력', '상황 설명 (보고, 제안, 갈등 등)', '대화 시작 — 팀장 mood가 실시간 반응', '설득에 성공하거나 결론이 나면 종료'].map((step, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <span className="text-[12px] font-bold tabular-nums leading-none pt-1 shrink-0 select-none text-red-400">{i + 1}</span>
+              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{step}</p>
+            </div>
+          ))}
+        </div>
+        <Link href="/boss" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] hover:underline">
+          팀장 시뮬레이터 <ArrowRight size={14} />
+        </Link>
+      </Card>
 
       {tools.map((tool) => {
         const Icon = tool.icon;

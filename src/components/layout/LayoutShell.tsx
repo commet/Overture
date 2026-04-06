@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { AuthGuard } from './AuthGuard';
 
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo', '/workspace'];
+const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/workspace'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
@@ -23,8 +23,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     return <main className="flex-1 w-full">{children}</main>;
   }
 
-  // Landing & demo — full width, no auth
-  if (isLanding || pathname === '/demo') {
+  // Landing — full width, no auth
+  if (isLanding) {
     return (
       <main className="flex-1 w-full animate-fade-in">
         {children}

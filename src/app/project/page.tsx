@@ -17,7 +17,7 @@ import { OutputSelector } from '@/components/ui/OutputSelector';
 import { ExecutionReadiness } from '@/components/ui/ExecutionReadiness';
 import type { Project, ReframeItem, RecastItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
 import Link from 'next/link';
-import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download } from 'lucide-react';
+import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download, Sparkles } from 'lucide-react';
 
 interface StepStatus {
   tool: string;
@@ -105,6 +105,16 @@ export default function ProjectPage() {
         summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 위협 ${latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence?.critical_risks ?? '?'}건` : undefined,
         color: 'text-[#2d6b2d]',
         bgColor: 'bg-[var(--collab)]',
+      },
+      {
+        tool: 'synthesize',
+        label: '종합',
+        icon: <Sparkles size={18} />,
+        href: '/workspace?step=synthesize',
+        status: projectSyntheses.length > 0 ? 'done' : 'not-started',
+        summary: projectSyntheses.length > 0 ? `${projectSyntheses.length}건 종합 완료` : undefined,
+        color: 'text-[#9b5de5]',
+        bgColor: 'bg-[#f3ecff]',
       },
     ];
   };
@@ -198,10 +208,10 @@ export default function ProjectPage() {
               <div className="flex-1 h-2 bg-[var(--border)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent)] rounded-full transition-all"
-                  style={{ width: `${(completedSteps / 4) * 100}%` }}
+                  style={{ width: `${(completedSteps / steps.length) * 100}%` }}
                 />
               </div>
-              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/4</span>
+              <span className="text-[12px] font-semibold text-[var(--accent)]">{completedSteps}/{steps.length}</span>
             </div>
           </Card>
 
@@ -329,7 +339,7 @@ export default function ProjectPage() {
           )}
 
           {/* All done */}
-          {completedSteps === 4 && (
+          {completedSteps === steps.length && (
             <Card className="!bg-[var(--collab)] !border-green-200 text-center py-6">
               <Check size={24} className="mx-auto text-[var(--success)] mb-2" />
               <p className="text-[15px] font-bold text-[var(--success)]">모든 단계를 완료했습니다</p>

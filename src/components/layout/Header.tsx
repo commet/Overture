@@ -12,6 +12,7 @@ const navItems = [
   { href: '/workspace', label: '워크스페이스', primary: true },
   { href: '/project', label: '프로젝트' },
   { href: '/agents', label: '에이전트' },
+  { href: '/boss', label: '팀장' },
   { href: '/guide', label: '가이드' },
   { href: '/settings', label: '설정' },
 ];

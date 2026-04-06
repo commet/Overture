@@ -14,7 +14,7 @@ export default function TeamsPage() {
     teams, members, invites, currentTeamId,
     loadTeams, createTeam, setCurrentTeam,
     loadMembers, inviteMember, removeMember,
-    loadInvites, loadMyInvites, acceptInvite,
+    loadInvites, loadMyInvites, acceptInvite, declineInvite,
   } = useTeamStore();
 
   const [showCreate, setShowCreate] = useState(false);
@@ -23,6 +23,7 @@ export default function TeamsPage() {
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState('');
+  const [inviteError, setInviteError] = useState('');
   const [myInvites, setMyInvites] = useState<TeamInvite[]>([]);
   const [creating, setCreating] = useState(false);
 
@@ -56,8 +57,12 @@ export default function TeamsPage() {
     setInviteLoading(false);
     if (ok) {
       setInviteSuccess(inviteEmail.trim());
+      setInviteError('');
       setInviteEmail('');
       setTimeout(() => setInviteSuccess(''), 3000);
+    } else {
+      setInviteError('초대를 보내지 못했습니다. 이메일을 확인해주세요.');
+      setTimeout(() => setInviteError(''), 4000);
     }
   };
 
@@ -107,7 +112,10 @@ export default function TeamsPage() {
                 <Button size="sm" onClick={() => handleAcceptInvite(invite.id)}>
                   <Check size={12} /> 수락
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => setMyInvites(prev => prev.filter(i => i.id !== invite.id))}>
+                <Button variant="secondary" size="sm" onClick={async () => {
+                  const ok = await declineInvite(invite.id);
+                  if (ok) setMyInvites(prev => prev.filter(i => i.id !== invite.id));
+                }}>
                   <X size={12} />
                 </Button>
               </div>
@@ -258,6 +266,11 @@ export default function TeamsPage() {
             {inviteSuccess && (
               <p className="text-[12px] text-[var(--success)] mt-2 flex items-center gap-1">
                 <Check size={12} /> {inviteSuccess}에게 초대를 보냈습니다
+              </p>
+            )}
+            {inviteError && (
+              <p className="text-[12px] text-red-500 mt-2 flex items-center gap-1">
+                <X size={12} /> {inviteError}
               </p>
             )}
           </div>
