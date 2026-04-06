@@ -292,22 +292,21 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
               </motion.div>
 
               {/* 팀 등장 */}
-              <div className="space-y-3">
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                  className="text-[13px] text-[var(--text-tertiary)] mb-4">팀을 구성하고 있습니다...</motion.p>
+              <div className="rounded-xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/10 p-4 space-y-2.5">
                 {previewPersonas.map((p, i) => (
                   <motion.div key={p.id}
                     initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.25, duration: 0.5, ease: EASE_HERO }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--surface)]/80 border border-[var(--border-subtle)]">
-                    <WorkerAvatar persona={p} size="md" />
-                    <div>
-                      <p className="text-[14px] font-medium text-[var(--text-primary)]">
-                        {p.name} <span className="text-[var(--text-secondary)] font-normal text-[12px] ml-1">{p.role}</span>
-                      </p>
-                    </div>
+                    transition={{ delay: 0.2 + i * 0.3, duration: 0.4, ease: EASE_HERO }}
+                    className="flex items-center gap-3">
+                    <WorkerAvatar persona={p} size="sm" />
+                    <span className="text-[13px] font-medium text-[var(--text-primary)]">{p.name}</span>
+                    <span className="text-[11px] text-[var(--text-tertiary)]">{p.role}</span>
                   </motion.div>
                 ))}
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.4 }}
+                  className="text-[11px] text-[var(--text-tertiary)] pt-1">
+                  팀이 구성되었습니다. 상황을 분석합니다...
+                </motion.p>
               </div>
             </motion.div>
           )}
@@ -332,7 +331,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                   <span className="text-[12px] font-medium text-[var(--accent)]">분석 중</span>
                 </div>
                 <div className="text-[14px] md:text-[15px] leading-[1.85] text-[var(--text-primary)] whitespace-pre-wrap break-words min-h-[80px]">
-                  {streamingText || '상황을 파악하고 있습니다...'}
+                  {streamingText || '상황을 읽고 있습니다...'}
                   <span className="inline-block w-[2px] h-[18px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
                 </div>
               </div>

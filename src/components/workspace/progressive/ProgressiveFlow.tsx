@@ -362,7 +362,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
           <div className="p-5 md:p-10 space-y-6">
             <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">초안</span>
             <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{mix.title}</h2>
-            <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[15px] text-[var(--text-secondary)] italic leading-relaxed">{mix.executive_summary}</blockquote>
+            <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[15px] text-[var(--text-secondary)] italic leading-relaxed">{renderInline(mix.executive_summary)}</blockquote>
 
             <div className="space-y-5">
               {mix.sections.map((s, i) => (
@@ -599,7 +599,7 @@ function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDepl
       <div className="flex items-center gap-3 flex-wrap">
         <AvatarRow personas={workers.map(w => w.persona)} />
         <p className="text-[14px] font-medium text-[var(--text-primary)] truncate">
-          {nameStr}이(가) 함께합니다
+          {nameStr} — 준비 완료
         </p>
       </div>
 
@@ -1056,13 +1056,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Loading states */}
           {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 읽고 있습니다...', '당신이 놓치고 있는 걸 찾는 중...', '문서 뼈대를 잡고 있습니다...', '거의 다 됐습니다...']} />}
-          {phase === 'analyzing' && snapshots.length > 0 && !streamingText && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
-              <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
-              <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
-            </motion.div>
-          )}
-          {streamingText !== null && phase === 'analyzing' && snapshots.length > 0 && (
+          {phase === 'analyzing' && snapshots.length > 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
               <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
               <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
@@ -1182,9 +1176,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
               <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">복사해서 바로 사용하세요.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <a href="/workspace" onClick={() => useProgressiveStore.setState({ currentSessionId: null })}
+                <button onClick={() => { useProgressiveStore.setState({ currentSessionId: null }); window.location.reload(); }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-[13px] font-semibold cursor-pointer"
-                  style={{ background: 'var(--gradient-gold)' }}>새 프로젝트 시작 <ArrowRight size={12} /></a>
+                  style={{ background: 'var(--gradient-gold)' }}>새 프로젝트 시작 <ArrowRight size={12} /></button>
                 <button onClick={() => { if (mix) { store.setFinalDeliverable(null as unknown as string); store.setDMFeedback(null as unknown as import('@/stores/types').DMFeedbackResult); store.setMix(null as unknown as MixResult); setShowMix(true); } }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer transition-colors">
                   이해관계자 검증 다시 하기
