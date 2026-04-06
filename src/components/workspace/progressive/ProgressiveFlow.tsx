@@ -905,7 +905,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           store.setDMFeedback(f);
           import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
             onBossReviewCompleted(reviewerAgent.id, f);
-          });
+          }).catch(() => {});
           useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session.problem_text.slice(0, 100));
         }
       }
@@ -931,7 +931,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (reviewerAgent && f) {
         import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
           onBossReviewCompleted(reviewerAgent.id, f);
-        });
+        }).catch(() => {});
         useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session!.problem_text.slice(0, 100));
       }
     }

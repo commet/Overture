@@ -250,7 +250,7 @@ export function onBossReviewCompleted(agentId: string, feedback: DMFeedbackResul
   // Critical 우려 → boss_feedback_theme observation
   const criticalConcerns = (feedback.concerns || []).filter(c => c.severity === 'critical');
   for (const concern of criticalConcerns.slice(0, 2)) {
-    const summary = concern.text.slice(0, 50);
+    const summary = concern.text.slice(0, 70);
     // 기존에 비슷한 관찰 있으면 reinforce
     const existing = agent.observations.find(
       o => o.category === 'preference' && o.observation.includes(summary.slice(0, 20)),
@@ -267,7 +267,7 @@ export function onBossReviewCompleted(agentId: string, feedback: DMFeedbackResul
 
   // 승인 조건 → observation
   if (feedback.approval_condition) {
-    const condSummary = feedback.approval_condition.slice(0, 50);
+    const condSummary = feedback.approval_condition.slice(0, 70);
     const existing = agent.observations.find(
       o => o.category === 'preference' && o.observation.includes('승인 조건'),
     );
