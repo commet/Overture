@@ -7,8 +7,46 @@ import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { WorkerTask } from '@/stores/types';
 import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { recordHitReaction } from '@/lib/hit-rate';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
+
+/* ═══ Hit Reaction Bar — 자기개선 데이터 수집 ═══ */
+
+function HitReactionBar({ workerId, agentId }: { workerId: string; agentId?: string }) {
+  const [reacted, setReacted] = useState<'hit' | 'miss' | 'irrelevant' | null>(null);
+
+  if (!agentId || reacted) {
+    return reacted ? (
+      <p className="text-[10px] text-[var(--text-tertiary)] mt-2 pl-0.5">
+        {reacted === 'hit' ? '새로운 관점이었군요' : reacted === 'miss' ? '다음엔 더 깊이' : '참고했습니다'}
+      </p>
+    ) : null;
+  }
+
+  const react = (reaction: 'hit' | 'miss' | 'irrelevant') => {
+    recordHitReaction(agentId, workerId, reaction);
+    setReacted(reaction);
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 mt-2.5">
+      <span className="text-[10px] text-[var(--text-tertiary)] mr-1">이 분석이</span>
+      <button onClick={() => react('hit')}
+        className="px-2.5 py-1 text-[10px] rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors">
+        새로웠다
+      </button>
+      <button onClick={() => react('miss')}
+        className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:bg-[var(--bg)] cursor-pointer transition-colors">
+        이미 알았다
+      </button>
+      <button onClick={() => react('irrelevant')}
+        className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:bg-[var(--bg)] cursor-pointer transition-colors">
+        중요하지 않다
+      </button>
+    </div>
+  );
+}
 
 /* ═══ Result Detail Modal ═══ */
 function ResultModal({ worker, onClose, onApprove, onReject }: {
@@ -328,6 +366,9 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
                 )}
               </div>
             )}
+
+            {/* Hit-rate: 이 분석이 도움이 됐는지 (자기개선 데이터 수집) */}
+            <HitReactionBar workerId={worker.id} agentId={worker.agent_id} />
           </div>
         </div>
       </motion.div>

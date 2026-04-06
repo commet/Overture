@@ -16,6 +16,7 @@ import { LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { XP_REWARDS } from '@/stores/agent-types';
 import { buildSearchContext, type SearchResult } from '@/lib/agent-prompt-builder';
+import { gatherToolContext } from '@/lib/agent-tools';
 
 // ─── Context ───
 
@@ -64,6 +65,12 @@ export async function runWorkerTask(
     task.framework,  // orchestrator가 배정한 프레임워크
   );
 
+  // 에이전트 도구 컨텍스트 (메모리 회상, 관찰 요약 등)
+  let toolContext = '';
+  if (task.agent_id) {
+    toolContext = gatherToolContext(task.agent_id, task.task);
+  }
+
   // 웹 검색: web_search capability가 있는 에이전트만
   let searchContext = '';
   if (agent?.capabilities.includes('web_search')) {
@@ -75,9 +82,7 @@ export async function runWorkerTask(
     }
   }
 
-  const finalUser = searchContext
-    ? `${user}\n\n${searchContext}`
-    : user;
+  const finalUser = [user, toolContext, searchContext].filter(Boolean).join('\n\n');
 
   const text = await new Promise<string>((resolve, reject) => {
     callLLMStream(
