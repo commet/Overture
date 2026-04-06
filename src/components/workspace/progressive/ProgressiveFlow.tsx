@@ -8,16 +8,20 @@ import {
   refineInitialFraming,
   runMix,
   runDMFeedback,
+  runBossDMFeedback,
   runFinalDeliverable,
   runConcertmasterReview,
+  runDebate,
   type ConcertmasterReview,
+  type DebateResult,
 } from '@/lib/progressive-engine';
-import { assessConvergence } from '@/lib/progressive-convergence';
+import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
+import { useAgentStore } from '@/stores/useAgentStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { runAllAIWorkers, type WorkerContext } from '@/lib/worker-engine';
+import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-engine';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
 import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask } from '@/stores/types';
@@ -346,7 +350,7 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
 }
 
 /* ═══ Mix Preview ═══ */
-function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null }) {
+function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null; debateResult?: DebateResult | null }) {
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
@@ -392,6 +396,32 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview }: { mix: MixResult;
                   </div>
                 )}
                 <p className="text-[12px] text-[var(--text-tertiary)] italic mt-2">{cmReview.verdict}</p>
+              </motion.div>
+            )}
+
+            {debateResult && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.6 }}
+                className="pt-5 border-t border-dashed border-[var(--danger)]/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <span style={{ fontSize: 18 }}>⚔️</span>
+                  <p className="text-[9px] font-bold text-[var(--danger)] uppercase tracking-[0.2em]">팀 내 반론</p>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${debateResult.severity === 'critical' ? 'bg-[var(--danger)]/10 text-[var(--danger)]' : debateResult.severity === 'important' ? 'bg-[var(--warning)]/10 text-[var(--warning)]' : 'bg-[var(--text-tertiary)]/10 text-[var(--text-tertiary)]'}`}>
+                    {debateResult.severity}
+                  </span>
+                </div>
+                <p className="text-[13px] text-[var(--text-primary)] leading-relaxed mb-2">{debateResult.challenge}</p>
+                {debateResult.weakestClaim && (
+                  <p className="text-[12px] text-[var(--danger)] flex items-start gap-2 mb-1">
+                    <span className="shrink-0 mt-0.5">💀</span>
+                    <span><strong>{debateResult.targetAgent}</strong>의 약점: {debateResult.weakestClaim}</span>
+                  </p>
+                )}
+                {debateResult.alternativeView && (
+                  <p className="text-[12px] text-[var(--text-secondary)] flex items-start gap-2 mt-2">
+                    <span className="shrink-0 mt-0.5">💡</span>
+                    <span>{debateResult.alternativeView}</span>
+                  </p>
+                )}
               </motion.div>
             )}
 
@@ -716,6 +746,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
+  const [debateResult, setDebateResult] = useState<DebateResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
@@ -770,28 +801,35 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     // Clean up any previous controller before creating new one
     workerAbortRef.current?.abort();
     workerAbortRef.current = new AbortController();
-    workersRef.current = runAllAIWorkers(
-      ws,
-      ctx,
-      {
-        onStart: (id) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
-        onStream: (id, text) => store.setWorkerStreamText(id, text),
-        onComplete: (id, result) => {
-          const w = store.currentSession()?.workers.find(ww => ww.id === id);
-          const persona = w?.persona;
-          const note = persona
-            ? getCompletionNote(persona.id)
-            : null;
-          if (w?.who === 'both') {
-            store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completion_note: note });
-          } else {
-            store.updateWorker(id, { status: 'done', result, stream_text: '', completion_note: note, completed_at: new Date().toISOString() });
-          }
-          scroll(); // Auto-scroll to show new worker report
-        },
-        onError: (id, error) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
+    const workerCallbacks = {
+      onStart: (id: string) => store.updateWorker(id, { status: 'running', started_at: new Date().toISOString() }),
+      onStream: (id: string, text: string) => store.setWorkerStreamText(id, text),
+      onComplete: (id: string, result: string, validation?: { score: number; passed: boolean; issues: string[] }) => {
+        const w = store.currentSession()?.workers.find(ww => ww.id === id);
+        const persona = w?.persona;
+        const note = persona
+          ? getCompletionNote(persona.id)
+          : null;
+        const validationFields = validation
+          ? { validation_score: validation.score, validation_passed: validation.passed, validation_feedback: validation.issues.join('; ') }
+          : {};
+        if (w?.who === 'both') {
+          store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completion_note: note, ...validationFields });
+        } else {
+          store.updateWorker(id, { status: 'done', result, stream_text: '', completion_note: note, completed_at: new Date().toISOString(), ...validationFields });
+        }
+        scroll();
       },
-      workerAbortRef.current.signal,
+      onError: (id: string, error: string) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
+    };
+
+    // stages가 있으면 스테이지 파이프라인, 없으면 기존 병렬 실행
+    const stages = store.currentSession()?.stages;
+    const hasMultipleStages = stages && stages.length > 1;
+
+    workersRef.current = (hasMultipleStages
+      ? runPipeline(ws, stages, ctx, workerCallbacks, workerAbortRef.current.signal)
+      : runAllAIWorkers(ws, ctx, workerCallbacks, workerAbortRef.current.signal)
     ).catch((err) => {
       console.error('[Worker orchestration error]', err);
     });
@@ -837,7 +875,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const workerResults = store.approvedWorkerResults()
         .map(w => ({ task: w.task, result: w.result }));
 
-      // 악장 메타 리뷰 (해금 시만, 비차단)
+      // 악장 메타 리뷰 + debate (해금 시만, 비차단)
       if (workerResults.length > 0) {
         const cmWorkers = session!.workers
           .filter(w => w.approved !== false && w.result)
@@ -845,17 +883,58 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         runConcertmasterReview(session!.problem_text, cmWorkers)
           .then(r => { if (r) setCmReview(r); })
           .catch(() => {});
+
+        // Critical stakes: Cross-Agent Debate (비차단)
+        const stages = session?.stages;
+        if (stages && stages.length > 1) {
+          const debateWorkers = cmWorkers.map(w => ({ ...w, framework: session!.workers.find(ww => ww.persona?.name === w.agentName)?.framework || null }));
+          runDebate(session!.problem_text, debateWorkers)
+            .then(r => { if (r) setDebateResult(r); })
+            .catch(() => {});
+        }
       }
 
       const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined);
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round });
+
+      // Phase 6: Boss reviewer가 있으면 자동 DM 피드백
+      if (session?.reviewer_agent_id) {
+        const reviewerAgent = useAgentStore.getState().getAgent(session.reviewer_agent_id);
+        if (reviewerAgent) {
+          const f = await runBossDMFeedback(m, reviewerAgent, session.problem_text);
+          store.setDMFeedback(f);
+          import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
+            onBossReviewCompleted(reviewerAgent.id, f);
+          });
+          useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session.problem_text.slice(0, 100));
+        }
+      }
     } catch (e) { setError(e instanceof Error ? e.message : '초안 생성 실패'); store.setPhase('conversing'); }
     finally { setBusy(false); scroll(); }
   };
 
   const onDM = async () => {
     if (!mix) return; setBusy(true); setError(null); scroll();
-    try { const f = await runDMFeedback(mix, dm || '의사결정권자', session!.problem_text); store.setDMFeedback(f); }
+    try {
+      // Boss agent가 연결되어 있으면 Boss 성격 DM 피드백
+      const reviewerAgent = session?.reviewer_agent_id
+        ? useAgentStore.getState().getAgent(session.reviewer_agent_id)
+        : undefined;
+
+      const f = reviewerAgent
+        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text)
+        : await runDMFeedback(mix, dm || '의사결정권자', session!.problem_text);
+
+      store.setDMFeedback(f);
+
+      // Boss 리뷰 후 observation 업데이트 + XP
+      if (reviewerAgent && f) {
+        import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
+          onBossReviewCompleted(reviewerAgent.id, f);
+        });
+        useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session!.problem_text.slice(0, 100));
+      }
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'DM 피드백 실패'); }
     finally { setBusy(false); scroll(); }
   };
@@ -1021,7 +1100,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Convergence Status — 라운드 2+ (Weakness C) */}
           {snapshots.length >= 2 && !mix && !final_ && phase === 'conversing' && (
-            <ConvergenceStatus metrics={assessConvergence(snapshots)} />
+            <ConvergenceStatus metrics={
+              workers.length > 0
+                ? assessConvergenceWithWorkers(snapshots, workers.map(w => ({ validationScore: w.validation_score, approved: w.approved })))
+                : assessConvergence(snapshots)
+            } />
           )}
 
           {/* Pipeline Exit — 라운드 1+ 후 4R로 분기 가능 (Weakness D) */}
@@ -1062,7 +1145,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Answered Q&A history — collapsed at bottom */}
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
-          {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} />}
+          {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} debateResult={debateResult} />}
           {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} busy={busy} />}
 
           {final_ && <>

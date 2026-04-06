@@ -4,6 +4,7 @@ import { buildYearMonthProfile } from '@/lib/boss/saju-interpreter';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { summarizeBossChatTopic, extractBossChatObservation } from '@/lib/observation-engine';
 import type { Agent } from '@/stores/agent-types';
 
 // ━━━ Types ━━━
@@ -154,9 +155,16 @@ export const useBossStore = create<BossState>((set, get) => ({
     }));
 
     // Agent XP 기록
-    const { loadedAgentId } = get();
+    const { loadedAgentId, messages: allMsgs } = get();
     if (loadedAgentId) {
       useAgentStore.getState().recordActivity(loadedAgentId, 'boss_chat', '대화');
+
+      // 6번째 assistant 메시지마다 메타 관찰 추출 (비차단)
+      const assistantCount = allMsgs.filter(m => m.role === 'assistant').length;
+      if (assistantCount > 0 && assistantCount % 6 === 0) {
+        const topic = summarizeBossChatTopic(allMsgs);
+        if (topic) extractBossChatObservation(loadedAgentId, topic);
+      }
     }
   },
 

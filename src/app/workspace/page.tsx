@@ -26,8 +26,8 @@ import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/Musica
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { getPersonaPool } from '@/lib/worker-personas';
 import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
-import { DemoShowcase } from '@/components/workspace/DemoShowcase';
-import { DEMO_SCENARIOS } from '@/lib/demo-scenarios';
+import { InteractiveDemo } from '@/components/workspace/InteractiveDemo';
+import { DEMO_SCENARIOS } from '@/lib/demo-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
 
@@ -74,22 +74,17 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
   );
 }
 
-/* ─── Scenarios for hero ─── */
-const SCENARIOS = [
-  { icon: '📋', title: '기획안 작성', desc: '개발자가 만드는 설득력 있는 기획안', prompt: '나는 백엔드 개발자인데 대표님이 "AI 고객 응대 챗봇" 서비스 기획안을 2주 안에 만들어오라고 했어. 기획 경험은 없어.' },
-  { icon: '💰', title: '투자 유치 준비', desc: 'IR 자료부터 시장 분석까지', prompt: 'B2B SaaS 마케팅 자동화 서비스를 운영 중인데, 시리즈A 투자 유치를 위한 IR 자료를 준비해야 해. MAU 3,000 정도이고 월 매출 2천만원 수준이야.' },
-  { icon: '🔍', title: '신규 사업 검토', desc: '시장성과 실행 가능성 분석', prompt: '회사에서 중소기업 대상 AI 세무 자동화 서비스를 새 사업으로 검토하라고 했어. 기존에 회계 소프트웨어를 만들고 있고, 기술팀은 10명이야.' },
-];
 
 const EASE_HERO = [0.32, 0.72, 0, 1] as const;
 
 /* ─── HeroFlow: idle → assembling → analyzing → ready ─── */
 type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
 
-function HeroFlow({ onReady, projects, user }: {
+function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   onReady: (projectId: string) => void;
   projects: Array<{ id: string; name: string }>;
   user: unknown;
+  reviewerAgentId?: string;
 }) {
   const [phase, setPhase] = useState<HeroPhase>('idle');
   const [demoScenario, setDemoScenario] = useState<typeof DEMO_SCENARIOS[number] | null>(null);
@@ -124,7 +119,7 @@ function HeroFlow({ onReady, projects, user }: {
     // 2. 프로젝트 + 세션 생성
     const pid = createProject(text.slice(0, 40));
     setCurrentProjectId(pid);
-    progressiveStore.createSession(pid, text);
+    progressiveStore.createSession(pid, text, reviewerAgentId);
     track('workspace_problem_submit', { text_length: text.length, source: 'hero_flow' });
 
     // 3. assembling → analyzing (타이머 또는 첫 토큰)
@@ -171,12 +166,11 @@ function HeroFlow({ onReady, projects, user }: {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
         <StaffLines opacity={0.02} spacing={18} />
         <div className="relative h-[calc(100vh-56px)]">
-          <DemoShowcase
+          <InteractiveDemo
             scenario={demoScenario}
             onStartReal={() => {
               setProblemInput(demoScenario.problemText);
               setDemoScenario(null);
-              // Pre-fill and let user review before starting
             }}
             onBack={() => setDemoScenario(null)}
           />
@@ -375,13 +369,8 @@ function WorkspaceContent() {
   const explicitStep = searchParams.get('step') as StepId | null;
   const useLegacyMode = explicitStep && ['reframe', 'recast', 'rehearse', 'refine'].includes(explicitStep);
 
-  // Boss에서 넘어온 경우 reviewer agent 저장
+  // Boss에서 넘어온 경우 reviewer agent ID
   const reviewerParam = searchParams.get('reviewer');
-  useEffect(() => {
-    if (reviewerParam) {
-      sessionStorage.setItem('overture_preferred_reviewer', reviewerParam);
-    }
-  }, [reviewerParam]);
 
   useEffect(() => {
     loadProjects();
@@ -413,7 +402,7 @@ function WorkspaceContent() {
         const pid = createProject(text.slice(0, 40));
         setCurrentProjectId(pid);
         track('project_created', { source: 'hero_inline' });
-        progressiveStore.createSession(pid, text);
+        progressiveStore.createSession(pid, text, reviewerParam || undefined);
         runInitialAnalysis(text).then(result => {
           progressiveStore.addSnapshot(result.snapshot);
           if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
@@ -451,7 +440,7 @@ function WorkspaceContent() {
     track('workspace_problem_submit', { text_length: text.length, source: 'workspace_progressive' });
 
     // Create progressive session & kick off initial analysis
-    progressiveStore.createSession(pid, text);
+    progressiveStore.createSession(pid, text, reviewerParam || undefined);
 
     try {
       const result = await runInitialAnalysis(text);
@@ -503,6 +492,7 @@ function WorkspaceContent() {
         onReady={(pid) => setCurrentProjectId(pid)}
         projects={projects}
         user={user}
+        reviewerAgentId={reviewerParam || undefined}
       />
     );
   }

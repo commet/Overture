@@ -14,6 +14,7 @@ import { callLLMJson, callLLM } from '@/lib/llm';
 import { toDisplayError, isAuthError } from '@/lib/error-display';
 import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
@@ -94,12 +95,12 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
     seedDefaultPersonas();
   }, [seedDefaultPersonas]);
 
-  // Boss에서 넘어온 경우 preferred reviewer 자동 추가
+  // Boss에서 넘어온 경우 reviewer 자동 추가 (session에서 읽기)
   useEffect(() => {
-    const reviewerId = sessionStorage.getItem('overture_preferred_reviewer');
+    const session = useProgressiveStore.getState().currentSession();
+    const reviewerId = session?.reviewer_agent_id;
     if (reviewerId && !autoPersonaIds.includes(reviewerId)) {
       setAutoPersonaIds(prev => [...prev, reviewerId]);
-      sessionStorage.removeItem('overture_preferred_reviewer');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

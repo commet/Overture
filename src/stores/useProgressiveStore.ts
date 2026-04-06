@@ -7,6 +7,8 @@ import { agentToWorkerPersona } from '@/lib/agent-adapters';
 import { XP_REWARDS } from '@/stores/agent-types';
 import { numericLevelToAgentLevel } from '@/lib/agent-skills';
 import { onTaskApproved, onTaskRejected } from '@/lib/observation-engine';
+import { planWorkers } from '@/lib/orchestrator';
+import { computeQualityXP } from '@/lib/agent-quality';
 import type {
   ProgressiveSession,
   ProgressivePhase,
@@ -16,6 +18,8 @@ import type {
   MixResult,
   DMFeedbackResult,
   DMConcern,
+  InterviewSignals,
+  PipelineStage,
   WorkerTask,
   WorkerDeployPhase,
 } from '@/stores/types';
@@ -29,7 +33,7 @@ interface ProgressiveState {
 
   // Actions
   loadSessions: () => void;
-  createSession: (projectId: string, problemText: string) => string;
+  createSession: (projectId: string, problemText: string, reviewerAgentId?: string) => string;
   setPhase: (phase: ProgressivePhase) => void;
   setDecisionMaker: (name: string) => void;
 
@@ -59,7 +63,7 @@ interface ProgressiveState {
   linkToRecast: (recastItemId: string) => void;
 
   // Workers
-  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[]) => WorkerTask[];
+  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[], signals?: InterviewSignals) => WorkerTask[];
   deployWorkers: () => void;
   updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
   setWorkerStreamText: (workerId: string, text: string) => void;
@@ -115,7 +119,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     set({ sessions: migrated });
   },
 
-  createSession: (projectId, problemText) => {
+  createSession: (projectId, problemText, reviewerAgentId?) => {
     const id = generateId();
     const now = new Date().toISOString();
     const session: ProgressiveSession = {
@@ -123,6 +127,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       project_id: projectId,
       problem_text: problemText,
       decision_maker: null,
+      reviewer_agent_id: reviewerAgentId,
       phase: 'analyzing',
       round: 0,
       max_rounds: 5,
@@ -313,10 +318,9 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
   // ─── Workers ───
 
-  initWorkers: (steps) => {
+  initWorkers: (steps, signals?) => {
     const { currentSessionId } = get();
     if (!currentSessionId) return [];
-    const usedAgentIds = new Set<string>();
     const agentStore = useAgentStore.getState();
 
     // Agent store 미초기화 시 seed (최초 실행 대비)
@@ -324,24 +328,27 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       agentStore.loadAgents();
     }
 
-    const workers: WorkerTask[] = steps.map((step, i) => {
-      // 지휘자 힌트 우선 → 키워드 매칭 fallback
-      let agent = step.agent_hint
-        ? agentStore.getUnlockedAgents().find(a => a.name === step.agent_hint && !usedAgentIds.has(a.id))
-        : undefined;
-      if (!agent) agent = agentStore.assignAgentToTask(step.task, step.output, usedAgentIds);
-      else usedAgentIds.add(agent.id);
+    // Orchestrator: 입력 분류 → 에이전트 선택 → 프레임워크 배정
+    const unlockedAgents = agentStore.getUnlockedAgents();
+    const allObservations = unlockedAgents.flatMap(a => a.observations || []);
+    const { workers: planned, stages: plannedStages } = planWorkers(steps, signals, unlockedAgents, allObservations);
+
+    const workers: WorkerTask[] = planned.map((pw, i) => {
+      const agent = pw.agentId ? agentStore.getAgent(pw.agentId) : null;
+      const fallbackAgent = agent || agentStore.assignAgentToTask(steps[i].task, steps[i].output, new Set());
 
       return {
         id: generateId(),
         step_index: i,
-        task: step.task,
-        who: step.who,
-        expected_output: step.output,
-        status: 'pending' as const,  // All start pending; human workers → waiting_input after deploy
-        persona: agentToWorkerPersona(agent),  // backward compat
-        agent_id: agent.id,
-        level: numericLevelToAgentLevel(agent.level),
+        task: steps[i].task,
+        who: steps[i].who as 'ai' | 'human' | 'both',
+        expected_output: steps[i].output,
+        status: 'pending' as const,
+        persona: agentToWorkerPersona(fallbackAgent),
+        agent_id: fallbackAgent.id,
+        level: numericLevelToAgentLevel(fallbackAgent.level),
+        framework: pw.framework || undefined,
+        stage_id: pw.stageId || undefined,
         stream_text: '',
         result: null,
         human_input: null,
@@ -352,9 +359,17 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         completed_at: null,
       };
     });
+
+    // 스테이지의 workerIds를 실제 생성된 ID로 매핑
+    const stages = plannedStages.map(stage => ({
+      ...stage,
+      workerIds: workers.filter(w => w.stage_id === stage.id).map(w => w.id),
+    }));
+
     // 'ready' = 팀 구성 완료, 사용자 확인 대기
     const sessions = updateSession(get().sessions, currentSessionId, () => ({
       workers,
+      stages,
       worker_deploy_phase: 'ready' as WorkerDeployPhase,
     }));
     persist(sessions);
@@ -430,10 +445,11 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     persist(sessions);
     set({ sessions });
 
-    // Agent XP 적립 + Observation
+    // Agent XP 적립 + Observation (품질 기반 XP)
     if (worker?.agent_id) {
+      const qualityXP = computeQualityXP('task_approved', worker.validation_score);
       useAgentStore.getState().recordActivity(
-        worker.agent_id, 'task_approved', worker.task, currentSessionId,
+        worker.agent_id, 'task_approved', `${worker.task}|qxp:${qualityXP}`, currentSessionId,
       );
       onTaskApproved(worker.agent_id, worker.task, worker.result || '');
     }
@@ -453,8 +469,9 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
     // Agent XP 차감 + Observation
     if (worker?.agent_id) {
+      const qualityXP = computeQualityXP('task_rejected', worker.validation_score);
       useAgentStore.getState().recordActivity(
-        worker.agent_id, 'task_rejected', worker.task, currentSessionId,
+        worker.agent_id, 'task_rejected', `${worker.task}|qxp:${qualityXP}`, currentSessionId,
       );
       onTaskRejected(worker.agent_id, worker.task);
     }

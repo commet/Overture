@@ -763,11 +763,24 @@ export interface WorkerTask {
   started_at: string | null;
   completed_at: string | null;
 
+  // Orchestrator-assigned (Phase 0-3)
+  framework?: string;               // 배정된 프레임워크 이름 (null이면 전체 스킬셋)
+  stage_id?: string;                // 소속 스테이지 ID
+
   // Quality gate (Weakness E fix)
   validation_score?: number;        // 0-100: 결과물 품질
   validation_feedback?: string;     // 검증 실패 시 피드백
   validation_passed?: boolean;      // true if score >= 70
   retry_count?: number;             // 재시도 횟수
+}
+
+// Pipeline stages (Phase 3)
+export interface PipelineStage {
+  id: string;
+  label: string;                     // "리서치", "비판", "합성" 등
+  workerIds: string[];               // 이 스테이지에 속한 WorkerTask.id[]
+  status: 'pending' | 'running' | 'done' | 'failed';
+  dependsOnStageId?: string;         // 이전 스테이지 ID (결과를 입력으로 받음)
 }
 
 // Workers 배치 단계
@@ -815,11 +828,15 @@ export interface ProgressiveSession {
   snapshots: AnalysisSnapshot[];  // version 0 = 초기, 1+ = 업데이트
   workers: WorkerTask[];          // 병렬 에이전트 작업자
   worker_deploy_phase: WorkerDeployPhase;
+  stages?: PipelineStage[];       // 스테이지 파이프라인 (Phase 3)
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;
 
   // Final
   final_deliverable: string | null;
+
+  // Boss/Reviewer 연결
+  reviewer_agent_id?: string;   // Boss agent가 DM 리뷰어로 연결
 
   // Engine refs (기존 store에도 저장)
   reframe_item_id?: string;

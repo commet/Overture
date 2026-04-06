@@ -9,10 +9,13 @@ import {
   buildDeepeningPrompt,
   buildMixPrompt,
   buildDMFeedbackPrompt,
+  buildBossDMFeedbackPrompt,
   buildFinalDeliverablePrompt,
   buildConcertmasterReviewPrompt,
 } from '@/lib/progressive-prompts';
-import { assessConvergence } from '@/lib/progressive-convergence';
+import type { Agent } from '@/stores/agent-types';
+import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
+import { runDebateRound, type DebateResult } from '@/lib/debate-engine';
 import { generateId } from '@/lib/uuid';
 import { useAgentStore } from '@/stores/useAgentStore';
 import type {
@@ -366,6 +369,37 @@ export async function runDMFeedback(
 }
 
 /**
+ * Step DM (Boss): Boss agent 성격 기반 피드백
+ */
+export async function runBossDMFeedback(
+  mix: MixResult,
+  agent: Agent,
+  problemContext: string,
+): Promise<DMFeedbackResult> {
+  const { system, user } = buildBossDMFeedbackPrompt(mix, agent, problemContext);
+
+  const result = await callLLMJson<DMFeedbackResponse>(
+    [{ role: 'user', content: user }],
+    { system, maxTokens: 2500, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
+  );
+
+  return {
+    persona_name: result.persona_name || agent.name,
+    persona_role: result.persona_role || '팀장',
+    first_reaction: result.first_reaction || '',
+    good_parts: result.good_parts || [],
+    concerns: (result.concerns || []).map((c): DMConcern => ({
+      text: c.text,
+      severity: c.severity || 'important',
+      fix_suggestion: c.fix_suggestion || '',
+      applied: c.severity === 'critical',
+    })),
+    would_ask: result.would_ask || [],
+    approval_condition: result.approval_condition || '',
+  };
+}
+
+/**
  * Step Final: 피드백 반영 후 최종 문서
  */
 export async function runFinalDeliverable(
@@ -470,4 +504,29 @@ export async function runConcertmasterReview(
   } catch {
     return null;
   }
+}
+
+/* ─── Cross-Agent Debate (Phase 5) ─── */
+
+export type { DebateResult };
+
+/**
+ * Critical stakes에서 Stage 1 결과에 대해 Critic이 반론을 생성.
+ * runConcertmasterReview 이후에 호출. LLM 1회.
+ */
+export async function runDebate(
+  problemText: string,
+  workerResults: Array<{ agentName: string; agentRole: string; framework: string | null; result: string }>,
+): Promise<DebateResult | null> {
+  // Critic 에이전트 찾기
+  const agents = useAgentStore.getState().getUnlockedAgents();
+  const critic = agents.find(a => (a.keywords || []).some(kw => ['리스크', '위험', '비판'].includes(kw)));
+  if (!critic) return null;
+
+  return runDebateRound({
+    problemText,
+    stage1Results: workerResults,
+    criticName: critic.name,
+    criticExpertise: critic.expertise || critic.role,
+  });
 }

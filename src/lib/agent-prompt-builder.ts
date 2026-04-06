@@ -37,7 +37,9 @@ export function buildAgentContext(agent: Agent): string {
     lines.push(`- ${o.observation}`);
   }
 
-  return lines.join('\n').slice(0, 600);
+  // Boss agent는 풍부한 연속성이 필요 → 더 긴 컨텍스트
+  const maxChars = agent.origin === 'boss_sim' ? 900 : 600;
+  return lines.join('\n').slice(0, maxChars);
 }
 
 /**

@@ -166,7 +166,7 @@ JSON:
 
 // ─── 2.5. Worker Task (개별 에이전트 작업) ───
 
-import { getSkillSet, LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
+import { getSkillSet, getFrameworkSkill, LEVEL_CONFIGS, numericLevelToAgentLevel } from '@/lib/agent-skills';
 import type { AgentLevel } from '@/stores/types';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
@@ -179,6 +179,7 @@ export function buildWorkerTaskPrompt(
   persona?: WorkerPersona,
   level: AgentLevel = 'junior',
   agent?: Agent,
+  framework?: string,  // orchestrator가 배정한 프레임워크 (있으면 해당 프레임워크만 주입)
 ): { system: string; user: string } {
   const qaText = context.qaHistory.map((qa, i) => `Q${i + 1}: ${qa.q}\nA${i + 1}: ${qa.a}`).join('\n');
   // Agent 레벨 반영: agent가 있으면 numeric level → AgentLevel 변환
@@ -188,8 +189,13 @@ export function buildWorkerTaskPrompt(
   const skillLookupId = agent?.id || persona?.id;
   const skills = skillLookupId ? getSkillSet(skillLookupId) : undefined;
 
+  // 프레임워크가 지정되면 해당 프레임워크만 추출
+  const focusedSkill = framework && skillLookupId
+    ? getFrameworkSkill(skillLookupId, framework)
+    : undefined;
+
   // ─── System prompt: persona + skills + level ───
-  let systemParts: string[] = [];
+  const systemParts: string[] = [];
 
   // 1. Persona identity (agent 우선, 없으면 persona fallback)
   if (agent) {
@@ -204,28 +210,34 @@ ${persona.expertise}
 ${persona.tone}`);
   }
 
-  // 2. Skill frameworks
-  if (skills) {
+  // 2. Skill frameworks — 프레임워크가 지정되면 1개만, 아니면 전체
+  if (focusedSkill) {
+    systemParts.push(`\n[지정 프레임워크: ${focusedSkill.framework}]
+이 프레임워크를 사용하여 분석하세요.`);
+  } else if (skills) {
     systemParts.push(`\n당신의 분석 도구:
 ${skills.frameworks.map(f => `- ${f}`).join('\n')}`);
   }
 
   // 3. Level-specific instruction
-  if (skills) {
+  const levelSource = focusedSkill || skills;
+  if (levelSource) {
     systemParts.push(`\n[${levelConfig.label} 수준 지시]
-${skills.levelPrompts[effectiveLevel]}`);
+${levelSource.levelPrompts[effectiveLevel]}`);
   }
 
   // 4. Quality checkpoints
-  if (skills) {
+  const checkpointSource = focusedSkill || skills;
+  if (checkpointSource) {
     systemParts.push(`\n반드시 확인:
-${skills.checkpoints.map(c => `☐ ${c}`).join('\n')}`);
+${checkpointSource.checkpoints.map(c => `☐ ${c}`).join('\n')}`);
   }
 
   // 5. Output format
-  if (skills) {
+  const outputSource = focusedSkill || skills;
+  if (outputSource) {
     systemParts.push(`\n출력 형식:
-${skills.outputFormat}`);
+${outputSource.outputFormat}`);
   }
 
   // 6. Core rules
@@ -368,6 +380,71 @@ JSON format:
       "text": "구체적 우려 사항 (1-2문장)",
       "severity": "critical|important|minor",
       "fix_suggestion": "이렇게 고치면 된다 (구체적, 실행 가능)"
+    }
+  ],
+  "would_ask": ["실제로 물어볼 질문 1", "질문 2"],
+  "approval_condition": "이것만 되면 OK (1문장)"
+}`,
+  };
+}
+
+// ─── 4b. Boss 성격 기반 DM 피드백 ───
+
+export function buildBossDMFeedbackPrompt(
+  mix: { title: string; executive_summary: string; sections: { heading: string; content: string }[]; key_assumptions: string[]; next_steps: string[] },
+  agent: Agent,
+  problemContext: string,
+): { system: string; user: string } {
+  const docText = [
+    `제목: ${mix.title}`,
+    `요약: ${mix.executive_summary}`,
+    ...mix.sections.map(s => `[${s.heading}]\n${s.content}`),
+    `전제: ${mix.key_assumptions.join(', ')}`,
+    `다음 단계: ${mix.next_steps.join(', ')}`,
+  ].join('\n\n');
+
+  const pp = agent.personality_profile;
+  const agentCtx = buildAgentContext(agent);
+
+  return {
+    system: `당신은 한국 직장의 ${agent.boss_gender === '여' ? '여성' : '남성'} 상사(팀장급)입니다.
+부하직원이 문서를 가져왔습니다. 당신의 성격대로 반응하세요.
+
+## 성격 프로필
+- 유형: ${agent.personality_code}
+- 커뮤니케이션: ${pp?.communicationStyle || '직설적'}
+- 의사결정: ${pp?.decisionPattern || '분석적'}
+- 피드백 스타일: ${pp?.feedbackStyle || '균형적'}
+- 짜증 트리거: ${pp?.triggers || '근거 없는 주장'}
+- 분위기: ${pp?.bossVibe || '무난'}
+${agentCtx ? `\n## 이 부하직원에 대해 파악한 것\n${agentCtx}` : ''}
+
+## 규칙
+1. **반말**, 직장 상사 톤. 1인칭.
+2. 구체적으로 — "좀 더 구체적으로" 금지. 뭐가 부족한지 정확히.
+3. 우려마다 수정 방향 1개씩.
+4. 3-4개 우려. 짧게. 강도 표시 (critical/important/minor).
+5. "AI", "MBTI", "성격유형" 메타 언급 금지.
+${pp?.speechPatterns ? `6. 말투: ${pp.speechPatterns.slice(0, 3).map(p => `"${p}"`).join(', ')}` : ''}`,
+
+    user: `배경: <user-data>${sanitize(problemContext)}</user-data>
+
+제출된 문서:
+${docText}
+
+이 문서를 읽고 솔직하게 반응해줘.
+
+JSON format:
+{
+  "persona_name": "${agent.name}",
+  "persona_role": "팀장",
+  "first_reaction": "첫 반응 (반말, 1-2문장)",
+  "good_parts": ["좋은 점 1", "좋은 점 2"],
+  "concerns": [
+    {
+      "text": "구체적 우려 (1-2문장)",
+      "severity": "critical|important|minor",
+      "fix_suggestion": "이렇게 고치면 됨"
     }
   ],
   "would_ask": ["실제로 물어볼 질문 1", "질문 2"],

@@ -253,13 +253,14 @@ export function BossChat() {
           </p>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             <Link
-              href={`/workspace?reviewer=${loadedAgentId || 'pending'}`}
-              onClick={() => {
+              href={`/workspace?reviewer=${loadedAgentId || ''}`}
+              onClick={(e) => {
                 if (!loadedAgentId) {
                   const id = saveAsAgent();
                   if (id) {
-                    // URL을 동적으로 업데이트
-                    sessionStorage.setItem('overture_preferred_reviewer', id);
+                    // 저장 후 URL에 ID 반영
+                    e.preventDefault();
+                    window.location.href = `/workspace?reviewer=${id}`;
                   }
                 }
               }}
