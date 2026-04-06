@@ -49,6 +49,7 @@ export function BossChat() {
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
   const [ctaDismissed, setCtaDismissed] = useState(false);
+  const [bossState, setBossState] = useState<'idle' | 'reading' | 'typing'>('idle');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -86,14 +87,20 @@ export function BossChat() {
     const llmMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
 
     abortRef.current = new AbortController();
+
+    // "읽는 중" → 짧은 딜레이 → "타이핑"
+    setBossState('reading');
     setStreaming(true);
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+    if (abortRef.current?.signal.aborted) return;
+    setBossState('typing');
 
     await callLLMStream(
       llmMessages,
       { system, maxTokens: 500, signal: abortRef.current.signal },
       {
         onToken: (text) => updateStreamingText(text),
-        onComplete: () => commitAssistantMessage(),
+        onComplete: () => { commitAssistantMessage(); setBossState('idle'); },
         onError: async (err) => {
           const msg = err instanceof Error ? err.message : String(err);
           const isOverloaded = msg.includes('과부하') || msg.includes('503') || msg.includes('529') || msg.includes('서버');
@@ -114,6 +121,7 @@ export function BossChat() {
             updateStreamingText('연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
           }
           commitAssistantMessage();
+          setBossState('idle');
         },
       },
     );
@@ -222,9 +230,20 @@ export function BossChat() {
               <span className="bm-avatar-emoji">{typeData?.emoji || '👔'}</span>
             </div>
             <div className="bm-bubble bm-bubble-boss">
-              <div className="bm-typing">
-                <span /><span /><span />
-              </div>
+              {bossState === 'reading' ? (
+                <motion.span
+                  className="bm-reading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0.4, 0.8, 0.4] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  읽는 중...
+                </motion.span>
+              ) : (
+                <div className="bm-typing">
+                  <span /><span /><span />
+                </div>
+              )}
             </div>
           </motion.div>
         )}

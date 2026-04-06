@@ -1033,6 +1033,14 @@ button, a, input, textarea {
   30% { transform: translateY(-6px); opacity: 1; }
 }
 
+/* Reading state */
+.bm-reading {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 4px 2px;
+  font-style: italic;
+}
+
 /* ── Chat Input ── */
 .bc-input-bar {
   padding: 10px 0 max(12px, env(safe-area-inset-bottom));
