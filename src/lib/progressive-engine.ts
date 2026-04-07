@@ -361,11 +361,11 @@ export async function runDMFeedback(
     persona_role: result.persona_role || '',
     first_reaction: result.first_reaction || '',
     good_parts: result.good_parts || [],
-    concerns: (result.concerns || []).map((c): DMConcern => ({
-      text: c.text,
+    concerns: (result.concerns || []).filter(c => !!c && typeof c === 'object').map((c): DMConcern => ({
+      text: String(c.text || ''),
       severity: c.severity || 'important',
-      fix_suggestion: c.fix_suggestion || '',
-      applied: c.severity === 'critical', // critical은 기본 체크
+      fix_suggestion: String(c.fix_suggestion || ''),
+      applied: c.severity === 'critical',
     })),
     would_ask: result.would_ask || [],
     approval_condition: result.approval_condition || '',
@@ -379,12 +379,13 @@ export async function runBossDMFeedback(
   mix: MixResult,
   agent: Agent,
   problemContext: string,
+  signal?: AbortSignal,
 ): Promise<DMFeedbackResult> {
   const { system, user } = buildBossDMFeedbackPrompt(mix, agent, problemContext);
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 2500, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
+    { system, maxTokens: 2500, signal, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
   );
 
   return {
@@ -409,6 +410,7 @@ export async function runBossDMFeedback(
 export async function runFinalDeliverable(
   mix: MixResult,
   dmFeedback: DMFeedbackResult,
+  signal?: AbortSignal,
 ): Promise<string> {
   const appliedFixes = dmFeedback.concerns
     .filter(c => c.applied)
@@ -423,7 +425,7 @@ export async function runFinalDeliverable(
 
   const result = await callLLMJson<FinalResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 4000, shape: { title: 'string', executive_summary: 'string', sections: 'array' } },
+    { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array' } },
   );
 
   const finalMix: MixResult = {
@@ -489,6 +491,7 @@ export interface ConcertmasterReview {
 export async function runConcertmasterReview(
   problemText: string,
   workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string }>,
+  signal?: AbortSignal,
 ): Promise<ConcertmasterReview | null> {
   const concertmaster = useAgentStore.getState().getAgent('concertmaster');
   if (!concertmaster?.unlocked) return null;
@@ -498,7 +501,7 @@ export async function runConcertmasterReview(
   try {
     const result = await callLLMJson<ConcertmasterReview>(
       [{ role: 'user', content: user }],
-      { system, maxTokens: 500, shape: { overall: 'string', contradictions: 'array', blind_spots: 'array', verdict: 'string' } },
+      { system, maxTokens: 500, signal, shape: { overall: 'string', contradictions: 'array', blind_spots: 'array', verdict: 'string' } },
     );
 
     // 악장 XP 적립

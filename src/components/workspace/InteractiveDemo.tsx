@@ -75,6 +75,8 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
   const [typed, setTyped] = useState(0);
   const doneRef = useRef(false);
   const typedRef = useRef(0);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
     let frame: number;
@@ -89,7 +91,7 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
         setTyped(typedRef.current);
         if (typedRef.current >= text.length && !doneRef.current) {
           doneRef.current = true;
-          setTimeout(onDone, 600);
+          setTimeout(() => onDoneRef.current(), 600);
         }
         nextAt = now + charDelay();
       }
@@ -97,7 +99,6 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
   return (
@@ -119,10 +120,12 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
    ═══════════════════════════════════════════════════════════ */
 
 function TeamEntrance({ scenario, onDone }: { scenario: DemoScenario; onDone: () => void }) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, 2500);
+    const t = setTimeout(() => onDoneRef.current(), 2500);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
@@ -580,14 +583,20 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
     track('demo_enter', { scenario: scenario.id });
   }, [scenario.id]);
 
-  // Auto-scroll on phase change
+  // Auto-scroll on phase change (debounced to prevent flicker from parent re-renders)
+  const lastScrollPhase = useRef<string>('');
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 150);
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [phase, visibleWorkers, scrollToBottom]);
+  useEffect(() => {
+    const key = `${phase}-${visibleWorkers}`;
+    if (key === lastScrollPhase.current) return;
+    lastScrollPhase.current = key;
+    scrollToBottom();
+  }, [phase, visibleWorkers, scrollToBottom]);
 
   // Auto-advance for non-interactive phases
   const advance = useCallback((nextPhase: DemoPhase, delay: number) => {
