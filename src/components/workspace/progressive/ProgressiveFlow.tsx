@@ -1204,7 +1204,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                   <a href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-[14px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>로그인 <ChevronRight size={14} /></a>
                 </div>
               ) : (
-                <div className="flex items-start gap-2.5 px-5 py-4 rounded-2xl bg-red-50 border border-red-200 text-[13px] text-red-700"><AlertTriangle size={14} className="shrink-0 mt-0.5" /><span>{error}</span></div>
+                <div className="flex items-start gap-2.5 px-5 py-4 rounded-2xl bg-red-50 border border-red-200 text-[13px] text-red-700">
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                  <div>
+                    <span>{error?.includes('한도') || error?.includes('rate') ? '무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.' : error}</span>
+                    {(error?.includes('한도') || error?.includes('rate')) && (
+                      <a href="/settings" className="block mt-1.5 text-[12px] text-red-600 font-medium hover:underline">Settings에서 API 키 등록하기 →</a>
+                    )}
+                  </div>
+                </div>
               )}
             </motion.div>}
           </AnimatePresence>

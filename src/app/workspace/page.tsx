@@ -166,14 +166,22 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
       onReady(pid);
     } catch (err) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      // Cleanup
-      const sid = progressiveStore.currentSessionId;
-      if (sid) progressiveStore.deleteSession(sid);
-      setCurrentProjectId(null);
-      setError(err instanceof Error ? err.message : '분석에 실패했습니다. 다시 시도해주세요.');
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isRateLimit = errMsg.includes('한도') || errMsg.includes('rate') || errMsg.includes('limit');
+
+      if (isRateLimit) {
+        // Rate limit: 세션 보존 (사용자 입력 날리지 않음), 안내 제공
+        setError('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.');
+      } else {
+        // 다른 에러: 세션 정리
+        const sid = progressiveStore.currentSessionId;
+        if (sid) progressiveStore.deleteSession(sid);
+        setCurrentProjectId(null);
+        setError(errMsg || '분석에 실패했습니다. 다시 시도해주세요.');
+      }
       setPhase('idle');
       setStreamingText('');
-      track('workspace_start_error', { error: String(err) });
+      track('workspace_start_error', { error: errMsg, is_rate_limit: isRateLimit });
     }
   };
 
@@ -297,7 +305,14 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                   {error && (
                     <div className="mt-3 px-3 py-2.5 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 text-[13px] text-[var(--text-primary)] flex items-start gap-2">
                       <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
-                      <span>{error}</span>
+                      <div>
+                        <span>{error}</span>
+                        {error.includes('API 키') && (
+                          <a href="/settings" className="block mt-1.5 text-[12px] text-[var(--accent)] font-medium hover:underline">
+                            Settings에서 API 키 등록하기 →
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -4,8 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { validateOrigin, validateContentType, validateContentLength } from '@/lib/api-security';
 
 const MAX_TOKENS_CAP = 4096;
-const DAILY_LIMIT = 10; // ~2 progressive sessions per day
-const ANON_LIMIT = 8; // Progressive flow uses 4-6 calls per session; allow 1 full session
+const DAILY_LIMIT = 20; // ~2-3 progressive sessions per day (with workers)
+const ANON_LIMIT = 12; // Progressive flow uses 6-8 calls per session; allow 1 full session + retry
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
 const MAX_MESSAGES = 20;
