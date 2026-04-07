@@ -446,8 +446,8 @@ function WorkspaceContent() {
     if (queryProblem && !autoStarted && !currentProjectId && !isStarting) {
       setAutoStarted(true);
       setProblemInput(queryProblem);
-      // Auto-trigger after a tick to let stores load
-      const timer = setTimeout(() => {
+      // Auto-trigger after a tick to let stores load (no cleanup — one-shot timer)
+      setTimeout(() => {
         const text = queryProblem.trim();
         if (!text) return;
         setIsStarting(true);
@@ -468,7 +468,6 @@ function WorkspaceContent() {
           setStartError(err instanceof Error ? err.message : L('분석에 실패했습니다.', 'Analysis failed.'));
         }).finally(() => setIsStarting(false));
       }, 100);
-      return () => clearTimeout(timer);
     }
   }, [queryProblem, autoStarted, currentProjectId, isStarting]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -562,14 +561,11 @@ function WorkspaceContent() {
   }
 
   /* ─── Progressive Flow: default for new sessions ─── */
-  // Sync active session ID to store (outside render via effect)
-  useEffect(() => {
-    if (progressiveSession && !useLegacyMode && progressiveStore.currentSessionId !== progressiveSession.id) {
+  if (progressiveSession && !useLegacyMode) {
+    // Sync active session ID (safe: Zustand setState is synchronous)
+    if (progressiveStore.currentSessionId !== progressiveSession.id) {
       useProgressiveStore.setState({ currentSessionId: progressiveSession.id });
     }
-  }, [progressiveSession, useLegacyMode, progressiveStore.currentSessionId]);
-
-  if (progressiveSession && !useLegacyMode) {
 
     return (
       <ProgressiveLayout projectId={progressiveSession.project_id} projectName={currentProject?.name} onReset={() => {

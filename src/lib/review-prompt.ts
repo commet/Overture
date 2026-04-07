@@ -26,6 +26,8 @@ export interface ReviewPromptOptions {
   mode?: ReviewMode;
   locale?: Locale;
   agent?: Agent;              // Boss agent — personality injected if present
+  perspective?: string;       // 리뷰 관점 (e.g., "실행 가능성")
+  intensity?: string;         // 리뷰 강도 (e.g., "날카롭게")
 }
 
 // ── Quick Review JSON schema ──
@@ -101,12 +103,13 @@ export function buildReviewPrompt(
   const mode = options?.mode || 'quick';
   const locale = options?.locale || 'ko';
   const agent = options?.agent;
-  const s = sanitizeForPrompt;
+  const perspective = options?.perspective;
+  const intensity = options?.intensity;
 
   if (locale === 'ko') {
-    return buildKo(reviewer, document, context, mode, agent);
+    return buildKo(reviewer, document, context, mode, agent, perspective, intensity);
   }
-  return buildEn(reviewer, document, context, mode, agent);
+  return buildEn(reviewer, document, context, mode, agent, perspective, intensity);
 }
 
 // ── Korean prompt ──
@@ -117,6 +120,8 @@ function buildKo(
   context: string,
   mode: ReviewMode,
   agent?: Agent,
+  perspective?: string,
+  intensity?: string,
 ): { system: string; user: string } {
   const s = sanitizeForPrompt;
   const name = s(reviewer.name);
@@ -171,6 +176,7 @@ ${lengthGuide}
 - ✓ "이 일정으로 가능해요? 재무팀 데이터 받는 데만 일주일인데요"
 - ✓ "시장 분석은 좋은데, 예산 부분이 좀 약해요. 작년 실적 넣으면 바로 될 것 같아요"
 ${bossBlock}
+${perspective ? `\n[리뷰 관점] 특히 "${s(perspective)}" 관점에서 집중 검토하세요.` : ''}${intensity ? `\n[리뷰 강도] ${s(intensity)}` : ''}
 
 JSON만 응답하세요:
 ${jsonSchema}`;
@@ -178,7 +184,7 @@ ${jsonSchema}`;
   const user = `맥락: <user-data>${s(context)}</user-data>
 
 검토할 문서:
-${document}`;
+<user-data context="document">${document}</user-data>`;
 
   return { system, user };
 }
@@ -191,6 +197,8 @@ function buildEn(
   context: string,
   mode: ReviewMode,
   agent?: Agent,
+  perspective?: string,
+  intensity?: string,
 ): { system: string; user: string } {
   const s = sanitizeForPrompt;
   const name = s(reviewer.name);
@@ -241,6 +249,7 @@ ${lengthGuide}
 - ✓ "Can this really ship in 2 weeks? The data team alone takes a week"
 - ✓ "The market analysis is solid, but the budget section needs last year's numbers"
 ${bossBlock}
+${perspective ? `\n[Review focus] Pay special attention to "${s(perspective)}".` : ''}${intensity ? `\n[Review intensity] ${s(intensity)}` : ''}
 
 Respond with JSON only:
 ${jsonSchema}`;
@@ -248,7 +257,7 @@ ${jsonSchema}`;
   const user = `Context: <user-data>${s(context)}</user-data>
 
 Document to review:
-${document}`;
+<user-data context="document">${document}</user-data>`;
 
   return { system, user };
 }

@@ -85,33 +85,42 @@ Each persona requires ALL fields:
 - [ ] 최소 1명 high influence
 - [ ] 다른 기능 영역 (같은 부서 3명 금지)
 
-### Persona preview + inline customization
+### Persona preview — character card
 
-After generating personas, show them to the user with completeness indicators BEFORE running reviews.
+After generating personas, show them as **character cards** BEFORE running reviews.
+The card reveals more detail at higher completeness — like a character coming into focus.
 
-**Display format:**
+**Display format — use `formatPersonaCard()` logic:**
 
 ```
 리뷰어 구성:
 
-1. **김 부장** — 데이터분석팀장
-   ●●●○○ 구체화 (60%) — 소통 습관 추가하면 더 정확해져요
-   analytical · risk:low · influence:high
+📋 **김 부장** — 데이터분석팀장 · analytical · risk:low
+●●●○○ 생생함 · 현실적 시뮬레이션
+┊ 우선순위: 숫자와 데이터의 정합성
+┊ 소통 습관: "근거 자료 있어요?" 가 입버릇
+┊ 우려: 숫자 간 불일치, 출처 불명확
+→ OK 기준 추가하면 더 정확해져요
 
-2. **박 실장** — 사업기획실장
-   ●●○○○ 윤곽 (40%) — 이 사람이 중요하게 여기는 건 뭔가요?
-   consensus · risk:low · influence:high
+📋 **박 실장** — 사업기획실장
+●●○○○ 구체화 · 방향성 시뮬레이션
+→ 이 사람이 가장 중요하게 여기는 건 뭔가요?
 
-3. **이 대리** — 현장 PM
-   ●○○○○ 윤곽 (20%) — 어떻게 결정하는 사람인가요?
-   (미정) · influence:medium
+📋 **이 대리** — 현장 PM
+●○○○○ 윤곽 · 일반적 시뮬레이션
+→ 어떤 사람인지 한 마디만 알려주면 훨씬 정확해져요
 ```
 
-**Completeness levels:**
-- ●○○○○ **윤곽** (0-34%) — 이름+역할만. 일반적 시뮬레이션.
-- ●●○○○ **구체화** (35-59%) — 의사결정 방식, 우선순위 있음. 방향성 맞는 시뮬레이션.
-- ●●●○○~●●●●○ **생생함** (60-84%) — 소통 습관, 우려, OK 기준까지. 실제에 가까운 시뮬레이션.
-- ●●●●● **살아있음** (85-100%) — 사용자가 직접 묘사 + 리허설 이력. 거의 진짜.
+**Completeness → Simulation quality (이게 핵심):**
+
+| 수준 | 시뮬레이션 | 의미 | 카드에 보이는 것 |
+|------|-----------|------|-----------------|
+| ●○○○○ **윤곽** (0-29%) | 일반적 시뮬레이션 | 역할 기반 추측. 실제와 다를 수 있음 | 이름 + 역할만 |
+| ●●○○○ **구체화** (30-54%) | 방향성 시뮬레이션 | 의사결정 성향 반영. 말투는 아직 | + decision_style, risk |
+| ●●●○○ **생생함** (55-79%) | 현실적 시뮬레이션 | 소통 습관, 우려 반영. 이 사람다움 | + 우선순위, 소통, 우려, OK기준 |
+| ●●●●●  **살아있음** (80%+) | 정밀 시뮬레이션 | 사용자 묘사 + 이력. 거의 진짜 | + 💬 사용자 원문 |
+
+**사용자에게 중요한 것:** ●○○○○ 일 때 "일반적 시뮬레이션" 이라고 보여주면, 사용자는 **더 정확한 결과를 위해 능동적으로 정보를 추가**하게 된다. "한 마디 더 하면 시뮬레이션이 달라진다."
 
 **Then ask:**
 
@@ -123,15 +132,15 @@ questions: [{
   options: [
     {
       label: "이대로 진행",
-      description: "자동 생성된 페르소나로 리뷰"
+      description: "현재 수준으로 시뮬레이션"
     },
     {
       label: "내 팀장/상사를 알려줄게",
-      description: "자유롭게 설명하면 반영됩니다"
+      description: "자유롭게 설명하면 즉시 반영 — 시뮬레이션 정밀도 ↑"
     },
     {
       label: "이 사람 맞아 ✓",
-      description: "자동 생성 결과가 실제와 비슷함 — 저장"
+      description: "자동 생성 결과가 실제와 비슷함 — 저장해서 다음에도 사용"
     }
   ]
 }]
@@ -139,64 +148,193 @@ questions: [{
 
 ### Inline persona refinement (free-form)
 
-If user chooses "내 팀장/상사를 알려줄게" OR at ANY point in the conversation describes their boss/stakeholder:
+If user chooses "내 팀장/상사를 알려줄게" OR at ANY point in the conversation describes their boss/stakeholder.
 
-**Detection:** User's message contains descriptions like:
-- "우리 팀장은 ..." / "내 상사는 ..."
-- "이 사람은 ISTJ고 ..." / "숫자 없으면 안 넘어가는 사람이야"
-- "좀 더 까다로운 사람인데" / "결론부터 말하라는 타입"
-- Any specific personality/behavior description targeting a reviewer
+#### 감지 규칙 — persona description vs plan feedback 구분
 
-**Action:**
+**페르소나 설명으로 처리:**
+- "우리 팀장은 ..." / "내 상사는 ..." / "이 사람은 ..."  → 명시적 지칭
+- "ISTJ야" / "숫자 없으면 안 넘어가" / "결론부터 말하라는 타입"  → 성향 직접 묘사
+- "보고서 3장 넘으면 안 읽어" / "전직 컨설턴트야"  → 구체적 행동/이력
 
-1. Take the user's free-form text AS-IS
-2. Extract structured persona fields from it (using LLM inline — no external function call needed):
-   - Map personality types (MBTI → decision_style + risk_tolerance)
-   - Extract communication patterns → communication_style
-   - Extract priorities/concerns → priorities, known_concerns
-   - Extract approval patterns → success_metric
-   - Preserve user's original words in extracted_traits
-3. Merge with existing auto-generated persona (override where user was specific)
-4. Show the updated persona with before→after progression:
+**페르소나 설명이 아닌 것 (plan feedback으로 처리):**
+- "이 부분이 약한 것 같아" → plan에 대한 의견
+- "3번 단계를 바꿔줘" → plan 수정 요청
+- "리스크가 더 있을 것 같은데" → review에 대한 반응
+
+**애매한 경우:** "좀 더 까다롭게 해줘" → 이건 intensity 변경 요청이지 persona 설명이 아님. vs "이 사람이 실제로는 더 까다로운 사람이야" → persona 설명.
+
+**판단 기준:** "이 사람"의 **성격/습관/이력**에 대한 서술인가? → persona. **계획/리뷰/출력**에 대한 의견인가? → plan feedback.
+
+#### 처리 플로우 — 구체적 예시
+
+**Example 1: 한 문장으로 큰 변화**
+
+User: "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야"
+
+→ 추출:
+- decision_style: analytical (ISTJ)
+- risk_tolerance: low (ISTJ)
+- communication_style: "숫자 없으면 안 넘어감"
+- extracted_traits: [숫자 중시, 체계적, 근거 집착]
+
+→ 표시:
 
 ```
-📋 김 부장 업데이트:
+📋 **김 부장** 업데이트:
 
-●●○○○ 윤곽 → ●●●●○ 생생함
+●●○○○ 구체화 · 방향성 시뮬레이션
+→ ●●●●○ 생생함 · 현실적 시뮬레이션
 
-+ 의사결정: analytical (ISTJ 기반)
-+ 리스크: low
-+ 소통: "숫자 없으면 안 넘어감, 결론부터 말하라는 타입"
-+ 성격: 숫자 중시, 직설적, 근거 집착, 결론 우선
++ 의사결정: 분석적 — 데이터와 근거 중심 (ISTJ 기반)
++ 리스크: 신중한 편 — 안전 우선
++ 소통: "숫자 없으면 안 넘어감"
++ 성격: 숫자 중시, 체계적, 근거 집착
 
-💬 원본: "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야"
+시뮬레이션 정밀도: 방향성 → 현실적 ↑
 
-이 프로필로 리허설할까요?
+💬 "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야"
 ```
 
-5. Save `user_description` field — user's original text is preserved and injected into the feedback prompt
-6. Updated persona is saved to `.overture/personas.json` for future rehearsals
+**Example 2: 추가 한 마디로 레벨업**
 
-**Key UX principle:** The persona "fills up" visually. ●●○○○ → ●●●●○. Users SEE their input making the agent more concrete. This drives engagement — "한 마디 더 하면 이 사람이 더 진짜가 된다."
+User: "아 그리고 이 사람 보고서 5페이지 넘으면 안 읽어. ROI 안 나오면 관심 없어해"
+
+→ 기존 프로필에 병합:
+- communication_style 추가: "; 보고서 5페이지 초과 시 안 읽음"
+- success_metric: "ROI가 명확하게 제시되어야 함"
+
+→ 표시:
+
+```
+📋 **김 부장** 추가 반영:
+
+●●●●○ 생생함 → ●●●●● 살아있음 · 정밀 시뮬레이션
+
++ 소통: "보고서 5페이지 넘으면 안 읽어"
++ OK 기준: "ROI가 명확하게 제시"
+
+시뮬레이션 정밀도: 현실적 → 정밀 ↑
+
+💬 "보고서 5페이지 넘으면 안 읽어. ROI 안 나오면 관심 없어해"
+```
+
+**Example 3: 기존 페르소나와 다른 사람**
+
+User: "아 그리고 우리 CFO도 봐야 하는데, 이 사람은 무조건 비용부터 물어봐"
+
+→ 기존 페르소나에 없는 새로운 사람. 새 페르소나 생성:
+- name: "CFO"
+- priorities: "비용"
+- communication_style: "무조건 비용부터 물어봄"
+
+→ 표시:
+
+```
+📋 새 리뷰어 추가:
+
+**CFO** — (역할 미상)
+●●○○○ 구체화 · 방향성 시뮬레이션
+┊ 소통 습관: "무조건 비용부터 물어봄"
+💬 "무조건 비용부터 물어봐"
+→ 이 사람의 역할이나 성향을 더 알려주면 정밀도가 올라갑니다
+
+기존 리뷰어에 추가할까요, 교체할까요?
+```
+
+#### 페르소나 필드 병합 규칙
+
+- **enum 필드** (decision_style, risk_tolerance, influence): **교체** — 최신 사용자 입력이 우선
+- **텍스트 필드** (priorities, communication_style, known_concerns): **누적** — ";" 로 이어붙임. 정보가 쌓일수록 더 풍부해짐
+- **success_metric**: **교체** — 가장 최신 기준이 우선. 이전 기준은 known_concerns로 이동
+- **extracted_traits**: **합집합** — 기존 키워드 + 새 키워드
+- **user_description**: **줄 바꿈으로 누적** — 모든 사용자 입력 원문 보존
 
 ### Confirmation shortcut ("이 사람 맞아")
 
-If user says "이 사람 맞아" / "맞아" / confirms persona accuracy:
-1. Save persona with `is_example: false` (user-confirmed, not example data)
-2. Mark as confirmed in `.overture/personas.json`
+If user says "이 사람 맞아" / "비슷해" / "맞아" / confirms persona accuracy:
+1. Save persona with `confirmed: true, source: "confirmed"`
+2. Save to `.overture/personas.json`
 3. Future rehearsals auto-load this persona
-4. Show: "✓ 저장됨. 다음 리허설부터 자동 적용됩니다."
+4. Show:
+   ```
+   ✓ **김 부장** 저장됨 (●●●○○ 생생함)
+   다음 /rehearse 부터 자동 적용됩니다.
+   사용하면서 특성을 더 알려주면 정밀도가 올라갑니다.
+   ```
 
 ### Mid-conversation persona refinement
 
 During ANY step of rehearse (even after reviews have started), if the user interjects with a persona description:
 
-1. Pause the current flow
-2. Process the description inline
-3. Show before→after diff
-4. Ask: "업데이트된 프로필로 다시 리뷰할까요, 아니면 이어서 갈까요?"
-   - Re-review: rerun with refined persona
-   - Continue: apply to future runs only
+1. **Detect** — persona description vs plan feedback (rules above)
+2. **Process** — extract traits, merge with existing persona
+3. **Show** — before→after diff with simulation quality change
+4. **Branch:**
+
+```
+questions: [{
+  question: "페르소나가 업데이트됐습니다. 어떻게 할까요?",
+  header: "리뷰어 업데이트",
+  options: [
+    {
+      label: "이 사람으로 다시 리뷰",
+      description: "업데이트된 프로필로 이 페르소나만 재실행"
+    },
+    {
+      label: "이어서 진행",
+      description: "저장만 하고 다음 리허설부터 적용"
+    }
+  ]
+}]
+```
+
+### Post-review accuracy feedback
+
+After showing ALL persona reviews (Step 4 결과 이후), ask:
+
+```
+questions: [{
+  question: "이 리뷰어들의 피드백이 실제 그 사람과 비슷했나요?",
+  header: "시뮬레이션 정확도",
+  multiSelect: true,
+  options: [
+    {
+      label: "[김 부장] 비슷해 ✓",
+      description: "이 사람다운 반응이었음 — 프로필 고정"
+    },
+    {
+      label: "[김 부장] 좀 달라",
+      description: "실제로는 더 [___] 한 사람 — 프로필 수정 기회"
+    },
+    {
+      label: "[박 실장] 비슷해 ✓",
+      description: "이 사람다운 반응이었음"
+    },
+    {
+      label: "[박 실장] 좀 달라",
+      description: "실제로는 다름"
+    }
+  ]
+}]
+```
+
+**"비슷해 ✓"** → `confirmed: true` 저장. 다음 리허설부터 자동 적용. 피드백 이력(`feedback_logs`)에 정확도 기록.
+
+**"좀 달라"** → 후속 질문:
+
+```
+questions: [{
+  question: "어디가 달랐나요? 한 줄이면 충분합니다.",
+  header: "피드백 보정"
+}]
+```
+
+User: "실제로는 더 직설적이고, 돌려 말하는 거 싫어해"
+→ communication_style 업데이트 + before→after diff 표시
+→ `source: "accuracy_calibrated"` 로 저장 — 가장 높은 신뢰도
+
+**이 루프가 핵심:** 사용 → 피드백 → 보정 → 더 정확한 시뮬레이션 → 사용. 쓸수록 페르소나가 진짜에 가까워진다.
 
 ### Persona persistence
 
@@ -211,22 +349,28 @@ Save to `.overture/personas.json`:
       "decision_style": "analytical",
       "risk_tolerance": "low",
       "priorities": "숫자와 데이터의 정합성",
-      "communication_style": "숫자 없으면 안 넘어감, 결론부터 말하라는 타입",
+      "communication_style": "숫자 없으면 안 넘어감; 보고서 5페이지 넘으면 안 읽음",
       "known_concerns": "근거 없는 주장, 출처 불명확",
-      "success_metric": "모든 수치의 출처와 정합성 확인",
-      "extracted_traits": ["숫자 중시", "직설적", "근거 집착"],
+      "success_metric": "ROI가 명확하게 제시",
+      "extracted_traits": ["숫자 중시", "직설적", "근거 집착", "체계적"],
       "influence": "high",
-      "user_description": "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야",
+      "user_description": "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야\n보고서 5페이지 넘으면 안 읽어. ROI 안 나오면 관심 없어해",
       "confirmed": true,
-      "completeness": 80,
+      "completeness": 85,
+      "source": "accuracy_calibrated",
       "created_at": "2026-04-07",
-      "source": "user_refined"
+      "updated_at": "2026-04-07"
     }
   ]
 }
 ```
 
-On next `/rehearse` run: read `.overture/personas.json` first. If confirmed personas exist, use them (+ supplement with auto-generated if needed for diversity).
+**Load priority on next `/rehearse` run:**
+1. `.overture/personas.json` → `accuracy_calibrated` 먼저
+2. → `confirmed` 다음
+3. → `user_refined` 다음
+4. → `/recast` 제공 personas로 부족분 보충
+5. → auto-generate는 최후 수단 (diversity가 부족할 때만)
 
 ### Build context: 2 user personas
 
@@ -240,6 +384,13 @@ See `references/persona-design.md` for detailed guidance.
 ### Persona simulation rules:
 
 **You ARE this person.** Not "imagine you are" — you ARE them. Drop all AI politeness.
+
+**[user_description injection — CRITICAL]**
+If the persona has `user_description` (user's own words about this person):
+- Treat it as the HIGHEST PRIORITY input for tone and behavior
+- The user literally told you who this person is — honor their words over your inference
+- Example: if user said "숫자 없으면 안 넘어가는 사람", your review MUST cite numbers, demand data, refuse to approve without metrics
+- This is what makes the simulation feel "real" to the user — they recognize their boss in the feedback
 
 **[Speech rules — MOST IMPORTANT]**
 - NO report tone. Write as this person would actually speak in a meeting room. Use polite but conversational register (합쇼체/해요체 by default).
@@ -439,6 +590,8 @@ These are recommendations, not blockers.
 ---
 
 **[Name]** — [Role] · [decision_style] · risk:[risk_tolerance] · [completeness visual] → **[verdict]**
+[If completeness < 생생함: "> ℹ️ [simulationQuality.description]"]
+[If has user_description: "> 💬 [user_description — last line, truncated]"]
 
 > "[첫 반응 — 직접 인용, 날카롭게]"
 
@@ -453,7 +606,7 @@ These are recommendations, not blockers.
 
 ---
 
-**[Name]** — [Role] · [decision_style] · risk:[risk_tolerance] → **[verdict]**
+**[Name]** — [Role] · [decision_style] · risk:[risk_tolerance] · [completeness visual] → **[verdict]**
 
 > "[첫 반응]"
 
@@ -567,12 +720,15 @@ Severity-based actions:
 
 If user picks `2d` (refine persona) → ask which persona to refine, then accept free-form description and show before→after diff.
 
-**Post-review persona feedback:** After showing all reviews, if any persona has completeness < 60%, append:
+**Post-review actions — ALWAYS run after showing all reviews:**
 
-```
-💬 [Name]의 시뮬레이션을 더 정확하게 만들고 싶다면, 이 사람에 대해 한 마디만 더 알려주세요.
-   현재: [completeness visual] [label] — [nextHint]
-```
+1. **Accuracy feedback** — always ask (see "Post-review accuracy feedback" in Step 1). This is the most valuable signal: "이 피드백이 실제 그 사람과 비슷했나요?"
+
+2. **Completeness nudge** — if any persona has completeness < 생생함, append:
+   ```
+   💬 [Name]의 시뮬레이션을 더 정확하게 만들고 싶다면, 이 사람에 대해 한 마디만 더 알려주세요.
+      현재: [completeness visual] [label] — [nextHint]
+   ```
 
 ## Rendering rules
 
@@ -612,4 +768,6 @@ Save/update `.overture/personas.json`:
 - Is there anything here that would make the user uncomfortable? If not → too soft.
 - Does each risk cite a specific element from /recast? If not → too generic.
 - Does each persona speak differently (reflecting their decision_style)? If they sound the same → persona simulation failed.
+- If a persona has `user_description`, does the review reflect those specific traits? "숫자 없으면 안 넘어가" → review MUST demand numbers. If not → user_description injection failed.
 - Is there at least 1 🔇 unspoken risk? If not → you aren't looking hard enough.
+- Did you show completeness progression and offer accuracy feedback? If not → missed the engagement loop.

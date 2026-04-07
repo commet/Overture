@@ -8,7 +8,7 @@ import { FeedbackMessage, PersonaAvatar, getPersonaColor } from './FeedbackMessa
 import { DiscussionThread } from './DiscussionThread';
 import type { Persona, FeedbackRecord } from '@/stores/types';
 import {
-  MessageCircleQuestion, ThumbsUp, AlertTriangle, Search, Star, Check, RefreshCw,
+  ThumbsUp, Search, Star, Check, RefreshCw,
   ShieldAlert, Shield, EyeOff, ArrowLeft, MessageSquare, Loader2, ArrowRight,
 } from 'lucide-react';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
@@ -274,7 +274,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
       {/* ══════════════ PERSONA DETAIL ══════════════ */}
       {viewMode === 'persona-detail' && selectedResult && selectedPersona && (
         <div className="space-y-3 animate-fade-in">
-          <button onClick={() => { setViewMode('overview'); setSelectedPersonaId(null); }}
+          <button onClick={() => { setViewMode('overview'); setSelectedPersonaId(null); setShowDeepDetails(false); }}
             className="flex items-center gap-1 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">
             <ArrowLeft size={14} /> 전체 결과로
           </button>

@@ -216,16 +216,40 @@ When the user answers the decision maker question, they may add free-form detail
 
 **If user adds description:**
 1. Extract persona traits from their free-form text inline
-2. Show the seeded persona with completeness:
+2. Show the seeded persona with character card:
    ```
-   📋 리뷰어 생성됨:
-   팀장 ●●●●○ 생생함 (75%)
-   + analytical · risk:low · "숫자 없으면 안 넘어감"
+   📋 **팀장** — (역할 추론 중) · analytical · risk:low
+   ●●●●○ 생생함 · 현실적 시뮬레이션
+   ┊ 소통 습관: "숫자 없으면 안 넘어감"
+   💬 "전직 컨설턴트고 숫자 없으면 안 넘어가"
    → 리허설 단계에서 이 사람으로 시뮬레이션합니다
    ```
 3. Save to `.overture/personas.json` — carries through to /rehearse
-4. User can add more details at any point: "아 그리고 이 사람 보고서 5페이지 넘으면 안 읽어"
-   → persona updates inline, completeness increases
+4. User can add more details at any point (see below)
+
+### Persona description detection (throughout Q&A)
+
+**Not just at the decision maker question.** At ANY point during /overture Q&A, if the user adds persona info:
+
+**Examples:**
+- Q&A 답변 중: "대표님이 결정하는데, 이 사람 숫자 좋아해" → persona seeding
+- 추가 코멘트: "아 그리고 이 사람 보고서 5페이지 넘으면 안 읽어" → persona update
+- 자연스러운 언급: "우리 팀장이 이거 시키셨는데 원래 보수적인 분이야" → judge info + persona
+
+**Detection rule (same as /rehearse):**
+- "이 사람은 ..." / "우리 [직함]은 ..." / MBTI 언급 / 성향 묘사 → persona description
+- "이 부분은 ..." / "이걸 바꿔줘" → plan feedback (not persona)
+
+**Action:**
+1. Extract traits inline
+2. Update persona card — show before→after if existing
+3. Continue Q&A flow without interruption (페르소나 업데이트는 사이드바처럼 짧게 표시)
+
+```
+💬 리뷰어 업데이트: 팀장 ●●●○○ → ●●●●○ (+ "보고서 5페이지 넘으면 안 읽어")
+```
+
+One line. Don't break the Q&A flow. The persona card builds up quietly in the background.
 
 ### After each answer — show updated analysis:
 

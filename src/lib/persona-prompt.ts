@@ -63,8 +63,13 @@ export function buildPersonaProfileBlock(persona: Persona): string {
   if (persona.success_metric) lines.push(`- OK 조건: ${s(persona.success_metric)}`);
   lines.push(`- 핵심 성향: ${(persona.extracted_traits || []).map(t => s(t)).join(', ')}`);
   if (persona.user_description) {
-    lines.push(`- 💬 사용자가 이 사람을 이렇게 묘사함: "${s(persona.user_description)}"`);
-    lines.push(`  ↑ 이 묘사의 뉘앙스와 톤을 최대한 반영하여 시뮬레이션하세요.`);
+    // 여러 줄일 수 있음 (누적된 사용자 입력). 각 줄이 한 번의 입력.
+    const descriptions = persona.user_description.split('\n').filter(Boolean);
+    lines.push(`- 💬 사용자가 이 사람을 직접 묘사함 (가장 중요한 참고 — 이 표현의 뉘앙스를 최대한 살리세요):`);
+    for (const desc of descriptions) {
+      lines.push(`  · "${s(desc)}"`);
+    }
+    lines.push(`  ↑ 이 사람의 말투, 관심사, 판단 기준을 이 묘사에서 추론하세요. 일반적 역할 추측보다 사용자 묘사가 우선합니다.`);
   }
   lines.push(`</user-data>`);
   return lines.join('\n');

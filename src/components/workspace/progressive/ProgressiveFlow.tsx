@@ -445,7 +445,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
               <div className="rounded-xl border border-[var(--accent)]/10 bg-[var(--accent)]/[0.03] p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-9 h-9 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[14px] font-bold text-[var(--accent)]">
-                    {(dm || (locale === 'ko' ? '?' : '?')).charAt(0).toUpperCase()}
+                    {(dm || '?').charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-[14px] font-semibold text-[var(--text-primary)]">{dm || L('의사결정권자', 'Decision-Maker')}</p>

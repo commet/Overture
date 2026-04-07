@@ -12,8 +12,8 @@ import { FeedbackRequest } from '@/components/tools/FeedbackRequest';
 import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import { toDisplayError, isAuthError } from '@/lib/error-display';
-import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
 import { buildReviewPrompt } from '@/lib/review-prompt';
+import { getCurrentLanguage } from '@/lib/i18n';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
@@ -27,7 +27,7 @@ import { LoadingSteps } from '@/components/ui/LoadingSteps';
 import { playSuccessTone, resumeAudioContext } from '@/lib/audio';
 import { ContextChainBlock } from './ContextChainBlock';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
-import { buildReframeContext, buildRecastContext, injectRecastContext } from '@/lib/context-chain';
+import { buildReframeContext, buildRecastContext } from '@/lib/context-chain';
 // Dynamic imports for heavy modules (loaded on-demand, not at initial render)
 const lazyEvalEngine = () => import('@/lib/eval-engine');
 const lazyVitality = () => import('@/lib/judgment-vitality');
@@ -35,17 +35,17 @@ import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
 /// Unified review prompt (shared with web app)
-function buildPersonaReview(persona: Persona, documentText: string, contextText: string): { system: string; user: string } {
+function buildPersonaReview(persona: Persona, documentText: string, contextText: string, perspective?: string, intensity?: string): { system: string; user: string } {
   const agent = useAgentStore.getState().getAgent(persona.id) || undefined;
   return buildReviewPrompt(
     { name: persona.name, role: persona.role, personality: persona.communication_style },
     documentText,
     contextText,
-    { mode: 'quick', locale: 'ko', agent },
+    { mode: 'quick', locale: getCurrentLanguage(), agent, perspective, intensity },
   );
 }
 
-/// Map ReviewFeedback → RehearsalResult for backward compat (FeedbackResult, RefineStep, etc.)
+/// Map ReviewFeedback → RehearsalResult for backward compat
 function reviewToRehearsal(review: Record<string, unknown>, personaId: string): RehearsalResult {
   const concerns = (review.concerns as Array<Record<string, string>> || []);
   return {
@@ -65,13 +65,6 @@ function reviewToRehearsal(review: Record<string, unknown>, personaId: string): 
     approval_conditions: review.approval_condition ? [review.approval_condition as string] : [],
   };
 }
-
-/// Legacy: still used by RefineStep for re-reviews
-const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
-  const agent = useAgentStore.getState().getAgent(persona.id);
-  if (agent) return buildFeedbackSystemPromptFromAgent(agent, perspective, intensity);
-  return buildFeedbackSystemPrompt(persona, perspective, intensity);
-};
 
 /* ────────────────────────────────────────────
    Phase-based flow (matches Reframe/Recast pattern)

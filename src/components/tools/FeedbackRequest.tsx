@@ -25,20 +25,6 @@ interface FeedbackRequestProps {
   initialPersonaIds?: string[];
 }
 
-const perspectives = [
-  { value: '전반적 인상', description: '전체적인 방향성과 첫인상' },
-  { value: '논리 구조', description: '논리적 허점과 구조적 문제' },
-  { value: '실행 가능성', description: '현실적으로 실행할 수 있는지' },
-  { value: '리스크', description: '위험 요소와 실패 가능성' },
-  { value: '숫자/데이터', description: '근거와 수치의 신뢰성' },
-];
-
-const intensities = [
-  { value: '부드럽게', mark: 'p', description: '건설적 피드백 위주' },
-  { value: '솔직하게', mark: 'mf', description: '좋은 점과 문제점 균형' },
-  { value: '까다롭게', mark: 'ff', description: '최악의 시나리오 중심' },
-];
-
 const INFLUENCE_STYLES = {
   high: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', label: '높음' },
   medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: '중간' },
@@ -56,17 +42,19 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   useEffect(() => {
     if (initialPersonaIds && initialPersonaIds.length > 0) {
       setSelectedIds(initialPersonaIds);
-    } else if (personas.length > 0 && selectedIds.length === 0) {
-      // Auto-select first persona (highest influence first)
-      const sorted = [...personas].sort((a, b) => {
-        const order = { high: 0, medium: 1, low: 2 };
-        return (order[a.influence || 'medium'] || 1) - (order[b.influence || 'medium'] || 1);
+    } else if (personas.length > 0) {
+      setSelectedIds(prev => {
+        if (prev.length > 0) return prev;
+        const sorted = [...personas].sort((a, b) => {
+          const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+          return (order[a.influence || 'medium'] ?? 1) - (order[b.influence || 'medium'] ?? 1);
+        });
+        return [sorted[0].id];
       });
-      setSelectedIds([sorted[0].id]);
     }
-  }, [initialPersonaIds, personas]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [perspective, setPerspective] = useState('전반적 인상');
-  const [intensity, setIntensity] = useState('솔직하게');
+  }, [initialPersonaIds, personas]);
+  const perspective = '전반적 인상';
+  const intensity = '솔직하게';
   const [showFullDoc, setShowFullDoc] = useState(false);
   const [useCustomDoc, setUseCustomDoc] = useState(false);
 
