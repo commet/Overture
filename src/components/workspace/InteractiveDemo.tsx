@@ -238,69 +238,34 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
               )}
             </AnimatePresence>
 
-            {/* Assumptions → Skeleton: connected flow */}
-            <div className="space-y-0">
-              {/* Assumptions */}
-              {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
-                <div className="rounded-t-xl border border-b-0 border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-amber-500/10 flex items-center justify-center text-[9px]">⚠</span>
-                    Hidden Assumptions
-                  </p>
-                  <div className="space-y-2">
-                    <AnimatePresence>
-                      {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
-                        <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.8, ease: EASE }}
-                          className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
-                          {d.text}
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                      <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
-                        className={`text-[13px] leading-[1.75] pl-3 border-l-2 transition-colors duration-1000 ${
-                          d.status === 'new' ? 'border-emerald-400 text-[var(--text-primary)] bg-emerald-50/40 dark:bg-emerald-900/10 rounded-r-lg py-1 pr-2' : 'border-amber-300/40 text-[var(--text-secondary)]'
-                        }`}>
-                        {d.text}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Skeleton — visually connected to assumptions */}
-              <div className={`border border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5 ${
-                assumptionDiff.filter(d => d.status !== 'removed').length > 0 ? 'rounded-b-xl' : 'rounded-xl'
-              }`}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent)] mb-3 flex items-center gap-2">
-                  <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
-                  Framework
-                </p>
-                <div className="space-y-1.5">
-                  <AnimatePresence>
-                    {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
-                      <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.8, ease: EASE }}
-                        className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
-                        {d.text}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                    <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                      className={`flex items-start gap-3 text-[13px] leading-[1.75] py-1 transition-colors duration-1000 ${
-                        d.status === 'new' ? 'text-[var(--text-primary)] font-medium bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg px-2 -mx-2' : 'text-[var(--text-primary)]'
-                      }`}>
-                      <span className={`font-mono text-[11px] w-4 text-center shrink-0 mt-0.5 rounded ${
-                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/50 bg-[var(--accent)]/[0.06]'
-                      }`}>{d.status === 'new' ? '✦' : `${i + 1}`}</span>
-                      <span>{d.text}</span>
+            {/* Framework — the actionable structure */}
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent)] mb-3 flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
+                Framework
+              </p>
+              <div className="space-y-1.5">
+                <AnimatePresence>
+                  {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
+                    <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.8, ease: EASE }}
+                      className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
+                      {d.text}
                     </motion.div>
                   ))}
-                </div>
+                </AnimatePresence>
+                {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
+                  <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
+                    className={`flex items-start gap-3 text-[13px] leading-[1.75] py-1 transition-colors duration-1000 ${
+                      d.status === 'new' ? 'text-[var(--text-primary)] font-medium bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg px-2 -mx-2' : 'text-[var(--text-primary)]'
+                    }`}>
+                    <span className={`font-mono text-[11px] w-4 text-center shrink-0 mt-0.5 rounded ${
+                      d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/50 bg-[var(--accent)]/[0.06]'
+                    }`}>{d.status === 'new' ? '✦' : `${i + 1}`}</span>
+                    <span>{d.text}</span>
+                  </motion.div>
+                ))}
               </div>
             </div>
           </div>

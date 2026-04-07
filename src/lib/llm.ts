@@ -383,18 +383,35 @@ export async function callLLM(
   return callProxy(messages, options);
 }
 
+// ━━━ Provider tier mapping (업무 성격에 따라 모델 자동 선택) ━━━
+
+function resolveOpenAIModel(baseModel: string, tier?: ModelTier): string {
+  if (!tier || tier === 'default') return baseModel;
+  if (tier === 'fast') return 'gpt-4o-mini';
+  // strong: 기본 모델이 mini면 4o로 올림, 아니면 유지
+  return baseModel.includes('mini') || baseModel.includes('nano') ? 'gpt-4o' : baseModel;
+}
+
+function resolveGeminiModel(baseModel: string, tier?: ModelTier): string {
+  if (!tier || tier === 'default') return baseModel;
+  if (tier === 'fast') return 'gemini-2.0-flash';
+  // strong: pro로 올림
+  return 'gemini-2.5-pro';
+}
+
 async function callOpenAI(
   apiKey: string,
   model: string,
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
+  const resolvedModel = resolveOpenAIModel(model, options.model);
   const res = await fetchWithRetry('/api/llm/openai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
-      model,
+      model: resolvedModel,
       messages,
       system: options.system,
       maxTokens: options.maxTokens,
@@ -412,12 +429,13 @@ async function callGemini(
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
+  const resolvedModel = resolveGeminiModel(model, options.model);
   const res = await fetchWithRetry('/api/llm/gemini', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
-      model,
+      model: resolvedModel,
       messages,
       system: options.system,
       maxTokens: options.maxTokens,
@@ -612,10 +630,10 @@ export async function callLLMStream(
   };
   if (isGemini) {
     bodyObj.apiKey = settings.gemini_api_key;
-    bodyObj.model = settings.gemini_model || 'gemini-2.5-flash';
+    bodyObj.model = resolveGeminiModel(settings.gemini_model || 'gemini-2.5-flash', options.model);
   } else if (isOpenAI) {
     bodyObj.apiKey = settings.openai_api_key;
-    bodyObj.model = settings.openai_model || 'gpt-4o';
+    bodyObj.model = resolveOpenAIModel(settings.openai_model || 'gpt-4o', options.model);
   } else if (isDirect) {
     bodyObj.apiKey = settings.anthropic_api_key;
   }
