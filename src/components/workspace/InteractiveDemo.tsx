@@ -954,13 +954,19 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               />
             )}
 
-            {/* Q1 answer pill */}
+            {/* Q1 answer pill + team flow indicator */}
             {q1Answer && phaseGte(phase, 'update1') && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
-                <Check size={10} className="text-[var(--accent)]" />
-                <span className="text-[var(--text-primary)] font-medium">{q1Answer}</span>
-              </motion.div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+                  <Check size={10} className="text-[var(--accent)]" />
+                  <span className="text-[var(--text-primary)] font-medium">{q1Answer}</span>
+                </motion.div>
+                <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+                  className="text-[10px] text-[var(--accent)]/60 flex items-center gap-1">
+                  <ArrowRight size={9} /> {L('팀 분석에 반영', 'sent to team')}
+                </motion.span>
+              </div>
             )}
 
             {/* 5. Q2 */}
@@ -973,14 +979,87 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               />
             )}
 
-            {/* Q2 answer pill */}
+            {/* Q2 answer pill + team flow indicator */}
             {q2Answer && phaseGte(phase, 'update2') && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
-                <Check size={10} className="text-[var(--accent)]" />
-                <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
-              </motion.div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+                  <Check size={10} className="text-[var(--accent)]" />
+                  <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
+                </motion.div>
+                <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+                  className="text-[10px] text-[var(--accent)]/60 flex items-center gap-1">
+                  <ArrowRight size={9} /> {L('팀 분석에 반영', 'sent to team')}
+                </motion.span>
+              </div>
             )}
+
+          {/* 6. Team working — main column bridge between Q&A and draft */}
+          {phaseGte(phase, 'workers') && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: EASE }}
+              className="rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.02] p-4 md:p-5"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
+                  <Sparkles size={10} className="text-[var(--accent)]" />
+                </div>
+                <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  {phaseGte(phase, 'draft')
+                    ? L('팀 분석이 반영된 기획안이에요', 'The plan now includes team analysis')
+                    : L('당신의 답변을 바탕으로 팀이 분석 중이에요', 'Team is analyzing based on your answers')}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {scenario.workers.map((w, i) => {
+                  const done = i < visibleWorkers;
+                  return (
+                    <motion.div
+                      key={w.persona.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.2, duration: 0.3, ease: EASE }}
+                      className="flex items-center gap-3"
+                    >
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] shrink-0 ${
+                        done ? '' : 'animate-pulse'
+                      }`} style={{ backgroundColor: w.persona.color + '15' }}>
+                        {w.persona.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-medium text-[var(--text-primary)]">{w.persona.name}</span>
+                          <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona.role}</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-secondary)] truncate">{w.task}</p>
+                      </div>
+                      {done
+                        ? <Check size={14} className="text-emerald-500 shrink-0" />
+                        : <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />
+                      }
+                    </motion.div>
+                  );
+                })}
+              </div>
+              {phaseGte(phase, 'draft') && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                  className="mt-3 pt-3 border-t border-[var(--accent)]/10 flex items-center gap-1.5">
+                  <div className="flex -space-x-1.5">
+                    {scenario.workers.map(w => (
+                      <div key={w.persona.id} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] border-2 border-[var(--surface)]"
+                        style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
+                    ))}
+                  </div>
+                  <span className="text-[11px] text-[var(--accent)] font-medium">
+                    {L('분석 결과가 아래 기획안에 반영되었어요', 'Analysis results are reflected in the plan below')}
+                  </span>
+                  <ArrowRight size={11} className="text-[var(--accent)]" />
+                </motion.div>
+              )}
+            </motion.div>
+          )}
 
           {/* 7. Draft */}
           {phaseGte(phase, 'draft') && (
