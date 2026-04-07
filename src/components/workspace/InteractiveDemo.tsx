@@ -194,7 +194,7 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
           <div className="p-5 md:p-7">
             {/* Eyebrow */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">진짜 질문</span>
+              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">Real Question</span>
               {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
               {hasChanges && (newCount > 0 || removedCount > 0) && (
                 <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
@@ -468,7 +468,7 @@ function AgentRow({ worker, status, expanded, onToggle }: {
             </p>
           )}
         </div>
-        {status === 'waiting' && <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">대기</span>}
+        {status === 'waiting' && <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">standby</span>}
         {isWorking && <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />}
         {isDone && (
           <ChevronDown size={14} className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
@@ -515,12 +515,12 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
     <div className="p-4 space-y-3.5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">분석 팀</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Analysis Team</span>
         {workingCount > 0 && !phaseGte(phase, 'draft') && (
-          <span className="text-[11px] text-[var(--accent)] font-medium">{workingCount}명 분석 중</span>
+          <span className="text-[11px] text-[var(--accent)] font-medium">{workingCount} analyzing</span>
         )}
         {phaseGte(phase, 'draft') && (
-          <span className="text-[11px] text-emerald-500 font-medium">완료</span>
+          <span className="text-[11px] text-emerald-500 font-medium">Done</span>
         )}
       </div>
 
@@ -585,8 +585,8 @@ function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
         ))}
       </div>
       <span className="text-[10px] text-[var(--text-secondary)] flex-1">
-        {statuses.every(s => s === 'done') ? '분석 완료' :
-         `${statuses.filter(s => s === 'working').length}명 분석 중...`}
+        {statuses.every(s => s === 'done') ? 'Analysis done' :
+         `${statuses.filter(s => s === 'working').length} analyzing...`}
       </span>
       {statuses.some(s => s === 'working') && (
         <Loader2 size={11} className="animate-spin text-[var(--accent)]" />
@@ -609,7 +609,7 @@ function DemoDraftCard({ draft }: { draft: DemoScenario['draft'] }) {
         <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)]">
           <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
           <div className="p-5 md:p-8 space-y-5">
-            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] bg-[var(--accent)]/8 px-3 py-1 rounded-full">초안</span>
+            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] bg-[var(--accent)]/8 px-3 py-1 rounded-full">Draft</span>
             <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-tight">{draft.title}</h2>
             <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[14px] text-[var(--text-secondary)] italic leading-relaxed">
               {renderInline(draft.executive_summary)}
@@ -750,7 +750,7 @@ function DemoFinalCard({ content }: { content: string }) {
               <Check size={14} className="text-[var(--accent)]" />
             </div>
             <span className="text-[14px] font-semibold text-[var(--text-primary)]">최종 산출물</span>
-            <span className="text-[11px] text-[var(--text-tertiary)]">데모</span>
+            <span className="text-[11px] text-[var(--text-tertiary)]">Demo</span>
           </div>
           <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
         </div>
@@ -763,13 +763,17 @@ function DemoFinalCard({ content }: { content: string }) {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
+type Locale = 'ko' | 'en';
+
 interface InteractiveDemoProps {
   scenario: DemoScenario;
+  locale?: Locale;
   onStartReal: () => void;
   onBack: () => void;
 }
 
-export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDemoProps) {
+export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }: InteractiveDemoProps) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [phase, setPhase] = useState<DemoPhase>('typing');
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -911,10 +915,10 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)] shrink-0 bg-[var(--surface)]/80 backdrop-blur-sm z-10">
         <button onClick={onBack} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
-          &larr; 돌아가기
+          &larr; {L('돌아가기', 'Back')}
         </button>
         <span className="text-[11px] text-[var(--text-tertiary)]">
-          {scenario.icon} {scenario.title} 데모
+          {scenario.icon} {scenario.title} {L('데모', 'Demo')}
         </span>
         <div className="w-16" />
       </div>
@@ -1001,7 +1005,7 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
               <div className="flex-1 h-px bg-[var(--accent)]/20" />
               <div className="flex items-center gap-2 shrink-0">
                 <UserCheck size={16} className="text-[var(--accent)]" />
-                <span className="text-[14px] text-[var(--text-primary)] font-semibold">의사결정권자가 뭐라고 할까?</span>
+                <span className="text-[14px] text-[var(--text-primary)] font-semibold">{L('의사결정권자가 뭐라고 할까?', 'What would the decision-maker say?')}</span>
               </div>
               <div className="flex-1 h-px bg-[var(--accent)]/20" />
             </motion.div>
@@ -1027,8 +1031,8 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
                 </div>
                 <p className="text-[14px] font-medium text-[var(--text-primary)]">
                   {concerns.filter(c => c.applied).length > 0
-                    ? `피드백 ${concerns.filter(c => c.applied).length}건 반영 완료`
-                    : '초안 그대로 완성'}
+                    ? L(`피드백 ${concerns.filter(c => c.applied).length}건 반영 완료`, `${concerns.filter(c => c.applied).length} feedback item(s) applied`)
+                    : L('초안 그대로 완성', 'Completed as-is')}
                 </p>
               </motion.div>
               <AnimatePresence mode="wait">
@@ -1055,7 +1059,7 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
       }`}>
         {/* Phase progress dots */}
         <div className="max-w-2xl mx-auto px-5 pt-3 flex items-center justify-center gap-1.5">
-          {(['상황 파악', '질문', '팀 작업', '피드백', '완성'] as const).map((label, i) => {
+          {(locale === 'ko' ? ['상황 파악', '질문', '팀 작업', '피드백', '완성'] : ['Analysis', 'Questions', 'Team Work', 'Feedback', 'Done']).map((label, i) => {
             const milestones: DemoPhase[] = ['analysis', 'q2', 'workers', 'dm', 'final'];
             const reached = phaseGte(phase, milestones[i]);
             const current = i === milestones.findIndex(m => !phaseGte(phase, m)) || (isDone && i === milestones.length - 1);
@@ -1072,14 +1076,14 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
         </div>
         <div className="max-w-2xl mx-auto px-5 pb-3 pt-2.5 flex items-center justify-between gap-3">
           <p className="text-[12px] text-[var(--text-secondary)]">
-            {isDone ? '내 상황으로 해보면 어떨까요?' : ''}
+            {isDone ? L('내 상황으로 해보면 어떨까요?', 'Want to try with your own situation?') : ''}
           </p>
           <button onClick={onStartReal}
             className={`inline-flex items-center gap-2 px-6 py-3 text-white rounded-full text-[14px] font-semibold cursor-pointer min-h-[44px] transition-all duration-300 ${
               isDone ? 'shadow-[var(--glow-gold-intense)] hover:-translate-y-[1px]' : 'opacity-60 hover:opacity-90'
             }`}
             style={{ background: 'var(--gradient-gold)' }}>
-            내 상황으로 시작하기 <ChevronRight size={14} />
+            {L('내 상황으로 시작하기', 'Start with my situation')} <ChevronRight size={14} />
           </button>
         </div>
       </div>

@@ -7,6 +7,8 @@ const DEFAULT_SETTINGS: Settings = {
   openai_api_key: '',
   gemini_api_key: '',
   llm_provider: 'anthropic',
+  openai_model: 'gpt-4o',
+  gemini_model: 'gemini-2.5-flash',
   llm_mode: 'proxy',
   local_endpoint: '',
   language: 'ko',

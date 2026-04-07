@@ -1073,3 +1073,14 @@ const scenario3: DemoScenario = {
 // ─── Export ───
 
 export const DEMO_SCENARIOS: DemoScenario[] = [scenario1, scenario2, scenario3];
+
+/** Locale-aware scenario selector */
+export function getDemoScenarios(locale: 'ko' | 'en' = 'ko'): DemoScenario[] {
+  if (locale === 'en') {
+    // Dynamic import to avoid bundling English data for Korean users
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { DEMO_SCENARIOS_EN } = require('@/lib/demo-data-en');
+    return DEMO_SCENARIOS_EN;
+  }
+  return DEMO_SCENARIOS;
+}

@@ -29,7 +29,8 @@ import { useHandoffStore } from '@/stores/useHandoffStore';
 import { getPersonaPool } from '@/lib/worker-personas';
 import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
 import { InteractiveDemo } from '@/components/workspace/InteractiveDemo';
-import { DEMO_SCENARIOS } from '@/lib/demo-data';
+import { getDemoScenarios } from '@/lib/demo-data';
+import type { DemoScenario } from '@/lib/demo-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
@@ -112,7 +113,8 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [phase, setPhase] = useState<HeroPhase>('idle');
-  const [demoScenario, setDemoScenario] = useState<typeof DEMO_SCENARIOS[number] | null>(null);
+  const demoScenarios = getDemoScenarios(locale);
+  const [demoScenario, setDemoScenario] = useState<DemoScenario | null>(null);
   const [problemInput, setProblemInput] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [previewPersonas, setPreviewPersonas] = useState<WorkerPersona[]>([]);
@@ -201,6 +203,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
         <div className="relative h-[calc(100vh-56px)]">
           <InteractiveDemo
             scenario={demoScenario}
+            locale={locale}
             onStartReal={() => {
               setProblemInput(demoScenario.problemText);
               setDemoScenario(null);
@@ -271,7 +274,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
               <div className="mb-6">
                 <p className="text-[12px] text-[var(--text-tertiary)] mb-3">{L('이런 상황이라면, 체험해보세요', 'Try these scenarios')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {DEMO_SCENARIOS.map(s => (
+                  {demoScenarios.map(s => (
                     <button key={s.id} onClick={() => setDemoScenario(s)}
                       className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
                       <div className="flex items-center gap-2 mb-2.5">

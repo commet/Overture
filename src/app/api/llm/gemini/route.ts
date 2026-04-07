@@ -8,7 +8,8 @@ const MAX_SYSTEM_LENGTH = 10_000;
 const MAX_MESSAGES = 20;
 const MAX_TOTAL_BODY = 500_000;
 const VALID_ROLES = new Set(['user', 'assistant']);
-const MODEL = 'gemini-2.5-flash';
+const ALLOWED_MODELS = new Set(['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash']);
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false;
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
+    const modelId = ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
 
     // Convert to Gemini content format
     const geminiContents = messages.map((m: { role: string; content: string }) => ({
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (stream) {
       const geminiStream = await ai.models.generateContentStream({
-        model: MODEL,
+        model: modelId,
         config: { maxOutputTokens: maxTokens, systemInstruction: system },
         contents: geminiContents,
       });
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     // Non-streaming path
     const response = await ai.models.generateContent({
-      model: MODEL,
+      model: modelId,
       config: { maxOutputTokens: maxTokens, systemInstruction: system },
       contents: geminiContents,
     });

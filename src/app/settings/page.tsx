@@ -273,7 +273,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* OpenAI API Key (shown when openai provider) */}
+      {/* OpenAI settings (shown when openai provider) */}
       {(settings.llm_provider || 'anthropic') === 'openai' && (
         <Card className="animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
@@ -305,10 +305,25 @@ export default function SettingsPage() {
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+          <div className="mt-3">
+            <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
+            <select
+              value={settings.openai_model || 'gpt-4o'}
+              onChange={(e) => updateSettings({ openai_model: e.target.value })}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+            >
+              <option value="gpt-4o">GPT-4o — {L('균형 (추천)', 'Balanced (recommended)')}</option>
+              <option value="gpt-4o-mini">GPT-4o Mini — {L('빠르고 저렴', 'Fast & cheap')}</option>
+              <option value="gpt-4.1-mini">GPT-4.1 Mini — {L('최신 경량', 'Latest lightweight')}</option>
+              <option value="gpt-4.1-nano">GPT-4.1 Nano — {L('초경량', 'Ultra lightweight')}</option>
+              <option value="o3-mini">o3-mini — {L('추론 특화', 'Reasoning')}</option>
+              <option value="o4-mini">o4-mini — {L('최신 추론', 'Latest reasoning')}</option>
+            </select>
+          </div>
         </Card>
       )}
 
-      {/* Gemini API Key (shown when gemini provider) */}
+      {/* Gemini settings (shown when gemini provider) */}
       {(settings.llm_provider || 'anthropic') === 'gemini' && (
         <Card className="animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
@@ -339,6 +354,18 @@ export default function SettingsPage() {
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
+          </div>
+          <div className="mt-3">
+            <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
+            <select
+              value={settings.gemini_model || 'gemini-2.5-flash'}
+              onChange={(e) => updateSettings({ gemini_model: e.target.value })}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+            >
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash — {L('빠르고 저렴 (추천)', 'Fast & cheap (recommended)')}</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro — {L('고품질', 'High quality')}</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash — {L('초경량', 'Ultra lightweight')}</option>
+            </select>
           </div>
         </Card>
       )}

@@ -336,6 +336,8 @@ function getSettings(): Settings {
     openai_api_key: '',
     gemini_api_key: '',
     llm_provider: 'anthropic',
+    openai_model: 'gpt-4o',
+    gemini_model: 'gemini-2.5-flash',
     llm_mode: 'proxy',
     local_endpoint: '',
     language: 'ko',
@@ -366,12 +368,12 @@ export async function callLLM(
 
   // OpenAI provider — always direct (user's own key)
   if (settings.llm_provider === 'openai' && settings.openai_api_key) {
-    return callOpenAI(settings.openai_api_key, messages, options);
+    return callOpenAI(settings.openai_api_key, settings.openai_model || 'gpt-4o', messages, options);
   }
 
   // Gemini provider — always direct (user's own key)
   if (settings.llm_provider === 'gemini' && settings.gemini_api_key) {
-    return callGemini(settings.gemini_api_key, messages, options);
+    return callGemini(settings.gemini_api_key, settings.gemini_model || 'gemini-2.5-flash', messages, options);
   }
 
   if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
@@ -383,6 +385,7 @@ export async function callLLM(
 
 async function callOpenAI(
   apiKey: string,
+  model: string,
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
@@ -391,6 +394,7 @@ async function callOpenAI(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
+      model,
       messages,
       system: options.system,
       maxTokens: options.maxTokens,
@@ -404,6 +408,7 @@ async function callOpenAI(
 
 async function callGemini(
   apiKey: string,
+  model: string,
   messages: LLMMessage[],
   options: LLMOptions
 ): Promise<string> {
@@ -412,6 +417,7 @@ async function callGemini(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
+      model,
       messages,
       system: options.system,
       maxTokens: options.maxTokens,
@@ -606,8 +612,10 @@ export async function callLLMStream(
   };
   if (isGemini) {
     bodyObj.apiKey = settings.gemini_api_key;
+    bodyObj.model = settings.gemini_model || 'gemini-2.5-flash';
   } else if (isOpenAI) {
     bodyObj.apiKey = settings.openai_api_key;
+    bodyObj.model = settings.openai_model || 'gpt-4o';
   } else if (isDirect) {
     bodyObj.apiKey = settings.anthropic_api_key;
   }

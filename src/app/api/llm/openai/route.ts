@@ -8,7 +8,8 @@ const MAX_SYSTEM_LENGTH = 10_000;
 const MAX_MESSAGES = 20;
 const MAX_TOTAL_BODY = 500_000;
 const VALID_ROLES = new Set(['user', 'assistant']);
-const MODEL = 'gpt-4o';
+const ALLOWED_MODELS = new Set(['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3-mini', 'o4-mini']);
+const DEFAULT_MODEL = 'gpt-4o';
 
 function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false;
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey });
     const stream = body.stream === true;
+    const modelId = ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
 
     // Convert to OpenAI message format: system prompt as first message
     const openaiMessages: OpenAI.ChatCompletionMessageParam[] = [
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     if (stream) {
       const openaiStream = await client.chat.completions.create({
-        model: MODEL,
+        model: modelId,
         max_tokens: maxTokens,
         messages: openaiMessages,
         stream: true,
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // Non-streaming path
     const response = await client.chat.completions.create({
-      model: MODEL,
+      model: modelId,
       max_tokens: maxTokens,
       messages: openaiMessages,
     });

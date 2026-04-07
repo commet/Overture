@@ -608,6 +608,8 @@ export interface Settings {
   openai_api_key: string;
   gemini_api_key: string;
   llm_provider: LLMProvider;
+  openai_model: string;
+  gemini_model: string;
   llm_mode: LLMMode;
   local_endpoint: string;
   language: 'ko' | 'en';
