@@ -192,25 +192,42 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
         <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
           <div className="p-5 md:p-7">
+            {/* Version progress — shows accumulation */}
+            {snapshot.version > 0 && (
+              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                className="flex items-center gap-3 mb-4 pb-3 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: snapshot.version + 1 }, (_, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${
+                      i <= snapshot.version ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'
+                    } ${i === snapshot.version ? 'w-6' : 'w-1.5'}`} />
+                  ))}
+                </div>
+                <span className="text-[12px] font-medium text-[var(--accent)]">
+                  {snapshot.version === 1 ? 'Updated with your answer' : `Refined ${snapshot.version}x`}
+                </span>
+                {hasChanges && (newCount > 0 || removedCount > 0) && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                    {newCount > 0 && `+${newCount}`}{newCount > 0 && removedCount > 0 && ' '}{removedCount > 0 && `−${removedCount}`}
+                  </span>
+                )}
+              </motion.div>
+            )}
+
             {/* Eyebrow */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">Real Question</span>
-              {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
-              {hasChanges && (newCount > 0 || removedCount > 0) && (
-                <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                  {newCount > 0 && `+${newCount} 추가`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} 제거`}
-                </span>
-              )}
+              <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">Real Question</span>
             </div>
 
             {/* Real question with change */}
             <div className="mb-4">
               {questionChanged && (
-                <motion.p initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 2, ease: EASE }}
-                  className="text-[13px] text-[var(--text-tertiary)] line-through mb-1.5 leading-relaxed"
-                  style={{ fontFamily: 'var(--font-display)' }}>
-                  {prevSnapshot.real_question}
-                </motion.p>
+                <div className="mb-2 px-3 py-1.5 rounded-lg bg-[var(--bg)]/60 border-l-2 border-[var(--text-tertiary)]/20">
+                  <p className="text-[12px] text-[var(--text-tertiary)] line-through leading-relaxed"
+                    style={{ fontFamily: 'var(--font-display)' }}>
+                    {prevSnapshot.real_question}
+                  </p>
+                </div>
               )}
               <AnimatePresence mode="wait">
                 <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
