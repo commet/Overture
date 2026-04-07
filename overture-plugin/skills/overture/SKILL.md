@@ -21,17 +21,16 @@ allowed-tools: Read, Write, Agent, AskUserQuestion
 
 Ask using AskUserQuestion:
 
-- question: "어떤 고민이야? 한 줄이면 충분해."
-- header: "고민"
+- question: "What's on your mind? One line is enough."
+- header: "Problem"
 - options:
-  - label: "기획안/제안서 써야 함", description: "누군가에게 제출할 문서를 만들어야 하는 상황"
-  - label: "전략/방향 결정해야 함", description: "어떤 방향으로 갈지 판단이 필요한 상황"
-  - label: "제품/서비스 만들어야 함", description: "앱, 도구, 서비스 등을 만드는 상황"
+  - label: "Need to write a plan/proposal", description: "Creating a document for someone"
+  - label: "Making a strategic decision", description: "Choosing a direction"
+  - label: "Building a product/service", description: "Making an app, tool, or service"
 
-사용자가 선택하면 → 후속으로 구체적 내용을 1줄 물어본다:
-"구체적으로 어떤 거야? 예: 'AI 물류 최적화 SaaS' 또는 '동남아 시장 진출'"
+After selection → follow up: "What specifically? e.g., 'AI logistics optimization SaaS' or 'Southeast Asia expansion'"
 
-이 답변을 받은 후 Step 1 진행. **구체적 내용 없이는 좋은 초안을 만들 수 없다.**
+Proceed to Step 1 after receiving specifics. **Can't write a good draft without concrete details.**
 
 ## Core principle: Progressive Value
 
@@ -56,7 +55,7 @@ After receiving the problem, detect context from input:
 - Signals: decide, strategy, plan, expand, hire, should we, 결정, 전략, 기획, 기획안, 제안서, 보고서
 
 If ambiguous, use AskUserQuestion:
-- question: "이건 뭘 만드는 건가요, 아니면 판단/기획하는 건가요?"
+- question: "Is this about building something, or making a decision/plan?"
 
 Record as `context: build` or `context: decide`.
 
@@ -72,33 +71,35 @@ Record as `context: build` or `context: decide`.
 
 **Overture** · {context label}
 
-**상황 정리**
-[2-3줄. 사용자가 처한 상황을 명확히 정리.]
+**Situation**
+[2-3 lines. Clearly articulate what the user is facing.]
 
 ```diff
-+ ▸ 진짜 질문
-+ [사용자가 물어본 것과 실제로 해결해야 할 것의 차이. 1-2문장. 날카롭게.]
++ ▸ Real question
++ [The gap between what was asked and what actually needs solving. 1-2 sentences. Sharp.]
 ```
 
-**{기획안 뼈대 / 제품 뼈대}** (context에 따라)
+> Framing confidence: [N]/100
 
-1. **[항목]**: [구체적 설명 1-2문장]
-2. **[항목]**: [설명]
-3. **[항목]**: [설명]
-4. **[항목]**: [설명]
-5. **[항목]**: [설명]
+**{Plan skeleton / Product skeleton}** (by context)
 
-**숨겨진 전제**
+1. **[Item]**: [Specific description 1-2 sentences]
+2. **[Item]**: [Description]
+3. **[Item]**: [Description]
+4. **[Item]**: [Description]
+5. **[Item]**: [Description]
+
+**Hidden assumptions**
 
 ```diff
-- ? [전제 1 — 당연해 보이지만 검증 필요]
-- ? [전제 2]
-- ? [전제 3]
+- ? [Assumption 1 — seems obvious but needs verification] [axis]
+- ? [Assumption 2] [axis]
+- ? [Assumption 3] [axis]
 ```
 
 ---
 
-> 이건 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.
+> This is a first draft. A few more details will make it much sharper.
 
 ---
 
@@ -106,11 +107,17 @@ Record as `context: build` or `context: decide`.
 - Each line = ACTIONABLE item, not vague category
 - Write so they can copy-paste into a doc and start filling in
 - 5-7 lines, each specific, with 1-2 sentence description
-- Good: "시장 현황: 현재 경쟁사 3곳의 접근법과 우리가 다른 점 정리"
-- Bad: "시장 분석" (too vague, useless)
+- Good: "Market landscape: Current approaches of 3 competitors and what makes ours different"
+- Bad: "Market analysis" (too vague, useless)
+
+**Framing confidence rules:**
+- Self-assess 0-100 how well this captures the real question
+- <60: note that framing may shift significantly after interview
+- 60-80: standard
+- >80: interview will refine details, not direction
 
 **Tone:**
-- Direct. "이건 초안이다" not "이건 초안일 수 있습니다."
+- Direct. "This is a draft" not "This could potentially be a draft."
 - Name what you DON'T know. Don't pretend.
 - Concrete enough to be useful AS-IS.
 
@@ -127,8 +134,8 @@ You: [Step 1 output + first AskUserQuestion]
 User: [answers]
 You: [insight + updated analysis + next AskUserQuestion]
 User: [answers]
-You: [insight + updated analysis + mix trigger AskUserQuestion]
-User: [picks "초안 완성"]
+You: [insight + updated analysis + mix trigger]
+User: [picks "complete draft"]
 You: [Step 3 Mix]
 ```
 
@@ -143,261 +150,274 @@ Each round:
 5. Generate **next question** via AskUserQuestion (must open a NEW dimension)
 6. Repeat until ready for Mix (2-3 rounds typically)
 
-### Question logic: "가장 빠진 것을 먼저 묻는다" (적응형)
+### Question logic: "Ask what's missing most" (adaptive)
 
-**고정 시퀀스가 아니다.** 사용자 입력에서 이미 알 수 있는 것은 건너뛰고, 가장 가치가 높은 빈 칸을 먼저 채운다.
+**NOT a fixed sequence.** Skip what's already known from input, fill the highest-value gap first.
 
-**우선순위 (위에서 아래로 — 이미 아는 건 건너뜀):**
+**Priority (top-down — skip if already known):**
 
-| 우선순위 | 빠진 정보 | 왜 중요 | 질문 예시 |
+| Priority | Missing info | Why it matters | Example question |
 |---------|----------|--------|----------|
-| 1 | **구체적 내용** (도메인, 영역) | 이게 없으면 아무것도 구체적으로 못 씀 | "어떤 영역이야?" |
-| 2 | **판단자** (누가 검토) | 문서의 톤과 깊이를 결정 | "이걸 누가 판단해?" |
-| 3 | **핵심 맥락** (배경, 이유) | 왜 이걸 해야 하는지 | "왜 이게 지금 나온 거야?" |
-| 4 | **제약 조건** (시간, 자원) | 실행 가능성 판단 | "시간/인력 제약이 뭐야?" |
+| 1 | **Specific domain** | Can't write anything concrete without it | "What domain/area?" |
+| 2 | **Decision maker** (judge) | Determines tone and depth | "Who reviews this?" |
+| 3 | **Core context** (background, reason) | Why this matters now | "Why is this happening now?" |
+| 4 | **Constraints** (time, resources) | Feasibility | "Time/resource constraints?" |
 
-**입력이 풍부할 때** (예: "AI 물류 최적화 SaaS, 대표님이 2주 안에"):
-- 도메인 ✓, 판단자 ✓, 시간 ✓ → 이미 3개 파악
-- Q1: 핵심 맥락만 물어보면 됨 → "왜 이게 지금 나온 거야?"
-- Q2 없이 Mix로 직행 가능
+**Rich input** (e.g., "AI logistics SaaS, boss wants it in 2 weeks"):
+- Domain ✓, judge ✓, time ✓ → already 3 known
+- Q1: just core context → "Why now?"
+- Can go to Mix without Q2
 
-**입력이 빈약할 때** (예: "기획안 써야 해"):
-- 다 빠져 있음
-- Q1: 도메인 ("어떤 기획안이야?")
-- Q2: 판단자 ("누가 봐?")
-- 이것만 있으면 Mix 가능
+**Sparse input** (e.g., "need to write a plan"):
+- Everything missing
+- Q1: domain ("What kind of plan?")
+- Q2: judge ("Who reviews it?")
+- That's enough for Mix
 
 ### Question quality rules:
 
-- **Reference their specific answer**: "대표님이 확인한다고 했는데, 그러면..."
-- **Each question opens a NEW dimension**: 같은 주제 2번 금지
-- **Never ask metadata when content is missing**: 도메인 모르는데 "누가 판단해?" 먼저 묻지 마라
-- **Offer 3-4 concrete options**: 선택이 타이핑보다 빠르다
-- **If input already answers it, SKIP**: "대표님이 시킨" → 판단자=대표님, 질문 안 함
+- **Reference their specific answer**: "You said the CEO reviews — so..."
+- **Each question opens a NEW dimension**: no repeating the same topic
+- **Never ask metadata when content is missing**: don't ask "who reviews?" when you don't even know the domain
+- **Offer 3-4 concrete options**: selection is faster than typing
+- **If input already answers it, SKIP**: "boss asked me to" → judge=boss, don't ask
 
-### AskUserQuestion 호출 시:
+### AskUserQuestion format:
 
-항상 header + options + description 포맷. 예시:
+Always header + options + description. Example:
 
-- question: "이 결과물을 누가 판단해?"
-- header: "판단자"
+- question: "Who will review this result?"
+- header: "Decision maker"
 - options:
-  - label: "대표/CEO", description: "대표님이 직접 검토"
-  - label: "팀장/이사", description: "중간 관리자가 검토"
-  - label: "투자자/외부", description: "외부 이해관계자"
-  - label: "아직 모름", description: "불명확하거나 나 자신"
+  - label: "CEO/Founder", description: "Top executive reviews directly"
+  - label: "Team lead/Director", description: "Middle management reviews"
+  - label: "Investor/External", description: "External stakeholder"
+  - label: "Not sure yet", description: "Unclear or myself"
 
 ### After each answer — show updated analysis:
 
 ---
 
-**💡** [이번 답변에서 발견된 핵심 — 1문장, bold]
+**💡** [Key insight from this answer — 1 sentence, bold]
 
 ```diff
-- ▸ [이전 진짜 질문]
-+ ▸ [업데이트된 진짜 질문]
+- ▸ [Previous real question]
++ ▸ [Updated real question]
 ```
 
-**뼈대 (수정)**
+> Framing confidence: [N]/100 ([↑/↓/→] from previous)
+
+**Skeleton (updated)**
 
 ```diff
-  1. [변경 없는 항목]
-+ 2. [새로 추가되거나 변경된 항목] ← [이유]
-  3. [변경 없는 항목]
-- 4. [제거되거나 대체된 항목]
-+ 4. [대체된 새 항목]
-  5. [변경 없는 항목]
+  1. [Unchanged item]
++ 2. [Added or changed item] ← [reason]
+  3. [Unchanged item]
+- 4. [Removed or replaced item]
++ 4. [Replacement item]
+  5. [Unchanged item]
 ```
 
-**전제 업데이트**
+**Assumptions updated**
 
 ```diff
-+ ✓ [확인된 전제]
-- ✗ [의심되는 전제]
-- ? [아직 불확실]
++ ✓ [Confirmed assumption]
+- ✗ [Now doubtful assumption]
+- ? [Still uncertain]
 ```
 
 ---
 
-### After round 2+: Include execution plan + 실행 준비
+### Framing Refinement Loop
 
-실행 계획을 보여주되, **이건 "나중에 할 일"이 아니라 "지금 이 세션에서 일어나는 일"**로 프레이밍한다:
+**If user rejects the real question** (says "no, that's not it", disagrees, or edits it):
 
-**실행 계획** (이 세션에서 처리)
+1. Ask why (if not stated): "What doesn't fit?"
+2. **Re-analyze from scratch** using rejection as correction signal
+3. Do NOT minor-edit the rejected question
+4. Reduce framing_confidence by 10
+5. This can happen up to 2 times. After 2 rejections → ask user to state the real question themselves.
 
-| # | 할 일 | 담당 | 처리 방식 |
-|---|-------|------|----------|
-| 1 | [AI가 할 수 있는 것] | 🤖 | → **지금 해줌** (Mix에서 내용 채움) |
-| 2 | [사용자 판단 필요] | 🧑 | → **지금 물어봄** (AskUserQuestion) |
-| 3 | [둘 다] | ⚡ | → AI가 초안 + 사용자가 확인 |
-| 4 | [오프라인 행동] | 🧑⏳ | → **다음 단계에 명시** (문서 완성 후 해야 할 것) |
+### After round 2+: Include execution plan
 
-실행 계획을 보여준 직후, **🧑 단계의 핵심 판단을 AskUserQuestion으로 즉시 수집**한다.
-이 답변이 Mix 문서의 품질을 결정하므로, 꼭 필요한 것만 1-2개 묻는다.
+Show execution plan, framed as **"what happens in this session"**, not "future TODO":
 
-**예시:**
-- 🧑 "대표님이 특별히 강조한 키워드나 방향이 있어?" (판단 수집)
-- 🧑 "경쟁사 중 특히 의식하는 곳이 있어?" (맥락 수집)
+**Execution plan** (in this session)
+
+| # | Task | Who | How |
+|---|------|-----|-----|
+| 1 | [AI can do this] | 🤖 | → **Doing it now** (fills in during Mix) |
+| 2 | [Needs user judgment] | 🧑 | → **Asking now** (AskUserQuestion) |
+| 3 | [Both] | ⚡ | → AI drafts + user confirms |
+| 4 | [Offline action] | 🧑⏳ | → **Listed in next steps** (after document) |
+
+After showing execution plan, **immediately collect 🧑 judgments via AskUserQuestion** (1-2 key decisions).
 
 ### When to transition to Mix:
 
-**필수 정보가 모이면 질문 없이 자동 전환.** 별도로 "초안 만들까?" 묻지 않는다.
-필수 정보 = 도메인 + 판단자 (최소). 맥락/제약은 있으면 좋지만 없어도 진행.
+**Auto-transition when essential info is collected.** Don't ask "ready for draft?" separately.
+Essential = domain + judge (minimum). Context/constraints are nice but not blocking.
 
-사용자가 "이 정도면 됐어" / "다음"을 말하면 즉시 전환.
+If user says "that's enough" / "next" → transition immediately.
 
-**역할 설계 심화는 묻지 않는다.** 필요하면 /recast로 안내한다.
+**Do not ask about role design details.** If needed → guide to /recast.
 
 ---
 
 ## Step 3: Mix — Full Document Synthesis
 
-**실행 계획의 🤖 단계를 실제로 수행하고, 🧑 수집 답변을 반영하여 REAL document를 만든다.**
-이건 outline이 아니다 — AI가 자기 담당 부분을 실제로 채운 first draft다.
+**Execute the 🤖 steps from the execution plan and incorporate 🧑 answers into a REAL document.**
+This is NOT an outline — it's a first draft where AI actually filled in its assigned parts.
 
 ### Output format:
 
 ---
 
-**Overture · 초안 완성**
+**Overture · Draft complete**
 
-**[구체적 제목 — 상황 반영]**
+**[Specific title — reflects the situation]**
 
-> [Executive summary — 2-3문장. 판단자가 이것만 읽어도 80%를 파악할 수 있어야 함.]
+> [Executive summary — 2-3 sentences. The decision maker should grasp 80% from this alone.]
 
-**[섹션 1 제목]**
-[3-5문장. 구체적. 핵심 수치/사실 포함. **중요한 용어 볼드.**]
+**[Section 1 title]**
+[3-5 sentences. Concrete. Include key figures/facts. **Bold important terms.**]
 
-**[섹션 2 제목]**
-[3-5문장.]
+**[Section 2 title]**
+[3-5 sentences.]
 
-**⚠️ 리스크와 대응** ← 반드시 포함, 이 섹션이 차별점
-[각 리스크를 bold 처리하고 대응은 들여쓰기. 2-3개.]
-- **리스크 1: [이름].** [설명]. **대응:** [구체적 행동]
-- **리스크 2: [이름].** [설명]. **대응:** [구체적 행동]
+**⚠️ Risks & Mitigation** ← MANDATORY, this section is the differentiator
+[Each risk bolded with indented mitigation. 2-3 risks.]
+- **Risk 1: [Name].** [Description]. **Mitigation:** [Specific action]
+- **Risk 2: [Name].** [Description]. **Mitigation:** [Specific action]
 
-**[섹션 4-6]**
-[필요한 만큼]
+**[Sections 4-6]**
+[As needed]
 
-**전제 조건**
-- [이 문서가 전제하는 것 — 명시하는 것이 지적 정직]
+**Assumptions**
+- [What this document assumes — stating it is intellectual honesty]
 
-**다음 단계**
-1. [누가, 언제까지, 무엇을]
-2. [누가, 언제까지, 무엇을]
-3. [누가, 언제까지, 무엇을]
+**Next steps**
+1. [Who, by when, what]
+2. [Who, by when, what]
+3. [Who, by when, what]
 
 ---
 
 **Mix quality rules (CRITICAL — this is the core deliverable):**
-- **🤖 AI 단계를 실제로 수행**: 실행 계획에서 AI 담당이었던 것(시장 분석, 경쟁사 조사, 구조화 등)은 이 문서에서 **실제 내용으로 채운다.** "시장 분석이 필요하다"가 아니라 시장 분석 결과를 쓴다.
-- **🧑 수집한 답변을 반영**: Step 2에서 AskUserQuestion으로 받은 사용자 판단을 문서에 녹인다.
-- **🧑⏳ 오프라인 행동은 "다음 단계"에**: 이 세션에서 해결 못한 것(대표님에게 직접 물어봐야 할 것 등)은 "다음 단계"에 구체적 질문과 함께 명시. "[확인 필요]"로 표시.
-- **Send-as-is quality**: 사용자가 이걸 그대로 보내도 되는 수준. "[여기에 입력]" 금지.
-- **Substantial**: 아웃라인이 아니라 사고의 깊이가 보이는 실제 초안.
-- **4-6 sections**, each 3-5 sentences. **Section content는 flowing text.** **핵심 용어/수치 bold.**
-- **"⚠️ 리스크와 대응" MANDATORY**: 2-3 risks + mitigation.
-- **다음 단계 = 오프라인에서 해야 할 🧑 행동**: 시간/담당/구체적 산출물. "논의" "검토" 금지.
-- **전제 조건**: 불확실한 것을 솔직히 밝힌다.
+- **🤖 AI steps actually executed**: What AI was assigned in the execution plan (market analysis, competitive research, structuring) is **filled with real content.** Not "market analysis is needed" but actual market analysis.
+- **🧑 answers incorporated**: User judgments from Step 2 are woven into the document.
+- **🧑⏳ offline actions in "Next steps"**: Things that can't be resolved in this session go in "Next steps" with specific questions and "[needs confirmation]" markers.
+- **Send-as-is quality**: The user could send this as-is. No "[fill in here]" placeholders.
+- **Substantial**: Not an outline — shows depth of thinking.
+- **4-6 sections**, each 3-5 sentences. **Section content is flowing text.** **Key terms/figures bold.**
+- **"⚠️ Risks & Mitigation" MANDATORY**: 2-3 risks + specific mitigations. This is what makes Overture better than asking ChatGPT.
+- **Next steps = offline 🧑 actions**: time/owner/specific output. No "discuss" or "review" without specifics.
+- **Assumptions**: explicitly state uncertain items.
 
 **Self-check before showing Mix:**
-- [ ] 🤖 AI 담당 부분이 실제 내용으로 채워졌나? (TODO로 남아있지 않나?)
-- [ ] 🧑 수집 답변이 문서에 반영됐나?
-- [ ] 판단자가 요약만 읽고 80%를 파악하나?
-- [ ] 플레이스홀더 없는가?
-- [ ] 리스크 섹션 있는가?
-- [ ] 다음 단계가 "오프라인에서 해야 할 것"인가? (AI가 할 것이 남아있으면 안 됨)
+- [ ] 🤖 AI-assigned parts filled with actual content? (No TODOs remaining?)
+- [ ] 🧑 collected answers reflected in document?
+- [ ] Decision maker can grasp 80% from executive summary alone?
+- [ ] No placeholders?
+- [ ] Risk section present?
+- [ ] Next steps are "things to do offline"? (No AI tasks remaining)
 
-Mix 출력 후 **자동으로 Step 4 진행.** "시뮬레이션 할까?" 묻지 않는다.
+Mix output → **automatically proceed to Step 4.** Don't ask "run simulation?" — just do it.
 
-> **[판단자]는 이걸 보고 뭐라고 할까?**
+> **What would [judge] say about this?**
 
-이 한 줄을 보여주고 바로 DM 시뮬레이션 결과를 출력한다. 사용자는 궁금해서 읽게 된다 — 질문으로 멈추면 모멘텀이 끊긴다.
+Show this line then immediately output DM simulation. User will read it out of curiosity — asking a question kills momentum.
 
 ---
 
-## Step 4: "XX은 뭐라고 할까?" — DM Simulation
+## Step 4: "What would [judge] say?" — DM Simulation
 
 Based on `judge` from Step 2:
-- 대표/CEO → "대표님은 이걸 보고 뭐라고 할까?"
-- 팀장/이사 → "팀장님은 뭐라고 할까?"
-- 투자자/외부 → "투자자는 뭐라고 할까?"
-- 모름 → "가장 까다로운 사람이라면 뭐라고 할까?"
-- Build → "실제 사용자는 이걸 보고 뭐라고 할까?"
+- CEO/Founder → "What would the CEO say?"
+- Team lead/Director → "What would the team lead say?"
+- Investor/External → "What would the investor say?"
+- Unknown → "What would the toughest critic say?"
+- Build → "What would the actual user say?"
 
 ### Persona rules:
 
 **You ARE this person.** Not "imagine you are" — you ARE them. Drop all AI politeness. Think and speak exactly as they would.
 
-- **First person, conversational Korean.** "이거 빠지면 통과 안 돼" not "이 부분이 보완되면 좋겠습니다."
-- **SPECIFIC**: Don't say "좀 더 구체적으로" without saying WHAT should be more concrete. Name the exact section, number, or timeline.
-- **Priorities match the role**: CEO cares about ROI/risk/timeline. 팀장 cares about execution/resource. 투자자 cares about market/scalability.
+- **First person, conversational.** "This won't pass without data" not "It would be beneficial to include more data points."
+- **SPECIFIC**: Don't say "be more specific" without saying WHAT should be more specific. Name the exact section, number, or timeline.
+- **Priorities match the role**: CEO → ROI/risk/timeline. Team lead → execution/resource. Investor → market/scalability.
 - **3-4 concerns max.** Quality over quantity. Prioritize by actual impact on the decision.
 - Each concern MUST have severity + actionable fix suggestion (not vague advice).
+- **decision_style shapes feedback**: analytical → "Show me the data". intuitive → "Something feels off". consensus → "What does the team think?". directive → "Give me the bottom line".
 
 ### Output format:
 
 ---
 
-**{판단자 이름}의 반응**
+**{Judge name}'s reaction**
 
-> "[첫 반응 — 1-2문장, 직접 인용 스타일, 날카롭게]"
+> "[First reaction — 1-2 sentences, direct quote style, sharp]"
 
 ```diff
-+ ✓ [구체적으로 좋은 부분]
-+ ✓ [구체적으로 좋은 부분]
++ ✓ [Specifically good part]
++ ✓ [Specifically good part]
 ```
 
-**우려 사항:**
+**Concerns:**
 
-| # | 우려 | 심각도 | 이렇게 고치면 됨 |
-|---|------|--------|-----------------|
-| 1 | [구체적 우려] | 🔴 critical | [실행 가능한 수정 방향] |
-| 2 | [구체적 우려] | 🟡 important | [수정 방향] |
-| 3 | [구체적 우려] | ⚪ minor | [수정 방향] |
+| # | Concern | Severity | Fix | Target |
+|---|---------|----------|-----|--------|
+| 1 | [Specific concern] | 🔴 critical | [Actionable fix direction] | [Section/step] |
+| 2 | [Specific concern] | 🟡 important | [Fix direction] | [Section] |
+| 3 | [Specific concern] | ⚪ minor | [Fix direction] | |
 
-**{판단자}가 실제로 물어볼 질문:**
-1. [질문]
-2. [질문]
+**Questions {judge} would actually ask:**
+1. [Question]
+2. [Question]
 
-> **OK 조건:** [이것만 되면 승인 — 1문장. 이것이 가장 중요한 한 줄.]
+> **OK condition:** [The one thing that gets approval — 1 sentence. This is the most important line.]
 
 ---
 
 **Devil's Advocate** (use the `devils-advocate` agent if available, otherwise inline)
 
 ```diff
-- ✗ [가장 현실적인 실패 — 6개월 뒤 망했다면 뭐 때문? 평범하고 뻔한 이유]
-- 🔇 [아무도 말 안 하는 문제 — 다들 알지만 회의에서 안 꺼냄]
-- ⏳ [1년 후 후회 — 돌아보면 이걸 고려했어야 했는데]
+- ✗ [Most realistic failure — 6 months from now, what killed it? Mundane, specific]
+- 🔇 [The thing nobody says — everyone knows but won't mention in a meeting]
+- ⏳ [1-year regret — looking back, what should have been considered?]
 ```
 
 ---
 
-DM 피드백 출력 후 **모든 fix를 자동 반영하고 바로 Step 5로 진행.** "뭘 반영할까?" 묻지 않는다.
+After DM feedback → **auto-apply all fixes and proceed to Step 5.** Don't ask "which to apply?" — apply all, user can opt-out.
 
-> 위 피드백을 모두 반영하여 최종본을 완성한다.
-
-사용자가 특정 fix를 빼고 싶으면 그때 말하면 된다 (opt-out, not opt-in).
+> Applying all feedback to create the final version.
 
 ---
 
 ## Step 5: Final Deliverable
 
-Apply selected fixes to the Mix document. Output the COMPLETE final document.
+Apply fixes to the Mix document. Output the COMPLETE final document.
 
 If fixes were applied:
-- Show which changes were made
+- Show which changes were made (brief table)
 - Output the full updated document (not just diffs)
 
-If no fixes (user said "이대로 완성"):
-- **Do NOT re-output the Mix document** (user already saw it). Skip directly to deliverables below (Sharpened Prompt, Thinking Summary).
+If no fixes (user said "it's fine as is"):
+- **Do NOT re-output the Mix document** (user already saw it). Skip directly to deliverables below.
 
 ### Output format:
 
 ---
 
-**Overture · 최종**
+**Overture · Final**
+
+**Changes applied:**
+
+| # | Change | Addressing |
+|---|--------|-----------|
+| 1 | [what changed] | [which concern] |
+| 2 | [what changed] | [which concern] |
 
 [Complete document: title, executive summary, all sections, assumptions, next steps.
 If fixes applied, integrate them seamlessly — don't just append.]
@@ -406,14 +426,14 @@ If fixes applied, integrate them seamlessly — don't just append.]
 
 ### ■ Deliverable: Sharpened Prompt
 
-> **✦ 이 프롬프트를 AI에 바로 붙여넣으세요:**
+> **✦ Paste this prompt directly into AI:**
 >
-> [리프레이밍된 질문 + 제약 조건 + 주의할 점이 녹아든 프롬프트.
->  AI가 바로 작업할 수 있을 정도로 구체적이어야 함.]
+> [Reframed question + constraints + considerations baked into a ready-to-use prompt.
+>  Specific enough that AI can immediately start working.]
 
 **Build context → Implementation Prompt:**
 
-> **✦ 이 프롬프트를 Cursor/Claude Code에 붙여넣으세요:**
+> **✦ Paste this into Cursor/Claude Code:**
 >
 > Build a [type] that [thesis].
 > Target user: [who]
@@ -423,30 +443,30 @@ If fixes applied, integrate them seamlessly — don't just append.]
 
 ### ■ Deliverable: Thinking Summary
 
-Team-shareable. Slack/email에 바로 붙여넣을 수 있는 분량 (3000자 이내).
+Team-shareable. Paste into Slack/email (under 3000 chars).
 
-**TL;DR:** [한 문장]
+**TL;DR:** [One sentence]
 
 ```diff
-- 물어본 것: [original]
-+ 진짜 질문: [reframed]
+- Asked: [original]
++ Real question: [reframed]
 ```
 
-**핵심 리스크:**
+**Key risks:**
 ```diff
-- [critical risk — 1줄]
-- [unspoken risk — 1줄]
+- [critical risk — 1 line]
+- [unspoken risk — 1 line]
 ```
 
-**날카로운 한마디:** *"[판단자의 핵심 피드백]"*
+**Sharpest feedback:** *"[Judge's key concern]"*
 
-**다음 단계:**
-1. [구체적 행동 + 누가]
-2. [구체적 행동 + 누가]
+**Next steps:**
+1. [Specific action + who]
+2. [Specific action + who]
 
 ---
 
-### ■ Decision Quality Score (선택적)
+### ■ Decision Quality Score
 
 | Element | Score |
 |---------|-------|
@@ -465,6 +485,8 @@ Anti-sycophancy:
 + ✓ Draft changed after simulation
 ```
 
+**Warning:** DQ ≥ 80 AND zero anti-sycophancy indicators = suspicious. Flag it.
+
 ---
 
 ### Signature: "What you didn't see"
@@ -472,7 +494,7 @@ Anti-sycophancy:
 At the very end:
 
 > **What you didn't see**
-> *[핵심 블라인드 스팟. 사용자가 생각하고 있던 것과 실제로 중요한 것 사이의 간극. 구체적이고, 불편하고, 통찰적. 1문장.]*
+> *[The key blind spot. The gap between what the user was thinking about and what actually matters. Specific, uncomfortable, insightful. 1 sentence.]*
 
 ---
 
@@ -481,11 +503,14 @@ At the very end:
 Check `.overture/journal.md`. If exists:
 
 **2-4 entries:** Surface one improvement + one watch area:
-> ▸ 지난번보다: [specific]
-> ▸ 이번에 신경 쓸 것: [pattern]
+> ▸ Since last time: [specific]
+> ▸ Watch for this time: [pattern]
 
 **5+ entries:** Strength profile:
-> ▸ [N]번 사용 패턴: [strength]. 성장 포인트: [area].
+> ▸ [N] runs pattern: [strength]. Growth point: [area].
+
+**Framing confidence trend**: If last 3 runs all had confidence <60:
+> ▸ Framing has been unstable — try giving more context upfront this time.
 
 ## Journal
 
@@ -494,9 +519,10 @@ Append to `.overture/journal.md`:
 ```
 ## [date] /overture — [topic, ≤5 words]
 - Context: [build|decide]
-- Judge: [대표|팀장|투자자|unknown]
+- Judge: [CEO|team lead|investor|unknown]
 - Problem: "[original]"
 - Reframed: "[final question]"
+- Confidence: [N]/100
 - Rounds: [N] (deepening rounds used)
 - Score: DQ [N]
 - Assumptions: [N] confirmed, [N] uncertain, [N] doubtful
@@ -517,13 +543,33 @@ Save to `.overture/last-run.md`:
 context: [build|decide]
 judge: [name]
 reframed_question: [final]
+framing_confidence: [N]
 assumption_pattern: [confirmed|mixed|mostly_doubtful]
-assumptions_doubtful: [list]
+assumptions_doubtful:
+  - assumption: [text]
+    axis: [axis]
+    risk_if_false: [text]
 assumptions_confirmed: [list]
-simulation_risks_critical: [list with fix_suggestion]
-simulation_risks_unspoken: [list]
-judge_approval_condition: [text]
+execution_plan:
+  steps:
+    - task: [text]
+      who: [ai|human|both]
+      output: [text]
+convergence:
+  score: [N]
+  rounds_used: [N]
+  trend: [improving|stable|declining]
+simulation:
+  judge_name: [name]
+  risks_critical:
+    - risk: [text]
+      fix: [text]
+  risks_unspoken: [list]
+  judge_approval_condition: [text]
+  concerns_applied: [N]
+  concerns_total: [N]
 deliverable_type: [plan|spec|strategy]
+dq_score: [N]
 ```
 
 ## Rendering rules
@@ -536,9 +582,10 @@ deliverable_type: [plan|spec|strategy]
 - No academic citations. No generic praise.
 
 **Visual hierarchy rules (CRITICAL for readability):**
-- **"진짜 질문"은 항상 diff 블럭** (`+ ▸`) — 가장 중요한 한 줄이므로 녹색 강조.
-- **잘된 점은 diff 블럭** (`+ ✓`) — 우려 사항(테이블)과 대비되어야 함.
-- **OK 조건은 blockquote** (`> **OK 조건:**`) — 승인의 핵심이므로 시각적으로 분리.
-- **리스크 섹션은 `⚠️` 접두사** — 다른 섹션과 무게 차별화.
-- **뼈대 항목은 bold 번호** (`1. **항목**:`) — 코드블럭 대신 마크다운 넘버링. 변경 시에만 diff 블럭.
-- **단계 전환은 `---` + bold 헤더** — `**Overture · [단계명]**`으로 새 단계 시작을 명확히.
+- **"Real question" always in diff block** (`+ ▸`) — most important line, green highlight.
+- **Good parts in diff block** (`+ ✓`) — contrast with concerns (table).
+- **OK condition in blockquote** (`> **OK condition:**`) — core approval, visually separated.
+- **Risk section with `⚠️` prefix** — differentiated weight from other sections.
+- **Skeleton items as bold numbers** (`1. **Item**:`) — use diff blocks only when items change.
+- **Stage transitions with `---` + bold header** — `**Overture · [stage]**` to clearly start new stage.
+- **Framing confidence as blockquote** — `> Framing confidence: [N]/100`

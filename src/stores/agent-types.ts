@@ -118,7 +118,7 @@ export interface AgentObservation {
 
 // ─── Activity: 에이전트 활동 기록 ───
 
-export type AgentActivityType = 'task_completed' | 'task_approved' | 'task_rejected' | 'review_given' | 'boss_chat';
+export type AgentActivityType = 'task_completed' | 'task_approved' | 'task_rejected' | 'review_given' | 'boss_chat' | 'synthesis_completed';
 
 export interface AgentActivity {
   id: string;
@@ -147,6 +147,7 @@ export const XP_REWARDS = {
   review_given: 20,
   review_accurate: 15,
   boss_chat: 5,
+  synthesis_completed: 25,
 } as const;
 
 /** XP → 레벨 계산 */

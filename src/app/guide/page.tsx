@@ -137,13 +137,13 @@ export default function GuidePage() {
           <h2 className="text-[18px] font-bold text-[var(--text-primary)]">에이전트 팀</h2>
         </div>
         <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-3">
-          14명의 전문 에이전트가 각자의 방법론으로 작업합니다. 사용할수록 레벨업하고, 당신의 선호를 학습합니다.
+          17명의 전문 에이전트가 각자의 방법론으로 작업합니다. 사용할수록 레벨업하고, 당신의 선호를 학습합니다.
         </p>
         <div className="grid grid-cols-2 gap-2 text-[12px] text-[var(--text-primary)] mb-4">
-          <div><span className="text-[var(--text-tertiary)]">리서치:</span> 하윤 → 수진 → 도윤</div>
-          <div><span className="text-[var(--text-tertiary)]">전략:</span> 지호 → 현우 → 승현</div>
-          <div><span className="text-[var(--text-tertiary)]">실행:</span> 서연 · 민재 · 준서 · 예린</div>
-          <div><span className="text-[var(--text-tertiary)]">검증:</span> 동혁 · 지은 · 태준</div>
+          <div><span className="text-[var(--text-tertiary)]">리서치:</span> 하윤 → 다은 → 도윤</div>
+          <div><span className="text-[var(--text-tertiary)]">전략:</span> 정민 → 현우 → 승현</div>
+          <div><span className="text-[var(--text-tertiary)]">실행:</span> 서연 · 규민 · 혜연 · 수진 · 민서 · 준서 · 예린</div>
+          <div><span className="text-[var(--text-tertiary)]">검증:</span> 동혁 · 지은 · 윤석</div>
         </div>
         <div className="rounded-lg px-4 py-3 bg-[var(--bg)] space-y-2">
           <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">

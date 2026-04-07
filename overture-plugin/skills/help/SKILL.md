@@ -8,96 +8,122 @@ allowed-tools: Read
 
 ---
 
-**Overture — 막막할 때 쓰는 구조화 도구**
+**Overture — Structured thinking for when you're out of your depth**
 
-내 전문 분야가 아닌 걸 해야 할 때. 질문 하나 던지면 30초 안에 뼈대가 나옵니다.
-채울수록 날카로워지고, 대표님 반응까지 시뮬레이션합니다.
+Input a problem, get an instant skeleton in 30 seconds.
+Answer a few questions, it gets sharper. Simulate your boss's reaction.
+Walk away with a send-ready document.
 
 ---
 
-## 지금 뭘 해야 할지 모르겠다면
+## Not sure what to do?
 
-| 상황 | 추천 | 이유 |
-|------|------|------|
-| 기획안/제안서 써야 하는데 막막함 | `/overture` | 30초 뼈대 → 질문 2-3개 → 완성본 |
-| 이미 만든 계획이 있는데 역할 분배가 애매 | `/recast` | AI/사람 역할 재설계 전문 |
-| 계획은 있는데 약점이 궁금함 | `/rehearse` | 판단자 시뮬레이션 + 리스크 발견 |
-| AI가 뻔한 답만 줄 때 | `/reframe` | 질문 자체를 리프레이밍 |
-| /rehearse 피드백 반영하고 싶음 | `/refine` | 자동 수정 + 수렴 확인 |
+| Situation | Recommendation | Why |
+|-----------|---------------|-----|
+| Need to write a plan/proposal and feel stuck | `/overture` | 30-sec skeleton → 2-3 questions → full draft |
+| Have a plan but roles are unclear | `/recast` | AI/human role redesign specialist |
+| Have a plan but worried about weak spots | `/rehearse` | Stakeholder simulation + risk discovery |
+| AI keeps giving predictable answers | `/reframe` | Reframe the question itself |
+| Got /rehearse feedback to apply | `/refine` | Auto-fix + convergence tracking |
 
 ---
 
 ## Quick Start
 
 ```
-/overture "개발자인데 대표님이 기획안 짜오라고 했어"
+/overture "I'm a dev but my boss asked me to write a business plan"
 ```
 
-→ **30초:** 상황 정리 + 진짜 질문 + 기획안 뼈대 + 숨겨진 전제
-→ **2-3분:** 질문 2-3개에 답하면 초안이 구체적으로 진화
-→ **4분:** "대표님은 뭐라고 할까?" — 우려 사항 + OK 조건
-→ **5분:** 피드백 자동 반영 → **최종 결과물**
+→ **30 sec:** Situation + real question + plan skeleton + hidden assumptions
+→ **2-3 min:** Answer 2-3 questions, draft evolves with each answer
+→ **4 min:** "What would the boss say?" — concerns + OK condition
+→ **5 min:** Feedback auto-applied → **final deliverable**
 
-바로 보내도 되는 수준의 문서 + Sharpened Prompt + Thinking Summary.
+Send-ready document + Sharpened Prompt + Thinking Summary + DQ Score.
 
 ---
 
-## 스킬 전체 목록
+## All Skills
 
-### Core — 의사결정 파이프라인
+### Core — Decision Pipeline
 
-| 스킬 | 한 줄 설명 | 소요 시간 |
-|------|-----------|----------|
-| **`/overture`** | **전체 파이프라인** — 입력→초안→심화→시뮬레이션→최종 | ~5분 |
-| `/reframe` | 문제 재정의 — 숨겨진 전제 발견, 진짜 질문 도출 | ~2분 |
-| `/recast` | 역할 재설계 — 기존 계획에서 AI/사람 역할 명확히 구분 | ~3분 |
-| `/rehearse` | 사전 검증 — 판단자 반응 시뮬레이션 + Devil's Advocate | ~3분 |
-| `/refine` | 수정 반영 — /rehearse 피드백을 계획에 반영, 수렴 확인 | ~2분 |
+| Skill | One-liner | Time |
+|-------|-----------|------|
+| **`/overture`** | **Full pipeline** — input→draft→deepening→simulation→final | ~5 min |
+| `/reframe` | Problem reframing — find hidden assumptions, discover the real question | ~2 min |
+| `/recast` | Role redesign — clearly separate AI vs human roles in your plan | ~3 min |
+| `/rehearse` | Stress test — stakeholder reaction simulation + Devil's Advocate | ~3 min |
+| `/refine` | Apply fixes — incorporate /rehearse feedback, track convergence | ~2 min |
 
-### Utility — 설정 및 분석
+### Utility — Settings & Analysis
 
-| 스킬 | 설명 |
-|------|------|
-| `/overture:setup` | 설치 확인 — 스킬/에이전트/데이터 검증 |
-| `/overture:doctor` | 문제 진단 — 7가지 체크, 복구 안내 |
-| `/overture:configure` | 설정 — 언어, 프리셋(Quick/Standard/Learning), 저널 |
-| `/overture:patterns` | 사고 패턴 분석 — 3회 이상 사용 후 강점/블라인드 스팟 |
+| Skill | Description |
+|-------|------------|
+| `/overture:setup` | Installation check — verify skills/agents/data |
+| `/overture:doctor` | Diagnostics — 7 checks, recovery guidance |
+| `/overture:configure` | Settings — language, presets (Quick/Standard/Learning), journal |
+| `/overture:patterns` | Thinking pattern analysis — strengths/blind spots after 3+ runs |
 
 ---
 
-## 스킬 체인: 연결해서 쓰기
+## Skill Chain: Using them together
 
-`/overture`는 전체를 한 번에 실행하지만, 각 스킬을 개별로 연결할 수도 있습니다:
+`/overture` runs the full pipeline at once, but you can also chain individual skills:
 
 ```
-/reframe → .overture/reframe.md에 저장
-    ↓ 자동으로 읽힘
-/recast  → .overture/recast.md에 저장
+/reframe → .overture/reframe.md (saves)
+    ↓ auto-reads
+/recast  → .overture/recast.md (saves)
     ↓
-/rehearse → .overture/rehearse.md에 저장
+/rehearse → .overture/rehearse.md (saves)
     ↓
-/refine   → .overture/refine.md에 저장
+/refine   → .overture/refine.md (saves)
 ```
 
-각 스킬은 이전 스킬의 결과를 자동으로 읽고 이어갑니다.
-"이전에 만든 결과가 있습니다. 이걸로 이어갈까요?" — 라고 물어봅니다.
+Each skill automatically reads previous results and continues from there.
+"Found previous results. Continue with these?" — it asks.
+
+### What flows between skills:
+
+| From | To | What passes |
+|------|----|-------------|
+| /reframe | /recast | Real question, evaluated assumptions (doubtful/uncertain/confirmed), framing confidence, interview signals, AI limitations |
+| /recast | /rehearse | Governing idea, storyline, steps with roles, key assumptions, critical path, auto-generated personas |
+| /rehearse | /refine | Persona reviews with severity+fix, approval conditions with plan mapping, synthesis, Devil's Advocate |
+| /reframe | /refine | Root question (to verify plan still answers it) |
 
 ---
 
-## 결과물
+## Key Features (v0.5)
 
-| 만드는 것 (Build) | 판단하는 것 (Decide) |
+- **Framing confidence** (0-100): Self-assessment of how well the question captures the real problem
+- **Evaluation-based assumptions**: Each assumption tagged as confirmed/uncertain/doubtful with axis labels
+- **Expanded interview signals**: Nature, goal, stakes, trigger, history — shapes downstream behavior
+- **Storyline (S/C/R)**: Situation/Complication/Resolution structure for plans
+- **Expanded actor types**: 🤖 🧑 ⚡ 🧑→🤖 🤖→🧑 — nuanced human-AI collaboration
+- **Critical path + time estimation**: Identifies bottleneck steps and estimates
+- **Structured synthesis**: Cross-persona agreements, conflicts, untested assumptions
+- **Translated approvals**: Maps "what they need" to "which plan step fixes it"
+- **Convergence tracking**: Measures whether the plan is stabilizing across rounds
+- **Decision Quality Score**: 6-element framework (Framing/Alternatives/Information/Perspectives/Reasoning/Actionability)
+- **Framing refinement loop**: When you reject the AI's reframing, it re-analyzes from scratch
+
+---
+
+## Outputs
+
+| Building (Build) | Deciding (Decide) |
 |---|---|
 | Implementation Prompt | Sharpened Prompt |
-| Product Brief (MVP spec) | Thinking Summary (3000자, 공유용) |
+| Product Brief (MVP spec) | Thinking Summary (3000 chars, shareable) |
 | Scope cuts | Decision Quality Score (0-100) |
 
 ---
 
-## 더 알고 싶다면
+## Learn more
 
-- `/overture:setup` — 설치 상태 확인
-- `/overture:doctor` — 문제가 있을 때
-- `/overture:configure` — 언어/프리셋 설정
-- `.overture/journal.md` — 실행 기록 (자동 저장)
-- `.overture/last-run.md` — 마지막 실행 결과
+- `/overture:setup` — Check installation status
+- `/overture:doctor` — When something's wrong
+- `/overture:configure` — Language/preset settings
+- `.overture/journal.md` — Run history (auto-saved)
+- `.overture/last-run.md` — Last run result

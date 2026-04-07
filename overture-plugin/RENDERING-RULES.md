@@ -64,8 +64,11 @@ Diff blocks are the primary way to add visual weight and semantic color.
 | AI | 🤖 | AI가 수행 |
 | Human | 🧑 | 사람이 판단 |
 | Both | ⚡ | AI 초안 + 사람 검증 |
+| Human→AI | 🧑→🤖 | 사람이 방향 설정, AI가 실행 |
+| AI→Human | 🤖→🧑 | AI가 초안/분석, 사람이 최종 판단 |
 | Human (offline) | 🧑⏳ | 이 세션 밖에서 해야 할 것 |
 | Checkpoint | ⚑ | 다음 단계 전 승인 필요 |
+| Critical path | ★ | 지연 시 전체 일정에 영향 |
 
 ---
 
@@ -73,9 +76,32 @@ Diff blocks are the primary way to add visual weight and semantic color.
 
 | Severity | Format | Use in |
 |----------|--------|--------|
-| Critical | 🔴 critical | DM 우려 사항 테이블 |
-| Important | 🟡 important | DM 우려 사항 테이블 |
-| Minor | ⚪ minor | DM 우려 사항 테이블 |
+| Critical | 🔴 critical | DM 우려 사항 테이블 — "이거 빠지면 통과 안 됨" |
+| Important | 🟡 important | DM 우려 사항 테이블 — "있으면 훨씬 좋음" |
+| Minor | ⚪ minor | DM 우려 사항 테이블 — "있으면 좋지만 없어도 됨" |
+
+---
+
+## Convergence Indicators
+
+| State | Format | Meaning |
+|-------|--------|---------|
+| Converged | `✅ 수렴` | 추가 라운드 불필요, 진행 가능 |
+| Almost | `🟡 거의 수렴` | 1라운드 더 하면 안정 |
+| Not yet | `🔴 미수렴` | 핵심 이슈 잔존 |
+| Score | `[N]/100` | convergence score 표시 |
+
+---
+
+## Assumption Evaluation State
+
+| State | Symbol | Meaning |
+|-------|--------|---------|
+| Confirmed | `+ ✓` (diff) | 사용자가 맞다고 확인 |
+| Uncertain | `- ?` (diff) | 모르겠음 — 검증 필요 |
+| Doubtful | `- ✗` (diff) | 틀릴 가능성 높음 — 최우선 검증 |
+
+각 가정에 축(axis) 표시: `[가치]`, `[실현]`, `[사업]`, `[역량]`
 
 ---
 
@@ -99,6 +125,7 @@ Use pipe tables for structured data. No alignment characters beyond `|`.
 4. **잘된 점** → diff block (`+ ✓`) — 우려와 대비
 5. **뼈대 항목** → bold 번호 (`1. **항목**:`) — 변경 시에만 diff
 6. **단계 전환** → `---` + `**Overture · [단계명]**`
+7. **수렴 상태** → convergence indicator + score
 
 ---
 
@@ -120,6 +147,7 @@ Use for:
 - Transitional remarks: `> 이건 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.`
 - Persona quotes: `> "[직접 인용]"`
 - Insights: `> 💡 [인사이트]`
+- Framing confidence: `> 프레이밍 확신도: [N]/100`
 
 ---
 

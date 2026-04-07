@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
         },
         cancel() {
           cancelled = true;
+          abortController.abort();
         },
       });
 

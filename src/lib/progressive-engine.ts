@@ -345,7 +345,7 @@ export async function runLeadSynthesis(
 
   // Record XP for the lead agent
   useAgentStore.getState().recordActivity(
-    leadConfig.agentId, 'synthesis_completed' as import('@/stores/agent-types').AgentActivityType, problemText.slice(0, 100),
+    leadConfig.agentId, 'synthesis_completed', problemText.slice(0, 100),
   );
 
   return {

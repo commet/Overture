@@ -30,24 +30,48 @@ allowed-tools: Read, Write, AskUserQuestion
 
 > 어떤 계획의 역할을 설계할까요? 실행 계획, TODO 리스트, 또는 기획안을 붙여넣어 주세요.
 
-## Step 1: 즉시 분석 — 현재 역할 구조 파악
+## Context injection from /reframe
 
-계획을 받으면 **즉시** 각 단계를 분석하고 자동 역할 배정:
+If `.overture/reframe.md` exists, read its contract and inject context:
+
+1. Read `reframed_question` → use as design north star
+2. Read `assumptions.doubtful` → mark as `[from reframe]`, place validation steps EARLY
+3. Read `framing_confidence`:
+   - <60 → **보수적 설계**: 검증 단계를 실행 단계 앞에 배치, 체크포인트 추가
+   - ≥60 → 표준 설계
+4. Read `interview_signals` → 설계 지침으로 변환:
+   - `nature=known_path` → 실행 구체성에 집중
+   - `nature=needs_analysis` → 분석 단계를 앞에 배치
+   - `nature=on_fire` → 긴급 대응 구조 (병렬 실행 최대화)
+   - `stakes=irreversible` → 실행 전 검증 단계 필수
+   - `history=failed` → "이번엔 뭐가 다른가" 단계 포함
+5. Read `ai_limitations` → 해당 영역은 반드시 🧑 또는 ⚡ 배정
+
+## Step 1: 즉시 분석 — Storyline + 현재 역할 구조 파악
+
+계획을 받으면 **즉시** Storyline을 도출하고 각 단계를 분석:
 
 ---
 
 **Overture · Recast** — 역할 재설계
 
+**Storyline:**
+- **Situation:** [현재 상황 — 1-2문장]
+- **Complication:** [왜 지금 이게 필요한지 — 긴장 요소]
+- **Resolution:** [이 계획이 제시하는 해결 — governing idea]
+
 **현재 계획의 역할 구조:**
 
-| # | 단계 | 현재 담당 | 산출물 |
-|---|------|----------|--------|
-| 1 | [단계] | 🤖 AI | [산출물] |
-| 2 | [단계] | 🧑 사람 | [산출물] |
-| 3 | [단계] | ⚡ 둘 다 | [산출물] |
-| 4 | [단계] | 🤖 AI | [산출물] |
+| # | 단계 | 현재 담당 | 산출물 | 예상 시간 |
+|---|------|----------|--------|----------|
+| 1 | [단계] | 🤖 AI | [산출물] | [quick/short/medium/long] |
+| 2 | [단계] | 🧑 사람 | [산출물] | [시간] |
+| 3 | [단계] | ⚡ 둘 다 | [산출물] | [시간] |
+| 4 | [단계] | 🧑→🤖 | [산출물] | [시간] |
 
 **역할 분포:** 🤖 AI [N]개 · 🧑 사람 [N]개 · ⚡ 둘 다 [N]개
+
+**Critical Path:** 단계 [N], [M], [K] ★
 
 ```diff
 - ⚠️ [자동 분석에서 발견된 역할 배분 문제점 — 예: "3단계 고객 검증을 AI 단독으로 하면 진짜 고객 반응을 놓칠 수 있다"]
@@ -59,6 +83,18 @@ allowed-tools: Read, Write, AskUserQuestion
 
 ---
 
+### Time estimation guide:
+- **Quick** (<2시간): AI-only 데이터 수집
+- **Short** (반나절~1일): 단일 분석 또는 빌드
+- **Medium** (2-5일): 리서치 + 합성, 기능 개발
+- **Long** (1-2주): 복합 프로세스, 대규모 빌드
+
+### Critical path identification:
+1. 다른 단계의 선행 조건인 단계를 찾는다
+2. 시작→끝까지 가장 긴 의존성 체인을 추적
+3. 이 단계들이 critical path — 여기가 지연되면 전체가 지연
+4. Critical path 단계에는 ★ 표시 + 체크포인트 권장
+
 ## Step 2: 4-Question 역할 검토 (AskUserQuestion)
 
 **핵심 가치: 이 단계가 /recast의 존재 이유.**
@@ -69,17 +105,20 @@ allowed-tools: Read, Write, AskUserQuestion
 - ⚡ Both로 배정된 단계 (역할 경계 모호)
 - 🤖 AI인데 판단/정치 요소가 있는 단계
 - 🧑 사람인데 AI가 80%는 할 수 있는 단계
+- ★ Critical path 단계 (역할이 잘못되면 영향 큼)
 
 ### 각 단계에 대해 AskUserQuestion:
 
 **예시 — "시장 조사" 단계:**
 
-- question: "[단계명] — 이건 누가 해야 할까? 4가지 기준으로 판단해보자."
+- question: "[단계명] — 이건 누가 해야 할까?"
 - header: "역할 판단"
 - options:
-  - label: "🤖 AI가 해도 됨", description: "내부 지식/정치 불필요, 틀려도 수정 가능, 판단보다 실행"
+  - label: "🤖 AI가 해도 됨", description: "내부 지식/정치 불필요, 틀려도 수정 가능"
   - label: "🧑 사람이 해야 함", description: "내부 맥락·정치 필요, 또는 틀리면 되돌릴 수 없음"
   - label: "⚡ 둘 다", description: "AI가 초안, 사람이 검증/판단"
+  - label: "🧑→🤖 사람이 방향, AI가 실행", description: "사람이 기준/방향 설정 → AI가 실행"
+  - label: "🤖→🧑 AI가 분석, 사람이 판단", description: "AI가 옵션/분석 제공 → 사람이 최종 결정"
 
 사용자가 선택하면, 선택 이유를 한 줄로 기록하고 다음 단계로.
 
@@ -93,22 +132,31 @@ allowed-tools: Read, Write, AskUserQuestion
 4. **특정인이 책임져야 함?** → "누가 판단했어?"에 답할 수 있어야 → 🧑
 → 4개 모두 아님 → 🤖 AI
 
-## Step 3: 재설계 결과 출력
+### "Both" means clear scope boundaries:
+⚡ 배정 시 반드시 `ai_scope`와 `human_scope`를 명시:
+- Bad: "AI and human work together on market analysis"
+- Good: "AI generates 3-scenario financial model (ai_scope). Human sets scenario assumptions and interprets which one matches our risk appetite (human_scope)."
+
+## Step 3: 재설계 결과 출력 + 핵심 가정
 
 ---
 
 **Overture · Recast** — 역할 재설계 완료
 
+**Governing Idea:** [계획의 핵심 논지 — 1-2문장]
+
 **재설계된 실행 계획:**
 
-| # | 단계 | 담당 | 산출물 | 판단 근거 |
-|---|------|------|--------|----------|
-| 1 | [단계] | 🤖 AI | [산출물] | [왜 AI] |
-| 2 | [단계] | 🧑 사람 ⚑ | [산출물] | [왜 사람 — 체크포인트] |
-| 3 | [단계] | ⚡ 둘 다 | [산출물] | AI: [범위] / 사람: [범위] |
-| 4 | [단계] | 🤖 AI | [산출물] | [왜 AI] |
+| # | 단계 | 담당 | 산출물 | 판단 근거 | 시간 | 비고 |
+|---|------|------|--------|----------|------|------|
+| 1 | [단계] | 🤖 AI | [산출물] | [왜 AI] | [시간] | |
+| 2 | [단계] | 🧑 사람 ⚑ | [산출물] | [왜 사람] | [시간] | ★ critical path |
+| 3 | [단계] | ⚡ 둘 다 | [산출물] | AI: [범위] / 사람: [범위] | [시간] | ∥ 1과 병렬 |
+| 4 | [단계] | 🤖→🧑 | [산출물] | AI 분석→사람 판단 | [시간] | |
 
 ⚑ = 사람 체크포인트 (다음 단계 진행 전 승인 필요)
+★ = critical path (지연 시 전체에 영향)
+∥ = 병렬 실행 가능
 
 **변경 사항:**
 
@@ -124,6 +172,18 @@ allowed-tools: Read, Write, AskUserQuestion
 + After:  🤖 2 · 🧑 2 · ⚡ 1
 ```
 
+**전체 예상 소요:** [시간]
+
+---
+
+**핵심 가정** (이 계획이 전제하는 것)
+
+| # | 가정 | 중요도 | 확실도 | 틀리면? |
+|---|------|-------|-------|--------|
+| 1 | [가정] | high | medium | [결과] |
+| 2 | [가정] | high | low | [결과] |
+| 3 | [가정] [from reframe] | high | low | [결과] |
+
 ---
 
 **핵심 원칙이 지켜졌는가:**
@@ -131,6 +191,7 @@ allowed-tools: Read, Write, AskUserQuestion
 ```diff
 + ✓ 되돌릴 수 없는 결정에 사람 체크포인트 있음
 + ✓ 내부 지식이 필요한 단계에 사람 배정
++ ✓ Critical path에 적절한 체크포인트 배치
 - ? [아직 모호한 점 — 있다면]
 ```
 
@@ -138,16 +199,36 @@ allowed-tools: Read, Write, AskUserQuestion
 
 ---
 
-## Step 4: 다음 행동
+## Step 4: 다음 행동 + 판단자 프로필 생성
 
 AskUserQuestion:
 
 - question: "재설계된 계획으로 무엇을 할까?"
 - header: "다음"
 - options:
-  - label: "이걸로 진행", description: "저장하고 실행 시작"
   - label: "판단자 반응 보기", description: "/rehearse로 이 계획을 검증"
+  - label: "이걸로 진행", description: "저장하고 실행 시작"
   - label: "다시 조정", description: "특정 단계의 역할을 바꾸고 싶다"
+
+### 판단자 프로필 자동 생성
+
+`/rehearse`로 넘어갈 때, 계획 내용을 기반으로 3명의 판단자(Decide) 또는 2명(Build) 프로필을 자동 생성하여 contract에 포함:
+
+**Decide context — 3 stakeholders:**
+1. **Reporting audience** — 산출물을 받는 사람
+2. **Gatekeeper** — 승인을 통제하는 사람
+3. **Domain expert** — 현실성을 아는 사람
+
+Each persona includes: name, role, organization, influence, decision_style, risk_tolerance, priorities, communication_style, known_concerns, success_metric, primary_concern, blocking_condition.
+
+**Diversity check:**
+- [ ] 최소 2가지 다른 thinking style
+- [ ] 최소 1명 conservative + 1명 aggressive on risk
+- [ ] 최소 1명 high influence (프로젝트를 죽일 수 있는 사람)
+
+**Build context — 2 user personas:**
+1. **Target User** — name, context, current_solution (specific!), switch_threshold, dealbreaker
+2. **Skeptic** — name, alternative (specific product!), objection
 
 ---
 
@@ -171,21 +252,27 @@ AskUserQuestion:
 - **No box drawing.** Use `---`, `**bold**`, whitespace.
 - **No fixed width.** Markdown auto-wraps.
 - **diff = color.** `+` confirmed (green), `-` risk (red). Max 3 per output.
-- Actor emoji: 🤖 AI, 🧑 사람, ⚡ 둘 다
+- Actor emoji: 🤖 AI, 🧑 사람, ⚡ 둘 다, 🧑→🤖, 🤖→🧑
 - ⚑ = 체크포인트 (사람 승인 필요)
+- ★ = critical path
+- ∥ = 병렬 실행 가능
 
 ## Auto-save
 
 Save to `.overture/recast.md`:
-- Top: 재설계된 실행 계획 (human-readable)
-- Bottom after `---`: Context Contract (all persona fields for /rehearse)
+- Top: Storyline + 재설계된 실행 계획 (human-readable)
+- Bottom after `---`: Context Contract (all fields for /rehearse — governing_idea, storyline, steps with all metadata, key_assumptions, critical_path, personas)
 
 ## Journal
 
 ```
 ## [date] /recast — [topic, ≤5 words]
 - Input: [새 계획 | 기존 계획 재설계 | /overture 후속]
-- Steps: [N] | 🤖 [M] · 🧑 [K] · ⚡ [L]
+- Storyline: S:[situation] C:[complication] R:[resolution]
+- Steps: [N] | 🤖 [M] · 🧑 [K] · ⚡ [L] · 🧑→🤖 [X] · 🤖→🧑 [Y]
+- Critical path: steps [N, M, K]
 - Changes: [N]개 역할 변경
+- Key assumptions: [N]개 (high-importance: [M])
 - Key insight: [1줄]
+- Personas generated: [names with roles]
 ```

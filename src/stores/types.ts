@@ -876,7 +876,7 @@ export interface ProgressiveSession {
   workers: WorkerTask[];          // 병렬 에이전트 작업자
   worker_deploy_phase: WorkerDeployPhase;
   stages?: PipelineStage[];       // 스테이지 파이프라인 (Phase 3)
-  lead_agent?: { agent_id: string; agent_name: string } | null;
+  lead_agent?: { agent_id: string; agent_name: string; domain: string } | null;
   lead_synthesis?: LeadSynthesisResult | null;
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;

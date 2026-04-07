@@ -55,17 +55,25 @@ Analyze the input and produce a first draft:
 
 **진짜 질문 (초안)**: [리프레이밍. 물어본 것과 실제 해결할 것의 차이. 1-2문장.]
 
+> 프레이밍 확신도: [N]/100
+
 **숨겨진 전제 (초안)**
 
 ```diff
-- ? [전제 1]
-- ? [전제 2]
-- ? [전제 3]
+- ? [전제 1] [축]
+- ? [전제 2] [축]
+- ? [전제 3] [축]
 ```
 
 > 초안이다. 몇 가지만 더 알면 훨씬 날카로워진다.
 
 ---
+
+### Framing confidence rules:
+- Self-assess 0-100 how confident this reframing captures the real question
+- <60: "이 프레이밍은 아직 불완전할 수 있다 — 인터뷰 후 크게 바뀔 수 있음"
+- 60-80: standard
+- >80: "초기 프레이밍이 꽤 명확하다 — 인터뷰는 세부 보강 역할"
 
 ## Step 2: Interview (AskUserQuestion)
 
@@ -95,6 +103,19 @@ Maps to `nature`: known_path / needs_analysis / no_answer / on_fire
 
 Maps to `concern`: direction / structure / persuasion / stakeholders
 
+**Q2.5 (conditional — only if relevant):**
+
+If nature=no_answer OR nature=on_fire, ask stakes:
+- question: "이 결정의 무게감은?"
+- header: "판돈"
+- options:
+  - label: "되돌릴 수 없음", description: "한 번 실행하면 돌이킬 수 없는 결정"
+  - label: "중요하지만 수정 가능", description: "잘못되면 고칠 수 있지만 비용이 큼"
+  - label: "실험 수준", description: "가볍게 시도해볼 수 있음"
+  - label: "아직 모름", description: "판돈 자체가 불명확"
+
+Maps to `stakes`: irreversible / important / experiment / unknown_stakes
+
 ### Build context:
 
 **Q1:**
@@ -123,16 +144,16 @@ Maps to `success_model`: users / validation / revenue / learning
 
 After interview, analyze the problem using interview signals to find 3-4 hidden assumptions.
 
-### Decide context dimensions:
-- **Value**: Is this actually valuable to someone?
-- **Feasibility**: Can this realistically be done?
-- **Viability**: Does the economics work?
-- **Capacity**: Can the team/org handle this?
+### Decide context dimensions (4-axis):
+- **[가치] Value**: Is this actually valuable to someone?
+- **[실현] Feasibility**: Can this realistically be done?
+- **[사업] Viability**: Does the economics work?
+- **[역량] Capacity**: Can the team/org handle this?
 
-### Build context dimensions (3, not 4 — lighter):
-- **Value**: Does someone want this enough to switch?
-- **Differentiation**: Why not use [specific existing tool]?
-- **Feasibility**: Can this be built in this timeframe?
+### Build context dimensions (3-axis — lighter):
+- **[가치] Value**: Does someone want this enough to switch?
+- **[차별] Differentiation**: Why not use [specific existing tool]?
+- **[실현] Feasibility**: Can this be built in this timeframe?
 
 ### Interview signals shape assumptions:
 - nature=no_answer → existential assumptions ("this problem actually exists")
@@ -140,6 +161,7 @@ After interview, analyze the problem using interview signals to find 3-4 hidden 
 - nature=on_fire → causal ("the root cause is X")
 - concern=direction → value assumptions ("we know what success looks like")
 - concern=stakeholders → priority assumptions ("stakeholder A's goal matters more")
+- stakes=irreversible → consequence assumptions ("if wrong, the fallout is X")
 
 ### Evaluation
 
@@ -148,7 +170,7 @@ Present assumptions for evaluation using AskUserQuestion. Bundle all assumptions
 - question: "이 전제들을 어떻게 평가하세요?"
 - header: "전제 평가"
 - For each assumption, present as a separate question within the same AskUserQuestion call (up to 4 questions per call):
-  - question: "[assumption text]"
+  - question: "[assumption text] [축]"
   - header: "전제 [N]"
   - options:
     - label: "맞다 ✓", description: "확신함"
@@ -175,6 +197,7 @@ Two things determine the approach: **evaluation pattern** + **interview signals*
 - no_answer + mostly doubtful → **Challenge Existence** (maybe don't do this)
 - needs_analysis + mostly confident → **Narrow Scope** (smallest experiment)
 - concern=stakeholders → **Redirect Angle** (different stakeholder's eyes)
+- stakes=irreversible + any doubtful → **Challenge Existence** (too high-stakes to proceed on shaky ground)
 - Otherwise → **Redirect Angle**
 
 **Build:**
@@ -201,14 +224,16 @@ Two things determine the approach: **evaluation pattern** + **interview signals*
 
 [왜 이게 더 날카로운지 — 1-2문장]
 
+> 프레이밍 확신도: [N]/100
+
 ---
 
 **전제**
 
 ```diff
-+ ✓ [confirmed assumption]
-- ? [uncertain assumption]
-- ✗ [doubtful assumption]
++ ✓ [confirmed assumption] [축]
+- ? [uncertain assumption] [축]
+- ✗ [doubtful assumption] [축]
 ```
 
 ---
@@ -240,6 +265,19 @@ Two things determine the approach: **evaluation pattern** + **interview signals*
 - `3` → save and stop
 - Anything else → respond naturally
 
+## Framing Refinement Loop
+
+**If user rejects the reframed question** (says "아니야", "그게 아니라", selects `2` and changes the question, or explicitly disagrees):
+
+1. Ask why (if not already stated): "어떤 부분이 맞지 않아?"
+2. **Re-analyze from scratch using rejection reason as correction signal**
+3. Do NOT repeat the rejected question with minor edits
+4. Find the ACTUAL underlying question based on the correction
+5. Reduce framing_confidence by 10 (since first attempt missed)
+6. Show updated output with `framing_override_reason` noted
+
+This loop can repeat up to 2 times. After 2 rejections, ask the user to describe the real question in their own words.
+
 ## Rendering rules
 
 - Markdown first. Bold, blockquote, list, diff blocks.
@@ -248,6 +286,7 @@ Two things determine the approach: **evaluation pattern** + **interview signals*
 - **diff = color tool.** `+` = confirmed (green). `-` = risk/uncertain (red). Max 3 per output.
 - No academic citations in output.
 - No generic praise. No "Great question!" Go straight to work.
+- **Axis labels in brackets** after each assumption: `[가치]`, `[실현]`, `[사업]`, `[역량]`, `[차별]`
 
 ## Auto-save
 
@@ -258,9 +297,10 @@ Save to `.overture/reframe.md`:
 
 **물어본 것:** [original]
 **진짜 질문:** [reframed]
+**프레이밍 확신도:** [N]/100
 
 ## 전제
-- [symbol] [assumption] — [user reason if given]
+- [symbol] [assumption] [축] — [user reason if given]
 
 ## 확인할 것
 - [question]
@@ -272,17 +312,33 @@ Save to `.overture/reframe.md`:
 ## Context Contract
 context: [build|decide]
 reframed_question: [question]
+framing_confidence: [N]
 assumption_pattern: [confirmed|mixed|mostly_doubtful]
 strategy: [strategy name]
-interview_signals: [nature/goal or audience/success_model]
-assumptions_doubtful:
-  - [assumption] | reason: [reason]
-assumptions_uncertain:
-  - [assumption] | reason: [reason]
-assumptions_confirmed:
-  - [assumption]
+interview_signals:
+  nature: [value]
+  goal: [value]
+  stakes: [value]
+  trigger: [value if asked]
+  history: [value if asked]
+  stakeholder: [value if asked]
+assumptions:
+  doubtful:
+    - assumption: [text]
+      axis: [customer_value|feasibility|business|org_capacity]
+      risk_if_false: [text]
+      reason: [user's reason]
+  uncertain:
+    - assumption: [text]
+      axis: [axis]
+      risk_if_false: [text]
+      reason: [reason]
+  confirmed:
+    - assumption: [text]
+      axis: [axis]
 ai_limitations:
   - [limitation]
+blind_spot: [insight]
 ```
 
 ## Journal
@@ -294,7 +350,8 @@ Append to `.overture/journal.md`:
 - Context: [build|decide]
 - Original: "[original]"
 - Reframed: "[new question]"
-- Interview: [signals]
+- Confidence: [N]/100
+- Interview: nature=[X], goal=[Y], stakes=[Z]
 - Pattern: [confirmed|mixed|mostly_doubtful]
 - Strategy: [strategy name]
 - Assumptions: [N] confirmed, [N] uncertain, [N] doubtful
@@ -310,3 +367,4 @@ Check `.overture/journal.md` at start. If exists, read last 10 entries.
 **Recurring blind spot** (same area 2+ times): Force-add one assumption about that area.
 **Strategy repetition** (same 3+ times): Note it. Not a blocker.
 **Topic overlap**: Show: `💭 관련 이전 분석: [date] "[topic]" — 블라인드 스팟: "[insight]"`
+**Framing confidence trend**: If last 3 runs all had confidence <60, note: "프레이밍이 반복적으로 불안정합니다. 질문을 던지기 전에 상황 정리를 더 해보세요."

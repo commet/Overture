@@ -12,9 +12,11 @@ import {
   runFinalDeliverable,
   runConcertmasterReview,
   runDebate,
+  runLeadSynthesis,
   type ConcertmasterReview,
   type DebateResult,
 } from '@/lib/progressive-engine';
+import { buildLeadDecompositionContext, type LeadAgentConfig } from '@/lib/lead-agent';
 import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
 import { useAgentStore } from '@/stores/useAgentStore';
@@ -24,7 +26,7 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-engine';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
-import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask } from '@/stores/types';
+import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask, LeadSynthesisResult } from '@/stores/types';
 import { WorkerReportBlock } from './WorkerCard';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
@@ -40,7 +42,7 @@ const SPRING = { type: 'spring' as const, stiffness: 400, damping: 30 };
 function PhaseAmbient({ phase }: { phase: string }) {
   const bg = phase === 'complete'
     ? 'radial-gradient(ellipse 80% 50% at 50% 20%, rgba(184,150,62,0.08) 0%, transparent 70%)'
-    : phase === 'dm_feedback' || phase === 'refining' || phase === 'mixing'
+    : phase === 'dm_feedback' || phase === 'refining' || phase === 'mixing' || phase === 'lead_synthesizing'
       ? 'radial-gradient(ellipse 80% 50% at 50% 20%, rgba(184,150,62,0.04) 0%, transparent 70%)'
       : 'none';
   return <motion.div className="fixed inset-0 pointer-events-none z-0" animate={{ background: bg }} transition={{ duration: 1.5, ease: EASE }} />;
@@ -59,7 +61,7 @@ const PHASES_EN = ['Analysis', 'Teamwork', 'Feedback', 'Complete'] as const;
 function phaseIdx(phase: string, round: number, hasMix: boolean): number {
   if (phase === 'complete') return 4;
   if (phase === 'dm_feedback' || phase === 'refining') return 3;
-  if (phase === 'mixing' || (phase === 'conversing' && hasMix)) return 2;
+  if (phase === 'mixing' || phase === 'lead_synthesizing' || (phase === 'conversing' && hasMix)) return 2;
   if (round >= 2 || (phase === 'analyzing' && round >= 2)) return 1;
   return 0;
 }
@@ -890,7 +892,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (!dm && round === 0) { const g = value.includes('대표') ? '대표님' : value.includes('팀장') ? '팀장님' : value.includes('투자') ? '투자자' : null; if (g) store.setDecisionMaker(g); }
       abortRef.current = new AbortController();
       setStreamingText('');
-      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
+      // Lead context: inject lead agent persona into deepening prompt
+      let leadCtx: string | undefined;
+      if (session.lead_agent) {
+        const leadAgent = useAgentStore.getState().getAgent(session.lead_agent.agent_id);
+        if (leadAgent) {
+          const cfg: LeadAgentConfig = {
+            agentId: leadAgent.id, agentName: leadAgent.name, agentNameEn: leadAgent.nameEn || leadAgent.name,
+            agentRole: leadAgent.role, agentRoleEn: leadAgent.roleEn || leadAgent.role,
+            expertise: leadAgent.expertise || '', tone: leadAgent.tone || '',
+            domain: (session.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
+          };
+          leadCtx = buildLeadDecompositionContext(cfg, locale as 'ko' | 'en');
+        }
+      }
+      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal, leadCtx);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
       // Prepare workers when execution_plan first appears (user must confirm to deploy)
@@ -915,9 +931,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         workersRef.current = null;
       }
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
-      // Collect approved worker results (approved=true or null=unreviewed; excluded=false)
-      const workerResults = store.approvedWorkerResults()
-        .map(w => ({ task: w.task, result: w.result }));
+      // Collect approved worker results with attribution (approved=true or null=unreviewed; excluded=false)
+      const enrichedResults = store.approvedWorkerResults();
+      const workerResults = enrichedResults.map(w => ({ task: w.task, result: w.result }));
 
       // 악장 메타 리뷰 + debate (해금 시만, 비차단)
       if (workerResults.length > 0) {
@@ -946,8 +962,40 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         }
       }
 
-      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined);
-      store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round });
+      // Lead Agent Synthesis: 리드가 있으면 워커 결과를 통합 분석
+      let leadSynthesis: LeadSynthesisResult | null = null;
+      const sessionLead = session?.lead_agent;
+      if (sessionLead && workerResults.length > 0) {
+        try {
+          store.setPhase('lead_synthesizing');
+          const leadAgent = useAgentStore.getState().getAgent(sessionLead.agent_id);
+          if (leadAgent) {
+            const leadConfig: LeadAgentConfig = {
+              agentId: leadAgent.id, agentName: leadAgent.name, agentNameEn: leadAgent.nameEn || leadAgent.name,
+              agentRole: leadAgent.role, agentRoleEn: leadAgent.roleEn || leadAgent.role,
+              expertise: leadAgent.expertise || '', tone: leadAgent.tone || '',
+              domain: (session?.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
+            };
+            // Build attributed results for lead synthesis
+            const attributedResults = enrichedResults.map(w => ({
+              agentName: w.agentName || L('에이전트', 'Agent'),
+              agentRole: w.agentRole || '',
+              task: w.task,
+              result: w.result,
+            }));
+            const realQ = latest?.real_question || session!.problem_text;
+            leadSynthesis = await runLeadSynthesis(session!.problem_text, realQ, attributedResults, leadConfig);
+            store.setLeadSynthesis(leadSynthesis);
+          }
+        } catch {
+          // Lead synthesis failed — graceful degradation: proceed without it
+          leadSynthesis = null;
+        }
+        store.setPhase('mixing');
+      }
+
+      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined, undefined, leadSynthesis);
+      store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round, has_lead: !!leadSynthesis });
 
       // Phase 6: Boss reviewer가 있으면 자동 DM 피드백
       if (session?.reviewer_agent_id) {
@@ -998,7 +1046,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       qa.push({ question: { id: 's', text: '더?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: '한 가지 더 확인' } });
       abortRef.current = new AbortController();
       setStreamingText('');
-      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
+      // Lead context for onMore deepening
+      let moreLeadCtx: string | undefined;
+      if (session?.lead_agent) {
+        const la = useAgentStore.getState().getAgent(session.lead_agent.agent_id);
+        if (la) {
+          const cfg: LeadAgentConfig = {
+            agentId: la.id, agentName: la.name, agentNameEn: la.nameEn || la.name,
+            agentRole: la.role, agentRoleEn: la.roleEn || la.role,
+            expertise: la.expertise || '', tone: la.tone || '',
+            domain: (session.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
+          };
+          moreLeadCtx = buildLeadDecompositionContext(cfg, locale as 'ko' | 'en');
+        }
+      }
+      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal, moreLeadCtx);
       setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('실패', 'Failed')); store.setPhase('conversing'); setShowMix(true); }
@@ -1024,7 +1086,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     <>
       <PhaseAmbient phase={phase} />
       <motion.div className="relative z-10 mx-auto px-4 md:px-0"
-        animate={{ maxWidth: phase === 'complete' ? '56rem' : (phase === 'mixing' || phase === 'dm_feedback' || phase === 'refining') ? '48rem' : '42rem' }}
+        animate={{ maxWidth: phase === 'complete' ? '56rem' : (phase === 'mixing' || phase === 'lead_synthesizing' || phase === 'dm_feedback' || phase === 'refining') ? '48rem' : '42rem' }}
         transition={{ duration: 0.8, ease: EASE }}>
 
         <ProgressLine phase={phase} round={round} hasMix={!!mix} />
@@ -1096,6 +1158,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               <span className="text-[13px] text-[var(--text-secondary)]">{L('답변을 반영하는 중...', 'Incorporating your answer...')}</span>
             </motion.div>
           )}
+          {phase === 'lead_synthesizing' && <LoadingState text={L(`${session?.lead_agent?.agent_name || '리드 에이전트'}${getParticle(session?.lead_agent?.agent_name || '리드')} 팀 결과를 통합하고 있습니다...`, `${session?.lead_agent?.agent_name || 'Lead agent'} is synthesizing the team's findings...`)} steps={locale === 'ko' ? ['각 팀원의 분석을 교차 검증 중...', '핵심 인사이트를 추출하고 있습니다...', '통합 분석을 작성 중...'] : ['Cross-validating each team member\'s analysis...', 'Extracting key insights...', 'Writing the integrated analysis...']} />}
           {phase === 'mixing' && <LoadingState text={L('초안 작성 중...', 'Drafting...')} steps={locale === 'ko' ? ['팀의 분석을 하나로 엮는 중...', '문서 구조를 잡고 있습니다...', '거의 완성입니다...'] : ['Weaving the team analysis together...', 'Building document structure...', 'Almost complete...']} />}
 
           {/* Version indicator — shows what round we're on */}

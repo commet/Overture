@@ -35,7 +35,7 @@ const WEIGHTS = {
   output: 0.20,     // output이 세번째 (무엇을 만드는가)
 } as const;
 
-/* ─── 14 Agent Profiles ─── */
+/* ─── 17 Agent Profiles ─── */
 
 export const AGENT_CAPABILITIES: AgentCapabilityProfile[] = [
   // ━━━ Research Chain ━━━

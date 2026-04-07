@@ -76,7 +76,7 @@ interface ProgressiveState {
   approvedWorkerResults: () => Array<{ task: string; result: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
 
   // Lead Agent
-  setLeadAgent: (agentId: string, agentName: string) => void;
+  setLeadAgent: (agentId: string, agentName: string, domain: string) => void;
   setLeadSynthesis: (result: LeadSynthesisResult) => void;
 
   // Cleanup
@@ -388,7 +388,13 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     }));
     persist(sessions);
     set({ sessions });
-    track('workers_initialized', { count: workers.length });
+
+    // Lead Agent 설정 (workers 영속화 이후)
+    if (leadConfig) {
+      get().setLeadAgent(leadConfig.agentId, leadConfig.agentName, leadConfig.domain);
+    }
+
+    track('workers_initialized', { count: workers.length, lead_agent: leadConfig?.agentId || null });
     return workers;
   },
 
@@ -505,20 +511,25 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     // 미확인 자동 포함은 의도된 동작: Mix 전 요약에서 "⏳ 미확인" 표시로 사용자에게 알림
     return session.workers
       .filter(w => w.status === 'done' && w.result && w.approved !== false)
-      .map(w => ({
-        task: w.task,
-        result: w.result!,
-        persona: w.persona?.name ?? null,
-      }));
+      .map(w => {
+        const agent = w.agent_id ? useAgentStore.getState().getAgent(w.agent_id) : undefined;
+        return {
+          task: w.task,
+          result: w.result!,
+          persona: w.persona?.name ?? null,
+          agentName: agent?.name ?? w.persona?.name ?? null,
+          agentRole: agent?.role ?? w.persona?.role ?? null,
+        };
+      });
   },
 
   // ─── Lead Agent ───
 
-  setLeadAgent: (agentId, agentName) => {
+  setLeadAgent: (agentId, agentName, domain) => {
     const { currentSessionId } = get();
     if (!currentSessionId) return;
     const sessions = updateSession(get().sessions, currentSessionId, () => ({
-      lead_agent: { agent_id: agentId, agent_name: agentName },
+      lead_agent: { agent_id: agentId, agent_name: agentName, domain },
     }));
     persist(sessions);
     set({ sessions });
