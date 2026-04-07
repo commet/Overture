@@ -548,6 +548,11 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
   // Debounced judgment recording ref
   const judgmentTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => { if (judgmentTimerRef.current) clearTimeout(judgmentTimerRef.current); };
+  }, []);
+
   const handleSelectQuestion = (question: string) => {
     if (!current || !currentId || !current.analysis) return;
     // Phase 2A: Track if user edited the question (vs selecting AI suggestion)

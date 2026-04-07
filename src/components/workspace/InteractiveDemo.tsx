@@ -753,20 +753,52 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
    FINAL CARD — with variant swap
    ═══════════════════════════════════════════════════════════ */
 
-function DemoFinalCard({ content }: { content: string }) {
+function DemoFinalCard({ content, locale = 'ko' }: { content: string; locale?: 'ko' | 'en' }) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
         <div className="rounded-[calc(1rem-2px)] md:rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
           <div className="h-[3px]" style={{ background: 'var(--gradient-gold)' }} />
-          <div className="px-5 md:px-7 py-5 flex items-center gap-3 border-b border-[var(--border-subtle)]">
-            <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-              <Check size={14} className="text-[var(--accent)]" />
+
+          {/* Header with share actions */}
+          <div className="px-5 md:px-7 py-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+                <Check size={13} className="text-white" />
+              </div>
+              <div>
+                <span className="text-[14px] font-semibold text-[var(--text-primary)]">{L('완성된 기획안', 'Final Document')}</span>
+                <span className="text-[11px] text-[var(--text-tertiary)] ml-2">{L('바로 보낼 수 있어요', 'Ready to send')}</span>
+              </div>
             </div>
-            <span className="text-[14px] font-semibold text-[var(--text-primary)]">최종 산출물</span>
-            <span className="text-[11px] text-[var(--text-tertiary)]">Demo</span>
+            <div className="flex items-center gap-1.5">
+              <button onClick={handleCopy}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
+                  copied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                }`}>
+                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
+                Slack
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
+                Email
+              </button>
+            </div>
           </div>
-          <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
+
+          {/* Document content — compact, readable */}
+          <div className="p-5 md:p-8 space-y-1 text-[14px] leading-[1.8]">{renderMd(content)}</div>
         </div>
       </div>
     </motion.div>
@@ -1146,7 +1178,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                 </p>
               </motion.div>
               <AnimatePresence mode="wait">
-                <DemoFinalCard key={concerns.map(c => c.applied ? '1' : '0').join('')} content={finalContent} />
+                <DemoFinalCard key={concerns.map(c => c.applied ? '1' : '0').join('')} content={finalContent} locale={locale} />
               </AnimatePresence>
             </>
           )}

@@ -82,7 +82,7 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   // Were multiple perspectives/questions generated?
   let creativeAlternatives = 0;
   if (reframe?.analysis) {
-    const questionCount = reframe.analysis.hidden_questions.length;
+    const questionCount = (reframe.analysis.hidden_questions || []).length;
     if (questionCount >= 3) creativeAlternatives += 3;
     else if (questionCount >= 2) creativeAlternatives += 2;
     else if (questionCount >= 1) creativeAlternatives += 1;

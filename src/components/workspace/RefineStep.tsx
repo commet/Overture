@@ -828,7 +828,7 @@ function DQScoreCard({ loop, feedbackHistory }: { loop: RefineLoop; feedbackHist
     const personas = usePersonaStore.getState().personas;
     const result = computeDecisionQuality({ reframe, recast, feedbackRecords: feedbackHistory.filter(fr => fr.project_id === loop.project_id), refineLoop: loop, judgments, personas, projectId: loop.project_id, force: true });
     setScore(result);
-  }, [loop.project_id, loop.status, feedbackHistory]);
+  }, [loop.project_id, loop.status, loop.iterations.length, feedbackHistory]);
 
   if (!score) return null;
 
