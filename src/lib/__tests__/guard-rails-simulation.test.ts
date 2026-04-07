@@ -46,10 +46,10 @@ Payback Period: 1개월
   });
 
   it('숫자가 부족하면 탈락', () => {
-    const output = `이 사업의 수익 구조는 좋습니다. 고객을 확보하면 수익이 발생합니다.`;
+    const output = `The business model looks promising. We will acquire customers organically.`;
     const result = validateByFramework('Unit Economics', output);
     expect(result.passed).toBe(false);
-    expect(result.issues.some(i => i.includes('숫자'))).toBe(true);
+    expect(result.issues.some(i => i.includes('number') || i.includes('숫자'))).toBe(true);
   });
 });
 
@@ -91,7 +91,7 @@ describe('Pyramid Principle validator', () => {
 여러 방법이 있습니다.`;
     const result = validateByFramework('Pyramid Principle', output);
     expect(result.passed).toBe(false);
-    expect(result.issues.some(i => i.includes('결론'))).toBe(true);
+    expect(result.issues.some(i => i.includes('conclusion') || i.includes('결론'))).toBe(true);
   });
 });
 

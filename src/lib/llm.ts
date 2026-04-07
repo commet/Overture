@@ -8,9 +8,13 @@ export interface LLMMessage {
   content: string;
 }
 
+export type ModelTier = 'fast' | 'default' | 'strong';
+
 export interface LLMOptions {
   system: string;
   maxTokens?: number;
+  /** Model tier: 'fast' (Haiku — cheap/fast), 'default' (Sonnet), 'strong' (Opus — deep reasoning) */
+  model?: ModelTier;
   /** AbortController signal for cancellation */
   signal?: AbortSignal;
 }
@@ -405,6 +409,7 @@ async function callServerWithUserKey(
       messages,
       system: options.system,
       maxTokens: options.maxTokens,
+      model: options.model,
     }),
     signal: options.signal,
   });
@@ -422,7 +427,7 @@ async function callProxy(
   const res = await fetchWithRetry('/api/llm', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ messages, system: options.system, maxTokens: options.maxTokens }),
+    body: JSON.stringify({ messages, system: options.system, maxTokens: options.maxTokens, model: options.model }),
     signal: options.signal,
   });
 
@@ -568,6 +573,7 @@ export async function callLLMStream(
     messages,
     system: options.system,
     maxTokens: options.maxTokens,
+    model: options.model,
     stream: true,
   };
   if (isOpenAI) {

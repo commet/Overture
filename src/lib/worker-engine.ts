@@ -9,6 +9,7 @@
 
 import { callLLMStream } from '@/lib/llm';
 import { buildWorkerTaskPrompt } from '@/lib/progressive-prompts';
+import { getCurrentLanguage } from '@/lib/i18n';
 import { validateWorkerOutput, checkSpecificity, type ValidationResult } from '@/lib/worker-quality';
 import { validateByFramework } from '@/lib/guard-rails';
 import type { WorkerTask, PipelineStage } from '@/stores/types';
@@ -103,6 +104,7 @@ export async function runWorkerTask(
     }
   }
 
+  const locale = getCurrentLanguage();
   const { system, user } = buildWorkerTaskPrompt(
     task.task,
     task.expected_output,
@@ -112,7 +114,8 @@ export async function runWorkerTask(
     level,
     agent,
     task.framework,
-    task.task_type,   // context 전략 결정용
+    task.task_type,
+    locale,
   );
 
   // 에이전트 도구 컨텍스트 (메모리 회상, 관찰 요약 등)
@@ -137,7 +140,7 @@ export async function runWorkerTask(
   const text = await new Promise<string>((resolve, reject) => {
     callLLMStream(
       [{ role: 'user', content: finalUser }],
-      { system, maxTokens: LEVEL_CONFIGS[level].maxTokens, signal },
+      { system, maxTokens: LEVEL_CONFIGS[level].maxTokens, model: level === 'junior' ? 'fast' : 'default', signal },
       {
         onToken: (fullText) => onStream(fullText),
         onComplete: (fullText) => resolve(fullText),

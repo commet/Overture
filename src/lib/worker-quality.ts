@@ -31,6 +31,15 @@ const PLACEHOLDER_PATTERNS = [
   '[여기에 입력]',
   '[추가 필요]',
   'N/A',
+  'further research is needed',
+  'additional analysis required',
+  'cannot be determined',
+  'remains to be seen',
+  'needs verification',
+  'no exact data available',
+  '[insert here]',
+  '[to be added]',
+  '[placeholder]',
 ];
 
 // ─── Heuristic validation (fast path) ───
@@ -39,42 +48,43 @@ function checkHeuristics(output: string, expectedOutput: string): ValidationResu
   const issues: string[] = [];
   let score = 100;
 
-  // 1. 플레이스홀더 탐지
+  // 1. Placeholder detection
   for (const p of PLACEHOLDER_PATTERNS) {
-    if (output.includes(p)) {
-      issues.push(`플레이스홀더 감지: "${p}"`);
+    if (output.toLowerCase().includes(p.toLowerCase())) {
+      issues.push(`Placeholder detected: "${p}"`);
       score -= 30;
-      break; // 하나만 잡아도 충분
+      break;
     }
   }
 
-  // 2. 최소 길이
+  // 2. Minimum length
   if (output.trim().length < 50) {
-    issues.push('결과물이 너무 짧습니다 (50자 미만)');
+    issues.push('Output too short (under 50 chars)');
     score -= 25;
   }
 
-  // 3. 의미있는 내용 (한국어 어절 수)
+  // 3. Meaningful content (Korean phrases or English words)
   const koreanPhrases = output.match(/[가-힣]{2,}/g) || [];
-  if (koreanPhrases.length < 5) {
-    issues.push('실질적 내용이 부족합니다');
+  const englishWords = output.match(/[a-zA-Z]{3,}/g) || [];
+  if (koreanPhrases.length < 5 && englishWords.length < 10) {
+    issues.push('Insufficient substantive content');
     score -= 20;
   }
 
-  // 4. 구조 (글머리/번호/줄바꿈)
+  // 4. Structure (bullets/numbers/newlines)
   const hasStructure = /[•·\-\d]\s|#{1,3}\s|\n/.test(output);
   if (!hasStructure && output.length > 200) {
-    issues.push('구조가 없습니다 (글머리/번호 없음)');
+    issues.push('No structure (no bullets/numbers)');
     score -= 10;
   }
 
-  // 5. 반복적 문장 (같은 문장이 2번 이상)
+  // 5. Repeated sentences
   const sentences = output.match(/[^.!?\n]+[.!?]+/g) || [];
   const seen = new Set<string>();
   for (const s of sentences) {
     const trimmed = s.trim().slice(0, 50);
     if (seen.has(trimmed)) {
-      issues.push('반복적 문장이 있습니다');
+      issues.push('Repeated sentences detected');
       score -= 15;
       break;
     }
@@ -109,8 +119,9 @@ async function validateWithLLM(
   const result = await callLLMJson<LLMValidation>(
     [{ role: 'user', content: `작업: ${task}\n기대 산출물: ${expectedOutput}\n\n실제 결과물:\n${actualOutput.slice(0, 1500)}\n\n이 결과물의 품질을 채점해줘.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["문제점 목록"] }` }],
     {
-      system: '작업 결과물의 품질 게이트. 관련성(task를 실제로 수행했는가), 완성도(플레이스홀더가 아닌가), 유용성(문서에 바로 쓸 수 있는가)을 채점. Korean. 간결하게.',
+      system: 'Quality gate for task output. Score relevance (did it actually do the task?), completeness (not a placeholder?), usefulness (ready to use in a document?). Be concise.',
       maxTokens: 300,
+      model: 'fast' as const,
       shape: { score: 'number', is_placeholder: 'boolean', is_relevant: 'boolean', issues: 'array' },
     },
   );
@@ -140,6 +151,17 @@ const GENERIC_PHRASES = [
   '케이스 바이 케이스',
   '경우에 따라 다를 수',
   '다각도로 검토',
+  'depending on market conditions',
+  'generally speaking',
+  'various factors',
+  'further analysis needed',
+  'requires careful review',
+  'monitor the situation',
+  'holistic consideration',
+  'multiple perspectives',
+  'case by case',
+  'it depends',
+  'multi-faceted review',
 ];
 
 /**
@@ -161,14 +183,14 @@ export function checkSpecificity(output: string, userInput: string): { score: nu
   if (referenceRate >= 0.3) score += 20;
   else if (referenceRate >= 0.1) score += 10;
   else {
-    issues.push('사용자 입력의 키워드를 거의 참조하지 않습니다');
+    issues.push('Barely references keywords from user input');
     score -= 15;
   }
 
   // 2. 제네릭 문구 감지
   const genericCount = GENERIC_PHRASES.filter(p => output.includes(p)).length;
   if (genericCount >= 3) {
-    issues.push(`제네릭한 표현이 ${genericCount}개 발견됨`);
+    issues.push(`${genericCount} generic phrases found`);
     score -= genericCount * 5;
   } else if (genericCount >= 1) {
     score -= genericCount * 3;
@@ -180,7 +202,7 @@ export function checkSpecificity(output: string, userInput: string): { score: nu
   if (numericCount >= 3) score += 15;
   else if (numericCount >= 1) score += 5;
   else {
-    issues.push('구체적인 수치가 없습니다');
+    issues.push('No specific numbers found');
   }
 
   // 4. 고유명사 밀도 (회사명, 제품명, 사람 이름 등)
