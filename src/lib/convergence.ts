@@ -105,9 +105,13 @@ export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
   // Issue trend
   const trend = loop.iterations.map(it => it.convergence.total_issues);
 
+  // Issue trend check: not increasing (last <= first, or single iteration)
+  const trendOk = trend.length <= 1 || trend[trend.length - 1] <= trend[0];
+
   // Convergence check
   const converged = criticalRemaining === 0
-    && (highTotal === 0 || metCount >= highTotal * 0.8);
+    && (highTotal === 0 || metCount >= highTotal * 0.8)
+    && trendOk;
 
   // Guidance
   let guidance: string;

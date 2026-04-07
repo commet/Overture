@@ -103,6 +103,7 @@ interface FinalResponse {
 export async function runInitialAnalysis(
   problemText: string,
   onToken?: (text: string) => void,
+  signal?: AbortSignal,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion;
@@ -114,12 +115,12 @@ export async function runInitialAnalysis(
   const result = onToken
     ? await callLLMStreamThenParse<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000 },
+        { system, maxTokens: 2000, signal },
         onToken,
       )
     : await callLLMJson<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
+        { system, maxTokens: 2000, signal, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
       );
 
   const framingConfidence = Math.min(100, Math.max(0, result.framing_confidence ?? 75));
@@ -157,6 +158,7 @@ export async function refineInitialFraming(
   rejectedQuestion: string,
   rejectionReason: string,
   onToken?: (text: string) => void,
+  signal?: AbortSignal,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion;
@@ -169,12 +171,12 @@ export async function refineInitialFraming(
   const result = onToken
     ? await callLLMStreamThenParse<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000 },
+        { system, maxTokens: 2000, signal },
         onToken,
       )
     : await callLLMJson<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
+        { system, maxTokens: 2000, signal, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
       );
 
   const framingConfidence = Math.min(100, Math.max(0, result.framing_confidence ?? 70));
@@ -318,6 +320,7 @@ export async function runMix(
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
   workerResults?: Array<{ task: string; result: string }>,
+  signal?: AbortSignal,
 ): Promise<MixResult> {
   const { system, user } = buildMixPrompt(
     problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults,
@@ -325,7 +328,7 @@ export async function runMix(
 
   const result = await callLLMJson<MixResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 4000, shape: { title: 'string', executive_summary: 'string', sections: 'array', key_assumptions: 'array', next_steps: 'array' } },
+    { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array', key_assumptions: 'array', next_steps: 'array' } },
   );
 
   return {
@@ -344,12 +347,13 @@ export async function runDMFeedback(
   mix: MixResult,
   decisionMaker: string,
   problemContext: string,
+  signal?: AbortSignal,
 ): Promise<DMFeedbackResult> {
   const { system, user } = buildDMFeedbackPrompt(mix, decisionMaker, problemContext);
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 2500, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
+    { system, maxTokens: 2500, signal, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
   );
 
   return {

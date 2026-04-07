@@ -475,7 +475,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
     const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
     if (latestReframe?.analysis) {
-      const uncertain = latestReframe.analysis.hidden_assumptions.filter(
+      const uncertain = (latestReframe.analysis.hidden_assumptions || []).filter(
         a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
       );
       if (uncertain.length > 0) {
@@ -521,7 +521,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
   const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
   if (latestReframe?.analysis) {
-    const uncertain = latestReframe.analysis.hidden_assumptions.filter(
+    const uncertain = (latestReframe.analysis.hidden_assumptions || []).filter(
       a => a.evaluation === 'uncertain' || a.evaluation === 'doubtful'
     );
     if (uncertain.length > 0) {
@@ -595,11 +595,11 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
 
       const aspectCounts: Record<string, { accurate: number; inaccurate: number }> = {};
       for (const r of personaRatings) {
-        for (const a of r.which_aspects_accurate) {
+        for (const a of (r.which_aspects_accurate || [])) {
           if (!aspectCounts[a]) aspectCounts[a] = { accurate: 0, inaccurate: 0 };
           aspectCounts[a].accurate++;
         }
-        for (const a of r.which_aspects_inaccurate) {
+        for (const a of (r.which_aspects_inaccurate || [])) {
           if (!aspectCounts[a]) aspectCounts[a] = { accurate: 0, inaccurate: 0 };
           aspectCounts[a].inaccurate++;
         }

@@ -709,7 +709,8 @@ export function getFrameworkSkill(
   const skillSet = getSkillSet(agentIdOrPersonaId);
   if (!skillSet) return undefined;
 
-  const fwLower = frameworkName.toLowerCase();
+  const fwLower = frameworkName.trim().toLowerCase();
+  if (!fwLower) return undefined;
   const matched = skillSet.frameworks.find(f => f.toLowerCase().includes(fwLower));
   if (!matched) return undefined;
 

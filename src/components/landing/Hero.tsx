@@ -503,7 +503,7 @@ export function Hero() {
                   {L('로그인 없이 무료 체험', 'Free — no login required')}
                 </p>
                 <Link
-                  href="/demo"
+                  href="/workspace"
                   onClick={() => track('landing_cta_click', { cta: 'hero_demo' })}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.06] hover:border-[var(--accent)]/50"
                   style={{

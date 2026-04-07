@@ -21,11 +21,12 @@ import type { Agent } from '@/stores/agent-types';
 export function buildAgentContext(agent: Agent): string {
   if (agent.level < 2) return '';
 
-  const maxObs = agent.level >= 4 ? agent.observations.length
+  const observations = Array.isArray(agent.observations) ? agent.observations : [];
+  const maxObs = agent.level >= 4 ? observations.length
     : agent.level >= 3 ? 5
     : 3;
 
-  const obs = agent.observations
+  const obs = observations
     .filter(o => o.confidence >= 0.3)
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, maxObs);
