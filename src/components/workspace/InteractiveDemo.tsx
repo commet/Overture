@@ -379,28 +379,30 @@ function DemoWorkerReport({ worker }: { worker: DemoScenario['workers'][number] 
 type AgentStatus = 'waiting' | 'working' | 'done';
 
 function getAgentStatuses(phase: DemoPhase, visibleWorkers: number, total: number): AgentStatus[] {
-  if (!phaseGte(phase, 'q1')) return Array(total).fill('waiting');
-  if (phase === 'q1') return ['working', 'waiting', 'waiting'].slice(0, total) as AgentStatus[];
+  if (!phaseGte(phase, 'analysis')) return Array(total).fill('waiting');
+  if (phase === 'analysis') return ['working', 'waiting', 'waiting'].slice(0, total) as AgentStatus[];
+  if (phase === 'q1') return ['working', 'working', 'waiting'].slice(0, total) as AgentStatus[];
   if (phase === 'update1') return ['working', 'working', 'waiting'].slice(0, total) as AgentStatus[];
   if (phase === 'q2' || phase === 'update2') return Array(total).fill('working') as AgentStatus[];
   // workers phase onward: done based on visibleWorkers
   return Array.from({ length: total }, (_, i) => i < visibleWorkers ? 'done' : 'working') as AgentStatus[];
 }
 
-function AgentRow({ worker, status, expanded, onToggle }: {
+function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
   worker: DemoScenario['workers'][number];
   status: AgentStatus;
   expanded: boolean;
   onToggle: () => void;
+  index?: number;
 }) {
   const isDone = status === 'done';
   const isWorking = status === 'working';
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, ease: EASE }}
+      transition={{ delay: index * 0.15, duration: 0.4, ease: EASE }}
       className={`rounded-xl border transition-colors duration-300 ${
         isDone ? 'border-[var(--border-subtle)] bg-[var(--surface)]' :
         isWorking ? 'border-[var(--accent)]/15 bg-[var(--accent)]/[0.02]' :
@@ -481,7 +483,11 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Analysis Team</span>
-        {workingCount > 0 && !phaseGte(phase, 'draft') && (
+        {phase === 'analysis' && (
+          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="text-[11px] text-[var(--text-tertiary)] font-medium">assembling</motion.span>
+        )}
+        {workingCount > 0 && phaseGte(phase, 'q1') && !phaseGte(phase, 'draft') && (
           <span className="text-[11px] text-[var(--accent)] font-medium">{workingCount} analyzing</span>
         )}
         {phaseGte(phase, 'draft') && (
@@ -509,6 +515,7 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
             status={statuses[i]}
             expanded={expandedIdx === i}
             onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
+            index={i}
           />
         ))}
       </div>
@@ -1010,12 +1017,19 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
           </div>
         </div>
 
-        {/* Agent sidebar — floating right, doesn't push content */}
-        <div className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full">
-          <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
-            <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
-          </div>
-        </div>
+        {/* Agent sidebar — appears after analysis, floating right */}
+        {phaseGte(phase, 'analysis') && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5, duration: 0.6, ease: EASE }}
+            className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full"
+          >
+            <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
+              <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Bottom CTA */}
