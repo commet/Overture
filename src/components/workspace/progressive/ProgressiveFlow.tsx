@@ -976,7 +976,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               expertise: leadAgent.expertise || '', tone: leadAgent.tone || '',
               domain: (session?.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
             };
-            // Build attributed results for lead synthesis
             const attributedResults = enrichedResults.map(w => ({
               agentName: w.agentName || L('에이전트', 'Agent'),
               agentRole: w.agentRole || '',
@@ -984,12 +983,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               result: w.result,
             }));
             const realQ = latest?.real_question || session!.problem_text;
-            leadSynthesis = await runLeadSynthesis(session!.problem_text, realQ, attributedResults, leadConfig);
+            leadSynthesis = await runLeadSynthesis(session!.problem_text, realQ, attributedResults, leadConfig, abortRef.current?.signal);
+            // Verify session is still valid after async operation
+            const currentSession = store.currentSession();
+            if (currentSession?.id !== session?.id) throw new Error('Session changed');
             store.setLeadSynthesis(leadSynthesis);
           }
         } catch {
-          // Lead synthesis failed — graceful degradation: proceed without it
           leadSynthesis = null;
+          store.setPhase('mixing'); // Immediate phase recovery on failure
         }
         store.setPhase('mixing');
       }

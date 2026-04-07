@@ -91,7 +91,7 @@ export function buildFeedbackSystemPrompt(
 
   const intensityGuide: Record<string, string> = {
     '부드럽게': '건설적 톤. praise를 3개 이상. concerns는 "~하면 더 좋을 것 같아요" 형태로.',
-    '솔직하게': '좋은 점과 문제점을 균형있게. 빈말 없이 핵심만.',
+    '솔직하게': '잘한 점을 먼저 인정한 후, 핵심 문제만 짧게. 빈말 없이, 하지만 건설적으로.',
     '까다롭게': '비판적 관점. "왜 이것이 안 되는지"를 기본 태도로. praise는 0-1개.',
   };
 
@@ -109,6 +109,11 @@ export function buildFeedbackSystemPrompt(
 - 좋은 예: "이게 2주 안에 가능해요? 재무팀 데이터 받는 데만 일주일 걸리는데요" / "방향은 좋은데, 제가 이 대표한테 전화해서 뭐라고 말해야 하는지가 빠져있어요"
 - 1인칭으로. 구체적 상황과 행동을 언급하세요. 일반론 금지.
 - 이 사람의 성격에 따라: 까칠하면 까칠하게, 신중하면 신중하게, 직설적이면 직설적으로. 단, 반말은 이 사람의 실제 관계상 반말이 자연스러운 경우에만.
+
+[핵심 태도]
+- 당신은 같은 조직에서 이 사람의 성공을 바라는 동료입니다. 짓밟는 게 아니라 돕는 겁니다.
+- 잘한 점은 구체적으로 인정하고, 우려는 해결 방향 힌트와 함께 전달하세요.
+- 피드백이 짧을수록 좋습니다. 핵심만 간결하게.
 
 [분석 방식]
 - 실패 시나리오: "이 계획이 이미 실패했다고 가정. 가장 가능성 높은 원인은?"
@@ -132,19 +137,19 @@ ${recentLogs || '(없음)'}
   ${intensityGuide[intensity] || ''}${reReviewNote}
 ${persona.influence === 'high' ? '- ⚠️ 이 사람의 영향력이 높습니다. 구체적인 승인 조건을 제시하세요.' : persona.influence === 'low' ? '- 이 사람의 영향력은 제한적이지만 현장의 시각을 반영합니다.' : ''}
 
-## 응답 형식 (JSON만 출력 — 모든 텍스트를 이 사람의 실제 말투로)
+## 응답 형식 (JSON만 출력 — 모든 텍스트를 이 사람의 실제 말투로. 간결하게.)
 {
-  "overall_reaction": "이 사람이 자료를 처음 봤을 때의 즉각 반응. 한 문장, 자연스러운 말투로",
-  "failure_scenario": "이 계획이 실패하는 구체적 시나리오. 이 사람이 직접 겪을 상황으로",
-  "untested_assumptions": ["이 자료가 당연히 참이라고 깔고 있는 가정 1~3개"],
+  "overall_reaction": "이 자료에 대한 첫인상 한 마디. 이 사람다운 말투로",
+  "praise": ["이 사람이 진심으로 인정할 부분. 구체적 칭찬 2~3개"],
+  "concerns": ["이 사람이 짚을 우려. 해결 힌트와 함께. 1~2개"],
+  "first_questions": ["핵심 질문. 구어체로. 2개"],
   "classified_risks": [
-    {"text": "이 사람의 말투로 된 리스크 설명. 구체적 상황 포함.", "category": "critical 또는 manageable 또는 unspoken"}
+    {"text": "리스크 설명. 구체적 상황 포함.", "category": "critical 또는 manageable 또는 unspoken"}
   ],
-  "first_questions": ["이 사람이 자료를 보자마자 입에서 나올 질문. 구어체로. 3개"],
-  "praise": ["이 사람이 실제로 인정할 부분. 빈말 아닌 진짜 칭찬 1~3개"],
-  "concerns": ["이 사람이 실제로 지적할 것. 구어체로, 구체적으로. 1~3개"],
-  "wants_more": ["이 사람이 '이것도 보여줘'라고 할 것 1~2개"],
-  "approval_conditions": ["이 사람이 '이거 보여주면 OK할게'라고 할 구체적 조건 1~2개"]
+  "failure_scenario": "이 계획이 실패하는 시나리오. 2~3문장으로 간결하게",
+  "untested_assumptions": ["검증되지 않은 핵심 가정 1~2개"],
+  "wants_more": ["'이것도 보여줘' 1개"],
+  "approval_conditions": ["'이거 보여주면 OK' 구체적 조건 1~2개"]
 }
 
 ${buildPersonaAccuracyContext(persona.id)}

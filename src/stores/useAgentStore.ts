@@ -134,7 +134,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '조직 설계, 채용 계획, 변화 관리, 보상·평가 체계, 내부 커뮤니케이션, 팀 문화 전략에 강합니다.',
     tone: '사람 중심으로 생각하되, 비즈니스 임팩트로 설득합니다. 공감과 구조를 동시에 갖춥니다.',
-    keywords: ['채용', '조직', 'HR', '인사', '평가', '보상', '문화', '온보딩', '퇴사', '변화관리', 'hiring', 'team', 'culture', 'org'],
+    keywords: ['채용', '조직', 'HR', '인사', '평가', '보상', '문화', '온보딩', '퇴사', '변화관리', '인력', '조직 계획', 'hiring', 'team', 'culture', 'org', 'people'],
     is_builtin: true, archived: false,
   },
   {

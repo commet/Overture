@@ -294,18 +294,33 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             </p>
           </div>
 
-          {/* ── 리스크 분석 (하나의 통합 카드) ── */}
+          {/* ── 잘한 부분 ── */}
+          {(selectedResult.praise || []).length > 0 && (
+            <Card className="!border-l-4 !border-l-[var(--success)]">
+              <div className="flex items-center gap-2 mb-2">
+                <ThumbsUp size={14} className="text-[var(--success)]" />
+                <span className="text-[13px] font-bold text-[var(--success)]">잘한 부분</span>
+              </div>
+              <ul className="space-y-1">
+                {selectedResult.praise.map((p, i) => (
+                  <li key={i} className="text-[13px] text-[var(--text-primary)]">+ {p}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* ── 검토 사항 ── */}
           {(selectedResult.failure_scenario || (selectedResult.untested_assumptions?.length ?? 0) > 0 || (selectedResult.classified_risks?.length ?? 0) > 0 || (selectedResult.concerns || []).length > 0) && (
-            <Card className="!border-l-4 !border-l-red-400 space-y-4">
+            <Card className="!border-l-4 !border-l-amber-400 space-y-4">
               <div className="flex items-center gap-2">
-                <ShieldAlert size={14} className="text-red-500" />
-                <span className="text-[13px] font-bold text-red-600">리스크 분석</span>
+                <AlertTriangle size={14} className="text-amber-500" />
+                <span className="text-[13px] font-bold text-amber-700">검토 사항</span>
               </div>
 
               {/* 1. 실패 시나리오 */}
               {selectedResult.failure_scenario && (
                 <div>
-                  <p className="text-[12px] font-bold text-red-500 mb-1">이 계획이 실패한다면?</p>
+                  <p className="text-[12px] font-bold text-amber-600 mb-1">이 계획이 실패한다면?</p>
                   <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
                 </div>
               )}
@@ -360,21 +375,6 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
                   </ul>
                 </div>
               )}
-            </Card>
-          )}
-
-          {/* ── 긍정 평가 ── */}
-          {(selectedResult.praise || []).length > 0 && (
-            <Card className="!border-l-4 !border-l-[var(--success)]">
-              <div className="flex items-center gap-2 mb-2">
-                <ThumbsUp size={14} className="text-[var(--success)]" />
-                <span className="text-[13px] font-bold text-[var(--success)]">잘한 부분</span>
-              </div>
-              <ul className="space-y-1">
-                {selectedResult.praise.map((p, i) => (
-                  <li key={i} className="text-[13px] text-[var(--text-primary)]">+ {p}</li>
-                ))}
-              </ul>
             </Card>
           )}
 

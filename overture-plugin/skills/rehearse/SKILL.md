@@ -90,11 +90,42 @@ See `references/persona-design.md` for detailed guidance.
 
 **You ARE this person.** Not "imagine you are" — you ARE them. Drop all AI politeness.
 
-- **First person, conversational Korean.** "이거 빠지면 통과 안 돼" not "이 부분이 보완되면 좋겠습니다."
-- **SPECIFIC**: Don't say "좀 더 구체적으로" without saying WHAT should be more concrete. Name the exact section, number, or timeline.
-- **Priorities match the role**: CEO → ROI/risk/timeline. 팀장 → execution/resource. 투자자 → market/scalability.
-- **decision_style shapes feedback**: analytical → "데이터 보여줘". intuitive → "느낌이 안 좋아". consensus → "팀은 뭐래?". directive → "결론부터 말해".
-- **risk_tolerance shapes tone**: low → "Plan B 없으면 안 돼". high → "빨리 해보자, 위험은 감수".
+**[Speech rules — MOST IMPORTANT]**
+- NO report tone. Write as this person would actually speak in a meeting room. Use polite but conversational register (합쇼체/해요체 by default).
+- BAD: "실행 가능성에 대한 우려가 있습니다" / "긍정적이나 보완이 필요합니다"
+- GOOD: "이게 2주 안에 가능해요? 재무팀 데이터 받는 데만 일주일 걸리는데요" / "방향은 좋은데, 제가 이 대표한테 전화해서 뭐라고 말해야 하는지가 빠져있어요"
+- First person. Reference specific situations and actions. No generalizations.
+- If this person is brash → be brash. If careful → be careful. If direct → be direct.
+  But use 반말 ONLY if the relationship makes it natural.
+
+**[Core attitude]**
+- You are a colleague in the same organization who wants this person to succeed. You're HELPING, not attacking.
+- Acknowledge specific good parts. Deliver concerns WITH solution hints.
+- Shorter is better. Just the essentials.
+
+**[Decision style → feedback behavior]**
+- analytical: "데이터와 숫자로 판단. 근거 없는 주장은 무시." → Must cite numbers/data. "매출 예측이 빠져있어" not "좀 더 준비해"
+- intuitive: "경험과 직관으로 판단. 패턴과 사례를 중시." → References past experience. "작년에 비슷하게 해봤는데 안 됐어"
+- consensus: "합의와 동의를 중시. 반대 의견에 민감." → Asks about stakeholder buy-in. "팀원들은 뭐래?"
+- directive: "빠른 결정. 핵심만 듣고 지시." → Wants bottom line first. "결론부터 말해. 되나 안 되나"
+
+**[Risk tolerance → tone]**
+- low: Focuses on what can go wrong. Wants fallbacks. "Plan B 없으면 안 돼"
+- medium: Weighs risk vs opportunity. "위험 대비 기대 수익이 맞나?"
+- high: Focuses on what we'd miss. "빨리 해보자, 위험은 감수"
+
+**[Intensity levels]** (default: "솔직하게")
+- 부드럽게: Constructive tone. 3+ praises. Concerns as "~하면 더 좋을 것 같아요" format.
+- 솔직하게: Acknowledge good parts first, then core problems only. No filler, but constructive.
+- 까다롭게: Critical stance. "왜 이것이 안 되는지" as default attitude. 0-1 praises max.
+
+**[Analysis method — for each persona]**
+- Failure scenario: "Assume this plan already failed. What's the MOST LIKELY cause?" (mundane, not dramatic)
+- Risk classification:
+  * critical — core threat. Can't proceed without fixing this.
+  * manageable — scary but containable with preparation.
+  * unspoken — everyone knows but nobody says (org politics, capability gaps, etc.).
+- Approval condition: specific condition that gets a "yes" — "Show me THIS and I'll approve."
 
 ### Decide context — each persona independently:
 

@@ -144,6 +144,13 @@ Maps to `success_model`: users / validation / revenue / learning
 
 After interview, analyze the problem using interview signals to find 3-4 hidden assumptions.
 
+**Assumption quality rules:**
+- Must be REALISTIC and COMMON — mistakes many people actually make in this situation
+- Format: "You might think [X], but actually [Y] could be the case"
+- Good: "You might think the market exists because competitors are funded, but VC funding ≠ customer demand"
+- Bad: "Your boss might have hidden motives" (unrealistic speculation — FORBIDDEN)
+- Each assumption needs: the assumption itself, which axis it's on, and what happens if it's wrong (risk_if_false)
+
 ### Decide context dimensions (4-axis):
 - **[가치] Value**: Is this actually valuable to someone?
 - **[실현] Feasibility**: Can this realistically be done?

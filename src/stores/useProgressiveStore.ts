@@ -111,6 +111,10 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     // Migration: reset running workers to pending (stream_text lost on reload)
     const migrated = local.map(s => ({
       ...s,
+      // Recover from abnormal termination: reset in-progress phases
+      phase: (s.phase === 'lead_synthesizing' && !s.lead_synthesis) ? 'mixing' as const
+        : (s.phase === 'analyzing' || s.phase === 'mixing') ? 'conversing' as const
+        : s.phase,
       worker_deploy_phase: s.worker_deploy_phase ?? (s.workers?.length ? 'deployed' : 'none'),
       workers: (s.workers || []).map(w => ({
         ...w,

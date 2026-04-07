@@ -614,32 +614,22 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             const personaCount = results.length;
             if (personaCount === 0) return null;
 
-            // 가장 날카로운 지적: 첫 번째 failure_scenario 또는 critical risk
-            const sharpestPersona = results.find(r => r.failure_scenario);
-            const sharpestQuote = sharpestPersona?.failure_scenario;
-            const sharpestName = sharpestPersona ? personas.find(p => p.id === sharpestPersona.persona_id)?.name : null;
+            const praiseCount = results.reduce((s, r) => s + (r.praise || []).length, 0);
 
             return (
               <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--ai)] p-4 reward-entrance">
                 <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">{personaCount}명의 이해관계자가 검토했습니다</p>
 
-                {/* 가장 날카로운 한마디 */}
-                {sharpestQuote && (
-                  <div className="mb-3 pl-3 border-l-2 border-[var(--accent)]/40">
-                    <p className="text-[12px] text-[var(--text-primary)] leading-relaxed italic">&ldquo;{sharpestQuote}&rdquo;</p>
-                    {sharpestName && <p className="text-[11px] text-[var(--accent)] font-medium mt-1">— {sharpestName}</p>}
-                  </div>
-                )}
-
                 <div className="flex flex-wrap gap-2 mb-2">
+                  {praiseCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 font-medium">긍정 평가 {praiseCount}건</span>}
                   {critical > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 font-semibold">핵심 리스크 {critical}건</span>}
                   {manageable > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">관리 가능 {manageable}건</span>}
                   {unspoken > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-600 font-semibold">침묵의 리스크 {unspoken}건</span>}
-                  {approvalCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 font-medium">승인 조건 {approvalCount}건</span>}
+                  {approvalCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 font-medium">승인 조건 {approvalCount}건</span>}
                 </div>
                 {(critical > 0 || unspoken > 0) && (
                   <p className="text-[11px] text-[var(--text-secondary)] mt-1">
-                    AI는 동의만 하지만, 이 반론이 실행 전에 방향을 바로잡습니다.
+                    아래에서 각 이해관계자의 의견을 확인하고, 반영할 부분을 골라보세요.
                   </p>
                 )}
                 {critical === 0 && unspoken === 0 && (

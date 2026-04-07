@@ -34,18 +34,61 @@ allowed-tools: Read, Write, AskUserQuestion
 
 If `.overture/reframe.md` exists, read its contract and inject context:
 
-1. Read `reframed_question` → use as design north star
-2. Read `assumptions.doubtful` → mark as `[from reframe]`, place validation steps EARLY
-3. Read `framing_confidence`:
-   - <60 → **보수적 설계**: 검증 단계를 실행 단계 앞에 배치, 체크포인트 추가
-   - ≥60 → 표준 설계
-4. Read `interview_signals` → 설계 지침으로 변환:
-   - `nature=known_path` → 실행 구체성에 집중
-   - `nature=needs_analysis` → 분석 단계를 앞에 배치
-   - `nature=on_fire` → 긴급 대응 구조 (병렬 실행 최대화)
-   - `stakes=irreversible` → 실행 전 검증 단계 필수
-   - `history=failed` → "이번엔 뭐가 다른가" 단계 포함
-5. Read `ai_limitations` → 해당 영역은 반드시 🧑 또는 ⚡ 배정
+### 1. Design north star
+Read `reframed_question` → this is the question the plan must ultimately answer.
+
+### 2. Assumption evaluation injection
+Read `assumptions` and group by evaluation state:
+
+**Doubtful assumptions** (최우선 — 검증 단계 필수):
+- Mark each as `[from reframe]` in steps
+- Place validation steps EARLY in the plan — before execution, not after
+- Each doubtful assumption → create or identify a step that validates it
+- Include the user's doubt reason: "사용자가 '시장 존재 자체가 의심' → Step 1에서 고객 인터뷰로 검증"
+
+**Uncertain assumptions** (검증 방법 제시):
+- Include in `key_assumptions` with `certainty=low`
+- Suggest specific verification methods in step descriptions
+
+**Confirmed assumptions** (계획 근거):
+- Reference as foundation: "이 계획은 [confirmed assumption]을 전제로 합니다"
+
+**Risk-based design guidance** (automatic):
+If ≥50% of evaluated assumptions are doubtful → inject this design directive:
+> "사용자가 전제의 절반 이상을 의심합니다. 보수적으로 설계하고, 검증 단계를 앞쪽에 배치하세요."
+
+### 3. Framing confidence
+Read `framing_confidence`:
+- <50: "프레이밍이 불안정합니다. 탐색적 설계: 작은 실험과 학습 루프를 먼저 배치."
+- 50-69: "프레이밍이 불확실합니다. 검증 단계를 실행 전에 배치하세요."
+- 70-89: 표준 설계
+- ≥90: 실행 구체성에 집중
+
+### 4. Interview signal → design directive mapping
+Read `interview_signals` and convert each signal to a specific design instruction:
+
+**Nature signals:**
+- `known_path` → "검증된 방법이 있는 과제입니다. 실행의 구체성에 집중하세요."
+- `needs_analysis` → "분석이 필요한 과제입니다. 데이터와 전문성 기반으로 접근하세요."
+- `no_answer` → "탐색적 과제입니다. 작은 실험과 학습 루프를 설계하세요."
+- `on_fire` → "긴급 상황입니다. 즉각 대응과 근본 해결을 구분하세요."
+
+**Goal signals:**
+- `clear_goal` → "목표가 명확합니다. 달성 경로에 집중하세요."
+- `direction_only` → "방향만 있고 구체적 목표가 없습니다. 목표를 구체화하는 단계를 포함하세요."
+- `competing` → "목표가 충돌합니다. 이해관계자별 우선순위 정렬이 필요합니다."
+- `unclear` → "목표가 불분명합니다. governing_idea를 특히 구체적으로 작성해주세요."
+
+**Stakes signals:**
+- `irreversible` → "되돌리기 어려운 결정입니다. 검증 단계를 실행 전에 배치하세요."
+- `important` → "중요하지만 수정 가능합니다. 체크포인트를 적절히 배치하세요."
+- `experiment` → "실험 수준입니다. 빠른 실행과 피드백 루프에 집중하세요."
+
+**History signal:**
+- `failed` → "과거에 비슷한 시도가 실패했습니다. '이번에는 다른 점'을 명확히 하는 단계를 포함하세요."
+
+### 5. AI limitations
+Read `ai_limitations` → 해당 영역은 반드시 🧑 또는 ⚡ 배정. "이 부분은 AI가 검증할 수 없다"고 설계 근거에 명시.
 
 ## Step 1: 즉시 분석 — Storyline + 현재 역할 구조 파악
 

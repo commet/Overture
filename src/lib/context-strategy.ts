@@ -153,11 +153,11 @@ export function selectContextStrategy(
     }
   }
 
-  // 기본 전략
-  const strategy = DEFAULT_STRATEGY[taskType];
+  // 기본 전략 (unknown taskType은 'full' fallback)
+  const strategy = DEFAULT_STRATEGY[taskType] ?? 'full' as ContextStrategy;
   return {
     strategy,
-    reason: STRATEGY_REASONS[strategy],
+    reason: STRATEGY_REASONS[strategy] ?? 'Unknown task type — full context fallback',
   };
 }
 
