@@ -230,7 +230,7 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
                   <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Sparkles size={11} className="text-[var(--accent)]" />
-                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">핵심</span>
+                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">Insight</span>
                     </div>
                     <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
                   </div>
@@ -238,63 +238,65 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
               )}
             </AnimatePresence>
 
-            {/* Two-column: Assumptions | Skeleton */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Assumptions → Skeleton: connected flow */}
+            <div className="space-y-0">
+              {/* Assumptions */}
               {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
-                <div className="rounded-xl bg-[var(--bg)]/60 p-4">
-                  <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />놓치기 쉬운 것
+                <div className="rounded-t-xl border border-b-0 border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/10 flex items-center justify-center text-[9px]">⚠</span>
+                    Hidden Assumptions
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <AnimatePresence>
                       {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
                         <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.8, ease: EASE }}
-                          className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
-                          <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">&minus;</span>
-                          <span>{d.text}</span>
+                          className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
+                          {d.text}
                         </motion.div>
                       ))}
                     </AnimatePresence>
                     {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
                       <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
-                        className={`flex items-start gap-2 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
-                          d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
+                        className={`text-[13px] leading-[1.75] pl-3 border-l-2 transition-colors duration-1000 ${
+                          d.status === 'new' ? 'border-emerald-400 text-[var(--text-primary)] bg-emerald-50/40 dark:bg-emerald-900/10 rounded-r-lg py-1 pr-2' : 'border-amber-300/40 text-[var(--text-secondary)]'
                         }`}>
-                        <span className={`text-[9px] font-bold shrink-0 mt-1 ${
-                          d.status === 'new' ? 'text-emerald-500' : 'text-red-400/50'
-                        }`}>{d.status === 'new' ? '+' : '?'}</span>
-                        <span>{d.text}</span>
+                        {d.text}
                       </motion.div>
                     ))}
                   </div>
                 </div>
               )}
-              <div className="rounded-xl bg-[var(--bg)]/60 p-4">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />뼈대
+
+              {/* Skeleton — visually connected to assumptions */}
+              <div className={`border border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5 ${
+                assumptionDiff.filter(d => d.status !== 'removed').length > 0 ? 'rounded-b-xl' : 'rounded-xl'
+              }`}>
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent)] mb-3 flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
+                  Framework
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <AnimatePresence>
                     {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
                       <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.8, ease: EASE }}
-                        className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
-                        <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">&minus;</span>
-                        <span>{d.text}</span>
+                        className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
+                        {d.text}
                       </motion.div>
                     ))}
                   </AnimatePresence>
                   {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
                     <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                      className={`flex items-start gap-2.5 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
-                        d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
+                      className={`flex items-start gap-3 text-[13px] leading-[1.75] py-1 transition-colors duration-1000 ${
+                        d.status === 'new' ? 'text-[var(--text-primary)] font-medium bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg px-2 -mx-2' : 'text-[var(--text-primary)]'
                       }`}>
-                      <span className={`font-mono text-[10px] w-3.5 text-right shrink-0 mt-0.5 ${
-                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/40'
-                      }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
+                      <span className={`font-mono text-[11px] w-4 text-center shrink-0 mt-0.5 rounded ${
+                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/50 bg-[var(--accent)]/[0.06]'
+                      }`}>{d.status === 'new' ? '✦' : `${i + 1}`}</span>
                       <span>{d.text}</span>
                     </motion.div>
                   ))}
@@ -321,26 +323,24 @@ function DemoQuestionCard({ text, subtext, options, onSelect }: {
   const [selected, setSelected] = useState<string | null>(null);
   const go = (v: string) => { if (selected) return; setSelected(v); setTimeout(() => onSelect(v), 300); };
 
+  // Use 2x2 grid if all options are short (< 20 chars), otherwise 4x1 stack
+  const useGrid = options.every(o => o.length < 20);
+
   return (
     <motion.div initial={{ opacity: 0, y: 12, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
-      className="rounded-xl bg-[var(--accent)]/[0.02] border border-[var(--accent)]/10 p-4 md:p-5">
-      <div className="flex items-start gap-2.5 mb-3.5">
-        <div className="w-6 h-6 rounded-full bg-[var(--accent)]/10 flex items-center justify-center shrink-0 mt-0.5">
-          <ArrowRight size={11} className="text-[var(--accent)]" />
-        </div>
-        <div>
-          <p className="text-[14px] md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{text}</p>
-          {subtext && <p className="mt-1.5 text-[12px] text-[var(--text-secondary)] leading-relaxed italic">{subtext}</p>}
-        </div>
+      className="rounded-xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/15 p-5 md:p-6">
+      <div className="mb-4">
+        <p className="text-[16px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">{text}</p>
+        {subtext && <p className="mt-2 text-[13px] text-[var(--text-secondary)] leading-relaxed">{subtext}</p>}
       </div>
-      <div className="space-y-1.5 pl-8.5">
+      <div className={useGrid ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
         {options.map((opt, i) => (
-          <motion.button key={i} onClick={() => go(opt)} disabled={!!selected} whileTap={{ scale: 0.98 }}
-            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-normal border cursor-pointer ${
-              selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text-primary)] font-medium' :
-              selected ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-30' :
-              'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40'
-            }`} style={{ transitionProperty: 'all', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
+          <motion.button key={i} onClick={() => go(opt)} disabled={!!selected} whileTap={{ scale: 0.97 }}
+            className={`w-full text-left px-4 py-3 rounded-xl text-[13px] leading-snug border cursor-pointer ${
+              selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold shadow-sm' :
+              selected ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-20 scale-[0.98]' :
+              'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/[0.03]'
+            }`} style={{ transitionProperty: 'all', transitionDuration: '350ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
         ))}
       </div>
     </motion.div>
