@@ -832,13 +832,16 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
   const [debateResult, setDebateResult] = useState<DebateResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
   const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
 
   // Cleanup: abort all in-flight requests on unmount
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       workerAbortRef.current?.abort();
       abortRef.current?.abort();
     };
@@ -917,6 +920,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       : runAllAIWorkers(ws, ctx, workerCallbacks, workerAbortRef.current.signal)
     ).catch((err) => {
       console.error('[Worker orchestration error]', err);
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : L('에이전트 작업 중 오류가 발생했습니다.', 'Agent task error occurred.'));
+      }
     });
   };
 
@@ -980,7 +986,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           .filter(w => w.approved !== false && w.result)
           .map(w => ({ agentName: w.persona?.name || L('에이전트', 'Agent'), agentRole: w.persona?.role || '', task: w.task, result: w.result || '' }));
         runConcertmasterReview(session!.problem_text, cmWorkers)
-          .then(r => { if (r) setCmReview(r); })
+          .then(r => { if (r && mountedRef.current) setCmReview(r); })
           .catch(() => {});
 
         // Critical stakes: Cross-Agent Debate (mix 전에 실행하여 결과를 반영)

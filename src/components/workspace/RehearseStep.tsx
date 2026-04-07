@@ -13,6 +13,7 @@ import { FeedbackResult } from '@/components/tools/FeedbackResult';
 import { callLLMJson, callLLM } from '@/lib/llm';
 import { toDisplayError, isAuthError } from '@/lib/error-display';
 import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
+import { buildReviewPrompt } from '@/lib/review-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { Persona, FeedbackRecord, RehearsalResult, HiddenAssumption, StructuredSynthesis, DiscussionMessage } from '@/stores/types';
@@ -33,7 +34,39 @@ const lazyVitality = () => import('@/lib/judgment-vitality');
 import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
 
-/// Single source of truth: persona-prompt.ts (Agent 우선, 없으면 Persona fallback)
+/// Unified review prompt (shared with web app)
+function buildPersonaReview(persona: Persona, documentText: string, contextText: string): { system: string; user: string } {
+  const agent = useAgentStore.getState().getAgent(persona.id) || undefined;
+  return buildReviewPrompt(
+    { name: persona.name, role: persona.role, personality: persona.communication_style },
+    documentText,
+    contextText,
+    { mode: 'quick', locale: 'ko', agent },
+  );
+}
+
+/// Map ReviewFeedback → RehearsalResult for backward compat (FeedbackResult, RefineStep, etc.)
+function reviewToRehearsal(review: Record<string, unknown>, personaId: string): RehearsalResult {
+  const concerns = (review.concerns as Array<Record<string, string>> || []);
+  return {
+    persona_id: personaId,
+    overall_reaction: (review.first_reaction as string) || '',
+    praise: (review.good_parts as string[]) || [],
+    concerns: concerns.map(c =>
+      typeof c === 'string' ? c : `${c.text || ''}${c.fix_suggestion ? ` → ${c.fix_suggestion}` : ''}`
+    ),
+    first_questions: (review.would_ask as string[]) || [],
+    classified_risks: concerns
+      .filter(c => typeof c === 'object' && c.severity === 'critical')
+      .map(c => ({ text: (c.text as string) || '', category: 'critical' as const })),
+    failure_scenario: (review.failure_scenario as string) || '',
+    untested_assumptions: (review.untested_assumptions as string[]) || [],
+    wants_more: [],
+    approval_conditions: review.approval_condition ? [review.approval_condition as string] : [],
+  };
+}
+
+/// Legacy: still used by RefineStep for re-reviews
 const FEEDBACK_SYSTEM = (persona: Persona, perspective: string, intensity: string) => {
   const agent = useAgentStore.getState().getAgent(persona.id);
   if (agent) return buildFeedbackSystemPromptFromAgent(agent, perspective, intensity);
@@ -143,14 +176,14 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
     setFeedbackError('');
     setLastFeedbackData(data);
     try {
-      // ── Parallel persona feedback (Claude Code StreamingToolExecutor 패턴) ──
-      // 모든 페르소나를 동시에 호출하여 N배 속도 향상
-      const validPersonas: Array<{ persona: Persona; systemPrompt: string }> = [];
+      // ── Parallel persona feedback (unified review-prompt) ──
+      const validPersonas: Array<{ persona: Persona; system: string; user: string }> = [];
       for (const personaId of data.personaIds) {
         const persona = getPersona(personaId);
         if (!persona) continue;
-        let systemPrompt = FEEDBACK_SYSTEM(persona, data.perspective, data.intensity);
 
+        // Build context from project chain
+        let contextText = data.documentText.slice(0, 300);
         const projectId = pendingProjectId;
         if (projectId) {
           const relReframe = reframeItems
@@ -160,22 +193,24 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             .filter(o => o.project_id === projectId && o.analysis && o.status === 'done')
             .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
           if (relRecast) {
-            const orchCtx = buildRecastContext(relRecast);
-            const decCtx = relReframe ? buildReframeContext(relReframe) : undefined;
-            systemPrompt = injectRecastContext(systemPrompt, orchCtx, decCtx);
+            const rc = buildRecastContext(relRecast);
+            contextText = JSON.stringify(rc);
+            if (relReframe) contextText += '\n' + JSON.stringify(buildReframeContext(relReframe));
           }
         }
-        validPersonas.push({ persona, systemPrompt });
+
+        const { system, user } = buildPersonaReview(persona, data.documentText, contextText);
+        validPersonas.push({ persona, system, user });
       }
 
       // Fire all persona calls concurrently
       const settled = await Promise.allSettled(
-        validPersonas.map(async ({ persona, systemPrompt }) => {
-          const result = await callLLMJson<Omit<RehearsalResult, 'persona_id'>>(
-            [{ role: 'user', content: data.documentText }],
-            { system: systemPrompt, maxTokens: 2000, shape: { overall_reaction: 'string', classified_risks: 'array', praise: 'array', concerns: 'array', approval_conditions: 'array' } }
+        validPersonas.map(async ({ persona, system, user }) => {
+          const raw = await callLLMJson<Record<string, unknown>>(
+            [{ role: 'user', content: user }],
+            { system, maxTokens: 2000, shape: { first_reaction: 'string', good_parts: 'array', concerns: 'array', approval_condition: 'string' } }
           );
-          return { ...result, persona_id: persona.id } as RehearsalResult;
+          return reviewToRehearsal(raw, persona.id);
         })
       );
 
@@ -562,9 +597,9 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       {phase === 'running' && (
         <Card>
           <LoadingSteps steps={[
-            '이해관계자를 무대 앞으로 초대하고 있습니다...',
-            '각자의 관점에서 자료를 검토하고 있습니다...',
-            '침묵의 리스크를 찾고 있습니다...',
+            '이해관계자가 문서를 읽고 있습니다...',
+            '잘한 점과 고칠 점을 정리하고 있습니다...',
+            '통과 조건을 확인하고 있습니다...',
           ]} />
         </Card>
       )}

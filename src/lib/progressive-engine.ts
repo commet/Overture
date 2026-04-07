@@ -118,7 +118,7 @@ export async function runInitialAnalysis(
   const result = onToken
     ? await callLLMStreamThenParse<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000, signal },
+        { system, maxTokens: 2000, signal, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
         onToken,
       )
     : await callLLMJson<InitialAnalysisResponse>(
@@ -175,7 +175,7 @@ export async function refineInitialFraming(
   const result = onToken
     ? await callLLMStreamThenParse<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000, signal },
+        { system, maxTokens: 2000, signal, shape: { real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', next_question: 'object' } },
         onToken,
       )
     : await callLLMJson<InitialAnalysisResponse>(
@@ -247,7 +247,7 @@ export async function runDeepening(
   const result = onToken
     ? await callLLMStreamThenParse<DeepeningResponse>(
         [{ role: 'user', content: user }],
-        { system, maxTokens: 2000, signal },
+        { system, maxTokens: 2000, signal, shape: { insight: 'string', real_question: 'string', hidden_assumptions: 'array', skeleton: 'array', ready_for_mix: 'boolean' } },
         onToken,
       )
     : await callLLMJson<DeepeningResponse>(
@@ -456,8 +456,8 @@ function formatMixForReview(mix: MixResult): string {
     `# ${mix.title}`,
     `> ${mix.executive_summary}`,
     ...mix.sections.map(s => `## ${s.heading}\n${s.content}`),
-    `## 핵심 가정\n${mix.key_assumptions.map(a => `- ${a}`).join('\n')}`,
-    `## 다음 단계\n${mix.next_steps.map(s => `- ${s}`).join('\n')}`,
+    `## ${getCurrentLanguage() === 'ko' ? '핵심 가정' : 'Key Assumptions'}\n${mix.key_assumptions.map(a => `- ${a}`).join('\n')}`,
+    `## ${getCurrentLanguage() === 'ko' ? '다음 단계' : 'Next Steps'}\n${mix.next_steps.map(s => `- ${s}`).join('\n')}`,
   ].join('\n\n');
 }
 
@@ -588,7 +588,10 @@ export async function runConcertmasterReview(
     useAgentStore.getState().recordActivity('concertmaster', 'review_given', problemText.slice(0, 100));
 
     return result;
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[concertmaster-review] failed:', err instanceof Error ? err.message : err);
+    }
     return null;
   }
 }

@@ -44,8 +44,8 @@ Your job: In ONE pass, give them:
    FRAMING CONFIDENCE: Rate your own certainty (0-100):
    - 90-100: Crystal clear.
    - 70-89: Mostly clear, one ambiguity.
-   - 50-69: Could go 2-3 ways.
-   - <50: Too vague.
+   - 50-69: Could go 2-3 ways. → If below 70, your FIRST question MUST clarify this ambiguity before advancing.
+   - <50: Too vague. → Question should be "Can you tell me more about...?" style.
 
 2. Hidden Assumptions — Things they might be assuming wrong. 2-3 items.
    Must be REALISTIC and COMMON. No speculation about other people's hidden motives.
@@ -75,11 +75,14 @@ Your job: In ONE pass, give them:
    - "Why did the CEO assign this to you specifically?" (reveals context)
    - "Why did the client invite your team to pitch?" (reveals competitive position)
    - "What's the main reason your customers stay with you?" (reveals strategic position)`}
-   Offer 3-4 concrete options. Each option should lead to a genuinely different strategy.
+   Offer 3-4 concrete options. Self-check: mentally trace where each option leads. If two options lead to the same next step, they're not different enough — replace one.
+   The subtext should create ANTICIPATION — make the user feel "my answer to this will actually change the plan."
+   ${locale === 'ko' ? 'Example subtext good: "이 하나가 기획안의 구조를 완전히 바꿔요"\nExample subtext bad: "이 정보가 필요해요" (사무적)' : 'Example subtext good: "This single answer completely changes the plan\'s structure"\nExample subtext bad: "We need this information" (administrative)'}
 
-5. Insight — ONE sharp sentence the user will remember. Connect to their existing experience if possible.
-   Example good (for a developer): "It's not that different from scoping a feature — why build it, can we build it, how much will it cost."
-   Example bad: "The key to success is understanding stakeholder alignment" (generic, forgettable)
+5. Insight — ONE sharp sentence the user will remember. NOT generic advice — connect to their EXISTING EXPERIENCE.
+   If they mention their role (developer, PM, designer, marketer), reference what they do daily.
+   ${locale === 'ko' ? '개발자 → "기능 스펙 잡는 것과 비슷해요"\n디자이너 → "디자인 시스템 만들 때처럼 원칙부터 잡는 거예요"\nPM → "PRD 쓸 때랑 같아요 — 왜, 뭘, 언제"' : 'Developer → "It\'s like scoping a feature — why, what, how much"\nDesigner → "Like building a design system — principles first, then components"\nPM → "Same as writing a PRD — why, what, when"'}
+   If no role is mentioned, connect to a universal work experience instead of giving abstract advice.
 
 Respond in JSON. Concise — quality over volume.`,
 
@@ -204,7 +207,7 @@ JSON:
     "steps": [{"task": "What to do", "who": "ai|human|both", "output": "Deliverable", "agent_hint": "Team member name (if applicable)"}]
   },` : ''}
   "next_question": ${isLastRound ? 'null' : '{"text": "Situation-shaping question (reference their latest answer)", "subtext": "Why this changes the strategy", "options": ["Leads to strategy A", "Strategy B", "Strategy C"], "type": "select|short"}'},
-  "ready_for_mix": ${isLastRound ? 'true' : 'true|false'}
+  "ready_for_mix": ${isLastRound ? 'true' : 'false'}
 }`,
   };
 }
@@ -374,7 +377,7 @@ STRUCTURE RULE: The analysis went through multiple Q&A rounds. The skeleton from
 
 Rules:
 - Executive summary: 2-3 sentences max. ${sanitize(dmLabel)} should get 80% of the value just from this.
-- Section structure: follow the skeleton from the analysis. Each section: concrete, specific, 3-5 sentences.
+- Section structure: follow the skeleton from the analysis. Each section: 3-5 sentences. Every section MUST contain at least one specific number, fact, or example from the worker results. Generic statements without evidence are forbidden.
 - Include the assumptions explicitly — this shows intellectual honesty.
 - Next steps: time-bound and assigned (who does what by when). At least 3.
 - Write it so the user can literally send this as-is. No "[insert here]" placeholders.
@@ -419,7 +422,7 @@ JSON format:
   "title": "Document title (specific, reflects the situation)",
   "executive_summary": "Executive summary in 2-3 sentences",
   "sections": [
-    {"heading": "Section heading", "content": "Section content (2-4 sentences, specific)"}
+    {"heading": "Section heading", "content": "Section content (3-5 sentences, specific)"}
   ],
   "key_assumptions": ["Assumptions this document is based on"],
   "next_steps": ["Specific next actions (who, by when, what)"]
@@ -427,8 +430,9 @@ JSON format:
   };
 }
 
-// ─── 4. Decision-Maker Feedback ───
+// ─── 4. Decision-Maker Feedback (DEPRECATED — use review-prompt.ts) ───
 
+/** @deprecated Use buildReviewPrompt from review-prompt.ts instead */
 export function buildDMFeedbackPrompt(
   mix: { title: string; executive_summary: string; sections: { heading: string; content: string }[]; key_assumptions: string[]; next_steps: string[] },
   decisionMaker: string,
@@ -494,8 +498,9 @@ JSON format:
   };
 }
 
-// ─── 4b. Boss personality-based DM Feedback ───
+// ─── 4b. Boss personality-based DM Feedback (DEPRECATED — use review-prompt.ts) ───
 
+/** @deprecated Use buildReviewPrompt from review-prompt.ts instead */
 export function buildBossDMFeedbackPrompt(
   mix: { title: string; executive_summary: string; sections: { heading: string; content: string }[]; key_assumptions: string[]; next_steps: string[] },
   agent: Agent,
@@ -643,7 +648,7 @@ Re-analyze completely based on the user's rejection reason.
 JSON format:
 {
   "real_question": "New core question (ends with ?)",
-  "framing_confidence": 0-100,
+  "framing_confidence": 75,
   "why_this_matters": "Why this question is the right one (1 sentence)",
   "hidden_assumptions": ["Realistic hidden assumptions, 2-3 items"],
   "skeleton": ["Updated skeleton items"],

@@ -116,7 +116,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       .eq('team_id', teamId)
       .order('created_at');
 
-    if (data) set({ members: data });
+    // 응답 역전 방지: 요청한 teamId와 현재 선택 팀이 일치할 때만 반영
+    if (data && get().currentTeamId === teamId) set({ members: data });
   },
 
   inviteMember: async (teamId: string, email: string, role = 'member') => {
