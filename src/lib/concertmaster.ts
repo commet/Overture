@@ -834,7 +834,7 @@ export function buildLearningCurve(): LearningCurve {
   const profile = buildConcertmasterProfile();
   let tier_progress = 0;
   if (profile.tier === 1) {
-    tier_progress = Math.min(100, Math.round((profile.sessionCount / 3) * 100));
+    tier_progress = Math.min(100, Math.round((profile.sessionCount / 2) * 100));
   } else if (profile.tier === 2) {
     const sessionProgress = Math.min(100, Math.round((profile.sessionCount / 10) * 100));
     const projectProgress = Math.min(100, Math.round((profile.projectCount / 2) * 100));

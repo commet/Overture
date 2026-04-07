@@ -481,13 +481,13 @@ describe('concertmaster', () => {
       mockGetStorage.mockReturnValue([]);
       mockAnalyzeStrategyPerformance.mockReturnValue([]);
 
-      // Tier 1 with 2/3 sessions → 67% progress
+      // Tier 1 with 1/2 sessions → 50% progress toward tier 2 (threshold is now 2)
       mockGetEvalSummary.mockReturnValue({
-        total_sessions: 2, avg_pass_rate: 0.5, best_strategy: null, worst_eval: null,
+        total_sessions: 1, avg_pass_rate: 0.5, best_strategy: null, worst_eval: null,
       });
       const curve = buildLearningCurve();
       expect(curve.current_tier).toBe(1);
-      expect(curve.tier_progress).toBe(67);
+      expect(curve.tier_progress).toBe(50);
     });
   });
 });
