@@ -73,23 +73,23 @@ export function buildFinal(scenario: DemoScenario, concerns: DMConcern[]): strin
 // ─── Shared Personas ───
 
 const SUJIN: WorkerPersona = {
-  id: 'researcher', name: 'Sujin', role: 'Research Analyst',
+  id: 'researcher', name: 'Sophie', role: 'Research Analyst',
   emoji: '🔍', expertise: 'Market research, data analysis', tone: 'Thorough and evidence-based', color: '#3B82F6',
 };
 const HYUNWOO: WorkerPersona = {
-  id: 'strategist', name: 'Hyunwoo', role: 'Strategist',
+  id: 'strategist', name: 'Nathan', role: 'Strategist',
   emoji: '🎯', expertise: 'Strategy design, positioning', tone: 'Direct and to the point', color: '#8B5CF6',
 };
 const MINJAE: WorkerPersona = {
-  id: 'numbers', name: 'Minjae', role: 'Financial Analyst',
+  id: 'numbers', name: 'Ethan', role: 'Numbers Analyst',
   emoji: '📊', expertise: 'Finance, quantitative analysis', tone: 'Numbers-driven', color: '#10B981',
 };
 const DONGHYUK: WorkerPersona = {
-  id: 'critic', name: 'Donghyuk', role: 'Risk Reviewer',
+  id: 'critic', name: 'Blake', role: 'Risk Reviewer',
   emoji: '⚠️', expertise: 'Risk analysis, counterarguments', tone: 'Sharp but constructive', color: '#EF4444',
 };
 const SEOYEON: WorkerPersona = {
-  id: 'copywriter', name: 'Seoyeon', role: 'Copywriter',
+  id: 'copywriter', name: 'Claire', role: 'Copywriter',
   emoji: '✍️', expertise: 'Document structuring, persuasive writing', tone: 'Clear and compelling', color: '#F59E0B',
 };
 
@@ -102,27 +102,27 @@ const scenario1: DemoScenario = {
   title: 'Business Plan',
   icon: '📋',
   desc: 'First time planning — where do you even start?',
-  problemText: 'The CEO told me to put together a new business proposal in 2 weeks. I\'ve never done this before.',
+  problemText: 'The CEO wants a new business proposal in 2 weeks. I\'m on the dev team and have never done this before.',
 
   team: [SUJIN, HYUNWOO, MINJAE],
 
   // ─── v0: Initial Analysis ───
   analysis: {
     version: 0,
-    real_question: 'What the CEO really wants isn\'t "a document" — it\'s your answer to "should we do this?"',
+    real_question: 'New business planning — build the case for "is this worth doing?" within 2 weeks',
     hidden_assumptions: [
-      'The CEO doesn\'t want to read a report — they want to see how well you understand the opportunity',
-      'A quick "here\'s the direction I\'m thinking — does this track?" in 3 days beats a polished doc in 2 weeks',
-      'Being new to planning isn\'t a weakness — a proposal written by someone who knows the actual work is more powerful',
+      'A proposal isn\'t a perfect report — it\'s the process of gathering the materials needed to make a judgment call',
+      'Two weeks usually means a first draft + feedback, not a polished final document',
+      'Dev experience is actually an advantage — you can judge technical feasibility more accurately than any planning expert',
     ],
     skeleton: [
-      'Why now? — Why did the CEO assign this at this particular moment?',
-      'Can we pull it off? — An honest assessment from a technical/team standpoint',
-      'Where to start? — What to validate in 2 weeks vs. what can wait',
-      'How much will it cost? — A lean structure to get started',
-      'What if it fails? — Define the kill criteria upfront',
+      'Who reads this and what do they decide? — This determines the structure',
+      'Is it technically feasible? — The dev team can answer this most accurately',
+      'Do people actually want it? — Even 3 conversations are enough to validate',
+      'Do the numbers work? — Even rough estimates are better than none',
+      'When to stop — Having kill criteria upfront builds credibility',
     ],
-    insight: 'The most persuasive proposal isn\'t written by a planning expert — it\'s written by the person who\'d actually build the thing.',
+    insight: 'A proposal isn\'t about writing the right answer. It\'s about gathering the materials needed to make a judgment call.',
   },
 
   // ─── Q1: Understanding the context ───
@@ -139,77 +139,77 @@ const scenario1: DemoScenario = {
       'A competitor beat us to the punch': {
         dmKey: 'ceo',
         snapshotPatch: {
-          real_question: 'If it\'s about a competitor — the real question isn\'t "we should do it too" but "can we do what they can\'t?"',
+          real_question: 'Competitive response plan — find our entry point in the market the competitor just validated',
           hidden_assumptions: [
-            'A me-too proposal won\'t convince the CEO — the key is "why we can do it differently"',
-            'The competitor going first actually proves market demand — that\'s a point in your favor',
-            'You\'ll need to narrow the scope to fit competitive analysis into 2 weeks',
+            'A competitor going first means the market exists — they saved you the validation cost',
+            'Building the same thing puts you at a late-mover disadvantage — find what you can do differently',
+            'Spending 2 weeks on competitive analysis leaves no time for the actual plan',
           ],
           skeleton: [
-            'What did the competitor do? — Summarize their actual launch/announcement',
-            'Does the market really exist? — What the competitor has validated for us',
-            'What can we do differently? — From a tech/team/customer angle',
-            'Minimum validation — One thing we can confirm within 2 weeks',
-            'Decision criteria — Why it\'s better to pass if this threshold isn\'t met',
+            'Try the competitor\'s product yourself — skip the press, use the real thing (1 hour)',
+            'Check direction with the CEO — "Same thing, or go different?"',
+            'Ask 3 customers — "Have you tried theirs? What do you think?" Their reaction is your market validation',
+            'One thing only we can do — A technical differentiator (your team\'s domain)',
+            'Core of the plan — "Here\'s what they did, here\'s how we\'re different" comparison',
           ],
-          insight: '"They\'re doing it so we should too" will tire your CEO out. One line about "what they can\'t do" is all you need.',
+          insight: 'The competitor opened the market for you. What you need now isn\'t an analysis report — it\'s one thing you can do that they can\'t.',
         },
       },
       'Revenue growth has stalled': {
         dmKey: 'executive',
         snapshotPatch: {
-          real_question: 'If it\'s about stalled growth — first question is whether this new business is big enough to fill the revenue gap',
+          real_question: 'Growth breakthrough plan — is the new business big enough to move the needle, or is fixing the existing business faster?',
           hidden_assumptions: [
-            'The CEO cares less about the venture itself and more about "how much can this make?"',
-            'Whether the plateau is market saturation vs. execution issues changes the whole plan',
-            'Without synergy with the existing business, the pitch is twice as hard',
+            'Whether the plateau is market saturation vs. execution issues completely changes the plan',
+            'A new venture without synergy to the existing business is a much harder sell',
+            'A proposal without numbers won\'t get past the first review',
           ],
           skeleton: [
-            'Current revenue structure — Where is the stagnation coming from?',
-            'Revenue impact — Is this new business meaningfully sized?',
-            'Connection to existing business — Synergy or resource drain?',
-            'When does revenue start? — A realistic timeline',
-            'Return on investment — Path to minimum break-even',
+            'Why isn\'t current revenue growing? — Market issue or execution? (Getting this wrong repeats the mistake)',
+            'Projected scale of the new business — Is it meaningful at the 1-year mark? (Even rough estimates)',
+            'The "improve existing business" option — Having a comparison doubles the proposal\'s persuasiveness',
+            'Can the current team handle it? — If hiring is needed, the timeline changes completely',
+            'Core of the plan — "New venture vs. existing improvement" comparison table + recommendation',
           ],
-          insight: 'If you\'re pitching a new venture as the answer to stalled growth, you need to show "how big of an answer" — in numbers.',
+          insight: 'The most powerful slide in a new venture proposal is the one showing "this is a better bet than improving what we have."',
         },
       },
       'The CEO has a personal conviction': {
         dmKey: 'ceo',
         snapshotPatch: {
-          real_question: 'If it\'s the CEO\'s conviction — the proposal\'s job is to validate the conviction, not to gift-wrap it',
+          real_question: 'Execution plan — if the direction is already decided, the question isn\'t "should we?" but "how do we start?"',
           hidden_assumptions: [
-            'When the CEO already wants to do it, the proposal becomes an execution roadmap, not a pitch for approval',
-            'Since "go" is already decided, the plan should focus on "how"',
-            'But if there\'s a genuine dealbreaker, it\'s better to flag it now than later',
+            'When the decision is made, the proposal becomes an execution roadmap, not a pitch for approval',
+            'Focus on "how" — but if there\'s a genuine dealbreaker, it\'s better to flag it now than later',
+            'Understanding what convinced the CEO gives you the starting point for the plan',
           ],
           skeleton: [
-            'The CEO\'s conviction — What evidence led to this belief?',
-            'Feasibility — Can we technically pull this off? (Be honest)',
-            'First 3 months — How to start with minimum headcount and budget',
-            'Checkpoint — The one thing to verify after month 1',
-            'One risk — The single factor that would require a pivot',
+            'The CEO\'s conviction — "What made you feel this would work?" (This is your starting point)',
+            'One way to validate that conviction — the CEO will want confirmation too',
+            'First month execution plan — headcount, budget, what to build, specifically',
+            'One-month checkpoint — "If this works, continue. If not, stop."',
+            'One honest risk — including this actually raises the proposal\'s credibility',
           ],
-          insight: 'If the CEO is already sold, put one honest "reason this could fail" in your plan. That\'s what builds trust.',
+          insight: 'If the direction is set, the proposal\'s value is in showing a concrete, feasible first step.',
         },
       },
       'I\'m not sure': {
         dmKey: 'ceo',
         snapshotPatch: {
-          real_question: 'If you don\'t know why — asking the CEO directly is the fastest path before you write anything',
+          real_question: 'Direction first — without knowing the reason, you can\'t set the plan\'s direction. Asking is the fastest path',
           hidden_assumptions: [
-            'Asking "why are we doing this?" isn\'t a sign of incompetence — it\'s the first question any professional asks',
-            'Without knowing the reason, you can\'t set the direction — guessing leads to rewrites',
+            'Asking "why are we doing this?" is a normal first step in planning',
+            'Writing without knowing the reason risks producing something that misses the mark entirely',
             'The CEO may not have fully articulated it either — the conversation helps both sides',
           ],
           skeleton: [
-            'First step — Schedule a 15-minute conversation with the CEO',
-            'The question — "Why this, and why now?" — that\'s all you need to ask',
-            'After the conversation — The reason determines the plan\'s structure',
-            'Parallel prep — Basic research that\'s needed regardless of the reason',
-            'Timeline — Direction confirmed in 3 days, first draft in 10 days',
+            'Today — ask the CEO "Why this, and why now?" (Slack or text is fine)',
+            'Based on the answer — it\'ll be one of: competition, revenue, or conviction. Direction follows from there',
+            'If you can\'t ask directly — check with others: "What has the CEO been talking about lately?"',
+            'While you wait — check technical feasibility first (needed regardless of the reason)',
+            'Lock direction within 3 days — the remaining 11 days are your actual planning time',
           ],
-          insight: 'A proposal written without knowing the "why" gets thrown out in 2 weeks. A 15-minute conversation saves you.',
+          insight: 'A proposal written without knowing the "why" has a high chance of missing the mark. A 15-minute conversation saves 2 weeks.',
         },
       },
     },
@@ -228,48 +228,48 @@ const scenario1: DemoScenario = {
     effects: {
       'I don\'t know what to write': {
         snapshotPatch: {
-          insight: 'Instead of "what should I write?", ask "what does the decision-maker need to know?" — and the answer appears.',
+          insight: '"Not knowing what to write" is completely normal — you haven\'t heard the decision criteria yet. Focus on just 3 things: Will it work? How much? What if it doesn\'t?',
           hidden_assumptions: [
-            'The CEO wants judgment, not a document',
-            '"Not knowing what to write" is normal — you haven\'t heard the decision criteria yet',
-            'Just answer three things: Will it work? How much? What if it doesn\'t?',
+            'A proposal isn\'t about filling a blank document — it\'s about answering questions',
+            'Figure out what the decision-maker will ask first, and the outline writes itself',
+            'Three answers is enough for the backbone of any proposal',
           ],
         },
       },
       'It won\'t be convincing enough': {
         snapshotPatch: {
-          insight: 'Persuasiveness doesn\'t come from more data — it comes from a clear answer to "why us, why now."',
+          insight: 'Persuasiveness isn\'t about volume of data. "I looked into this personally" is more powerful than 50 pages of research. Even one customer conversation changes your confidence level.',
           hidden_assumptions: [
-            'More data doesn\'t make it more convincing — the argument structure does',
+            'Persuasiveness comes from the argument structure, not the amount of data',
             'If you can answer "why us?" in three sentences, that\'s enough',
-            'Your technical background is actually your strongest card for credible proposals',
+            'Technical feasibility assessment is the strongest card the dev team can play',
           ],
         },
       },
       'Not enough time': {
         snapshotPatch: {
-          insight: 'Perfection in 2 weeks is impossible. The goal is "this is enough to make a decision."',
+          insight: 'Two weeks feels short for a "finished document," but it\'s plenty for "gathering the materials to make a judgment call."',
           skeleton: [
-            'Week 1 — Research + structure the decision framework',
-            'Week 2 — Draft + get feedback',
-            'Will it work? — Technical feasibility',
-            'Minimum structure — Only what\'s needed for a Go/No-Go decision',
-            'What if not? — Exit criteria',
+            'Days 1-3 — CEO conversation + technical feasibility check',
+            'Days 4-7 — Validate with 3 customers + key numbers',
+            'Days 8-10 — One-page draft + CEO mid-check',
+            'Days 11-14 — Incorporate feedback + final version',
+            'Key — If the CEO says "direction looks right" by day 10, you\'ve succeeded',
           ],
           hidden_assumptions: [
-            '2 weeks = first draft + one round of feedback, not a finished product',
-            'When time is short, the answer is to cut scope',
-            'Ask the CEO: "What form are you expecting in 2 weeks?"',
+            'Two weeks realistically means first draft + one feedback round',
+            'When time is short, cutting scope is the answer',
+            'Ask the CEO first: "What form are you expecting in 2 weeks?"',
           ],
         },
       },
       'I\'ve never done planning': {
         snapshotPatch: {
-          insight: 'The core of any plan is "will this actually work?" — and that\'s exactly what developers are best at.',
+          insight: 'The core of planning is asking "will this actually work?" Market research can be assisted by tools, but "can we really build this?" — only the dev team can answer that.',
           hidden_assumptions: [
-            'Planning isn\'t writing — planning is structuring a decision',
-            'A developer\'s instinct for "will this really work?" is the killer weapon in planning',
-            'Non-technical parts (market/finance) can be AI-drafted and you verify',
+            'Planning isn\'t writing — it\'s structuring a judgment call',
+            'A developer\'s "will this really work?" instinct is the most valuable skill in planning',
+            'Non-technical parts (market/finance) can be AI-drafted; you verify',
           ],
         },
       },

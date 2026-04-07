@@ -62,23 +62,34 @@ Claude Code를 재시작하고, `/overture "고민"` 을 입력하세요.
 
 **쓸수록 똑똑해짐.** 실행 기록이 `.overture/journal.md`에 쌓이고, `/overture:patterns`로 반복되는 블라인드 스팟을 분석합니다. 각 스킬은 저널을 읽고 적응합니다.
 
+**Framing confidence.** 질문의 정확도를 0-100으로 자가 평가하고, 낮으면 검증 단계를 앞에 배치합니다. 사용자가 프레이밍을 거부하면 처음부터 재분석합니다.
+
+**Structured context chain.** 가정을 확인/불확실/의심으로 분류하고, 축(가치/실현/사업/역량)을 표기합니다. 다음 스킬이 의심된 가정을 최우선으로 검증합니다.
+
 ## 아무 언어나 됩니다
 
-한국어로 입력하면 한국어로, 영어로 입력하면 영어로 답합니다.
+영어로 입력하면 영어로, 한국어로 입력하면 한국어로 답합니다.
 
 ## 스킬 체인
 
 각 스킬은 `.overture/`에 Context Contract(YAML)를 저장합니다. 다음 스킬이 자동으로 읽고 이어갑니다.
 
 ```
-/reframe → .overture/reframe.md (진짜 질문 + 숨겨진 전제)
+/reframe → .overture/reframe.md (진짜 질문 + 평가된 전제 + 프레이밍 확신도)
     ↓
-/recast  → .overture/recast.md  (실행 계획 + 역할 배분 + 페르소나)
+/recast  → .overture/recast.md  (Storyline + 실행 계획 + 역할 배분 + 핵심 가정 + 페르소나)
     ↓
-/rehearse → .overture/rehearse.md (리스크 + 우려 + 승인 조건)
+/rehearse → .overture/rehearse.md (리스크 + 우려 + 승인 조건 매핑 + 구조적 종합)
     ↓
-/refine   → .overture/refine.md  (수정 사항 + 수렴 상태)
+/refine   → .overture/refine.md  (변경 추적 + 승인 조건 달성 + 수렴 지표)
 ```
+
+**v0.5 컨텍스트 파이프라인:**
+- 가정: 확인/불확실/의심 × 4축 평가
+- 역할: 🤖/🧑/⚡/🧑→🤖/🤖→🧑 5종
+- 계획: Storyline(S/C/R) + critical path(★) + 시간 추정
+- 검증: severity+fix + 승인 조건→계획 매핑 + 구조적 종합(합의/충돌/미검증)
+- 수렴: 변경 추적 + 승인 조건 달성 + 원래 질문 정렬 확인
 
 스키마 상세: [`CONTEXT-CONTRACT.md`](CONTEXT-CONTRACT.md)
 

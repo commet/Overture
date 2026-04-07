@@ -69,7 +69,7 @@ If `.overture/reframe.md` exists, read its contract and inject context:
 | 3 | [단계] | ⚡ 둘 다 | [산출물] | [시간] |
 | 4 | [단계] | 🧑→🤖 | [산출물] | [시간] |
 
-**역할 분포:** 🤖 AI [N]개 · 🧑 사람 [N]개 · ⚡ 둘 다 [N]개
+**역할 분포:** 🤖 AI [N]개 · 🧑 사람 [N]개 · ⚡ 둘 다 [N]개 · 🧑→🤖 [N]개 · 🤖→🧑 [N]개
 
 **Critical Path:** 단계 [N], [M], [K] ★
 
@@ -168,8 +168,8 @@ If `.overture/reframe.md` exists, read its contract and inject context:
 **역할 분포 변화:**
 
 ```diff
-- Before: 🤖 3 · 🧑 1 · ⚡ 1
-+ After:  🤖 2 · 🧑 2 · ⚡ 1
+- Before: 🤖 3 · 🧑 1 · ⚡ 1 · 🧑→🤖 0 · 🤖→🧑 0
++ After:  🤖 2 · 🧑 1 · ⚡ 1 · 🧑→🤖 0 · 🤖→🧑 1
 ```
 
 **전체 예상 소요:** [시간]
