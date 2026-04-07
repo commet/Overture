@@ -686,11 +686,18 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
                         <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
                       </div>
                       <p className="text-[13px] text-[var(--accent)] leading-relaxed mb-3 pl-1">&rarr; {c.fix_suggestion}</p>
-                      <div className="flex items-center justify-end gap-2.5">
-                        <span className="text-[11px] text-[var(--text-tertiary)] font-medium">{c.applied ? 'Applied' : 'Skip'}</span>
+                      <div className="flex items-center justify-end">
                         <button onClick={() => onToggle(i)}
-                          className={`relative w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
-                          <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 28 : 4 }} transition={SPRING} />
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium cursor-pointer transition-all duration-300 ${
+                            c.applied
+                              ? 'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20'
+                              : 'bg-[var(--bg)] text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30'
+                          }`}>
+                          {c.applied ? (
+                            <><Check size={12} /> Applied</>
+                          ) : (
+                            <>Apply this fix</>
+                          )}
                         </button>
                       </div>
                     </div>
