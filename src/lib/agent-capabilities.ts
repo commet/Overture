@@ -137,6 +137,29 @@ export const AGENT_CAPABILITIES: AgentCapabilityProfile[] = [
     antiPatterns: ['writing', 'design', 'calculation'],
   },
 
+  // ━━━ New: Finance, Marketing, HR ━━━
+  {
+    agentId: 'hyeyeon',  // 재무·회계
+    taskTypes: ['calculation', 'analysis', 'critique'],
+    domains: ['finance', 'market', 'ops'],
+    outputTypes: ['numbers', 'report', 'risk_assessment'],
+    antiPatterns: ['design', 'writing'],
+  },
+  {
+    agentId: 'minseo',  // 마케팅·그로스
+    taskTypes: ['strategy', 'writing', 'analysis', 'planning'],
+    domains: ['brand', 'market', 'product'],
+    outputTypes: ['plan', 'document', 'report'],
+    antiPatterns: ['legal_review', 'calculation'],
+  },
+  {
+    agentId: 'sujin_hr',  // 사람·문화
+    taskTypes: ['planning', 'writing', 'analysis', 'synthesis'],
+    domains: ['ops', 'product'],
+    outputTypes: ['plan', 'document', 'checklist'],
+    antiPatterns: ['calculation', 'legal_review', 'design'],
+  },
+
   // ━━━ Special ━━━
   {
     agentId: 'concertmaster',

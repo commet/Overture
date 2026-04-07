@@ -101,6 +101,7 @@ export function buildDeepeningPrompt(
   maxRounds: number,
   availableAgents?: Array<{ name: string; role: string; specialty: string }>,
   locale: Locale = 'en',
+  leadContext?: string,
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
   // Context compression: summarize older Q&A when it gets long (preserve more in later rounds)
@@ -134,7 +135,7 @@ Your job each round:
 2. Update real_question — must stay a QUESTION (ends with ?). Sharpen with new context.
 3. Update hidden assumptions — remove resolved ones, add newly discovered ones. Keep realistic.
 4. Update skeleton — make it more concrete based on what we now know. Each line = actionable section.
-${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. Each step should play to a specific team member's strength.${teamBlock}` : ''}
+${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. Each step should play to a specific team member's strength.${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
 
 Question rules:
 - Reference their answer directly: "Since you said it's for investors, then..."
@@ -286,6 +287,8 @@ Focus on this task only and complete it.`,
 
 // ─── 3. Mix (final draft assembly) ───
 
+import type { LeadSynthesisResult } from '@/stores/types';
+
 export function buildMixPrompt(
   problemText: string,
   snapshots: AnalysisSnapshot[],
@@ -293,6 +296,7 @@ export function buildMixPrompt(
   decisionMaker: string | null,
   workerResults?: Array<{ task: string; result: string }>,
   locale: Locale = 'en',
+  leadSynthesis?: LeadSynthesisResult | null,
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
   const snapshotSummary = compactSnapshots(snapshots);
@@ -306,8 +310,25 @@ export function buildMixPrompt(
   const dmLabel = decisionMaker || (locale === 'ko' ? '\uc758\uc0ac\uacb0\uc815\uad8c\uc790' : 'the decision maker');
   const riskSectionName = locale === 'ko' ? '\ub9ac\uc2a4\ud06c\uc640 \ub300\uc751' : 'Risks & Mitigation';
 
-  return {
-    system: `You are assembling a final draft document. Always respond in ${lang}.
+  // When lead synthesis exists, Mix becomes a document formatter, not a strategic assembler
+  const systemPrompt = leadSynthesis
+    ? `You are a professional document editor. Always respond in ${lang}.
+
+A domain expert (${leadSynthesis.lead_agent_name}) has already synthesized the team's findings into an integrated analysis. Your job is to format this into a polished, professional document for ${sanitize(dmLabel)}.
+
+Rules:
+- The lead expert's synthesis is your PRIMARY source. Preserve their strategic logic and recommendations.
+- Executive summary: 2-3 sentences derived from the lead's integrated analysis.
+- 4-6 sections. Structure the lead's analysis into clear sections with supporting evidence from worker results.
+- Include the assumptions explicitly — this shows intellectual honesty.
+- Next steps should be time-bound and assigned (who does what by when). At least 3 next steps.
+- Write it so the user can literally send this as-is. No "[insert here]" placeholders.
+- Tone: confident but honest about uncertainties. Professional ${lang}.
+- DO NOT use markdown headers in section content — just flowing text with emphasis where needed.
+- Use **bold** for key terms and critical numbers.
+- Include a "${riskSectionName}" section based on the lead's unresolved tensions and risk analysis.
+- DO NOT override the lead's recommendations with your own judgment. You format, they strategize.`
+    : `You are assembling a final draft document. Always respond in ${lang}.
 
 This document will be presented to ${sanitize(dmLabel)}.
 It should look like something a competent strategist wrote — not AI-generated fluff.
@@ -322,7 +343,23 @@ Rules:
 - DO NOT use markdown headers in section content — just flowing text with emphasis where needed.
 - Use **bold** for key terms and critical numbers within section content.
 - The document should feel SUBSTANTIAL. Not a thin outline — a real first draft that shows thinking depth.
-- CRITICAL DIFFERENTIATOR: Include one section called "${riskSectionName}" that identifies 2-3 risks with specific mitigation actions. This is what makes this output better than a generic ChatGPT response — it shows the author ANTICIPATED problems.`,
+- CRITICAL DIFFERENTIATOR: Include one section called "${riskSectionName}" that identifies 2-3 risks with specific mitigation actions. This is what makes this output better than a generic ChatGPT response — it shows the author ANTICIPATED problems.`;
+
+  // Lead synthesis block for user prompt
+  const leadBlock = leadSynthesis
+    ? `
+Lead Expert Synthesis (by ${leadSynthesis.lead_agent_name}):
+${leadSynthesis.integrated_analysis}
+
+Key findings:
+${leadSynthesis.key_findings.map(f => `- ${f}`).join('\n')}
+
+Recommendation: ${leadSynthesis.recommendation_direction}
+${leadSynthesis.unresolved_tensions.length > 0 ? `\nUnresolved tensions:\n${leadSynthesis.unresolved_tensions.map(t => `- ${t}`).join('\n')}` : ''}`
+    : '';
+
+  return {
+    system: systemPrompt,
 
     user: `Original problem: <user-data>${sanitize(problemText)}</user-data>
 
@@ -331,13 +368,14 @@ ${snapshotSummary}
 
 Full Q&A:
 ${qaHistory}
+${leadBlock}
 ${workerResults?.length ? `
-Worker research results:
+Worker research results (supporting evidence):
 ${workerResults.map(w => `[${w.task}]\n${w.result}`).join('\n\n')}
 
-Make sure to incorporate specific numbers/facts from the worker results into the document.` : ''}
+${leadSynthesis ? 'Use these as supporting evidence for the lead\'s synthesis.' : 'Make sure to incorporate specific numbers/facts from the worker results into the document.'}` : ''}
 
-Combine all of this into a single document.
+${leadSynthesis ? 'Format the lead expert\'s synthesis into a polished professional document.' : 'Combine all of this into a single document.'}
 
 JSON format:
 {

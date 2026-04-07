@@ -69,9 +69,10 @@ export async function POST(req: NextRequest) {
     const stream = body.stream === true;
 
     if (stream) {
+      const abortController = new AbortController();
       const geminiStream = await ai.models.generateContentStream({
         model: modelId,
-        config: { maxOutputTokens: maxTokens, systemInstruction: system },
+        config: { maxOutputTokens: maxTokens, systemInstruction: system, abortSignal: abortController.signal },
         contents: geminiContents,
       });
 

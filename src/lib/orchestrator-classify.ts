@@ -9,7 +9,7 @@ import type { InterviewSignals } from '@/stores/types';
 
 /* ─── Types ─── */
 
-export type Domain = 'research' | 'strategy' | 'numbers' | 'legal' | 'ux' | 'tech' | 'copy' | 'pm' | 'risk';
+export type Domain = 'research' | 'strategy' | 'numbers' | 'finance' | 'marketing' | 'hr' | 'legal' | 'ux' | 'tech' | 'copy' | 'pm' | 'risk';
 export type Stakes = 'routine' | 'important' | 'critical';
 
 export interface InputClassification {
@@ -31,6 +31,9 @@ const DOMAIN_KEYWORDS: Record<Domain, string[]> = {
   copy: ['문서', '기획안', '보고서', '카피', '메시지', '슬라이드', '발표', '제안서', 'document', 'proposal'],
   pm: ['일정', '타임라인', '마일스톤', '리소스', '우선순위', '스프린트', '로드맵', 'timeline', 'milestone', 'priority'],
   risk: ['리스크', '위험', '실패', '장애', '취약', '대응', 'risk', 'failure', 'vulnerability'],
+  finance: ['재무제표', '손익', '현금흐름', '회계', '밸류에이션', 'DCF', 'K-IFRS', '세금', '세무', 'financial statement', 'cash flow', 'valuation', 'accounting', 'P&L'],
+  marketing: ['마케팅', '캠페인', '채널', '퍼널', '그로스', '광고', 'SEO', 'SNS', 'GTM', 'marketing', 'campaign', 'growth', 'funnel', 'brand'],
+  hr: ['채용', '조직설계', 'HR', '인사', '평가', '보상', '문화', '온보딩', '변화관리', 'hiring', 'org design', 'culture', 'talent'],
 };
 
 /* ─── Stakes Mapping ─── */

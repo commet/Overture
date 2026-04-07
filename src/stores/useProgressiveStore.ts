@@ -8,6 +8,7 @@ import { XP_REWARDS } from '@/stores/agent-types';
 import { numericLevelToAgentLevel } from '@/lib/agent-skills';
 import { onTaskApproved, onTaskRejected } from '@/lib/observation-engine';
 import { planWorkers } from '@/lib/orchestrator';
+import { selectLeadAgent } from '@/lib/lead-agent';
 import { computeQualityXP } from '@/lib/agent-quality';
 import type {
   ProgressiveSession,
@@ -22,6 +23,7 @@ import type {
   PipelineStage,
   WorkerTask,
   WorkerDeployPhase,
+  LeadSynthesisResult,
 } from '@/stores/types';
 
 interface ProgressiveState {
@@ -71,7 +73,11 @@ interface ProgressiveState {
   approveWorker: (workerId: string) => void;
   rejectWorker: (workerId: string) => void;
   allWorkersDone: () => boolean;
-  approvedWorkerResults: () => Array<{ task: string; result: string; persona: string | null }>;
+  approvedWorkerResults: () => Array<{ task: string; result: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
+
+  // Lead Agent
+  setLeadAgent: (agentId: string, agentName: string) => void;
+  setLeadSynthesis: (result: LeadSynthesisResult) => void;
 
   // Cleanup
   deleteSession: (id: string) => void;
@@ -331,7 +337,14 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     // Orchestrator: 입력 분류 → 에이전트 선택 → 프레임워크 배정
     const unlockedAgents = agentStore.getUnlockedAgents();
     const allObservations = unlockedAgents.flatMap(a => a.observations || []);
-    const { workers: planned, stages: plannedStages } = planWorkers(steps, signals, unlockedAgents, allObservations);
+    const { classification, workers: planned, stages: plannedStages } = planWorkers(steps, signals, unlockedAgents, allObservations);
+
+    // Lead Agent 선정: stakes >= important AND agentCount >= 2
+    const leadConfig = selectLeadAgent(classification, unlockedAgents);
+    if (leadConfig) {
+      // Defer store update to after workers are set — use get().setLeadAgent
+      // (called at the end of initWorkers after session update)
+    }
 
     const workers: WorkerTask[] = planned.map((pw, i) => {
       const agent = pw.agentId ? agentStore.getAgent(pw.agentId) : null;
@@ -497,6 +510,28 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         result: w.result!,
         persona: w.persona?.name ?? null,
       }));
+  },
+
+  // ─── Lead Agent ───
+
+  setLeadAgent: (agentId, agentName) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      lead_agent: { agent_id: agentId, agent_name: agentName },
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  setLeadSynthesis: (result) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      lead_synthesis: result,
+    }));
+    persist(sessions);
+    set({ sessions });
   },
 
   deleteSession: (id) => {

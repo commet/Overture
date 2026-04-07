@@ -367,12 +367,18 @@ export async function callLLM(
   const settings = getSettings();
 
   // OpenAI provider — always direct (user's own key)
-  if (settings.llm_provider === 'openai' && settings.openai_api_key) {
+  if (settings.llm_provider === 'openai') {
+    if (!settings.openai_api_key) {
+      throw new LLMError('OpenAI API 키가 설정되지 않았습니다. 설정에서 키를 입력해주세요.', { category: 'auth' });
+    }
     return callOpenAI(settings.openai_api_key, settings.openai_model || 'gpt-4o', messages, options);
   }
 
   // Gemini provider — always direct (user's own key)
-  if (settings.llm_provider === 'gemini' && settings.gemini_api_key) {
+  if (settings.llm_provider === 'gemini') {
+    if (!settings.gemini_api_key) {
+      throw new LLMError('Google AI API 키가 설정되지 않았습니다. 설정에서 키를 입력해주세요.', { category: 'auth' });
+    }
     return callGemini(settings.gemini_api_key, settings.gemini_model || 'gemini-2.5-flash', messages, options);
   }
 
@@ -569,6 +575,7 @@ export async function callLLMParallel<T = unknown>(
     const result = await callLLMJson<T>(call.messages, {
       system: options.system,
       maxTokens: options.maxTokens,
+      model: options.model,
       signal: options.signal,
       shape: options.shape,
     });
@@ -609,8 +616,16 @@ export async function callLLMStream(
   callbacks: StreamCallbacks
 ): Promise<void> {
   const settings = getSettings();
-  const isOpenAI = settings.llm_provider === 'openai' && settings.openai_api_key;
-  const isGemini = settings.llm_provider === 'gemini' && settings.gemini_api_key;
+  const isOpenAI = settings.llm_provider === 'openai';
+  const isGemini = settings.llm_provider === 'gemini';
+  if (isOpenAI && !settings.openai_api_key) {
+    callbacks.onError(new LLMError('OpenAI API 키가 설정되지 않았습니다.', { category: 'auth' }));
+    return;
+  }
+  if (isGemini && !settings.gemini_api_key) {
+    callbacks.onError(new LLMError('Google AI API 키가 설정되지 않았습니다.', { category: 'auth' }));
+    return;
+  }
   const isDirect = !isOpenAI && !isGemini && settings.llm_mode === 'direct' && settings.anthropic_api_key;
   const url = isGemini ? '/api/llm/gemini' : isOpenAI ? '/api/llm/openai' : isDirect ? '/api/llm/direct' : '/api/llm';
 
@@ -680,6 +695,11 @@ export async function callLLMStream(
 
         try {
           const parsed = JSON.parse(data);
+          if (parsed.error) {
+            // 서버가 스트림 내부에서 보낸 에러 이벤트
+            recordFailure(provider);
+            throw new LLMError(typeof parsed.error === 'string' ? parsed.error : 'Stream error', { category: 'unknown' });
+          }
           if (parsed.text) {
             fullText += parsed.text;
             callbacks.onToken(fullText);
@@ -689,7 +709,8 @@ export async function callLLMStream(
               detail: { remaining: parsed.rateLimit },
             }));
           }
-        } catch {
+        } catch (e) {
+          if (e instanceof LLMError) throw e;
           // Skip malformed chunks
         }
       }
@@ -715,6 +736,8 @@ export async function callLLMStream(
       callbacks.onError(new LLMError('요청이 취소되었습니다.', { category: 'network', cause: error }));
       return;
     }
+    // 스트림 중 실패 → circuit breaker에 기록
+    if (!(error instanceof LLMError)) recordFailure(provider);
     callbacks.onError(error instanceof Error ? error : new Error(String(error)));
   }
 }

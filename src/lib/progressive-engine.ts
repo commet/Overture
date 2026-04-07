@@ -27,7 +27,9 @@ import type {
   MixResult,
   DMFeedbackResult,
   DMConcern,
+  LeadSynthesisResult,
 } from '@/stores/types';
+import { buildLeadSynthesisPrompt, type LeadAgentConfig } from '@/lib/lead-agent';
 
 // ─── Response shapes from LLM ───
 
@@ -220,6 +222,7 @@ export async function runDeepening(
   allSnapshots: AnalysisSnapshot[],
   onToken?: (text: string) => void,
   signal?: AbortSignal,
+  leadContext?: string,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion | null;
@@ -234,7 +237,7 @@ export async function runDeepening(
     .map(a => ({ name: a.name, role: a.role, specialty: a.expertise?.split('.')[0] || a.role }));
 
   const { system, user } = buildDeepeningPrompt(
-    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale,
+    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale, leadContext,
   );
 
   const result = onToken
@@ -316,6 +319,46 @@ export async function runDeepening(
 }
 
 /**
+ * Step Lead Synthesis: Lead agent integrates all worker results
+ */
+export async function runLeadSynthesis(
+  problemText: string,
+  realQuestion: string,
+  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string }>,
+  leadConfig: LeadAgentConfig,
+  signal?: AbortSignal,
+): Promise<LeadSynthesisResult> {
+  const locale = getCurrentLanguage();
+  const { system, user } = buildLeadSynthesisPrompt(
+    leadConfig, problemText, realQuestion, workerResults, locale,
+  );
+
+  const result = await callLLMJson<{
+    integrated_analysis: string;
+    key_findings: string[];
+    unresolved_tensions: string[];
+    recommendation_direction: string;
+  }>(
+    [{ role: 'user', content: user }],
+    { system, maxTokens: 3000, signal, shape: { integrated_analysis: 'string', key_findings: 'array', unresolved_tensions: 'array', recommendation_direction: 'string' } },
+  );
+
+  // Record XP for the lead agent
+  useAgentStore.getState().recordActivity(
+    leadConfig.agentId, 'synthesis_completed' as import('@/stores/agent-types').AgentActivityType, problemText.slice(0, 100),
+  );
+
+  return {
+    lead_agent_id: leadConfig.agentId,
+    lead_agent_name: locale === 'ko' ? leadConfig.agentName : leadConfig.agentNameEn,
+    integrated_analysis: result.integrated_analysis || '',
+    key_findings: result.key_findings || [],
+    unresolved_tensions: result.unresolved_tensions || [],
+    recommendation_direction: result.recommendation_direction || '',
+  };
+}
+
+/**
  * Step Mix: 최종 초안 조합
  */
 export async function runMix(
@@ -325,10 +368,11 @@ export async function runMix(
   decisionMaker: string | null,
   workerResults?: Array<{ task: string; result: string }>,
   signal?: AbortSignal,
+  leadSynthesis?: LeadSynthesisResult | null,
 ): Promise<MixResult> {
   const locale = getCurrentLanguage();
   const { system, user } = buildMixPrompt(
-    problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults, locale,
+    problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults, locale, leadSynthesis,
   );
 
   const result = await callLLMJson<MixResponse>(

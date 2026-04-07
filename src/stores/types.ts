@@ -699,6 +699,7 @@ export type ProgressivePhase =
   | 'input'           // 고민 입력 대기
   | 'analyzing'       // LLM 분석 중
   | 'conversing'      // Q&A 루프 (질문→답변→업데이트)
+  | 'lead_synthesizing' // 리드 에이전트가 워커 결과 통합 중
   | 'mixing'          // 최종 초안 조합 중
   | 'dm_feedback'     // 판단자 피드백 생성/표시
   | 'refining'        // 이슈 반영 선택
@@ -848,6 +849,15 @@ export interface MixResult {
   next_steps: string[];
 }
 
+export interface LeadSynthesisResult {
+  lead_agent_id: string;
+  lead_agent_name: string;
+  integrated_analysis: string;
+  key_findings: string[];
+  unresolved_tensions: string[];
+  recommendation_direction: string;
+}
+
 export interface ProgressiveSession {
   id: string;
   project_id: string;
@@ -866,6 +876,8 @@ export interface ProgressiveSession {
   workers: WorkerTask[];          // 병렬 에이전트 작업자
   worker_deploy_phase: WorkerDeployPhase;
   stages?: PipelineStage[];       // 스테이지 파이프라인 (Phase 3)
+  lead_agent?: { agent_id: string; agent_name: string } | null;
+  lead_synthesis?: LeadSynthesisResult | null;
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;
 
