@@ -27,30 +27,16 @@ Check if `.overture/config.json` exists.
 
 ### For new users: Full setup
 
-Show the header:
-
-**⚙ Overture · Configure**
-
-Let's set up your preferences. 5 quick questions.
+Use AskUserQuestion for each step.
 
 **Q1: Preset**
 
-```
-  ■ Preset                           1 / 5
-
-  How do you want to use Overture?
-
-    1 · Quick — /reframe only, minimal output
-        Best for: fast thinkers who want one sharp reframe
-
-    2 · Standard — full pipeline, clean output
-        Best for: regular use, team sharing
-
-    3 · Learning — full pipeline + journal + pattern tracking
-        Best for: improving your thinking over time (recommended)
-
-  ▸
-```
+- question: "How do you want to use Overture?"
+- header: "Preset (1/5)"
+- options:
+  - label: "Quick", description: "/reframe only, minimal output — for fast thinkers who want one sharp reframe"
+  - label: "Standard", description: "Full pipeline, clean output — for regular use and team sharing"
+  - label: "Learning", description: "Full pipeline + journal + pattern tracking — for improving thinking over time (recommended)"
 
 Preset mappings:
 - **Quick**: auto_save=false, journal=false, full_pipeline=false, output_format=compact
@@ -59,64 +45,44 @@ Preset mappings:
 
 **Q2: Language**
 
-```
-  ■ Language                          2 / 5
-
-  Preferred language for output?
-
-    1 · Auto-detect (match your input language)
-    2 · English
-    3 · 한국어
-    4 · 日本語
-    5 · Other (type it)
-
-  ▸
-```
+- question: "Preferred language for output?"
+- header: "Language (2/5)"
+- options:
+  - label: "Auto-detect", description: "Match your input language"
+  - label: "English", description: "Always English"
+  - label: "한국어", description: "Always Korean"
+  - label: "日本語", description: "Always Japanese"
+  - label: "Other", description: "Type your preferred language"
 
 **Q3: Output location**
 
-```
-  ■ Output                           3 / 5
-
-  Where to save results?
-
-    1 · .overture/ in project root (default)
-    2 · Custom path (type it)
-    3 · Don't save files
-
-  ▸
-```
+- question: "Where to save results?"
+- header: "Output (3/5)"
+- options:
+  - label: ".overture/ in project root", description: "Default location"
+  - label: "Custom path", description: "Type your preferred path"
+  - label: "Don't save files", description: "Output only, no file saving"
 
 **Q4: Journal**
 
 Only shown if preset is Standard or Learning:
 
-```
-  ■ Journal                          4 / 5
-
-  Track your decision patterns over time?
-
-    1 · Yes — append to .overture/journal.md (recommended)
-    2 · No — skip journaling
-
-  ▸
-```
+- question: "Track your decision patterns over time?"
+- header: "Journal (4/5)"
+- options:
+  - label: "Yes", description: "Append to .overture/journal.md (recommended)"
+  - label: "No", description: "Skip journaling"
 
 **Q5: Persona defaults**
 
 Only shown if preset is Standard or Learning:
 
-```
-  ■ Personas                         5 / 5
-
-  Default persona count for /rehearse?
-
-    1 · 2 personas (faster, less thorough)
-    2 · 3 personas (balanced, recommended)
-    3 · 4 personas (thorough, takes longer)
-
-  ▸
-```
+- question: "Default persona count for /rehearse?"
+- header: "Personas (5/5)"
+- options:
+  - label: "2 personas", description: "Faster, less thorough"
+  - label: "3 personas", description: "Balanced (recommended)"
+  - label: "4 personas", description: "Thorough, takes longer"
 
 ### For returning users: Quick update
 
@@ -129,19 +95,18 @@ Only shown if preset is Standard or Learning:
 - Journal: [enabled]
 - Personas: [3]
 
-What would you like to change?
+AskUserQuestion:
 
-```
-  1 · Switch preset
-  2 · Change language
-  3 · Change output location
-  4 · Toggle journal
-  5 · Change persona count
-  6 · Reset to defaults
-  7 · Done — keep current settings
-
-  ▸
-```
+- question: "What would you like to change?"
+- header: "Settings"
+- options:
+  - label: "Switch preset", description: "Quick / Standard / Learning"
+  - label: "Change language", description: "Output language preference"
+  - label: "Change output location", description: "Where results are saved"
+  - label: "Toggle journal", description: "Enable/disable pattern tracking"
+  - label: "Change persona count", description: "Default reviewers in /rehearse"
+  - label: "Reset to defaults", description: "Start fresh"
+  - label: "Done", description: "Keep current settings"
 
 Allow multiple changes before saving.
 
@@ -151,7 +116,7 @@ Save to `.overture/config.json`:
 
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.5.0",
   "preset": "learning",
   "language": "auto-detect",
   "output_path": ".overture/",

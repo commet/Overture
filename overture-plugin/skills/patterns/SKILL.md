@@ -47,7 +47,8 @@ Extract from each entry:
 - DQ scores (if /overture entries)
 - DQ element scores (F/A/I/P/R/Act)
 - Persona counts and critical/unspoken risk counts
-- Convergence data
+- Convergence data (score, trend)
+- Framing confidence values
 - Strength and Growth edge notes
 - Blind spots noted
 
@@ -67,11 +68,16 @@ Extract from each entry:
 - Ratio of confirmed:uncertain:doubtful across all runs
 - Do they tend to rate assumptions as confirmed? (possible overconfidence)
 - Do they tend to rate as doubtful? (possible overthinking)
-- Which assumption dimensions are most often missed?
+- Which assumption axes are most often missed? (value/feasibility/business/capacity)
 
 **Reframing strategy distribution:**
 - Which strategies are used most/least?
 - Does strategy choice correlate with DQ score?
+
+**Framing confidence patterns:**
+- Average confidence across runs
+- Trend (improving, stable, declining)
+- Correlation: high confidence → better DQ? Or overconfidence?
 
 **DQ score trends (if available):**
 - Score trajectory (improving, declining, stable)
@@ -83,6 +89,12 @@ Extract from each entry:
 - Average critical risks per rehearsal
 - Average unspoken risks per rehearsal
 - Convergence rate (how often does refinement converge?)
+- Most common persona types generated
+
+**Convergence patterns (if /refine data exists):**
+- Average rounds to convergence
+- Common reasons for non-convergence
+- Root question alignment rate (how often does plan drift from original question?)
 
 ### Step 3: Generate insights
 
@@ -94,11 +106,15 @@ Specific, earned observations. Not "you're good at framing" but "You consistentl
 **2. Recurring blind spots (top 2-3)**
 Patterns where you consistently miss something. E.g., "You haven't explored timing assumptions in any of your 8 runs. Consider: is the *when* as important as the *what*?"
 
+Include assumption axis analysis: "You tend to catch [value] and [feasibility] assumptions but rarely question [capacity] — your plans assume teams can execute without checking if they actually can."
+
 **3. DQ trajectory**
 If multiple /overture runs exist, show the score trend with attribution. What's improving and why.
 
 **4. Thinking profile**
 A one-paragraph characterization of their decision-making style based on signal patterns, assumption ratings, and strategy preferences. E.g., "You're an analytical thinker who prefers structured approaches (nature=needs_analysis in 70% of runs). You tend to be cautious with assumptions (60% rated uncertain) which gives you thorough analysis but may slow decision speed."
+
+Include framing confidence profile: "Your average framing confidence is [N]/100, suggesting [interpretation]."
 
 **5. Growth recommendation**
 One specific, actionable suggestion for their next run. Not generic advice but tailored to their pattern data.
@@ -122,6 +138,9 @@ One specific, actionable suggestion for their next run. Not generic advice but t
 - ⚠ [pattern 1 — specific, with run count]
 - ⚠ [pattern 2 — specific, with run count]
 
+**Assumption axis coverage:**
+- [가치] Value: [N]% of runs | [실현] Feasibility: [N]% | [사업] Business: [N]% | [역량] Capacity: [N]%
+
 ---
 
 **Decision Quality**
@@ -137,11 +156,13 @@ Trend: [↑ improving / → stable / ↓ declining]
 Best: [element] — [why]
 Worst: [element] — [why]
 
+**Framing confidence:** avg [N]/100, trend [↑/→/↓]
+
 ---
 
 **Your thinking profile**
 
-[one paragraph characterization]
+[one paragraph characterization — including framing confidence interpretation]
 
 ---
 
@@ -163,26 +184,28 @@ Worst: [element] — [why]
 - ? Uncertain — [N]%
 - ✗ Doubtful — [N]%
 
+**Convergence rate:** [N]% of /refine runs converged within 2 rounds
+
 ## Confidence Tiers
 
 Scale ALL claims to sample size. Never overstate:
 
 | Entries | Tier | Language | What you can say |
 |---------|------|----------|-----------------|
-| 3-5 | 초기 인상 | "~로 보인다", "초기 패턴" | Frequency counts only. No trends. No profile. |
-| 6-10 | 패턴 형성 | "~하는 경향", "반복 확인" | Trends visible. Blind spots if 3+ occurrences. Profile tentative. |
-| 11-20 | 패턴 확인 | "일관된 패턴", "강점 확인" | Full analysis. DQ trajectory meaningful. Profile confident. |
-| 20+ | 확립 | "확립된 패턴", "검증된 강점" | Statistical claims, correlations, comparisons across periods. |
+| 3-5 | Early impressions | "appears to", "early pattern" | Frequency counts only. No trends. No profile. |
+| 6-10 | Pattern forming | "tendency toward", "repeated" | Trends visible. Blind spots if 3+ occurrences. Profile tentative. |
+| 11-20 | Pattern confirmed | "consistent pattern", "confirmed strength" | Full analysis. DQ trajectory meaningful. Profile confident. |
+| 20+ | Established | "established pattern", "verified strength" | Statistical claims, correlations, comparisons across periods. |
 
-**At 3-5 entries:** Skip DQ trajectory table (not enough data points). Show "DQ: [score1], [score2], [score3] — 아직 추세를 판단하기 이릅니다." instead.
+**At 3-5 entries:** Skip DQ trajectory table (not enough data points). Show "DQ: [score1], [score2], [score3] — too early for trends." instead.
 
-**At 6-10 entries:** Include trajectory but caveat: "6회 기준 초기 추세입니다."
+**At 6-10 entries:** Include trajectory but caveat: "Early trend based on 6 runs."
 
 ## Journal Maintenance
 
 When journal exceeds 50 entries (or `max_entries_before_archive_hint` in config):
 
-1. **Notify:** "저널이 [N]개 항목입니다. 아카이브할까요?"
+1. **Notify:** "Journal has [N] entries. Archive older ones?"
 2. **If yes:** Move all except last 15 entries to `.overture/journal-archive-[date].md`
 3. **Preserve:** Archive header with date range, total entries, summary stats
 4. **Pattern continuity:** When analyzing, read BOTH current journal AND archive headers (not full archive content)
@@ -193,6 +216,7 @@ Archive header format:
 - Entries: [N]
 - Skills: /reframe [N], /recast [N], /rehearse [N], /refine [N], /overture [N]
 - DQ range: [min]-[max] (avg [avg])
+- Avg framing confidence: [N]/100
 - Top blind spot: [pattern]
 - Top strength: [pattern]
 ```

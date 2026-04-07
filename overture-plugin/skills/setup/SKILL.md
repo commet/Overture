@@ -33,8 +33,8 @@ Claude Code version: [from conversation context]
 
 Look for Overture files in multiple possible locations:
 
-1. `~/.claude/skills/` — standard install location
-2. `~/.claude/agents/` — agent location
+1. `~/.claude/skills/` — standard install location (global)
+2. `~/.claude/agents/` — agent location (global)
 3. Current project's `.claude/skills/` — project-level install
 4. Check if multiple copies exist (ghost installs)
 
@@ -54,7 +54,7 @@ Check each required skill file exists and is readable:
 
 Checking installation...
 
-**Skills:**
+**Skills (10):**
 - ✓ /reframe — `~/.claude/skills/reframe/SKILL.md`
 - ✓ /recast — `~/.claude/skills/recast/SKILL.md`
 - ✓ /rehearse — `~/.claude/skills/rehearse/SKILL.md`
@@ -66,8 +66,16 @@ Checking installation...
 - ✓ /overture:configure — `~/.claude/skills/configure/SKILL.md`
 - ✓ /overture:patterns — `~/.claude/skills/patterns/SKILL.md`
 
-**Agents:**
+**Agents (1):**
 - ✓ devils-advocate — `~/.claude/agents/devils-advocate.md`
+
+**References (6):**
+- ✓ reframing-strategies.md
+- ✓ execution-design.md
+- ✓ persona-design.md
+- ✓ risk-classification.md
+- ✓ convergence.md
+- ✓ decision-quality.md
 
 **Data:**
 - [✓/✗] .overture/ directory
@@ -110,14 +118,14 @@ For installation, use the same method as `install.sh`:
 
 Read the installed `plugin.json` version and compare with the repo version. If outdated:
 
-> ⚠ Overture v0.2.0 installed, v0.3.0 available.
-> Run /overture:setup again after updating to get the latest skills.
+> ⚠ Overture v0.4.0 installed, v0.5.0 available.
+> Run the install script to update, then run /overture:setup again.
 
 ### Step 7: Summary
 
-**✓ Overture · Ready**
+**✓ Overture v0.5.0 · Ready**
 
-10 skills · 1 agent · journal ready
+10 skills · 1 agent · 6 references · journal ready
 
 **Quick start:**
 - `/reframe "your problem"` — sharpen your question
@@ -125,18 +133,24 @@ Read the installed `plugin.json` version and compare with the repo version. If o
 - `/overture:configure` — set preferences
 - `/overture-help` — all commands
 
+**What's new in v0.5:**
+- Framing confidence (0-100) tracks question quality
+- Expanded actor types (🧑→🤖, 🤖→🧑)
+- Storyline (S/C/R) for plans
+- Structured synthesis across personas
+- Convergence tracking in /refine
+- DQ Score with anti-sycophancy checks
+
 > Restart Claude Code if this is a fresh install.
 
 ## Error Recovery
 
 If any step fails, don't stop — continue checking and collect all issues. Present a summary at the end:
 
-```
-  Setup completed with warnings:
+Setup completed with warnings:
 
-  ✓ 8/10 skills installed
-  ✗ Missing: /overture:configure, /overture:patterns
-  ✗ Cannot write to .overture/ — check permissions
+✓ 8/10 skills installed
+✗ Missing: /overture:configure, /overture:patterns
+✗ Cannot write to .overture/ — check permissions
 
-  Run /overture:doctor for detailed diagnostics.
-```
+Run /overture:doctor for detailed diagnostics.

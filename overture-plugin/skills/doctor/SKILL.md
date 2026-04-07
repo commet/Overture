@@ -63,13 +63,15 @@ If `journal.md` exists:
 3. Report date range (oldest → newest)
 4. Check for duplicate dates
 5. Report entry breakdown: reframe/recast/rehearse/refine/overture
+6. Check for new v0.5 fields (Confidence, stakes, convergence) — warn if old format
 
 ### Check 5: Configuration
 
 If `config.json` exists in `.overture/`:
 1. Parse JSON — report any syntax errors
 2. Validate known fields have valid values
-3. Report current settings
+3. Check version — warn if <0.5.0 (needs update)
+4. Report current settings
 
 ### Check 6: Context contract chain
 
@@ -78,8 +80,9 @@ If output files exist, verify the contract chain is intact:
 2. `recast.md` references data from reframe contract
 3. `rehearse.md` references data from recast contract
 4. `refine.md` references data from rehearse contract
+5. Check for new contract fields (framing_confidence, assumptions with evaluation, storyline, translated_approvals, convergence_metrics)
 
-Report any broken links in the chain.
+Report any broken links or missing fields in the chain.
 
 ### Check 7: Reference files
 
@@ -88,6 +91,8 @@ Check if reference/support files exist in the skill directories:
 - `recast/references/execution-design.md`
 - `rehearse/references/persona-design.md`
 - `rehearse/references/risk-classification.md`
+- `refine/references/convergence.md`
+- `overture/references/decision-quality.md`
 
 ## Output
 
@@ -101,9 +106,9 @@ Present a unified diagnostic report:
 | Agents | 1/1 ✓ | |
 | Data dir | ✓ | .overture/ |
 | Journal | ✓ | [N] entries ([date] → [date]) |
-| Config | [✓/✗] | .overture/config.json |
+| Config | [✓/✗] | .overture/config.json v[version] |
 | Contract chain | [✓/⚠/✗] | [status] |
-| References | [N]/4 | [✓/⚠] |
+| References | [N]/6 | [✓/⚠] |
 
 ---
 
@@ -125,29 +130,29 @@ For each issue, provide:
 2. Why it matters
 3. How to fix it (actionable command or instruction)
 
-```
-  Issues:
+**Issues:**
 
-  ✗ Missing: /overture:patterns skill
-    Impact: Cannot analyze journal patterns
-    Fix: Run /overture:setup to reinstall
+✗ Missing: /overture:patterns skill
+— Impact: Cannot analyze journal patterns
+— Fix: Run /overture:setup to reinstall
 
-  ⚠ Journal has 52 entries (recommended: archive after 50)
-    Impact: Slower startup reads
-    Fix: Move older entries to .overture/journal-archive.md
+⚠ Journal has 52 entries (recommended: archive after 50)
+— Impact: Slower startup reads
+— Fix: Run /overture:patterns and accept archive prompt
 
-  ✗ Contract chain broken: rehearse.md missing
-    Impact: /refine won't have full context
-    Fix: Re-run /rehearse to regenerate
-```
+⚠ Config version 0.3.0 (current: 0.5.0)
+— Impact: Missing new settings
+— Fix: Run /overture:configure to update
+
+✗ Contract chain broken: rehearse.md missing framing_confidence from reframe
+— Impact: /refine won't have full context
+— Fix: Re-run /rehearse to regenerate with updated contract
 
 ### If all clear:
 
-```
-  ✓ All systems healthy. Overture is ready.
+✓ All systems healthy. Overture v0.5.0 is ready.
 
-  Last activity: [date] /[skill]
-  Total runs: [N]
+Last activity: [date] /[skill]
+Total runs: [N]
 
-  Tip: Run /overture:patterns to see your thinking patterns.
-```
+Tip: Run /overture:patterns to see your thinking patterns.

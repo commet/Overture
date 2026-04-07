@@ -14,10 +14,28 @@ For each step, ask:
 **All 4 lean AI → AI does it alone.**
 **Any of questions 1-4 lean human → Human or Both.**
 
+## Actor types (expanded)
+
+| Type | Symbol | When to use |
+|------|--------|------------|
+| AI only | 🤖 | All 4 questions lean AI. No internal knowledge needed. |
+| Human only | 🧑 | Political judgment, irreversible decisions, accountability required. |
+| Both | ⚡ | AI handles volume/computation, human handles judgment/context. **Must specify ai_scope and human_scope.** |
+| Human→AI | 🧑→🤖 | Human sets direction/criteria, AI executes at scale. Good for: "decide what to measure" → "AI measures it". |
+| AI→Human | 🤖→🧑 | AI generates options/analysis, human makes final call. Good for: "AI identifies 5 candidates" → "human picks one". |
+
+### Choosing between ⚡, 🧑→🤖, and 🤖→🧑
+
+- **⚡ Both** = parallel collaboration, both contribute simultaneously
+- **🧑→🤖** = sequential, human goes first (direction-setting), AI follows (execution)
+- **🤖→🧑** = sequential, AI goes first (analysis/generation), human follows (judgment)
+
+The difference matters for SEQUENCING. If human must set criteria before AI can work → 🧑→🤖. If AI should generate options before human chooses → 🤖→🧑.
+
 ## "Both" means clear scope boundaries
 
 Bad: "AI and human work together on market analysis"
-Good: "AI generates 3-scenario financial model. Human sets scenario assumptions and interprets which one matches our risk appetite."
+Good: "AI generates 3-scenario financial model (ai_scope). Human sets scenario assumptions and interprets which one matches our risk appetite (human_scope)."
 
 The split should be: AI handles volume + computation, Human handles judgment + context.
 
@@ -28,6 +46,7 @@ A checkpoint is a mandatory human review point. Place them:
 - Before spending significant resources (budget > threshold)
 - When the next step's direction depends on this step's interpretation
 - Before external-facing deliverables
+- On critical path steps (★) — delays/failures here affect everything
 
 ## Governing idea patterns
 
@@ -39,37 +58,39 @@ A checkpoint is a mandatory human review point. Place them:
 
 The governing idea answers: "If someone has 10 seconds, what do they need to understand about what we're doing and why?"
 
-## Storyline examples
+## Storyline (Situation/Complication/Resolution)
+
+Every plan needs a narrative arc:
 
 **Enterprise expansion:**
 - Situation: Product has strong SMB traction, 200+ paying customers
-- Complication: Enterprise prospects need SSO, audit logs, and SLAs we don't have. Building all of them takes 6 months, but 3 enterprise deals are in pipeline NOW
+- Complication: Enterprise prospects need SSO, audit logs, and SLAs we don't have. Building all takes 6 months, but 3 deals are in pipeline NOW
 - Resolution: Ship SSO in 4 weeks (the dealbreaker), promise audit logs in roadmap, negotiate SLA manually for first 3 deals
 
 **Cost reduction:**
 - Situation: Runway is 14 months at current burn
-- Complication: Revenue growth is 8% MoM but expenses are growing 12% MoM. The gap widens every month
-- Resolution: Cut non-revenue-generating infrastructure costs by 30% (specific areas identified) while protecting growth-driving spend
+- Complication: Revenue growth is 8% MoM but expenses growing 12% MoM. Gap widens every month
+- Resolution: Cut non-revenue infrastructure costs by 30% (specific areas) while protecting growth spend
 
 **Product build (context: build):**
 - Situation: Freelancers track invoices in spreadsheets — error-prone, no reminders
-- Complication: Existing tools (FreshBooks, Wave) are full accounting suites — overkill and confusing for solo freelancers who just want "send invoice, get paid"
-- Resolution: Ship a single-screen invoice tool in 2 weeks — create, send, track payment status. No accounting features until 50 paying users validate the core.
+- Complication: FreshBooks, Wave are full accounting suites — overkill for solo freelancers who just want "send invoice, get paid"
+- Resolution: Ship single-screen invoice tool in 2 weeks. No accounting features until 50 paying users validate the core.
 
 ## Step design patterns
 
 Each step should be:
-- **One clear deliverable** — not "research and analyze" but "produce a competitive landscape table with 5 competitors"
+- **One clear deliverable** — not "research and analyze" but "produce competitive landscape table with 5 competitors"
 - **Sized for completion** — if a step takes more than 1 week, break it down
-- **Sequenced by dependency** — later steps can't start until earlier dependencies are met
+- **Sequenced by dependency** — later steps can't start until dependencies are met
 
 ### Bad vs good steps
 
 | Bad | Good |
 |-----|------|
-| "Do market research" | "Interview 5 target users about their current workflow (human)" |
-| "Develop the feature" | "Build invoice creation screen with PDF export (AI), then manual QA of 3 edge cases (human)" |
-| "Get feedback" | "Share prototype with 3 beta users, collect structured feedback on onboarding flow (human)" |
+| "Do market research" | "Interview 5 target users about their current workflow (🧑)" |
+| "Develop the feature" | "Build invoice creation screen with PDF export (🤖), then manual QA of 3 edge cases (🧑)" |
+| "Get feedback" | "Share prototype with 3 beta users, collect structured feedback on onboarding flow (🧑)" |
 
 ### The "expected output" test
 
@@ -80,6 +101,19 @@ Every step must have a concrete expected output. If you can't describe what the 
 | Competitive analysis | Table: 5 competitors × 4 dimensions (price, feature gap, UX, weakness) |
 | User interviews | Summary doc: 5 interviews, top 3 pain points ranked by frequency |
 | MVP build | Working prototype deployed to staging, core flow testable |
+
+## Key assumptions
+
+Each plan should explicitly list 3-5 key assumptions with:
+
+| Field | Description |
+|-------|------------|
+| assumption | What we're assuming is true |
+| importance | high/medium/low — how much does the plan depend on this? |
+| certainty | high/medium/low — how sure are we? |
+| if_wrong | What happens if this assumption is false? |
+
+**Danger zone:** importance=high + certainty=low → this assumption needs validation BEFORE execution, not during.
 
 ## Parallel execution
 
@@ -112,7 +146,7 @@ Use t-shirt sizing, not precise hours:
 
 ## Critical path identification
 
-The critical path is the longest chain of dependent steps. Mark these steps in the output.
+The critical path is the longest chain of dependent steps. Mark these steps with ★.
 
 **How to identify:**
 1. Find all steps that are dependencies for other steps
@@ -123,9 +157,9 @@ The critical path is the longest chain of dependent steps. Mark these steps in t
 
 ## AI scope vs Human scope (for "both" steps)
 
-When a step is assigned to "both", always specify the boundary:
+When a step is assigned to ⚡, 🧑→🤖, or 🤖→🧑, always specify the boundary:
 
-**Step: Competitive pricing analysis**
+**Step: Competitive pricing analysis (🤖→🧑)**
 - **AI scope:** Collect pricing data from 10 competitor websites, generate comparison table
 - **Human scope:** Interpret which pricing model fits our positioning, decide our price point
 - **Handoff:** AI delivers table → Human makes decision → Decision recorded as checkpoint
