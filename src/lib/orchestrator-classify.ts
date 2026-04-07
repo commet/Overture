@@ -22,18 +22,18 @@ export interface InputClassification {
 /* ─── Domain Keyword Map ─── */
 
 const DOMAIN_KEYWORDS: Record<Domain, string[]> = {
-  research: ['조사', '리서치', '자료', '사례', '시장 조사', '시장 현황', '트렌드', '벤치마크', '분석', '데이터', '현황', 'research', 'benchmark', 'market research'],
-  strategy: ['전략', '방향', '비전', '포지셔닝', '경쟁', '차별화', '로드맵', '진입', 'strategy', 'positioning'],
-  numbers: ['숫자', '수치', '비용', '매출', '수익', 'ROI', 'BEP', '단가', '투자', 'TAM', 'revenue', 'unit economics', 'estimate'],
-  legal: ['법률', '법적', '규제', '계약', '특허', '라이선스', '컴플라이언스', '약관', '인허가', 'legal', 'compliance', 'regulation'],
-  ux: ['UX', 'UI', '사용자', '경험', '인터페이스', '프로토타입', '사용성', '접근성', 'user experience', 'usability'],
-  tech: ['기술', '아키텍처', '구현', '인프라', '스택', 'API', '성능', '확장', 'architecture', 'implementation'],
-  copy: ['문서', '기획안', '보고서', '카피', '메시지', '슬라이드', '발표', '제안서', '메모', 'document', 'proposal', 'memo'],
-  pm: ['일정', '타임라인', '마일스톤', '리소스', '우선순위', '스프린트', '로드맵', 'timeline', 'milestone', 'priority'],
-  risk: ['리스크', '위험', '실패', '장애', '취약', '대응', 'risk', 'failure', 'vulnerability'],
-  finance: ['재무', '재무제표', '손익', '현금흐름', '회계', '밸류에이션', 'DCF', 'K-IFRS', '세금', '세무', 'financial', 'financial statement', 'cash flow', 'valuation', 'accounting', 'P&L'],
-  marketing: ['마케팅', '마케팅 예산', '캠페인', '채널', '퍼널', '그로스', '광고', 'SEO', 'SNS', 'GTM', 'marketing', 'campaign', 'growth', 'funnel', 'brand', 'go-to-market'],
-  hr: ['채용', '조직설계', '조직 개편', '변화관리', 'HR', '인사', '평가', '보상', '문화', '온보딩', 'hiring', 'org design', 'culture', 'talent', 'organizational change'],
+  research: ['조사', '리서치', '자료', '사례', '시장 조사', '시장 현황', '트렌드', '벤치마크', '데이터', '현황', 'research', 'benchmark', 'market research', 'competitive analysis', 'survey', 'landscape'],
+  strategy: ['전략', '사업계획', '사업 계획', '방향', '비전', '포지셔닝', '경쟁', '차별화', '로드맵', '진입', '피벗', 'PMF', 'strategy', 'positioning', 'pivot', 'business plan', 'competitive advantage'],
+  numbers: ['숫자', '수치', '비용', '매출', '수익', 'ROI', 'BEP', '단가', '투자', 'TAM', 'revenue', 'unit economics', 'estimate', 'cost', 'burn rate', 'pricing', 'CAC', 'LTV'],
+  legal: ['법률', '법적', '규제', '계약', '특허', '라이선스', '컴플라이언스', '약관', '인허가', '개인정보', 'legal', 'compliance', 'regulation', 'GDPR', 'PIPA', 'patent', 'contract', 'terms of service'],
+  ux: ['UX', 'UI', '사용자', '인터페이스', '프로토타입', '사용성', '접근성', 'user experience', 'usability', 'wireframe', 'user journey', 'onboarding flow'],
+  tech: ['기술', '아키텍처', '구현', '인프라', '스택', 'API', '성능', '확장', 'architecture', 'implementation', 'migration', 'microservice', 'database', 'backend', 'frontend', 'DevOps'],
+  copy: ['문서', '기획안', '보고서', '카피', '메시지', '슬라이드', '발표', '제안서', '메모', 'document', 'proposal', 'memo', 'report', 'pitch deck', 'presentation'],
+  pm: ['일정', '타임라인', '마일스톤', '리소스', '우선순위', '스프린트', 'OKR', 'KPI', 'timeline', 'milestone', 'priority', 'sprint', 'roadmap', '90-day plan'],
+  risk: ['리스크', '위험', '실패', '장애', '취약', '대응', 'risk', 'failure', 'vulnerability', 'threat', 'mitigation'],
+  finance: ['재무', '재무제표', '손익', '실적', '현금흐름', '회계', '밸류에이션', 'DCF', 'K-IFRS', '세금', '세무', '이익', 'financial', 'financial statement', 'cash flow', 'valuation', 'accounting', 'P&L', 'profit', 'earnings'],
+  marketing: ['마케팅', '마케팅 예산', '캠페인', '채널', '퍼널', '그로스', '광고', 'SEO', 'SNS', 'GTM', 'marketing', 'campaign', 'growth', 'funnel', 'brand', 'go-to-market', 'referral', 'content marketing', 'acquisition'],
+  hr: ['채용', '조직설계', '조직 개편', '변화관리', 'HR', '인사', '평가', '보상', '문화', '온보딩', 'hiring', 'org design', 'culture', 'talent', 'organizational change', 'retention', 'team building'],
 };
 
 /* ─── Stakes Mapping ─── */
