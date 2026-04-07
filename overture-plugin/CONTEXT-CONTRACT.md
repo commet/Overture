@@ -120,10 +120,14 @@ personas:                                  # auto-generated for /rehearse
     success_metric: string                 # 이 사람이 승인하는 기준
     primary_concern: string
     blocking_condition: string
+    user_description: string | null        # 사용자가 자유형으로 서술한 원본 (있으면 시뮬레이션에 주입)
+    completeness: number                   # 0-100, 페르소나 구체화 정도
+    source: auto | user_refined | confirmed  # 생성 경로
 ```
 
 ### Consumer rules:
-- `/rehearse` MUST use `personas` as-is (do not regenerate)
+- `/rehearse` reads `.overture/personas.json` FIRST — confirmed/user_refined personas take priority
+- `/rehearse` uses `personas` from recast for remaining slots (do not regenerate what user already defined)
 - `/rehearse` reads `steps` to ground risk assessment in specific plan elements
 - `/rehearse` reads `key_assumptions` as attack surface for stress testing
 - `/refine` reads `governing_idea` as IMMUTABLE constraint

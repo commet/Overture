@@ -56,8 +56,15 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
   useEffect(() => {
     if (initialPersonaIds && initialPersonaIds.length > 0) {
       setSelectedIds(initialPersonaIds);
+    } else if (personas.length > 0 && selectedIds.length === 0) {
+      // Auto-select first persona (highest influence first)
+      const sorted = [...personas].sort((a, b) => {
+        const order = { high: 0, medium: 1, low: 2 };
+        return (order[a.influence || 'medium'] || 1) - (order[b.influence || 'medium'] || 1);
+      });
+      setSelectedIds([sorted[0].id]);
     }
-  }, [initialPersonaIds]);
+  }, [initialPersonaIds, personas]); // eslint-disable-line react-hooks/exhaustive-deps
   const [perspective, setPerspective] = useState('전반적 인상');
   const [intensity, setIntensity] = useState('솔직하게');
   const [showFullDoc, setShowFullDoc] = useState(false);
@@ -221,8 +228,8 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
 
       {/* ── 2. 이해관계자 선택 ── */}
       <div>
-        <h3 className="text-[15px] font-bold text-[var(--text-primary)] mb-1">누구의 시점에서?</h3>
-        <p className="text-[12px] text-[var(--text-secondary)] mb-3">최대 3명 선택 ({selectedIds.length}/3) <span className="text-[var(--text-tertiary)]">— 3명 이상이면 피드백 종합이 어려워집니다</span></p>
+        <h3 className="text-[15px] font-bold text-[var(--text-primary)] mb-1">누구의 시선으로?</h3>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-3">{selectedIds.length === 0 ? '가장 관련 높은 1명을 선택하세요' : selectedIds.length === 1 ? '1명 선택됨 — 검토 후 추가 가능' : `${selectedIds.length}명 선택됨`}</p>
 
         {personas.length === 0 ? (
           <div className="text-center py-6 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)]">
@@ -272,52 +279,11 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
         )}
       </div>
 
-      {/* ── 3. 피드백 설정 — inline compact ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h4 className="text-[13px] font-semibold text-[var(--text-primary)] mb-2">피드백 관점</h4>
-          <div className="flex flex-wrap gap-1.5">
-            {perspectives.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setPerspective(p.value)}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer ${
-                  perspective === p.value
-                    ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
-                    : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
-                }`}
-                title={p.description}
-              >
-                {p.value}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h4 className="text-[13px] font-semibold text-[var(--text-primary)] mb-2">피드백 강도</h4>
-          <div className="flex gap-1.5">
-            {intensities.map((item) => (
-              <button
-                key={item.value}
-                onClick={() => setIntensity(item.value)}
-                className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors cursor-pointer ${
-                  intensity === item.value
-                    ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
-                    : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
-                }`}
-              >
-                {item.value}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── CTA ── */}
       <div className="flex items-center justify-between pt-2">
         <p className="text-[11px] text-[var(--text-tertiary)]">
           {selectedIds.length > 0
-            ? `${selectedIds.length}명의 이해관계자가 ${perspective} 관점에서 ${intensity} 검토합니다`
+            ? `${selectedIds.length}명의 이해관계자가 검토합니다`
             : '이해관계자를 선택하세요'
           }
         </p>
@@ -326,7 +292,7 @@ export function FeedbackRequest({ personas, onSubmit, loading, initialContent, i
           disabled={!documentText.trim() || selectedIds.length === 0 || loading}
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          {loading ? '리허설 진행 중...' : '리허설 시작'}
+          {loading ? '검토 중...' : '검토 받기'}
         </Button>
       </div>
     </div>

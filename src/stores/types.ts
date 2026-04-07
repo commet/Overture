@@ -226,6 +226,8 @@ export interface Persona {
   risk_tolerance?: 'low' | 'medium' | 'high';
   success_metric?: string;
   extracted_traits: string[];
+  /** 사용자가 자연어로 서술한 원본 설명. 프롬프트에 그대로 주입하여 시뮬레이션 정확도 높임. */
+  user_description?: string;
   feedback_logs: FeedbackLog[];
   is_example?: boolean;
   deleted_at?: string | null;
@@ -824,12 +826,35 @@ export interface PipelineStage {
 // Workers 배치 단계
 export type WorkerDeployPhase = 'none' | 'ready' | 'deployed';
 
-export interface DMConcern {
+// ── Unified Review types (shared by web app + plugin) ──
+
+export interface ReviewConcern {
   text: string;
   severity: 'critical' | 'important' | 'minor';
   fix_suggestion: string;
   applied: boolean;
 }
+
+export interface ReviewFeedback {
+  reviewer: {
+    name: string;
+    role: string;
+    influence: 'high' | 'medium' | 'low';
+    persona_id?: string;
+  };
+  first_reaction: string;
+  good_parts: string[];
+  concerns: ReviewConcern[];
+  approval_condition: string;
+  // Deep mode (Level 2+)
+  would_ask?: string[];
+  failure_scenario?: string;
+  untested_assumptions?: string[];
+}
+
+// ── Legacy aliases (backward compat) ──
+
+export type DMConcern = ReviewConcern;
 
 export interface DMFeedbackResult {
   persona_name: string;

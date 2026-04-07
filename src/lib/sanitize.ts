@@ -78,12 +78,18 @@ function sanitizeNode(node: Node): void {
     const el = child as Element;
     const tagName = el.tagName.toLowerCase();
 
-    // Remove disallowed tags (keep their text content)
+    // Remove disallowed tags (keep their text content, re-sanitize hoisted children)
     if (!ALLOWED_TAGS.has(tagName)) {
+      const hoisted: Node[] = [];
       while (el.firstChild) {
+        hoisted.push(el.firstChild);
         node.insertBefore(el.firstChild, el);
       }
       el.remove();
+      // Re-sanitize hoisted children (they skipped validation when nested in banned tag)
+      for (const h of hoisted) {
+        if (h.nodeType === Node.ELEMENT_NODE) sanitizeNode(h);
+      }
       continue;
     }
 

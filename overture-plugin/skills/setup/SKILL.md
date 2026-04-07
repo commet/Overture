@@ -66,14 +66,35 @@ Checking installation...
 - ✓ /overture:configure — `~/.claude/skills/configure/SKILL.md`
 - ✓ /overture:patterns — `~/.claude/skills/patterns/SKILL.md`
 
-**Agents (7):**
+**Agents (18):**
+
+*Research chain:*
+- ✓ hayoon (하윤) 📝 — `~/.claude/agents/hayoon.md`
+- ✓ sujin (다은) 🔍 — `~/.claude/agents/sujin.md`
+- ✓ research_director (도윤) 🧠 — `~/.claude/agents/research_director.md`
+
+*Strategy chain:*
+- ✓ strategy_jr (정민) 🗺️ — `~/.claude/agents/strategy_jr.md`
+- ✓ hyunwoo (현우) 🎯 — `~/.claude/agents/hyunwoo.md`
+- ✓ chief_strategist (승현) 🏛️ — `~/.claude/agents/chief_strategist.md`
+
+*Production:*
+- ✓ seoyeon (서연) ✍️ — `~/.claude/agents/seoyeon.md`
+- ✓ minjae (규민) 📊 — `~/.claude/agents/minjae.md`
+- ✓ hyeyeon (혜연) 💰 — `~/.claude/agents/hyeyeon.md`
+- ✓ sujin_hr (수진) 🤝 — `~/.claude/agents/sujin_hr.md`
+- ✓ minseo (민서) 📣 — `~/.claude/agents/minseo.md`
+- ✓ junseo (준서) ⚙️ — `~/.claude/agents/junseo.md`
+- ✓ yerin (예린) 📋 — `~/.claude/agents/yerin.md`
+
+*Validation:*
+- ✓ donghyuk (동혁) ⚠️ — `~/.claude/agents/donghyuk.md`
+- ✓ jieun (지은) 🎨 — `~/.claude/agents/jieun.md`
+- ✓ taejun (윤석) ⚖️ — `~/.claude/agents/taejun.md`
+
+*Special:*
+- ✓ concertmaster (악장) 🎻 — `~/.claude/agents/concertmaster.md`
 - ✓ devils-advocate — `~/.claude/agents/devils-advocate.md`
-- ✓ researcher (수진) — `~/.claude/agents/researcher.md`
-- ✓ strategist (현우) — `~/.claude/agents/strategist.md`
-- ✓ writer (서연) — `~/.claude/agents/writer.md`
-- ✓ numbers (민재) — `~/.claude/agents/numbers.md`
-- ✓ user-voice (지영) — `~/.claude/agents/user-voice.md`
-- ✓ lead-synthesizer — `~/.claude/agents/lead-synthesizer.md`
 
 **References (6):**
 - ✓ reframing-strategies.md
@@ -131,7 +152,7 @@ Read the installed `plugin.json` version and compare with the repo version. If o
 
 **✓ Overture v0.5.0 · Ready**
 
-10 skills · 7 agents · 6 references · journal ready
+10 skills · 18 agents · 6 references · journal ready
 
 **Quick start:**
 - `/reframe "your problem"` — sharpen your question

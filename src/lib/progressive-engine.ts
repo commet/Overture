@@ -8,11 +8,10 @@ import {
   buildInitialRefinementPrompt,
   buildDeepeningPrompt,
   buildMixPrompt,
-  buildDMFeedbackPrompt,
-  buildBossDMFeedbackPrompt,
   buildFinalDeliverablePrompt,
   buildConcertmasterReviewPrompt,
 } from '@/lib/progressive-prompts';
+import { buildReviewPrompt } from '@/lib/review-prompt';
 import type { Agent } from '@/stores/agent-types';
 import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
 import { runDebateRound, type DebateResult } from '@/lib/debate-engine';
@@ -395,64 +394,88 @@ export async function runMix(
 }
 
 /**
- * Step DM: 판단자 피드백 생성
+ * Step DM: 판단자 피드백 생성 (unified review-prompt)
  */
 export async function runDMFeedback(
   mix: MixResult,
   decisionMaker: string,
   problemContext: string,
   signal?: AbortSignal,
+  mode: 'quick' | 'deep' = 'quick',
 ): Promise<DMFeedbackResult> {
   const locale = getCurrentLanguage();
-  const { system, user } = buildDMFeedbackPrompt(mix, decisionMaker, problemContext, locale);
+  const docText = formatMixForReview(mix);
+
+  const { system, user } = buildReviewPrompt(
+    { name: decisionMaker, role: decisionMaker },
+    docText,
+    problemContext,
+    { mode, locale },
+  );
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 2500, signal, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
+    { system, maxTokens: 2000, signal, shape: { first_reaction: 'string', good_parts: 'array', concerns: 'array', approval_condition: 'string' } },
   );
 
-  return {
-    persona_name: result.persona_name || decisionMaker,
-    persona_role: result.persona_role || '',
-    first_reaction: result.first_reaction || '',
-    good_parts: result.good_parts || [],
-    concerns: (result.concerns || []).filter(c => !!c && typeof c === 'object').map((c): DMConcern => ({
-      text: String(c.text || ''),
-      severity: c.severity || 'important',
-      fix_suggestion: String(c.fix_suggestion || ''),
-      applied: c.severity === 'critical',
-    })),
-    would_ask: result.would_ask || [],
-    approval_condition: result.approval_condition || '',
-  };
+  return dmResponseToResult(result, decisionMaker, '', locale);
 }
 
 /**
- * Step DM (Boss): Boss agent 성격 기반 피드백
+ * Step DM (Boss): Boss agent 성격 기반 피드백 (unified review-prompt)
  */
 export async function runBossDMFeedback(
   mix: MixResult,
   agent: Agent,
   problemContext: string,
   signal?: AbortSignal,
+  mode: 'quick' | 'deep' = 'quick',
 ): Promise<DMFeedbackResult> {
   const locale = getCurrentLanguage();
-  const { system, user } = buildBossDMFeedbackPrompt(mix, agent, problemContext, locale);
+  const docText = formatMixForReview(mix);
+
+  const { system, user } = buildReviewPrompt(
+    { name: agent.name, role: agent.role || (locale === 'ko' ? '팀장' : 'Team Lead') },
+    docText,
+    problemContext,
+    { mode, locale, agent },
+  );
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
-    { system, maxTokens: 2500, signal, shape: { persona_name: 'string', first_reaction: 'string', concerns: 'array', would_ask: 'array', approval_condition: 'string' } },
+    { system, maxTokens: 2000, signal, shape: { first_reaction: 'string', good_parts: 'array', concerns: 'array', approval_condition: 'string' } },
   );
 
+  return dmResponseToResult(result, agent.name, agent.role || (locale === 'ko' ? '팀장' : 'Team Lead'), locale);
+}
+
+// ── Helpers ──
+
+function formatMixForReview(mix: MixResult): string {
+  return [
+    `# ${mix.title}`,
+    `> ${mix.executive_summary}`,
+    ...mix.sections.map(s => `## ${s.heading}\n${s.content}`),
+    `## 핵심 가정\n${mix.key_assumptions.map(a => `- ${a}`).join('\n')}`,
+    `## 다음 단계\n${mix.next_steps.map(s => `- ${s}`).join('\n')}`,
+  ].join('\n\n');
+}
+
+function dmResponseToResult(
+  result: DMFeedbackResponse,
+  fallbackName: string,
+  fallbackRole: string,
+  locale: string,
+): DMFeedbackResult {
   return {
-    persona_name: result.persona_name || agent.name,
-    persona_role: result.persona_role || (locale === 'ko' ? '팀장' : 'Team Lead'),
+    persona_name: result.persona_name || fallbackName,
+    persona_role: result.persona_role || fallbackRole,
     first_reaction: result.first_reaction || '',
     good_parts: result.good_parts || [],
-    concerns: (result.concerns || []).map((c): DMConcern => ({
-      text: c.text,
+    concerns: (result.concerns || []).filter(c => !!c && typeof c === 'object').map((c): DMConcern => ({
+      text: String(c.text || ''),
       severity: c.severity || 'important',
-      fix_suggestion: c.fix_suggestion || '',
+      fix_suggestion: String(c.fix_suggestion || ''),
       applied: c.severity === 'critical',
     })),
     would_ask: result.would_ask || [],

@@ -53,22 +53,28 @@ Your job: In ONE pass, give them:
    Example bad: "Your CEO might be testing you" (speculation — forbidden)
 
 3. Skeleton — A step-by-step action plan, NOT a document outline.
-   Use FLOW connectors: ${locale === 'ko' ? '"먼저 —", "그다음 —", "그리고 —", "여기에 —", "마지막 —"' : '"First —", "Then —", "Next —", "Add —", "Finally —"'}
+   Use natural sequence words to connect steps (${locale === 'ko' ? '먼저, 그다음, 그리고, 여기서 중요한 건, 마지막으로 — vary them, don\'t repeat the same set every time' : 'First, Then, Next, The key here is, Finally — vary them naturally'}).
    Each line = one concrete action + why it matters. 5 lines.
    The reader should think "I know exactly what to do tomorrow morning."
-   Example good: "First — call the client contact. 'I have a few questions before the pitch' is all you need to say"
-   Example bad: "Market Analysis: Conduct a comprehensive analysis of the target market" (academic outline, not actionable)
+   ${locale === 'ko' ? 'Example good: "먼저 — 고객사 담당자에게 전화하세요. \'PT 전에 여쭤볼 게 있는데\' 한마디면 돼요"\nExample bad: "시장 분석: 타겟 시장에 대한 종합적인 분석 수행" (학술 목차, 행동이 아님)' : 'Example good: "First — call the client contact. \'I have a few questions before the pitch\' is all you need to say"\nExample bad: "Market Analysis: Conduct a comprehensive analysis of the target market" (academic outline, not actionable)'}
 
 4. Next Question — ONE question that digs into the SITUATION, not admin details.
    This question should change the strategy dramatically based on the answer.
-   BAD questions (too obvious or administrative):
+   ${locale === 'ko' ? `BAD questions (뻔하거나 사무적):
+   - "최종 결정권자가 누구예요?" (대표님인 거 다 알아요)
+   - "마감이 언제예요?" (이미 말했을 가능성 높음)
+   - "어떤 형식을 원하세요?" (너무 절차적)
+   GOOD questions (상황의 본질):
+   - "대표님이 왜 이걸 당신한테 시켰을까요?" (맥락 파악)
+   - "고객사가 왜 당신 팀을 PT에 불렀을까요?" (경쟁 위치 파악)
+   - "고객이 우리를 쓰는 가장 큰 이유가 뭐예요?" (전략적 위치 파악)` : `BAD questions (too obvious or administrative):
    - "Who is the final decision-maker?" (everyone knows it's ultimately the CEO)
    - "What's the deadline?" (they usually already said this)
    - "What format do they want?" (too procedural)
    GOOD questions (situation-shaping):
    - "Why did the CEO assign this to you specifically?" (reveals context)
    - "Why did the client invite your team to pitch?" (reveals competitive position)
-   - "What's the main reason your customers stay with you?" (reveals strategic position)
+   - "What's the main reason your customers stay with you?" (reveals strategic position)`}
    Offer 3-4 concrete options. Each option should lead to a genuinely different strategy.
 
 5. Insight — ONE sharp sentence the user will remember. Connect to their existing experience if possible.
@@ -91,11 +97,11 @@ JSON format:
     "Realistic assumption 2"
   ],
   "skeleton": [
-    "${locale === 'ko' ? '먼저' : 'First'} — action + why (concrete)",
-    "${locale === 'ko' ? '그다음' : 'Then'} — action + why",
-    "${locale === 'ko' ? '그리고' : 'Next'} — action + why",
-    "${locale === 'ko' ? '여기에' : 'Add'} — action + why",
-    "${locale === 'ko' ? '마지막' : 'Finally'} — action + why"
+    "sequence word — concrete action + why it matters",
+    "sequence word — next action + why",
+    "sequence word — action + why",
+    "sequence word — action + why",
+    "sequence word — final action + why"
   ],
   "insight": "One sharp sentence I'll remember (connect to my experience if possible)",
   "next_question": {
@@ -127,7 +133,7 @@ export function buildDeepeningPrompt(
   const qaHistory = shouldCompact(questionsAndAnswers)
     ? compactQAHistory(questionsAndAnswers, keepRecent)
     : questionsAndAnswers.map((qa, i) =>
-        `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
+        `Q${i + 1}: ${sanitize(qa.question.text)}\nA${i + 1}: ${sanitize(qa.answer.value)}`,
       ).join('\n\n');
 
   const isLastRound = round >= maxRounds - 1;
@@ -151,13 +157,17 @@ ${isLastRound
   ? 'This is the LAST round. Finalize the analysis. Set ready_for_mix: true.'
   : 'Update analysis based on the new answer, then ask the next question.'}
 
+CRITICAL: The user's latest answer is the MOST IMPORTANT new information. Everything you update should be BECAUSE of this answer.
+- If an answer doesn't affect something, DON'T change it (stability = trust).
+- If an answer changes the direction, make the change DRAMATIC and visible.
+- The user should look at the updated analysis and think "Yes, my answer actually mattered."
+
 Your job each round:
-1. Extract the KEY insight from the latest answer (1 sentence — sharp, memorable)
-2. Update real_question — must stay a QUESTION (ends with ?). Natural sentence, NOT a category label. Should feel MORE specific than before.
-3. Update hidden assumptions — remove resolved ones, add newly discovered ones. Realistic only.
-4. Update skeleton — make it MORE CONCRETE based on what we now know.
-   Use flow connectors: ${locale === 'ko' ? '"먼저 —", "그다음 —", "그리고 —"' : '"First —", "Then —", "Next —"'}
-   Each item = concrete action + why. The user should feel the plan getting sharper with each answer.
+1. Insight — ONE sharp sentence from the latest answer. The user should think "that's exactly right."
+2. Update real_question — must stay a QUESTION (ends with ?). Should feel NOTICEABLY more specific than before because of the answer.
+3. Update hidden assumptions — only change what the answer resolved or revealed. Don't shuffle items for novelty.
+4. Update skeleton — only modify items DIRECTLY AFFECTED by the new answer. Keep stable items unchanged. Never exceed 5-6 items.
+   Use natural sequence connectors (${locale === 'ko' ? '먼저, 그다음, 그리고 등 — vary naturally' : 'First, Then, Next, etc. — vary naturally'}).
 ${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. Match team members' expertise.${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
 
 QUESTION RULES (critical — this determines the quality of the entire session):
@@ -189,7 +199,7 @@ JSON:
   "insight": "Sharp insight from this answer (1 memorable sentence)",
   "real_question": "Updated question — more specific than before (natural sentence, ends with ?)",
   "hidden_assumptions": ["Realistic only, 2-3 items"],
-  "skeleton": ["${locale === 'ko' ? '먼저' : 'First'} — concrete action + why", "${locale === 'ko' ? '그다음' : 'Then'} — ...", "..."],
+  "skeleton": ["Only change items affected by the latest answer. Use natural sequence words. 5 items max."],
   ${round >= 1 ? `"execution_plan": {
     "steps": [{"task": "What to do", "who": "ai|human|both", "output": "Deliverable", "agent_hint": "Team member name (if applicable)"}]
   },` : ''}
@@ -331,7 +341,7 @@ export function buildMixPrompt(
   const qaHistory = shouldCompact(questionsAndAnswers)
     ? compactQAHistory(questionsAndAnswers, 2)
     : questionsAndAnswers.map((qa, i) =>
-        `Q${i + 1}: ${qa.question.text}\nA${i + 1}: ${qa.answer.value}`,
+        `Q${i + 1}: ${sanitize(qa.question.text)}\nA${i + 1}: ${sanitize(qa.answer.value)}`,
       ).join('\n\n');
 
   const dmLabel = decisionMaker || (locale === 'ko' ? '\uc758\uc0ac\uacb0\uc815\uad8c\uc790' : 'the decision maker');
@@ -356,21 +366,21 @@ Rules:
 - Include a "${riskSectionName}" section based on the lead's unresolved tensions and risk analysis.
 - DO NOT override the lead's recommendations with your own judgment. You format, they strategize.`
     : `You are assembling a final draft document. Always respond in ${lang}.
+${locale === 'ko' ? 'Tone: 해요체 (polite but warm). Not a formal report — more like a well-structured brief that a smart colleague would write. Confident but honest.' : 'Tone: warm, professional. Not a formal corporate report — more like a well-structured brief from a smart colleague. Confident but honest about uncertainties.'}
 
 This document will be presented to ${sanitize(dmLabel)}.
-It should look like something a competent strategist wrote — not AI-generated fluff.
+
+STRUCTURE RULE: The analysis went through multiple Q&A rounds. The skeleton from the final analysis reflects the user's validated thinking. USE THAT SKELETON as the document's section structure. Don't invent new sections — fill in the skeleton items with worker research and your synthesis.
 
 Rules:
-- Executive summary: 2-3 sentences max. The decision maker should get 80% of the value just from this.
-- 4-6 sections. Each section: concrete, specific, actionable. No filler. 3-5 sentences each.
+- Executive summary: 2-3 sentences max. ${sanitize(dmLabel)} should get 80% of the value just from this.
+- Section structure: follow the skeleton from the analysis. Each section: concrete, specific, 3-5 sentences.
 - Include the assumptions explicitly — this shows intellectual honesty.
-- Next steps should be time-bound and assigned (who does what by when). At least 3 next steps.
+- Next steps: time-bound and assigned (who does what by when). At least 3.
 - Write it so the user can literally send this as-is. No "[insert here]" placeholders.
-- Tone: confident but honest about uncertainties. Professional ${lang}.
-- DO NOT use markdown headers in section content — just flowing text with emphasis where needed.
-- Use **bold** for key terms and critical numbers within section content.
-- The document should feel SUBSTANTIAL. Not a thin outline — a real first draft that shows thinking depth.
-- CRITICAL DIFFERENTIATOR: Include one section called "${riskSectionName}" that identifies 2-3 risks with specific mitigation actions. This is what makes this output better than a generic ChatGPT response — it shows the author ANTICIPATED problems.`;
+- DO NOT use markdown headers in section content — flowing text with **bold** for key terms.
+- The document should feel SUBSTANTIAL — a real first draft that shows thinking depth.
+- Include a "${riskSectionName}" section with 2-3 risks + specific mitigation actions.`;
 
   // Lead synthesis block for user prompt
   const leadBlock = leadSynthesis
@@ -398,7 +408,7 @@ ${qaHistory}
 ${leadBlock}
 ${workerResults?.length ? `
 Worker research results (supporting evidence):
-${workerResults.map(w => `[${w.task}]\n${w.result}`).join('\n\n')}
+${workerResults.map(w => `[${sanitize(w.task)}]\n${sanitize(w.result)}`).join('\n\n')}
 
 ${leadSynthesis ? 'Use these as supporting evidence for the lead\'s synthesis.' : 'Make sure to incorporate specific numbers/facts from the worker results into the document.'}` : ''}
 
@@ -657,7 +667,7 @@ export function buildConcertmasterReviewPrompt(
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
   const resultsBlock = workerResults.map((w, i) =>
-    `[${i + 1}. ${w.agentName}(${w.agentRole}) \u2014 ${w.task}]\n${w.result.slice(0, 600)}`,
+    `[${i + 1}. ${sanitize(w.agentName)}(${sanitize(w.agentRole)}) \u2014 ${sanitize(w.task)}]\n${sanitize(w.result.slice(0, 600))}`,
   ).join('\n\n');
 
   return {

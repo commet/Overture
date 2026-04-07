@@ -121,6 +121,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
       risk_tolerance: data.risk_tolerance,
       success_metric: data.success_metric,
       extracted_traits: data.extracted_traits || [],
+      user_description: data.user_description,
       feedback_logs: [],
       is_example: data.is_example,
       created_at: now,

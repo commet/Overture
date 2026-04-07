@@ -222,6 +222,7 @@ export function autoPersonaToFull(auto: AutoPersona | SuggestedReviewer): Person
           ...(auto.priorities || '').split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 1),
         ].filter(Boolean)
       : (auto.priorities || '').split(/[,、·]/).map(t => t.trim()).filter(Boolean).slice(0, 3),
+    user_description: undefined,
     feedback_logs: [],
     is_example: false,
     created_at: new Date().toISOString(),

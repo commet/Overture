@@ -23,6 +23,7 @@ export function proxy(req: NextRequest) {
     "img-src 'self' data: https://lh3.googleusercontent.com",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net",
     "frame-src https://challenges.cloudflare.com",
+    "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

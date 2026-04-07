@@ -45,7 +45,15 @@ Read `.overture/recast.md` and `.overture/reframe.md` for contracts.
 
 ## Step 1: Load or generate personas
 
-### Persona pack check (first)
+### Saved persona check (highest priority)
+
+Read `.overture/personas.json`. If it exists and has confirmed/user_refined personas:
+1. Load those personas first
+2. Show: "저장된 리뷰어 [N]명 로드됨" with completeness indicators
+3. Supplement with auto-generated personas if needed for diversity (don't duplicate roles)
+4. Skip to **Persona preview + inline customization**
+
+### Persona pack check (second priority)
 
 Read `.overture/config.json`. If `persona_pack` field exists:
 1. Read the file at that path (e.g., `templates/persona-packs/startup-founders.md`)
@@ -53,7 +61,7 @@ Read `.overture/config.json`. If `persona_pack` field exists:
 3. Use those personas exactly — skip auto-generation
 4. Inform user: "페르소나 팩 '[name]'을 사용합니다. ([N]명)"
 
-If no persona pack configured → auto-generate as below.
+If no saved personas and no persona pack → auto-generate as below.
 
 ### Decide context: 3 stakeholders
 
@@ -76,6 +84,149 @@ Each persona requires ALL fields:
 - [ ] 최소 1명 conservative + 1명 aggressive on risk
 - [ ] 최소 1명 high influence
 - [ ] 다른 기능 영역 (같은 부서 3명 금지)
+
+### Persona preview + inline customization
+
+After generating personas, show them to the user with completeness indicators BEFORE running reviews.
+
+**Display format:**
+
+```
+리뷰어 구성:
+
+1. **김 부장** — 데이터분석팀장
+   ●●●○○ 구체화 (60%) — 소통 습관 추가하면 더 정확해져요
+   analytical · risk:low · influence:high
+
+2. **박 실장** — 사업기획실장
+   ●●○○○ 윤곽 (40%) — 이 사람이 중요하게 여기는 건 뭔가요?
+   consensus · risk:low · influence:high
+
+3. **이 대리** — 현장 PM
+   ●○○○○ 윤곽 (20%) — 어떻게 결정하는 사람인가요?
+   (미정) · influence:medium
+```
+
+**Completeness levels:**
+- ●○○○○ **윤곽** (0-34%) — 이름+역할만. 일반적 시뮬레이션.
+- ●●○○○ **구체화** (35-59%) — 의사결정 방식, 우선순위 있음. 방향성 맞는 시뮬레이션.
+- ●●●○○~●●●●○ **생생함** (60-84%) — 소통 습관, 우려, OK 기준까지. 실제에 가까운 시뮬레이션.
+- ●●●●● **살아있음** (85-100%) — 사용자가 직접 묘사 + 리허설 이력. 거의 진짜.
+
+**Then ask:**
+
+```
+questions: [{
+  question: "이 리뷰어들로 진행할까요? 실제 사람에 가깝게 만들고 싶으면 설명해주세요.",
+  header: "리뷰어 확인",
+  multiSelect: false,
+  options: [
+    {
+      label: "이대로 진행",
+      description: "자동 생성된 페르소나로 리뷰"
+    },
+    {
+      label: "내 팀장/상사를 알려줄게",
+      description: "자유롭게 설명하면 반영됩니다"
+    },
+    {
+      label: "이 사람 맞아 ✓",
+      description: "자동 생성 결과가 실제와 비슷함 — 저장"
+    }
+  ]
+}]
+```
+
+### Inline persona refinement (free-form)
+
+If user chooses "내 팀장/상사를 알려줄게" OR at ANY point in the conversation describes their boss/stakeholder:
+
+**Detection:** User's message contains descriptions like:
+- "우리 팀장은 ..." / "내 상사는 ..."
+- "이 사람은 ISTJ고 ..." / "숫자 없으면 안 넘어가는 사람이야"
+- "좀 더 까다로운 사람인데" / "결론부터 말하라는 타입"
+- Any specific personality/behavior description targeting a reviewer
+
+**Action:**
+
+1. Take the user's free-form text AS-IS
+2. Extract structured persona fields from it (using LLM inline — no external function call needed):
+   - Map personality types (MBTI → decision_style + risk_tolerance)
+   - Extract communication patterns → communication_style
+   - Extract priorities/concerns → priorities, known_concerns
+   - Extract approval patterns → success_metric
+   - Preserve user's original words in extracted_traits
+3. Merge with existing auto-generated persona (override where user was specific)
+4. Show the updated persona with before→after progression:
+
+```
+📋 김 부장 업데이트:
+
+●●○○○ 윤곽 → ●●●●○ 생생함
+
++ 의사결정: analytical (ISTJ 기반)
++ 리스크: low
++ 소통: "숫자 없으면 안 넘어감, 결론부터 말하라는 타입"
++ 성격: 숫자 중시, 직설적, 근거 집착, 결론 우선
+
+💬 원본: "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야"
+
+이 프로필로 리허설할까요?
+```
+
+5. Save `user_description` field — user's original text is preserved and injected into the feedback prompt
+6. Updated persona is saved to `.overture/personas.json` for future rehearsals
+
+**Key UX principle:** The persona "fills up" visually. ●●○○○ → ●●●●○. Users SEE their input making the agent more concrete. This drives engagement — "한 마디 더 하면 이 사람이 더 진짜가 된다."
+
+### Confirmation shortcut ("이 사람 맞아")
+
+If user says "이 사람 맞아" / "맞아" / confirms persona accuracy:
+1. Save persona with `is_example: false` (user-confirmed, not example data)
+2. Mark as confirmed in `.overture/personas.json`
+3. Future rehearsals auto-load this persona
+4. Show: "✓ 저장됨. 다음 리허설부터 자동 적용됩니다."
+
+### Mid-conversation persona refinement
+
+During ANY step of rehearse (even after reviews have started), if the user interjects with a persona description:
+
+1. Pause the current flow
+2. Process the description inline
+3. Show before→after diff
+4. Ask: "업데이트된 프로필로 다시 리뷰할까요, 아니면 이어서 갈까요?"
+   - Re-review: rerun with refined persona
+   - Continue: apply to future runs only
+
+### Persona persistence
+
+Save to `.overture/personas.json`:
+
+```json
+{
+  "personas": [
+    {
+      "name": "김 부장",
+      "role": "데이터분석팀장",
+      "decision_style": "analytical",
+      "risk_tolerance": "low",
+      "priorities": "숫자와 데이터의 정합성",
+      "communication_style": "숫자 없으면 안 넘어감, 결론부터 말하라는 타입",
+      "known_concerns": "근거 없는 주장, 출처 불명확",
+      "success_metric": "모든 수치의 출처와 정합성 확인",
+      "extracted_traits": ["숫자 중시", "직설적", "근거 집착"],
+      "influence": "high",
+      "user_description": "우리 팀장은 ISTJ고 숫자 없으면 아예 안 넘어가는 사람이야",
+      "confirmed": true,
+      "completeness": 80,
+      "created_at": "2026-04-07",
+      "source": "user_refined"
+    }
+  ]
+}
+```
+
+On next `/rehearse` run: read `.overture/personas.json` first. If confirmed personas exist, use them (+ supplement with auto-generated if needed for diversity).
 
 ### Build context: 2 user personas
 
@@ -127,7 +278,40 @@ See `references/persona-design.md` for detailed guidance.
   * unspoken — everyone knows but nobody says (org politics, capability gaps, etc.).
 - Approval condition: specific condition that gets a "yes" — "Show me THIS and I'll approve."
 
-## Parallel Execution Mode (recommended for 3+ personas)
+## Review depth selection (AskUserQuestion with preview)
+
+Before running reviews, let the user choose depth:
+
+```
+questions: [{
+  question: "리뷰의 기본 구조를 어떻게 가져갈까요?",
+  header: "리뷰 구조",
+  multiSelect: false,
+  options: [
+    {
+      label: "Quick Review (Recommended)",
+      description: "핵심 페르소나 1명, 빠른 검증",
+      preview: "Quick Review\n\n[가장 영향력 높은 페르소나]의 시선으로 검토\n\n✓ 잘한 점  2-3개\n△ 우려 1-2개 (해법 포함)\n→ OK 조건 1개\n\n[ 반영하고 완성 ]  [ 더 깊이 검토 → ]"
+    },
+    {
+      label: "Full Review",
+      description: "3명 페르소나 + Devil's Advocate 병렬",
+      preview: "Full Review\n\n- 페르소나 3명 동시 실행 (Agent 병렬)\n- 각각: 첫 반응 + 실패 시나리오 + 우려 + OK 조건\n- Devil's Advocate: 3렌즈 공격\n- 종합: 합의/충돌/미검증 가정 분석\n\n더 깊지만 시간이 더 걸립니다"
+    },
+    {
+      label: "Custom",
+      description: "페르소나 수와 톤을 직접 설정",
+      preview: "Custom Review\n\n- 페르소나 수: 1-4명 선택\n- 리뷰어 톤: 부드럽게/솔직하게/까다롭게\n- 특정 관점 지정 가능\n  (전반적/논리구조/실행가능성/리스크/숫자)\n\n가장 유연하지만 설정이 필요합니다"
+    }
+  ]
+}]
+```
+
+If "Quick Review" → run 1 persona inline, show result, offer "더 깊이 검토 →" to expand.
+If "Full Review" → proceed to Parallel Execution Mode below.
+If "Custom" → ask follow-up questions for persona count, tone, perspective.
+
+## Parallel Execution Mode (Full Review)
 
 **Use the Agent tool to run ALL persona reviews simultaneously.** This is dramatically faster than sequential simulation.
 
@@ -254,7 +438,7 @@ These are recommendations, not blockers.
 
 ---
 
-**[Name]** — [Role] · [decision_style] · risk:[risk_tolerance] → **[verdict]**
+**[Name]** — [Role] · [decision_style] · risk:[risk_tolerance] · [completeness visual] → **[verdict]**
 
 > "[첫 반응 — 직접 인용, 날카롭게]"
 
@@ -377,9 +561,18 @@ Severity-based actions:
 ## Quick actions
 
 - `1` → save + recommended next
-- `2` → edit (a. swap personas, b. re-evaluate, c. redo DA)
+- `2` → edit (a. swap personas, b. re-evaluate, c. redo DA, **d. refine persona**)
 - `3` → save and stop
 - `0` → back to /recast with insights
+
+If user picks `2d` (refine persona) → ask which persona to refine, then accept free-form description and show before→after diff.
+
+**Post-review persona feedback:** After showing all reviews, if any persona has completeness < 60%, append:
+
+```
+💬 [Name]의 시뮬레이션을 더 정확하게 만들고 싶다면, 이 사람에 대해 한 마디만 더 알려주세요.
+   현재: [completeness visual] [label] — [nextHint]
+```
 
 ## Rendering rules
 
@@ -394,6 +587,11 @@ Severity-based actions:
 Save to `.overture/rehearse.md`:
 - Top: actions + persona summaries + DA + synthesis
 - Bottom: Context Contract (full schema — risks by category, approval_conditions with translated_approvals, persona_profiles with ALL fields for /refine, synthesis with agreements/conflicts/priority_actions, devils_advocate)
+
+Save/update `.overture/personas.json`:
+- All personas used in this rehearsal (auto-generated + user-refined)
+- Include completeness score, user_description, source (auto/user_refined/confirmed)
+- Existing confirmed personas are preserved (never overwritten by auto-generation)
 
 ## Journal
 

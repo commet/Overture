@@ -23,13 +23,24 @@
     "./skills/patterns/SKILL.md"
   ],
   "agents": [
-    "./agents/devils-advocate.md",
-    "./agents/researcher.md",
-    "./agents/strategist.md",
-    "./agents/writer.md",
-    "./agents/numbers.md",
-    "./agents/user-voice.md",
-    "./agents/lead-synthesizer.md"
+    "./agents/hayoon.md",
+    "./agents/sujin.md",
+    "./agents/research_director.md",
+    "./agents/strategy_jr.md",
+    "./agents/hyunwoo.md",
+    "./agents/chief_strategist.md",
+    "./agents/seoyeon.md",
+    "./agents/minjae.md",
+    "./agents/hyeyeon.md",
+    "./agents/sujin_hr.md",
+    "./agents/minseo.md",
+    "./agents/junseo.md",
+    "./agents/yerin.md",
+    "./agents/donghyuk.md",
+    "./agents/jieun.md",
+    "./agents/taejun.md",
+    "./agents/concertmaster.md",
+    "./agents/devils-advocate.md"
   ],
   "outputStylesPaths": [
     "./output-styles/overture.md"

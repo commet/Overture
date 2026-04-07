@@ -456,14 +456,14 @@ function WorkspaceContent() {
         setCurrentProjectId(pid);
         track('project_created', { source: 'hero_inline' });
         progressiveStore.createSession(pid, text, reviewerParam || undefined);
+        const capturedSid = progressiveStore.currentSessionId;
         runInitialAnalysis(text).then(result => {
           progressiveStore.addSnapshot(result.snapshot);
           if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
           progressiveStore.addQuestion(result.question);
           progressiveStore.setPhase('conversing');
         }).catch(err => {
-          const sid = progressiveStore.currentSessionId;
-          if (sid) progressiveStore.deleteSession(sid);
+          if (capturedSid) progressiveStore.deleteSession(capturedSid);
           setCurrentProjectId(null);
           setStartError(err instanceof Error ? err.message : L('분석에 실패했습니다.', 'Analysis failed.'));
         }).finally(() => setIsStarting(false));
@@ -494,6 +494,7 @@ function WorkspaceContent() {
 
     // Create progressive session & kick off initial analysis
     progressiveStore.createSession(pid, text, reviewerParam || undefined);
+    const capturedSid = progressiveStore.currentSessionId;
 
     try {
       const result = await runInitialAnalysis(text);
@@ -511,8 +512,7 @@ function WorkspaceContent() {
       progressiveStore.setPhase('conversing');
     } catch (err) {
       // On error: delete the session and project so user can retry
-      const sid = progressiveStore.currentSessionId;
-      if (sid) progressiveStore.deleteSession(sid);
+      if (capturedSid) progressiveStore.deleteSession(capturedSid);
       setCurrentProjectId(null);
       const raw = err instanceof Error ? err.message : '';
       const errMsg = raw.includes('fetch') || raw.includes('network') || raw.includes('Failed to fetch')
@@ -541,12 +541,22 @@ function WorkspaceContent() {
   /* ─── Empty state: HeroFlow with morphing transition ─── */
   if (!currentProjectId) {
     return (
-      <HeroFlow
-        onReady={(pid) => setCurrentProjectId(pid)}
-        projects={projects}
-        user={user}
-        reviewerAgentId={reviewerParam || undefined}
-      />
+      <>
+        {startError && (
+          <div className="max-w-2xl mx-auto px-4 pt-4">
+            <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 flex items-center justify-between" role="alert">
+              <span>{startError}</span>
+              <button onClick={() => setStartError(null)} className="text-red-400 hover:text-red-600 cursor-pointer ml-2">✕</button>
+            </div>
+          </div>
+        )}
+        <HeroFlow
+          onReady={(pid) => setCurrentProjectId(pid)}
+          projects={projects}
+          user={user}
+          reviewerAgentId={reviewerParam || undefined}
+        />
+      </>
     );
   }
 

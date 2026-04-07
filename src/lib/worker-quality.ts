@@ -78,7 +78,24 @@ function checkHeuristics(output: string, expectedOutput: string): ValidationResu
     score -= 10;
   }
 
-  // 5. Repeated sentences
+  // 5. Expected output alignment — output should reference what was expected
+  if (expectedOutput && expectedOutput.length > 5) {
+    const expectedKeywords = [
+      ...(expectedOutput.match(/[가-힣]{2,}/g) || []),
+      ...(expectedOutput.match(/[A-Za-z]{4,}/g) || []),
+    ];
+    const uniqueExpected = [...new Set(expectedKeywords.map(k => k.toLowerCase()))];
+    const outputLc = output.toLowerCase();
+    const hitRate = uniqueExpected.length > 0
+      ? uniqueExpected.filter(k => outputLc.includes(k)).length / Math.min(uniqueExpected.length, 8)
+      : 1;
+    if (hitRate < 0.1 && uniqueExpected.length >= 3) {
+      issues.push('Output does not address expected deliverable');
+      score -= 15;
+    }
+  }
+
+  // 6. Repeated sentences
   const sentences = output.match(/[^.!?\n]+[.!?]+/g) || [];
   const seen = new Set<string>();
   for (const s of sentences) {
@@ -117,7 +134,7 @@ async function validateWithLLM(
   }
 
   const result = await callLLMJson<LLMValidation>(
-    [{ role: 'user', content: `작업: ${task}\n기대 산출물: ${expectedOutput}\n\n실제 결과물:\n${actualOutput.slice(0, 1500)}\n\n이 결과물의 품질을 채점해줘.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["문제점 목록"] }` }],
+    [{ role: 'user', content: `작업: ${task}\n기대 산출물: ${expectedOutput}\n\n실제 결과물:\n${actualOutput.slice(0, 3000)}\n\n이 결과물의 품질을 채점해줘.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["문제점 목록"] }` }],
     {
       system: 'Quality gate for task output. Score relevance (did it actually do the task?), completeness (not a placeholder?), usefulness (ready to use in a document?). Be concise.',
       maxTokens: 300,
@@ -174,10 +191,13 @@ export function checkSpecificity(output: string, userInput: string): { score: nu
   const issues: string[] = [];
   let score = 50; // 기본 중립
 
-  // 1. 사용자 입력 참조 (핵심 명사 추출 후 output에서 탐색)
-  const inputNouns = userInput.match(/[가-힣]{2,}/g) || [];
-  const uniqueNouns = [...new Set(inputNouns)].filter(n => n.length >= 2);
-  const referencedCount = uniqueNouns.filter(n => output.includes(n)).length;
+  // 1. 사용자 입력 참조 (핵심 명사 추출 후 output에서 탐색 — 한국어 + 영어)
+  const koreanNouns = userInput.match(/[가-힣]{2,}/g) || [];
+  const englishNouns = userInput.match(/[A-Za-z]{4,}/g) || [];
+  const inputNouns = [...koreanNouns, ...englishNouns];
+  const uniqueNouns = [...new Set(inputNouns.map(n => n.toLowerCase()))].filter(n => n.length >= 2);
+  const outputLower = output.toLowerCase();
+  const referencedCount = uniqueNouns.filter(n => outputLower.includes(n)).length;
   const referenceRate = uniqueNouns.length > 0 ? referencedCount / Math.min(uniqueNouns.length, 10) : 0;
 
   if (referenceRate >= 0.3) score += 20;

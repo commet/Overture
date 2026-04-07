@@ -62,6 +62,10 @@ export function buildPersonaProfileBlock(persona: Persona): string {
   lines.push(`- 우려하는 것: ${s(persona.known_concerns)}`);
   if (persona.success_metric) lines.push(`- OK 조건: ${s(persona.success_metric)}`);
   lines.push(`- 핵심 성향: ${(persona.extracted_traits || []).map(t => s(t)).join(', ')}`);
+  if (persona.user_description) {
+    lines.push(`- 💬 사용자가 이 사람을 이렇게 묘사함: "${s(persona.user_description)}"`);
+    lines.push(`  ↑ 이 묘사의 뉘앙스와 톤을 최대한 반영하여 시뮬레이션하세요.`);
+  }
   lines.push(`</user-data>`);
   return lines.join('\n');
 }

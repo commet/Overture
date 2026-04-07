@@ -113,7 +113,7 @@ Present a unified diagnostic report:
 | Check | Status | Detail |
 |-------|--------|--------|
 | Skills | 10/10 ✓ | |
-| Agents | 7/7 ✓ | |
+| Agents | 18/18 ✓ | |
 | Data dir | ✓ | .overture/ |
 | Journal | ✓ | [N] entries ([date] → [date]) |
 | Config | [✓/✗] | .overture/config.json v[version] |

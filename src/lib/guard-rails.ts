@@ -82,7 +82,7 @@ const VALIDATORS: Record<string, Validator> = {
     if (numCount < 2) issues.push('Insufficient market size figures');
 
     const score = (hasTAM ? 30 : 0) + (hasSAM ? 25 : 0) + (hasSOM ? 20 : 0) + Math.min(25, numCount * 5);
-    return { passed: hasTAM && numCount >= 2, score, issues };
+    return { passed: hasTAM && hasSAM && numCount >= 2, score, issues };
   },
 
   // ── Sensitivity Analysis ──
@@ -97,7 +97,7 @@ const VALIDATORS: Record<string, Validator> = {
     if (numCount < 3) issues.push('Insufficient numbers');
 
     const score = (hasVariable ? 30 : 0) + (hasRange ? 30 : 0) + Math.min(40, numCount * 8);
-    return { passed: hasVariable && numCount >= 2, score, issues };
+    return { passed: hasVariable && hasRange && numCount >= 2, score, issues };
   },
 
   // ── MECE ──
@@ -178,8 +178,11 @@ export function validateByFramework(
 ): GuardRailResult {
   const validator = findValidator(frameworkName);
   if (!validator) {
-    // 미등록 프레임워크 → 패스스루
-    return { passed: true, score: 70, issues: [] };
+    // 미등록 프레임워크 → 기본 구조 검증만 수행 (무조건 pass 방지)
+    const bulletCount = countBulletPoints(output);
+    const numCount = countNumericValues(output);
+    const score = Math.min(100, 40 + bulletCount * 8 + numCount * 5);
+    return { passed: score >= 60, score, issues: score < 60 ? ['Insufficient structure for unregistered framework'] : [] };
   }
   return validator(output);
 }

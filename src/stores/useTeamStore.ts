@@ -33,7 +33,7 @@ interface TeamState {
   // Helpers
   getCurrentTeam: () => Team | undefined;
   isTeamOwner: () => boolean;
-  _isAdminOrOwner: () => Promise<boolean>;
+  _isAdminOrOwner: (teamId?: string) => Promise<boolean>;
 }
 
 export const useTeamStore = create<TeamState>((set, get) => ({
@@ -45,7 +45,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
 
   loadTeams: async () => {
     const userId = await getCurrentUserId();
-    if (!userId) return;
+    if (!userId) {
+      // 로그아웃/무인증 상태 → 이전 사용자 데이터 정리
+      set({ teams: [], currentTeamId: null, members: [], invites: [], reviewInputs: [] });
+      return;
+    }
 
     // Load only teams where user is a member (defense-in-depth; RLS also enforces)
     const { data: memberRows } = await supabase
@@ -120,7 +124,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     if (!userId) return false;
 
     // Client-side permission guard (RLS is the real enforcer)
-    if (!await get()._isAdminOrOwner()) return false;
+    if (!await get()._isAdminOrOwner(teamId)) return false;
 
     // Validate role to prevent privilege escalation
     const ALLOWED_INVITE_ROLES = ['member', 'admin'] as const;
@@ -282,13 +286,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     return members.some(m => m.team_id === currentTeamId && m.role === 'owner');
   },
 
-  /** Check if current user is admin or owner of current team (client-side guard, RLS is the real enforcer). */
-  _isAdminOrOwner: async () => {
+  /** Check if current user is admin or owner of the specified (or current) team. */
+  _isAdminOrOwner: async (teamId?: string) => {
     const userId = await getCurrentUserId();
     const { members, currentTeamId } = get();
-    if (!userId || !currentTeamId) return false;
+    const targetTeamId = teamId || currentTeamId;
+    if (!userId || !targetTeamId) return false;
     return members.some(
-      m => m.team_id === currentTeamId && m.user_id === userId && (m.role === 'owner' || m.role === 'admin')
+      m => m.team_id === targetTeamId && m.user_id === userId && (m.role === 'owner' || m.role === 'admin')
     );
   },
 }));

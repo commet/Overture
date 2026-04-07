@@ -208,6 +208,25 @@ Always header + options + description. Example:
   - label: "Investor/External", description: "External stakeholder"
   - label: "Not sure yet", description: "Unclear or myself"
 
+### Decision maker → persona seeding
+
+When the user answers the decision maker question, they may add free-form details:
+- Selection only: "Team lead/Director" → create basic persona (●●○○○ 구체화)
+- Selection + description: "팀장인데 전직 컨설턴트고 숫자 없으면 안 넘어가" → create rich persona (●●●●○ 생생함)
+
+**If user adds description:**
+1. Extract persona traits from their free-form text inline
+2. Show the seeded persona with completeness:
+   ```
+   📋 리뷰어 생성됨:
+   팀장 ●●●●○ 생생함 (75%)
+   + analytical · risk:low · "숫자 없으면 안 넘어감"
+   → 리허설 단계에서 이 사람으로 시뮬레이션합니다
+   ```
+3. Save to `.overture/personas.json` — carries through to /rehearse
+4. User can add more details at any point: "아 그리고 이 사람 보고서 5페이지 넘으면 안 읽어"
+   → persona updates inline, completeness increases
+
 ### After each answer — show updated analysis:
 
 ---
@@ -280,134 +299,209 @@ If user says "that's enough" / "next" → transition immediately.
 
 ## Step 2.5: Agent Deployment (when execution plan has 2+ AI tasks)
 
-**This is where Overture becomes a multi-agent system.** When the execution plan has 2+ tasks assignable to AI, deploy the agent team in parallel.
+**This is where Overture becomes a multi-agent system.** Deploy the agent team in parallel for complex problems.
 
-### Agent team
+### 0. Load agent state
 
-| Agent | Name | Specialty | When to deploy |
-|-------|------|-----------|---------------|
-| `researcher` | 수진 | Market research, competitive analysis, data gathering | Research-heavy tasks |
-| `strategist` | 현우 | Strategic analysis, option evaluation, trade-offs | Decision/direction tasks |
-| `writer` | 서연 | Document drafting, narrative structure | Writing-heavy tasks |
-| `numbers` | 민재 | Financial modeling, metrics, scenario analysis | Number-heavy tasks |
-| `user-voice` | 지영 | User perspective, adoption barriers, value prop testing | User-facing tasks |
-| `devils-advocate` | — | Critical challenge, weakness finding | Always (after others) |
+Read `.overture/agents.json`. If it doesn't exist, create it with all default-unlocked agents active.
 
-### Deployment flow
+```json
+{
+  "chains": {
+    "research": { "total_tasks": 0 },
+    "strategy": { "total_tasks": 0 }
+  },
+  "total_tasks": 0,
+  "agents": {
+    "hayoon":            { "unlocked": true,  "xp": 0 },
+    "sujin":             { "unlocked": false, "xp": 0 },
+    "research_director": { "unlocked": false, "xp": 0 },
+    "strategy_jr":       { "unlocked": true,  "xp": 0 },
+    "hyunwoo":           { "unlocked": false, "xp": 0 },
+    "chief_strategist":  { "unlocked": false, "xp": 0 },
+    "seoyeon":           { "unlocked": true,  "xp": 0 },
+    "minjae":            { "unlocked": true,  "xp": 0 },
+    "hyeyeon":           { "unlocked": true,  "xp": 0 },
+    "sujin_hr":          { "unlocked": true,  "xp": 0 },
+    "minseo":            { "unlocked": true,  "xp": 0 },
+    "junseo":            { "unlocked": true,  "xp": 0 },
+    "yerin":             { "unlocked": true,  "xp": 0 },
+    "donghyuk":          { "unlocked": true,  "xp": 0 },
+    "jieun":             { "unlocked": true,  "xp": 0 },
+    "taejun":            { "unlocked": true,  "xp": 0 },
+    "concertmaster":     { "unlocked": false, "xp": 0 }
+  }
+}
+```
 
-**1. Task brief generation**
+### Agent roster (17 agents, matching webapp)
 
-For each 🤖 or ⚡ step in the execution plan, write a task brief:
+**Research chain** (해금 시스템):
+| ID | Name | Role | Unlock |
+|----|------|------|--------|
+| `hayoon` | 하윤 (Riley) 📝 | 리서치 인턴 | always |
+| `sujin` | 다은 (Sophie) 🔍 | 리서치 애널리스트 | research 5회 |
+| `research_director` | 도윤 (Marcus) 🧠 | 리서치 디렉터 | research 15회 |
+
+**Strategy chain** (해금 시스템):
+| ID | Name | Role | Unlock |
+|----|------|------|--------|
+| `strategy_jr` | 정민 (Alex) 🗺️ | 전략 주니어 | always |
+| `hyunwoo` | 현우 (Nathan) 🎯 | 전략가 | strategy 5회 |
+| `chief_strategist` | 승현 (Victor) 🏛️ | 수석 전략가 | strategy 15회 |
+
+**Production** (즉시 사용):
+| ID | Name | Role | Keywords |
+|----|------|------|----------|
+| `seoyeon` | 서연 (Claire) ✍️ | 카피라이터 | 작성, 문서, 카피, 초안, 보고서, 제안서, 요약 |
+| `minjae` | 규민 (Ethan) 📊 | 숫자 분석가 | 수치, ROI, TAM, 추정, 시나리오, 계산, KPI |
+| `hyeyeon` | 혜연 (Diana) 💰 | 재무·회계 | 재무, 회계, 손익, 현금흐름, 예산, 밸류에이션 |
+| `sujin_hr` | 수진 (Harper) 🤝 | 사람·문화 전략가 | 채용, 조직, HR, 평가, 보상, 문화, 변화관리 |
+| `minseo` | 민서 (Stella) 📣 | 마케팅·그로스 | 마케팅, 캠페인, 채널, 퍼널, 그로스, GTM |
+| `junseo` | 준서 (Leo) ⚙️ | 기술 설계자 | 기술, 개발, 아키텍처, 시스템, API, 인프라 |
+| `yerin` | 예린 (Grace) 📋 | PM | 일정, 계획, 마일스톤, 타임라인, 실행, 우선순위 |
+
+**Validation** (즉시 사용):
+| ID | Name | Role | Keywords |
+|----|------|------|----------|
+| `donghyuk` | 동혁 (Blake) ⚠️ | 리스크 검토자 | 리스크, 위험, 반론, 약점, 비판, 실패 |
+| `jieun` | 지은 (Maya) 🎨 | UX 설계자 | UX, UI, 사용자, 인터페이스, 디자인 |
+| `taejun` | 윤석 (Arthur) ⚖️ | 법률·규정 검토자 | 법, 규정, 계약, 라이선스, 개인정보, 컴플라이언스 |
+
+**Special:**
+| ID | Name | Role | Unlock |
+|----|------|------|--------|
+| `concertmaster` | 악장 (Maestro) 🎻 | Concertmaster | total 10회 |
+
+### 1. Agent assignment (keyword matching)
+
+For each 🤖 or ⚡ step in the execution plan:
+
+1. Extract task keywords
+2. Match against each **unlocked** agent's keyword list
+3. Select the best match. If tied, prefer the HIGHER chain agent if unlocked (다은 > 하윤, 현우 > 정민)
+4. If no keyword match → `strategy_jr` (default)
+
+**Chain depth selection rule:**
+- In the research chain: use the HIGHEST unlocked agent (하윤 → 다은 → 도윤)
+- In the strategy chain: use the HIGHEST unlocked agent (정민 → 현우 → 승현)
+- This means as users use Overture more, they automatically get deeper analysis
+
+### 2. Deployment preview (AskUserQuestion with preview)
+
+Before launching, show the deployment plan with preview:
 
 ```
-Task: [from execution plan step]
+questions: [{
+  question: "이 팀으로 분석을 진행할까요?",
+  header: "팀 배치",
+  multiSelect: false,
+  options: [
+    {
+      label: "이 팀으로 진행 (Recommended)",
+      description: "배치된 에이전트가 병렬로 작업합니다",
+      preview: "팀 배치:\n\n📝 하윤 → 시장 조사\n   \"경쟁사 3곳 가격/기능 비교\"\n\n📊 규민 → 재무 분석\n   \"3개 시나리오 ROI 계산\"\n\n⚠️ 동혁 → 리스크 검토\n   \"핵심 가정 5개 스트레스 테스트\"\n\n예상: 3개 에이전트 병렬 실행"
+    },
+    {
+      label: "팀 조정",
+      description: "에이전트를 추가/제거합니다",
+      preview: "현재 해금된 에이전트:\n\nResearch: 하윤 📝\nStrategy: 정민 🗺️\nProduction: 서연✍️ 규민📊 혜연💰\n  수진🤝 민서📣 준서⚙️ 예린📋\nValidation: 동혁⚠️ 지은🎨 윤석⚖️\n\n🔒 미해금: 다은, 도윤, 현우, 승현, 악장"
+    },
+    {
+      label: "에이전트 없이 진행",
+      description: "직접 분석합니다 (더 빠름)",
+      preview: "에이전트 없이:\n\n- 모든 분석을 인라인으로 처리\n- 병렬 실행 없음 (순차 처리)\n- 더 빠르지만 깊이가 줄어듦\n\n간단한 문제에 적합합니다."
+    }
+  ]
+}]
+```
+
+### 3. Parallel execution
+
+**Use the Agent tool to launch ALL assigned agents simultaneously.**
+
+Each agent invocation includes:
+- `subagent_type`: the agent name (loads the agent definition .md file)
+- Task brief with problem context
+- Instructions to follow their output format
+
+**Agent prompt template:**
+```
+Task: [from execution plan]
 Expected output: [from execution plan]
+
 Context:
-  Real question: [reframed question from Step 1-2]
-  Hidden assumptions: [current list]
+  Real question: [reframed question]
+  Hidden assumptions: [list — mark doubtful ones]
   Key constraints: [from interview]
-  Judge: [decision maker]
+  Decision maker: [judge]
+  
+Respond in [user's language]. Follow your output format exactly.
 ```
 
-**2. Agent assignment**
+### 4. Quality gate
 
-Match each task to the best agent by keyword/domain:
-
-- Market, competitive, research, data, industry → `researcher`
-- Strategy, options, direction, trade-off, decide → `strategist`
-- Write, draft, document, proposal, narrative → `writer`
-- Financial, revenue, cost, ROI, metrics, numbers → `numbers`
-- User, customer, adoption, UX, switching → `user-voice`
-
-If a task doesn't clearly match → `strategist` (default). If a task needs multiple agents → split into sub-tasks.
-
-**3. Parallel execution**
-
-**Use the Agent tool to launch ALL assigned agents simultaneously.** This is the key advantage of the plugin — true parallel execution.
-
-Each agent invocation should include:
-- The agent's name (so Claude Code loads the right agent definition)
-- The task brief
-- Problem context (real question, assumptions, constraints)
-- Instructions: "Respond in [user's language]. Follow your output format."
-
-**Example (3 parallel agents):**
-```
-Agent 1 (researcher): "Research the competitive landscape for [domain]. 
-  Real question: [X]. Key assumptions to probe: [Y, Z].
-  Follow your output format."
-
-Agent 2 (numbers): "Build a 3-scenario financial model for [plan].
-  Assumptions: [A, B, C]. Expected output: ROI range + breakeven timeline.
-  Follow your output format."
-
-Agent 3 (user-voice): "Evaluate the value proposition for [target user].
-  Current solution: [what they use now]. Proposed: [what we're building].
-  Follow your output format."
-```
-
-**4. Quality gate**
-
-After agents return, quick-check each output:
+After each agent returns, check:
 - Does it address the SPECIFIC task? (not generic)
-- Does it include evidence/reasoning? (not hand-waving)
-- Is it specific to THIS problem? (not template-like)
+- Does it include evidence/reasoning? (not just claims)
+- Is it specific to THIS problem? (not a template)
 
-If any output fails → re-prompt that specific agent with: "Your output was too generic. Specifically address [task]. Include [missing element]."
+**Score threshold:** If output is clearly inadequate (template-like, ignores the task, or contradicts known facts):
+→ Re-prompt that agent once: "Your output was too generic. Specifically address [task detail]. You missed [specific gap]."
+→ Max 1 retry per agent.
 
-**5. Lead synthesis**
+### 5. Post-task: XP + unlock check
 
-After all worker agents complete, launch the `lead-synthesizer` agent with ALL worker outputs combined:
+After all agents complete:
 
-```
-Agent (lead-synthesizer): "Synthesize these team outputs into a unified analysis.
+1. **Award XP:** Each completed task → +15 XP to the agent
+2. **Update chain task count:** If agent is in a chain, increment that chain's total_tasks
+3. **Increment total_tasks**
+4. **Check unlocks:**
+   - research chain ≥ 5 tasks → unlock `sujin` (다은)
+   - research chain ≥ 15 tasks → unlock `research_director` (도윤)
+   - strategy chain ≥ 5 tasks → unlock `hyunwoo` (현우)
+   - strategy chain ≥ 15 tasks → unlock `chief_strategist` (승현)
+   - total tasks ≥ 10 → unlock `concertmaster` (악장)
+5. **Notify on unlock:** "🔓 **[Name]** 해금! [role] — 다음 세션부터 팀에 합류합니다."
+6. **Save** updated state to `.overture/agents.json`
 
-[수진's research output]
----
-[현우's strategy output]  
----
-[민재's financial analysis]
----
-[지영's user perspective]
+### 6. Lead synthesis / Concertmaster
 
-Real question: [X]
-Decision maker: [judge]
+**If concertmaster is unlocked (total ≥ 10):**
+Launch `concertmaster` agent with ALL worker outputs → integrated synthesis with contradiction detection, blind spots, quality judgment.
 
-Follow your output format."
-```
+**If concertmaster is locked:**
+Launch `devils-advocate` agent with all outputs → critical review only (3 lenses).
 
-**6. Feed into Mix**
+### 7. Feed into Mix
 
-The lead synthesis becomes the PRIMARY input for Step 3 (Mix).
-- Mix acts as **document formatter**, not strategic thinker
+The synthesis (concertmaster or devils-advocate) + all worker outputs become input for Step 3.
+- Mix acts as **document formatter** when agents provided the analysis
 - The strategy, data, and recommendations come from the agents
 - Mix structures them into a polished, send-ready document
 
 ### When NOT to deploy agents
 
-- Execution plan has only 1 AI task → handle inline, no agents needed
+- Execution plan has only 1 AI task → handle inline
 - Problem is simple/tactical → agents add latency without value
-- User explicitly asked for speed ("빨리 해줘") → skip agents, go to Mix directly
+- User chose "에이전트 없이 진행" in the preview
 
-### Showing agent work to user
-
-After agent deployment, show a brief summary before Mix:
+### Agent summary (shown to user after deployment)
 
 ---
 
-**Team deployed** · [N] agents · [tasks completed]
+**Team** · [N] agents · [emoji list]
 
 | Agent | Task | Key finding |
 |-------|------|------------|
-| 수진 | [task] | [1-line key finding] |
-| 현우 | [task] | [1-line recommendation] |
-| 민재 | [task] | [1-line number] |
+| 하윤 📝 | [task] | [1-line finding] |
+| 규민 📊 | [task] | [1-line number] |
+| 동혁 ⚠️ | [task] | [1-line risk] |
 
-**Lead synthesis:** [1-2 sentence integrated finding]
+**[악장/Devils-Advocate]:** [1-2 sentence synthesis or challenge]
 
 ---
-
-Then proceed directly to Mix.
 
 ---
 

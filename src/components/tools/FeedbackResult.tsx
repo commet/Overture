@@ -36,6 +36,7 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
   const { addJudgment } = useJudgmentStore();
   const router = useRouter();
   const { createLoop, setActiveLoopId } = useRefineStore();
+  const [showDeepDetails, setShowDeepDetails] = useState(false);
   const [ratingState, setRatingState] = useState<Record<string, {
     score: number;
     accurateAspects: string[];
@@ -309,118 +310,118 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             </Card>
           )}
 
-          {/* ── 검토 사항 ── */}
-          {(selectedResult.failure_scenario || (selectedResult.untested_assumptions?.length ?? 0) > 0 || (selectedResult.classified_risks?.length ?? 0) > 0 || (selectedResult.concerns || []).length > 0) && (
-            <Card className="!border-l-4 !border-l-amber-400 space-y-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={14} className="text-amber-500" />
-                <span className="text-[13px] font-bold text-amber-700">검토 사항</span>
+          {/* ── 이것만 고치면 (concerns — pulled out, prominent) ── */}
+          {(selectedResult.concerns || []).length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">이것만 고치면</p>
+              <div className="space-y-2">
+                {selectedResult.concerns.map((c, i) => (
+                  <div key={i} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg)] px-3.5 py-2.5">
+                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c}</p>
+                  </div>
+                ))}
               </div>
-
-              {/* 1. 실패 시나리오 */}
-              {selectedResult.failure_scenario && (
-                <div>
-                  <p className="text-[12px] font-bold text-amber-600 mb-1">이 계획이 실패한다면?</p>
-                  <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
-                </div>
-              )}
-
-              {/* 2. 그 이유: 검증 안 된 전제 */}
-              {(selectedResult.untested_assumptions?.length ?? 0) > 0 && (
-                <div>
-                  <p className="text-[12px] font-bold text-amber-600 mb-1">왜? 이 전제들이 검증되지 않았기 때문</p>
-                  <ul className="space-y-1">
-                    {selectedResult.untested_assumptions!.map((a, i) => (
-                      <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-1.5">
-                        <span className="text-amber-500 mt-0.5 shrink-0">&#x25CF;</span> {a}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* 3. 리스크 분류 — 심각도별 */}
-              {(selectedResult.classified_risks?.length ?? 0) > 0 && (
-                <div className="space-y-2.5">
-                  <p className="text-[12px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
-                  {selectedResult.classified_risks!.filter(r => r.category === 'critical').map((risk, i) => (
-                    <div key={`c-${i}`} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">위협</span>
-                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
-                    </div>
-                  ))}
-                  {selectedResult.classified_risks!.filter(r => r.category === 'manageable').map((risk, i) => (
-                    <div key={`m-${i}`} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">관리</span>
-                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
-                    </div>
-                  ))}
-                  {selectedResult.classified_risks!.filter(r => r.category === 'unspoken').map((risk, i) => (
-                    <div key={`u-${i}`} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700" title="모두 알지만 아무도 꺼내지 않는 리스크">침묵</span>
-                      <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 4. 우려/지적 */}
-              {(selectedResult.concerns || []).length > 0 && (
-                <div>
-                  <p className="text-[11px] font-bold text-amber-600 mb-1">우려/지적</p>
-                  <ul className="space-y-1">
-                    {selectedResult.concerns.map((c, i) => (
-                      <li key={i} className="text-[13px] text-[var(--text-primary)]">- {c}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </Card>
+            </div>
           )}
 
-          {/* ── 이 사람이 원하는 것 (질문 + 추가 요청 + 승인 조건 통합) ── */}
-          <Card className="!border-l-4 !border-l-[var(--accent)] space-y-4">
-            <div className="flex items-center gap-2">
-              <MessageCircleQuestion size={14} className="text-[var(--accent)]" />
-              <span className="text-[13px] font-bold text-[var(--accent)]">이 사람이 원하는 것</span>
+          {/* ── OK 조건 (highlighted, like web app) ── */}
+          {(selectedResult.approval_conditions?.length ?? 0) > 0 && (
+            <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
+              <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider mb-2">통과 조건</p>
+              <ul className="space-y-1">
+                {selectedResult.approval_conditions!.map((c, i) => (
+                  <li key={i} className="text-[14px] text-[var(--text-primary)] font-medium leading-relaxed flex items-start gap-2">
+                    <Check size={14} className="text-[var(--accent)] shrink-0 mt-0.5" /> {c}
+                  </li>
+                ))}
+              </ul>
             </div>
+          )}
 
-            {/* 질문 */}
-            {(selectedResult.first_questions || []).length > 0 && (
+          {/* ── 더 자세히 (deep details — collapsible) ── */}
+          {(() => {
+            const hasDeep = selectedResult.failure_scenario
+              || (selectedResult.untested_assumptions?.length ?? 0) > 0
+              || (selectedResult.classified_risks?.length ?? 0) > 0
+              || (selectedResult.first_questions || []).length > 0
+              || (selectedResult.wants_more?.length ?? 0) > 0;
+            if (!hasDeep) return null;
+            return (
               <div>
-                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">먼저 물어볼 질문</p>
-                <ul className="space-y-1.5">
-                  {selectedResult.first_questions.map((q, i) => (
-                    <li key={i} className="text-[13px] text-[var(--text-primary)] px-3 py-2 rounded-lg bg-[var(--bg)]">{q}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                <button
+                  onClick={() => setShowDeepDetails(!showDeepDetails)}
+                  className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+                >
+                  <Search size={11} />
+                  {showDeepDetails ? '간략히 보기' : '더 자세히 보기'}
+                </button>
+                {showDeepDetails && (
+                  <div className="mt-3 space-y-3 animate-fade-in">
+                    {/* 질문 */}
+                    {(selectedResult.first_questions || []).length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">물어볼 질문</p>
+                        <ul className="space-y-1.5">
+                          {selectedResult.first_questions.map((q, i) => (
+                            <li key={i} className="text-[13px] text-[var(--text-primary)] px-3 py-2 rounded-lg bg-[var(--bg)]">{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-            {/* 추가 요청 */}
-            {(selectedResult.wants_more?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1">추가로 보고 싶은 것</p>
-                <ul className="space-y-1">
-                  {selectedResult.wants_more!.map((w, i) => (
-                    <li key={i} className="text-[13px] text-[var(--text-primary)]">{w}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                    {/* 실패 시나리오 */}
+                    {selectedResult.failure_scenario && (
+                      <div>
+                        <p className="text-[11px] font-bold text-amber-600 mb-1">실패 시나리오</p>
+                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
+                      </div>
+                    )}
 
-            {/* 승인 조건 */}
-            {(selectedResult.approval_conditions?.length ?? 0) > 0 && (
-              <div className="pt-2 border-t border-[var(--border-subtle)]">
-                <p className="text-[11px] font-bold text-[var(--success)] mb-1">이것을 보여주면 OK</p>
-                <ul className="space-y-1">
-                  {selectedResult.approval_conditions!.map((c, i) => (
-                    <li key={i} className="text-[13px] text-[var(--text-primary)]">&#x2713; {c}</li>
-                  ))}
-                </ul>
+                    {/* 검증 안 된 가정 */}
+                    {(selectedResult.untested_assumptions?.length ?? 0) > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-amber-600 mb-1">검증되지 않은 가정</p>
+                        <ul className="space-y-1">
+                          {selectedResult.untested_assumptions!.map((a, i) => (
+                            <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-1.5">
+                              <span className="text-amber-500 mt-0.5 shrink-0">&#x25CF;</span> {a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 리스크 분류 */}
+                    {(selectedResult.classified_risks?.length ?? 0) > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
+                        {selectedResult.classified_risks!.map((risk, i) => (
+                          <div key={i} className="flex items-start gap-2.5 text-[13px]">
+                            <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${risk.category === 'critical' ? 'bg-red-100 text-red-700' : risk.category === 'manageable' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                              {risk.category === 'critical' ? '위협' : risk.category === 'manageable' ? '관리' : '침묵'}
+                            </span>
+                            <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 추가 요청 */}
+                    {(selectedResult.wants_more?.length ?? 0) > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1">추가로 보고 싶은 것</p>
+                        <ul className="space-y-1">
+                          {selectedResult.wants_more!.map((w, i) => (
+                            <li key={i} className="text-[13px] text-[var(--text-primary)]">{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </Card>
+            );
+          })()}
 
           {/* Accuracy Rating */}
           {!ratingState[selectedPersona.id]?.saved ? (

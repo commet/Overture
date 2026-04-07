@@ -159,10 +159,14 @@ SOM (목표 시장): 50인 이하 스타트업 대상 약 200억원`;
 // ── 9. 미등록 프레임워크 패스스루 ──
 
 describe('미등록 프레임워크', () => {
-  it('알 수 없는 프레임워크는 passed: true', () => {
-    const result = validateByFramework('Unknown Framework XYZ', '아무 결과물');
-    expect(result.passed).toBe(true);
-    expect(result.score).toBe(70);
+  it('알 수 없는 프레임워크도 기본 구조 검증 수행', () => {
+    // 구조 없는 짧은 텍스트 → 통과 불가
+    const weak = validateByFramework('Unknown Framework XYZ', '아무 결과물');
+    expect(weak.passed).toBe(false);
+
+    // 구조 있는 텍스트 → 통과
+    const strong = validateByFramework('Unknown Framework XYZ', '- 첫째, 시장 규모는 100억원이다\n- 둘째, 성장률 30%\n- 셋째, 경쟁사 3개');
+    expect(strong.passed).toBe(true);
   });
 });
 

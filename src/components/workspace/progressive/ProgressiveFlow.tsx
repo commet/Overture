@@ -441,11 +441,23 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
             )}
 
             <div className="pt-6 border-t border-[var(--border-subtle)] space-y-3">
-              <motion.button onClick={onDM} disabled={busy} whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-2xl text-[15px] font-semibold shadow-[var(--shadow-md)] cursor-pointer disabled:opacity-50"
-                style={{ background: 'var(--gradient-gold)' }}>
-                {busy ? <><Loader2 size={16} className="animate-spin" /> {L('시뮬레이션 중...', 'Simulating...')}</> : <><UserCheck size={16} /> {locale === 'ko' ? <>{dm || '의사결정권자'}{getParticle(dm || '자')} 뭐라고 할까?</> : <>What would {dm || 'the decision-maker'} say?</>}</>}
-              </motion.button>
+              {/* Reviewer suggestion card */}
+              <div className="rounded-xl border border-[var(--accent)]/10 bg-[var(--accent)]/[0.03] p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[14px] font-bold text-[var(--accent)]">
+                    {(dm || (locale === 'ko' ? '?' : '?')).charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-semibold text-[var(--text-primary)]">{dm || L('의사결정권자', 'Decision-Maker')}</p>
+                    <p className="text-[11px] text-[var(--text-tertiary)]">{L('올리기 전에 한번 검토 받아보세요', 'Get a review before you submit')}</p>
+                  </div>
+                </div>
+                <motion.button onClick={onDM} disabled={busy} whileTap={{ scale: 0.98 }}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 text-white rounded-xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-50"
+                  style={{ background: 'var(--gradient-gold)' }}>
+                  {busy ? <><Loader2 size={16} className="animate-spin" /> {L(`${dm || '리뷰어'}이(가) 읽고 있습니다...`, `${dm || 'Reviewer'} is reading...`)}</> : <><UserCheck size={16} /> {L('검토 받기', 'Get Review')}</>}
+                </motion.button>
+              </div>
               <button onClick={onSkip} disabled={busy} className="w-full text-center text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] py-1 cursor-pointer"
                 style={{ transitionProperty: 'color', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{L('건너뛰고 이대로 완성', 'Skip and finalize as is')}</button>
             </div>
@@ -457,19 +469,17 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
 }
 
 /* ═══ DM Feedback ═══ */
-function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/types').DMFeedbackResult; onToggle: (i: number) => void; onFinalize: () => void; busy: boolean }) {
+function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('@/stores/types').DMFeedbackResult; onToggle: (i: number) => void; onFinalize: () => void; onDeepen?: () => void; busy: boolean }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const initial = (fb.persona_name || '?').charAt(0).toUpperCase();
   return (
     <div className="space-y-5">
-      {/* Transition divider */}
+      {/* Transition divider — personalized */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.5 }}
         className="flex items-center gap-4 py-1">
         <div className="flex-1 h-px bg-[var(--accent)]/15" />
-        <div className="flex items-center gap-1.5 shrink-0">
-          <UserCheck size={12} className="text-[var(--accent)]/60" />
-          <span className="text-[11px] text-[var(--text-secondary)] font-medium">{L('의사결정권자의 반응', "Decision-Maker's Response")}</span>
-        </div>
+        <span className="text-[11px] text-[var(--text-secondary)] font-medium shrink-0">{fb.persona_name}{L('의 검토', "'s Review")}</span>
         <div className="flex-1 h-px bg-[var(--accent)]/15" />
       </motion.div>
 
@@ -477,48 +487,55 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
         <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="p-5 md:p-10 space-y-6">
+            {/* Reviewer — person, not icon */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--accent)]/8 flex items-center justify-center"><UserCheck size={18} className="text-[var(--accent)]" /></div>
-              <div><p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p><p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p></div>
+              <div className="w-10 h-10 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[16px] font-bold text-[var(--accent)]">{initial}</div>
+              <div>
+                <p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p>
+                <p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
+              </div>
             </div>
-            <blockquote className="text-[16px] text-[var(--text-primary)] leading-relaxed italic pl-5 border-l-[3px] border-[var(--text-tertiary)]/15">&ldquo;{fb.first_reaction}&rdquo;</blockquote>
 
-            {fb.good_parts.length > 0 && <div>
-              <p className="text-[9px] font-bold text-green-600 uppercase tracking-[0.2em] mb-2">{L('좋은 점', 'Strengths')}</p>
-              {fb.good_parts.map((g, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-green-500 shrink-0 mt-0.5">&#10003;</span>{g}</p>)}
-            </div>}
+            {/* First reaction — speech bubble, not courtroom quote */}
+            <div className="relative rounded-2xl rounded-tl-sm bg-[var(--accent)]/[0.04] px-5 py-4">
+              <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">&ldquo;{fb.first_reaction}&rdquo;</p>
+            </div>
 
+            {/* Good parts — prominent, not secondary */}
+            {fb.good_parts.length > 0 && (
+              <div className="rounded-xl bg-green-50/60 dark:bg-green-950/20 border border-green-200/30 dark:border-green-800/20 px-4 py-3.5">
+                <p className="text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-[0.2em] mb-2.5">{L('잘한 점', 'Strengths')}</p>
+                {fb.good_parts.map((g, i) => <p key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2.5 mb-2 last:mb-0 leading-relaxed"><span className="text-green-500 shrink-0 mt-0.5 text-[14px]">&#10003;</span>{g}</p>)}
+              </div>
+            )}
+
+            {/* Concerns — "이것만 고치면" */}
             {fb.concerns.length > 0 && <div>
-              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">{L('우려 + 수정 제안', 'Concerns + Suggestions')}</p>
+              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">{L('이것만 고치면', 'Fix These')}</p>
               <div className="space-y-3">
                 {fb.concerns.map((c: DMConcern, i: number) => (
-                  <div key={i} className={`rounded-2xl border p-4 transition-all duration-500 ${c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'}`}
+                  <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08, duration: 0.4, ease: EASE }}
+                    className={`rounded-2xl border p-4 transition-all duration-500 ${c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'}`}
                     style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                    <div>
-                      <div className="flex items-start gap-2 mb-2">
-                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
-                          {c.severity === 'critical' ? L('필수', 'Required') : c.severity === 'important' ? L('권장', 'Recommended') : L('참고', 'Note')}</span>
-                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
-                      </div>
-                      <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">→ {c.fix_suggestion}</p>
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? L('반영', 'Applied') : L('스킵', 'Skip')}</span>
-                        <button onClick={() => onToggle(i)} className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
-                          style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                          <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 24 : 4 }} transition={SPRING} />
-                        </button>
-                      </div>
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${c.severity === 'critical' ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400' : c.severity === 'important' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                        {c.severity === 'critical' ? L('필수', 'Required') : c.severity === 'important' ? L('권장', 'Recommended') : L('참고', 'Note')}</span>
+                      <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
                     </div>
-                  </div>
+                    <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">→ {c.fix_suggestion}</p>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? L('반영', 'Applied') : L('스킵', 'Skip')}</span>
+                      <button onClick={() => onToggle(i)} className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                        style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                        <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 24 : 4 }} transition={SPRING} />
+                      </button>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
             </div>}
 
-            {fb.would_ask.length > 0 && <div>
-              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2">{L('이것도 물어볼 거다', 'They Would Also Ask')}</p>
-              {fb.would_ask.map((q, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-[var(--accent)] shrink-0">?</span>{q}</p>)}
-            </div>}
-
+            {/* Approval condition */}
             <div className="pt-4 mt-2 border-t border-[var(--border-subtle)]">
               <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
                 <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">{L('통과 조건', 'Approval Condition')}</p>
@@ -526,11 +543,32 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
               </div>
             </div>
 
-            <motion.button onClick={onFinalize} disabled={busy} whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-50"
-              style={{ background: 'var(--gradient-gold)' }}>
-              {busy ? <><Loader2 size={16} className="animate-spin" /> {L('최종본 작성 중...', 'Finalizing...')}</> : <>{L('반영하고 완성', 'Apply and Finalize')} <ChevronRight size={14} /></>}
-            </motion.button>
+            {/* Deep mode extras — would_ask (shown after deep review) */}
+            {fb.would_ask.length > 0 && (
+              <div className="pt-2">
+                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2.5">{L('이것도 물어볼 거다', 'They Would Also Ask')}</p>
+                {fb.would_ask.map((q, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-[var(--accent)] shrink-0">?</span>{q}</p>)}
+              </div>
+            )}
+
+            {/* Actions — primary + secondary path */}
+            <div className="space-y-3">
+              <motion.button onClick={onFinalize} disabled={busy} whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-50"
+                style={{ background: 'var(--gradient-gold)' }}>
+                {busy ? <><Loader2 size={16} className="animate-spin" /> {L('최종본 작성 중...', 'Finalizing...')}</> : <>{L('반영하고 완성', 'Apply and Finalize')} <ChevronRight size={14} /></>}
+              </motion.button>
+              {fb.would_ask.length === 0 && onDeepen && (
+                <p className="text-center text-[12px] text-[var(--text-tertiary)]">
+                  {L('다른 관점이 필요하면 ', 'Need another perspective? ')}
+                  <button onClick={onDeepen} disabled={busy}
+                    className="text-[var(--accent)] hover:underline cursor-pointer font-medium disabled:opacity-50"
+                    style={{ transitionProperty: 'color', transitionDuration: '200ms' }}>
+                    {busy ? L('검토 중...', 'Reviewing...') : L('더 깊이 검토 →', 'Go deeper →')}
+                  </button>
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -798,10 +836,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const workersRef = useRef<Promise<void> | null>(null);
   const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
 
-  // Cleanup: abort workers on unmount
+  // Cleanup: abort all in-flight requests on unmount
   useEffect(() => {
     return () => {
       workerAbortRef.current?.abort();
+      abortRef.current?.abort();
     };
   }, []);
 
@@ -1041,6 +1080,24 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     finally { setBusy(false); scroll(); }
   };
 
+  const onDeepen = async () => {
+    if (!mix) return; setBusy(true); setError(null); scroll();
+    try {
+      const reviewerAgent = session?.reviewer_agent_id
+        ? useAgentStore.getState().getAgent(session.reviewer_agent_id)
+        : undefined;
+
+      const f = reviewerAgent
+        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text, undefined, 'deep')
+        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text, undefined, 'deep');
+
+      store.setDMFeedback(f);
+      track('flow_deepen', { has_boss: !!reviewerAgent });
+    }
+    catch (e) { setError(e instanceof Error ? e.message : L('심화 검토 실패', 'Deep review failed')); }
+    finally { setBusy(false); scroll(); }
+  };
+
   const onMore = async () => {
     if (!latest) return; setShowMix(false); setBusy(true); store.setPhase('analyzing');
     try {
@@ -1256,7 +1313,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {/* Answered Q&A history — collapsed at bottom */}
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
           {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} debateResult={debateResult} />}
-          {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} busy={busy} />}
+          {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} onDeepen={onDeepen} busy={busy} />}
 
           {final_ && <>
             {/* Completion moment */}

@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -92,7 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     clearUserCache();
     clearAllStorage();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // 로그아웃 실패 시에도 로컬 상태는 이미 정리됨
+      // 페이지 새로고침으로 세션 강제 종료
+      window.location.href = '/login';
+    }
   };
 
   return (
