@@ -86,7 +86,7 @@ function categorizeError(status: number, body?: Record<string, unknown>): LLMErr
   return new LLMError(msg, { category: 'unknown', status, retryable: false });
 }
 
-// ━━━ Circuit Breaker (Claude Code 패턴: 연속 실패 시 빠른 차단) ━━━
+// ━━━ Circuit Breaker (프로바이더별 격리: Anthropic/OpenAI 교차 영향 방지) ━━━
 
 interface CircuitState {
   failures: number;
@@ -94,15 +94,25 @@ interface CircuitState {
   open: boolean;
 }
 
-const circuit: CircuitState = { failures: 0, lastFailure: 0, open: false };
 const CIRCUIT_THRESHOLD = 5;
 const CIRCUIT_RESET_MS = 30_000;
+const circuits = new Map<string, CircuitState>();
 
-function checkCircuit(): void {
-  if (!circuit.open) return;
-  if (Date.now() - circuit.lastFailure > CIRCUIT_RESET_MS) {
-    circuit.open = false;
-    circuit.failures = 0;
+function getCircuit(provider: string): CircuitState {
+  let c = circuits.get(provider);
+  if (!c) {
+    c = { failures: 0, lastFailure: 0, open: false };
+    circuits.set(provider, c);
+  }
+  return c;
+}
+
+function checkCircuit(provider = 'anthropic'): void {
+  const c = getCircuit(provider);
+  if (!c.open) return;
+  if (Date.now() - c.lastFailure > CIRCUIT_RESET_MS) {
+    c.open = false;
+    c.failures = 0;
     return;
   }
   throw new LLMError('연속 실패로 잠시 중단되었습니다. 30초 후 자동 복구됩니다.', {
@@ -110,16 +120,18 @@ function checkCircuit(): void {
   });
 }
 
-function recordSuccess(): void {
-  circuit.failures = 0;
-  circuit.open = false;
+function recordSuccess(provider = 'anthropic'): void {
+  const c = getCircuit(provider);
+  c.failures = 0;
+  c.open = false;
 }
 
-function recordFailure(): void {
-  circuit.failures++;
-  circuit.lastFailure = Date.now();
-  if (circuit.failures >= CIRCUIT_THRESHOLD) {
-    circuit.open = true;
+function recordFailure(provider = 'anthropic'): void {
+  const c = getCircuit(provider);
+  c.failures++;
+  c.lastFailure = Date.now();
+  if (c.failures >= CIRCUIT_THRESHOLD) {
+    c.open = true;
   }
 }
 
@@ -130,21 +142,22 @@ const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 529]);
 async function fetchWithRetry(
   input: RequestInfo,
   init: RequestInit,
-  maxRetries = 3
+  maxRetries = 3,
+  provider = 'anthropic'
 ): Promise<Response> {
-  checkCircuit();
+  checkCircuit(provider);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const res = await fetch(input, init);
 
       if (res.ok) {
-        recordSuccess();
+        recordSuccess(provider);
         return res;
       }
 
       if (!RETRYABLE_STATUS.has(res.status) || attempt === maxRetries) {
-        recordFailure();
+        recordFailure(provider);
         const body = await res.json().catch(() => ({}));
         throw categorizeError(res.status, body);
       }
@@ -164,8 +177,14 @@ async function fetchWithRetry(
       await new Promise(r => setTimeout(r, delay));
     } catch (error) {
       if (error instanceof LLMError) throw error;
+      // AbortError: 사용자 취소 — 재시도하지 않음
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new LLMError('요청이 취소되었습니다.', {
+          category: 'network', retryable: false, cause: error,
+        });
+      }
       if (attempt === maxRetries) {
-        recordFailure();
+        recordFailure(provider);
         throw new LLMError('네트워크 연결에 실패했습니다.', {
           category: 'network', retryable: true, cause: error,
         });
@@ -310,6 +329,8 @@ export function validateShape<T extends Record<string, unknown>>(
 function getSettings(): Settings {
   return getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
     anthropic_api_key: '',
+    openai_api_key: '',
+    llm_provider: 'anthropic',
     llm_mode: 'proxy',
     local_endpoint: '',
     language: 'ko',
@@ -338,11 +359,37 @@ export async function callLLM(
 ): Promise<string> {
   const settings = getSettings();
 
+  // OpenAI provider — always direct (user's own key)
+  if (settings.llm_provider === 'openai' && settings.openai_api_key) {
+    return callOpenAI(settings.openai_api_key, messages, options);
+  }
+
   if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
     return callServerWithUserKey(settings.anthropic_api_key, messages, options);
   }
 
   return callProxy(messages, options);
+}
+
+async function callOpenAI(
+  apiKey: string,
+  messages: LLMMessage[],
+  options: LLMOptions
+): Promise<string> {
+  const res = await fetchWithRetry('/api/llm/openai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      messages,
+      system: options.system,
+      maxTokens: options.maxTokens,
+    }),
+    signal: options.signal,
+  }, 3, 'openai');
+
+  const data = await res.json();
+  return data.text;
 }
 
 async function callServerWithUserKey(
@@ -506,11 +553,12 @@ export async function callLLMStream(
   callbacks: StreamCallbacks
 ): Promise<void> {
   const settings = getSettings();
-  const isDirect = settings.llm_mode === 'direct' && settings.anthropic_api_key;
-  const url = isDirect ? '/api/llm/direct' : '/api/llm';
+  const isOpenAI = settings.llm_provider === 'openai' && settings.openai_api_key;
+  const isDirect = !isOpenAI && settings.llm_mode === 'direct' && settings.anthropic_api_key;
+  const url = isOpenAI ? '/api/llm/openai' : isDirect ? '/api/llm/direct' : '/api/llm';
 
   let headers: Record<string, string>;
-  if (isDirect) {
+  if (isOpenAI || isDirect) {
     headers = { 'Content-Type': 'application/json' };
   } else {
     headers = await getAuthHeaders();
@@ -522,12 +570,16 @@ export async function callLLMStream(
     maxTokens: options.maxTokens,
     stream: true,
   };
-  if (isDirect) {
+  if (isOpenAI) {
+    bodyObj.apiKey = settings.openai_api_key;
+  } else if (isDirect) {
     bodyObj.apiKey = settings.anthropic_api_key;
   }
 
+  const provider = isOpenAI ? 'openai' : 'anthropic';
+
   try {
-    checkCircuit();
+    checkCircuit(provider);
 
     const res = await fetch(url, {
       method: 'POST',
@@ -538,11 +590,11 @@ export async function callLLMStream(
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      recordFailure();
+      recordFailure(provider);
       throw categorizeError(res.status, body);
     }
 
-    recordSuccess();
+    recordSuccess(provider);
     const reader = res.body?.getReader();
     if (!reader) throw new LLMError('스트림을 사용할 수 없습니다.', { category: 'network' });
 

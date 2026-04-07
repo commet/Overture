@@ -32,6 +32,7 @@ vi.mock('@/lib/storage', () => ({
 vi.mock('@/lib/db', () => ({
   upsertToSupabase: vi.fn(),
   deleteFromSupabase: vi.fn(),
+  softDeleteFromSupabase: vi.fn(),
   loadAndMerge: vi.fn(() => Promise.resolve([])),
   insertToSupabase: vi.fn(),
 }));
@@ -293,6 +294,8 @@ describe('Store Schema Sync', () => {
       const s = store.settings;
 
       expect(typeof s.anthropic_api_key).toBe('string');
+      expect(typeof s.openai_api_key).toBe('string');
+      expect(['anthropic', 'openai']).toContain(s.llm_provider);
       expect(['proxy', 'direct', 'local']).toContain(s.llm_mode);
       expect(typeof s.local_endpoint).toBe('string');
       expect(['ko', 'en']).toContain(s.language);

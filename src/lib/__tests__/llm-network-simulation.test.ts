@@ -13,6 +13,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSettings = {
   anthropic_api_key: '',
+  openai_api_key: '',
+  llm_provider: 'anthropic' as const,
   llm_mode: 'proxy' as const,
   local_endpoint: '',
   language: 'ko',
@@ -85,6 +87,8 @@ beforeEach(() => {
   Object.assign(mockSettings, {
     llm_mode: 'proxy',
     anthropic_api_key: '',
+    openai_api_key: '',
+    llm_provider: 'anthropic',
     local_endpoint: '',
     language: 'ko',
     audio_enabled: false,

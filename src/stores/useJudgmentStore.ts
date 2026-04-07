@@ -26,7 +26,11 @@ export const useJudgmentStore = create<JudgmentState>((set, get) => ({
     const local = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
     set({ judgments: local });
     loadAndMerge<JudgmentRecord>('judgment_records', STORAGE_KEYS.JUDGMENTS)
-      .then((merged) => set({ judgments: merged }));
+      .then((merged) => {
+        const current = get().judgments;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ judgments: [...merged, ...newLocal] });
+      });
   },
 
   addJudgment: (data) => {

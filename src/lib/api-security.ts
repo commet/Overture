@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const MAX_BODY_BYTES = 500_000; // 500KB
+
 /**
  * Reject requests with unexpected Content-Type.
  * Prevents JSON parser confusion and content-type sniffing attacks.
@@ -8,6 +10,18 @@ export function validateContentType(req: NextRequest): NextResponse | null {
   const ct = req.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
     return NextResponse.json({ error: 'Content-Type must be application/json' }, { status: 415 });
+  }
+  return null;
+}
+
+/**
+ * Reject oversized request bodies before JSON parsing.
+ * Prevents memory/CPU exhaustion from large payloads.
+ */
+export function validateContentLength(req: NextRequest): NextResponse | null {
+  const cl = req.headers.get('content-length');
+  if (cl && parseInt(cl, 10) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: '요청이 너무 큽니다.' }, { status: 413 });
   }
   return null;
 }

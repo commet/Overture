@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { RecastItem, RecastStep } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface RecastState {
   items: RecastItem[];
@@ -28,7 +28,11 @@ export const useRecastStore = create<RecastState>((set, get) => ({
     const local = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []);
     set({ items: local });
     loadAndMerge<RecastItem>('recast_items', STORAGE_KEYS.RECAST_LIST)
-      .then((merged) => set({ items: merged }));
+      .then((merged) => {
+        const current = get().items;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ items: [...merged, ...newLocal] });
+      });
   },
 
   createItem: () => {
@@ -72,7 +76,7 @@ export const useRecastStore = create<RecastState>((set, get) => ({
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
     setStorage(STORAGE_KEYS.RECAST_LIST, items);
-    deleteFromSupabase('recast_items', id);
+    softDeleteFromSupabase('recast_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),
@@ -124,6 +128,7 @@ export const useRecastStore = create<RecastState>((set, get) => ({
     const items = get().items.map((item) => {
       if (item.id !== id) return item;
       const steps = [...item.steps];
+      if (fromIndex < 0 || fromIndex >= steps.length || toIndex < 0 || toIndex >= steps.length) return item;
       const [moved] = steps.splice(fromIndex, 1);
       steps.splice(toIndex, 0, moved);
       return { ...item, steps, updated_at: new Date().toISOString() };

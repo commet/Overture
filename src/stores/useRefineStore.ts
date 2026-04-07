@@ -3,7 +3,7 @@ import type { RefineLoop, RefineIteration, ApprovalCondition } from '@/stores/ty
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
 import { checkLoopConvergence } from '@/lib/convergence';
-import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface RefineState {
   loops: RefineLoop[];
@@ -35,7 +35,11 @@ export const useRefineStore = create<RefineState>((set, get) => ({
     const local = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
     set({ loops: local });
     loadAndMerge<RefineLoop>('refine_loops', STORAGE_KEYS.REFINE_LOOPS)
-      .then((merged) => set({ loops: merged }));
+      .then((merged) => {
+        const current = get().loops;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ loops: [...merged, ...newLocal] });
+      });
   },
 
   createLoop: (params) => {
@@ -77,7 +81,7 @@ export const useRefineStore = create<RefineState>((set, get) => ({
     const activeLoopId = get().activeLoopId === id ? null : get().activeLoopId;
     set({ loops, activeLoopId });
     setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
-    deleteFromSupabase('refine_loops', id);
+    softDeleteFromSupabase('refine_loops', id);
   },
 
   setActiveLoopId: (id) => set({ activeLoopId: id }),

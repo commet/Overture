@@ -20,6 +20,7 @@ import { useHandoffStore } from '@/stores/useHandoffStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { buildEnhancedSystemPrompt } from '@/lib/context-builder';
 import { NextStepGuide } from '@/components/ui/NextStepGuide';
+import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { Sparkles, Loader2, FileText, Trash2, Check, PlusCircle, X, AlertTriangle, ArrowRight, RotateCcw, Bot, Scale, Send } from 'lucide-react';
 
 const LOADING_MESSAGES = [
@@ -117,6 +118,17 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
     loadItems();
     loadJudgments();
   }, [loadItems, loadJudgments]);
+
+  // Inbound handoff: Refine 결과를 bulk input에 pre-fill
+  useEffect(() => {
+    const handoff = useHandoffStore.getState().handoff;
+    if (handoff?.from === 'refine' && handoff.content) {
+      setBulkInput(handoff.content);
+      setMode('direct');
+      setInputMode('bulk');
+      useHandoffStore.getState().clearHandoff();
+    }
+  }, []);
 
   const current = getCurrentItem();
 
@@ -232,6 +244,8 @@ export function SynthesizeStep({ onNavigate }: SynthesizeStepProps) {
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
+
+      <ConcertmasterInline step="synthesize" />
 
       {/* History */}
       {items.length > 0 && (

@@ -53,7 +53,7 @@ export interface ConcertmasterProfile {
   demoSeedData?: DemoSeedData;
 }
 
-export type CoachingStep = 'reframe' | 'recast' | 'rehearse' | 'refine';
+export type CoachingStep = 'reframe' | 'recast' | 'rehearse' | 'refine' | 'synthesize';
 
 export interface StepCoaching {
   message: string;
@@ -103,7 +103,7 @@ export function buildConcertmasterProfile(): ConcertmasterProfile {
 
   const tier: 1 | 2 | 3 = sessionCount >= 10 && projectCount >= 2
     ? 3
-    : sessionCount >= 3
+    : sessionCount >= 2
       ? 2
       : 1;
 
@@ -329,6 +329,9 @@ export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfil
     case 'refine':
       candidates = getRefineCoaching(profile);
       break;
+    case 'synthesize':
+      candidates = getSynthesizeCoaching(profile);
+      break;
     default:
       candidates = [];
   }
@@ -338,7 +341,8 @@ export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfil
     const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
     const latest = vitalityAssessments[vitalityAssessments.length - 1];
     if (latest && latest.signals?.length > 0) {
-      const vc = getVitalityStepCoaching(step, latest.signals, vitalityAssessments.slice(0, -1));
+      if (!['reframe', 'recast', 'rehearse', 'refine'].includes(step)) return candidates.slice(0, 2);
+      const vc = getVitalityStepCoaching(step as 'reframe' | 'recast' | 'rehearse' | 'refine', latest.signals, vitalityAssessments);
       if (vc) {
         candidates.unshift({ message: vc.message, detail: vc.detail, tone: vc.tone });
       }
@@ -691,6 +695,34 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
         message: t('coaching.refine.iterationStatus', { count: iterationCount }),
       });
     }
+  }
+
+  return results;
+}
+
+function getSynthesizeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
+  const results: StepCoaching[] = [];
+
+  if (profile.sessionCount === 0) {
+    results.push({
+      message: '쟁점을 발견하면 성급하게 절충하지 마세요. 각 입장이 어떤 가정 위에 서 있는지 먼저 파악하세요.',
+      detail: '합의는 "중간값"이 아니라 "더 나은 질문"에서 나옵니다.',
+      tone: 'counterfactual',
+    });
+    return results;
+  }
+
+  // Override rate coaching — 사용자가 AI 제안을 많이 수정하는지
+  if (profile.overrideRate > 0.5 && profile.totalJudgments >= 5) {
+    results.push({
+      message: '당신은 AI 제안의 절반 이상을 수정합니다. 조율에서도 그 판단력이 핵심입니다.',
+      tone: 'positive',
+    });
+  } else if (profile.overrideRate < 0.1 && profile.totalJudgments >= 5) {
+    results.push({
+      message: '소스 간 충돌에서 한쪽을 선택하는 건 판단입니다. 두 소스 모두 틀릴 수도 있습니다.',
+      tone: 'challenge',
+    });
   }
 
   return results;

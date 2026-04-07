@@ -17,6 +17,8 @@ import { useAgentStore } from '@/stores/useAgentStore';
 import { XP_REWARDS } from '@/stores/agent-types';
 import { buildSearchContext, type SearchResult } from '@/lib/agent-prompt-builder';
 import { gatherToolContext } from '@/lib/agent-tools';
+import { shouldPlan, planTask, executePlan } from '@/lib/agent-planner';
+import { getAvailableCapabilities } from '@/lib/agent-delegator';
 
 // ─── Context ───
 
@@ -54,6 +56,52 @@ export async function runWorkerTask(
 
   // Agent 레벨을 반영한 effective level
   const level = agent ? numericLevelToAgentLevel(agent.level) : baseLevel;
+
+  // ─── Agent 자율 계획 (Planning Gate) ───
+  // Level 3+ 에이전트 + 복합 task → 다단계 계획 후 실행
+  // Planning 실패 시 아래 기존 단일 호출로 fallback
+  if (shouldPlan(task, agent) && agent) {
+    try {
+      const capabilities = (task.delegation_depth || 0) === 0
+        ? getAvailableCapabilities(task.agent_id)
+        : undefined;
+      const plan = await planTask(task, context, agent, capabilities);
+      const planResult = await executePlan(plan, task, context, onStream, signal);
+
+      if (task.agent_id) {
+        useAgentStore.getState().recordActivity(task.agent_id, 'task_completed', task.task, context.sessionId);
+      }
+
+      let validation: ValidationResult | undefined;
+      if (task.who === 'ai') {
+        try {
+          validation = await validateWorkerOutput(task.task, task.expected_output, planResult.aggregated_result);
+          if (task.framework && validation) {
+            const guardResult = validateByFramework(task.framework, planResult.aggregated_result);
+            if (!guardResult.passed) {
+              validation.score = Math.min(validation.score, guardResult.score);
+              validation.issues = [...validation.issues, ...guardResult.issues];
+              validation.passed = validation.score >= 70;
+            }
+          }
+          if (validation) {
+            const specificity = checkSpecificity(planResult.aggregated_result, context.problemText);
+            if (specificity.score < 30) {
+              validation.issues = [...validation.issues, ...specificity.issues];
+              validation.score = Math.min(validation.score, specificity.score + 20);
+              validation.passed = validation.score >= 70;
+            }
+          }
+        } catch {
+          // 검증 실패 → 비차단
+        }
+      }
+
+      return { text: planResult.aggregated_result, validation };
+    } catch {
+      // Planning 실패 → 기존 단일 호출로 fallback
+    }
+  }
 
   const { system, user } = buildWorkerTaskPrompt(
     task.task,
@@ -196,9 +244,12 @@ export async function runAllAIWorkers(
             continue;
           }
 
-          // 최대 재시도 도달 → 콜백으로 사용자 선택 요청
+          // 최대 재시도 도달 → 콜백으로 사용자 선택 요청 (30초 타임아웃)
           if (callbacks.onValidationFailed) {
-            const action = await callbacks.onValidationFailed(worker.id, result.validation);
+            const action = await Promise.race([
+              callbacks.onValidationFailed(worker.id, result.validation),
+              new Promise<'accept'>(r => setTimeout(() => r('accept'), 30_000)),
+            ]);
             if (action === 'retry') {
               attempt++;
               continue;

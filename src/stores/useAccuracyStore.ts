@@ -24,7 +24,11 @@ export const useAccuracyStore = create<AccuracyState>((set, get) => ({
     const local = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
     set({ ratings: local });
     loadAndMerge<PersonaAccuracyRating>('accuracy_ratings', STORAGE_KEYS.ACCURACY_RATINGS)
-      .then((merged) => set({ ratings: merged }));
+      .then((merged) => {
+        const current = get().ratings;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ ratings: [...merged, ...newLocal] });
+      });
   },
 
   addRating: (data) => {

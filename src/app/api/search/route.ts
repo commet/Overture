@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateContentType, validateOrigin } from '@/lib/api-security';
+import { validateContentType, validateContentLength, validateOrigin } from '@/lib/api-security';
 
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
 
 export async function POST(req: NextRequest) {
   const ctError = validateContentType(req);
   if (ctError) return ctError;
+  const clError = validateContentLength(req);
+  if (clError) return clError;
   const originError = validateOrigin(req);
   if (originError) return originError;
 

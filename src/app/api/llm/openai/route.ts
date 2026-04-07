@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { validateOrigin, validateContentType, validateContentLength } from '@/lib/api-security';
 
 const MAX_TOKENS_CAP = 4096;
 const MAX_MESSAGE_LENGTH = 50_000;
 const MAX_SYSTEM_LENGTH = 10_000;
 const MAX_MESSAGES = 20;
-const MAX_TOTAL_BODY = 500_000; // 500KB
+const MAX_TOTAL_BODY = 500_000;
 const VALID_ROLES = new Set(['user', 'assistant']);
+const MODEL = 'gpt-4o';
 
 function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false;
@@ -26,13 +27,10 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
 }
 
 /**
- * Direct mode endpoint — uses the user's own API key (sent from client).
+ * OpenAI direct mode endpoint — uses the user's own OpenAI API key.
  * No rate limiting (user pays their own bill).
- * No auth required (the API key itself is the credential).
- * The key is only used server-side and never stored.
  */
 export async function POST(req: NextRequest) {
-  // Request validation
   const ctError = validateContentType(req);
   if (ctError) return ctError;
   const clError = validateContentLength(req);
@@ -45,9 +43,9 @@ export async function POST(req: NextRequest) {
     const { apiKey, messages, system } = body;
     const maxTokens = Math.min(Number(body.maxTokens) || 2000, MAX_TOKENS_CAP);
 
-    // Validate API key format and length
-    if (typeof apiKey !== 'string' || !apiKey.startsWith('sk-ant-') || apiKey.length < 20 || apiKey.length > 200) {
-      return NextResponse.json({ error: '유효한 Anthropic API 키가 아닙니다.' }, { status: 400 });
+    // Validate API key format
+    if (typeof apiKey !== 'string' || !apiKey.startsWith('sk-') || apiKey.length < 20 || apiKey.length > 200) {
+      return NextResponse.json({ error: '유효한 OpenAI API 키가 아닙니다.' }, { status: 400 });
     }
 
     if (typeof system !== 'string' || system.length > MAX_SYSTEM_LENGTH) {
@@ -58,42 +56,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
     }
 
-    const client = new Anthropic({ apiKey });
+    const client = new OpenAI({ apiKey });
     const stream = body.stream === true;
 
+    // Convert to OpenAI message format: system prompt as first message
+    const openaiMessages: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: system },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+    ];
+
     if (stream) {
-      const anthropicStream = client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
+      const openaiStream = await client.chat.completions.create({
+        model: MODEL,
         max_tokens: maxTokens,
-        system,
-        messages: messages as Anthropic.MessageParam[],
+        messages: openaiMessages,
+        stream: true,
       });
 
       const encoder = new TextEncoder();
-      let cancelled = false;
+      const controller_ref = { aborted: false };
       const readable = new ReadableStream({
         async start(controller) {
           try {
-            for await (const event of anthropicStream) {
-              if (cancelled) break;
-              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+            for await (const chunk of openaiStream) {
+              if (controller_ref.aborted) break;
+              const text = chunk.choices[0]?.delta?.content;
+              if (text) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
               }
             }
-            if (!cancelled) {
+            if (!controller_ref.aborted) {
               controller.enqueue(encoder.encode('data: [DONE]\n\n'));
               controller.close();
             }
           } catch {
-            if (!cancelled) {
+            if (!controller_ref.aborted) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`));
               controller.close();
             }
           }
         },
         cancel() {
-          cancelled = true;
-          anthropicStream.abort();
+          controller_ref.aborted = true;
+          openaiStream.controller.abort();
         },
       });
 
@@ -107,20 +115,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Non-streaming path
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await client.chat.completions.create({
+      model: MODEL,
       max_tokens: maxTokens,
-      system,
-      messages: messages as Anthropic.MessageParam[],
+      messages: openaiMessages,
     });
 
-    const block = response.content.find((b) => b.type === 'text');
-    const res = NextResponse.json({ text: block ? block.text : '' });
+    const text = response.choices[0]?.message?.content ?? '';
+    const res = NextResponse.json({ text });
     res.headers.set('Cache-Control', 'no-store');
     return res;
   } catch {
     return NextResponse.json(
-      { error: 'LLM 호출 중 오류가 발생했습니다. API 키를 확인해주세요.' },
+      { error: 'OpenAI 호출 중 오류가 발생했습니다. API 키를 확인해주세요.' },
       { status: 500 }
     );
   }

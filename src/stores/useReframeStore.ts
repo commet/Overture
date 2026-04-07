@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { ReframeItem } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface ReframeState {
   items: ReframeItem[];
@@ -26,7 +26,11 @@ export const useReframeStore = create<ReframeState>((set, get) => ({
     set({ items: local });
     // Background: merge with Supabase (fetches remote + merges + saves)
     loadAndMerge<ReframeItem>('reframe_items', STORAGE_KEYS.REFRAME_LIST)
-      .then((merged) => set({ items: merged }));
+      .then((merged) => {
+        const current = get().items;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ items: [...merged, ...newLocal] });
+      });
   },
 
   createItem: (inputText: string) => {
@@ -71,7 +75,7 @@ export const useReframeStore = create<ReframeState>((set, get) => ({
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
     setStorage(STORAGE_KEYS.REFRAME_LIST, items);
-    deleteFromSupabase('reframe_items', id);
+    softDeleteFromSupabase('reframe_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),

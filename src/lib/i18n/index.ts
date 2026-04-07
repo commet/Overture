@@ -11,7 +11,8 @@ const translations = { ko, en } as const;
  */
 export function t(key: TranslationKey, params?: Record<string, string | number>): string {
   const settings = getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
-    anthropic_api_key: '', llm_mode: 'proxy', local_endpoint: '',
+    anthropic_api_key: '', openai_api_key: '', llm_provider: 'anthropic',
+    llm_mode: 'proxy', local_endpoint: '',
     language: 'ko', audio_enabled: false, audio_volume: 0.15,
   });
 
@@ -33,7 +34,8 @@ export function t(key: TranslationKey, params?: Record<string, string | number>)
  */
 export function getCurrentLanguage(): 'ko' | 'en' {
   const settings = getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
-    anthropic_api_key: '', llm_mode: 'proxy', local_endpoint: '',
+    anthropic_api_key: '', openai_api_key: '', llm_provider: 'anthropic',
+    llm_mode: 'proxy', local_endpoint: '',
     language: 'ko', audio_enabled: false, audio_volume: 0.15,
   });
   return settings.language || 'ko';

@@ -16,6 +16,7 @@ vi.mock('@/lib/db', () => ({
   insertToSupabase: vi.fn(),
   upsertToSupabase: vi.fn(),
   deleteFromSupabase: vi.fn(),
+  softDeleteFromSupabase: vi.fn(),
   updateInSupabase: vi.fn(),
   loadAndMerge: vi.fn(() => Promise.resolve([])),
 }));
@@ -81,11 +82,11 @@ import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useRefineStore } from '@/stores/useRefineStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { upsertToSupabase, deleteFromSupabase } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase } from '@/lib/db';
 import { setStorage, __resetStore } from '@/lib/storage';
 
 const mockUpsert = vi.mocked(upsertToSupabase);
-const mockDelete = vi.mocked(deleteFromSupabase);
+const mockDelete = vi.mocked(softDeleteFromSupabase);
 const mockSetStorage = vi.mocked(setStorage);
 const resetStorage = __resetStore as () => void;
 

@@ -8,6 +8,7 @@ import { StaffLines, TrebleClef } from '@/components/ui/MusicalElements';
 import { track } from '@/lib/analytics';
 import { ArrowRight } from 'lucide-react';
 import { PersonaAvatar, type AvatarType } from './PersonaAvatars';
+import { useLocale, type Locale } from '@/hooks/useLocale';
 
 /* ─── Example Data ─── */
 interface ExampleData {
@@ -15,89 +16,92 @@ interface ExampleData {
   persona: string;
   avatar: AvatarType;
   realQuestion: { tag: string; text: string };
-  skeleton: string; // doc_type preview showing domain awareness
+  skeleton: string;
   pills: { label: string; value: string }[];
   judge: { name: string; quote: string; action: { tag: string; text: string; link: string } };
 }
 
-const EXAMPLES: ExampleData[] = [
+const EXAMPLES_KO: ExampleData[] = [
   {
     input: '나는 개발자인데 갑자기 대표님이 2주일 안에 기획안을 짜오라고 했어',
     persona: '개발자',
     avatar: 'dev',
-    realQuestion: {
-      tag: '진짜 질문',
-      text: '네가 아는 건 충분하다.\n그걸 대표님 언어로 옮기는 게 문제다.',
-    },
+    realQuestion: { tag: '진짜 질문', text: '네가 아는 건 충분하다.\n그걸 대표님 언어로 옮기는 게 문제다.' },
     skeleton: '배경 → 현황 분석 → 제안 → 기대효과 → 일정 → 리스크',
-    pills: [
-      { label: '누가 봐?', value: '대표님' },
-      { label: '기한?', value: '2주' },
-    ],
-    judge: {
-      name: '대표님은 뭐라고 할까?',
-      quote: '방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.',
-      action: { tag: '필수', text: '경쟁 분석 추가', link: '자동 반영' },
-    },
+    pills: [{ label: '누가 봐?', value: '대표님' }, { label: '기한?', value: '2주' }],
+    judge: { name: '대표님은 뭐라고 할까?', quote: '방향은 좋은데, 경쟁사 대비 우위가 빠져있어. 그거 넣으면 통과.', action: { tag: '필수', text: '경쟁 분석 추가', link: '자동 반영' } },
   },
   {
     input: 'PM인데 전략 제안서를 내일까지 내야 하는데 어디서 시작하지',
     persona: 'PM',
     avatar: 'pm',
-    realQuestion: {
-      tag: '진짜 질문',
-      text: '이사회가 읽는 건 첫 3줄뿐이다.\n거기서 승부가 난다.',
-    },
+    realQuestion: { tag: '진짜 질문', text: '이사회가 읽는 건 첫 3줄뿐이다.\n거기서 승부가 난다.' },
     skeleton: '현황 → 기회 분석 → 전략 방향 → 실행 로드맵 → 성공 기준',
-    pills: [
-      { label: '결정자?', value: '이사회' },
-      { label: '핵심?', value: 'ROI' },
-    ],
-    judge: {
-      name: '이사회는 뭐라고 할까?',
-      quote: '요약이 너무 길어. 한 문장으로 줄여. 그리고 숫자가 어디 있어?',
-      action: { tag: '필수', text: '1줄 요약 + 핵심 수치 추가', link: '자동 반영' },
-    },
+    pills: [{ label: '결정자?', value: '이사회' }, { label: '핵심?', value: 'ROI' }],
+    judge: { name: '이사회는 뭐라고 할까?', quote: '요약이 너무 길어. 한 문장으로 줄여. 그리고 숫자가 어디 있어?', action: { tag: '필수', text: '1줄 요약 + 핵심 수치 추가', link: '자동 반영' } },
   },
   {
     input: '디자이너인데 비즈니스 케이스를 만들라고 했다. ROI가 뭐지.',
     persona: '디자이너',
     avatar: 'designer',
-    realQuestion: {
-      tag: '진짜 질문',
-      text: 'CFO는 감성이 아니라 숫자를 산다.\n전환율 데이터 하나면 된다.',
-    },
+    realQuestion: { tag: '진짜 질문', text: 'CFO는 감성이 아니라 숫자를 산다.\n전환율 데이터 하나면 된다.' },
     skeleton: '현황 → 대안 비교 → 추천안 → 재무 분석 → 리스크',
-    pills: [
-      { label: '목적?', value: '예산 확보' },
-      { label: '설득?', value: 'CFO' },
-    ],
-    judge: {
-      name: 'CFO는 뭐라고 할까?',
-      quote: '디자인 얘기 말고. 이걸 하면 매출이 얼마나 느는지만 보여줘.',
-      action: { tag: '필수', text: '매출 임팩트 수치화', link: '자동 반영' },
-    },
+    pills: [{ label: '목적?', value: '예산 확보' }, { label: '설득?', value: 'CFO' }],
+    judge: { name: 'CFO는 뭐라고 할까?', quote: '디자인 얘기 말고. 이걸 하면 매출이 얼마나 느는지만 보여줘.', action: { tag: '필수', text: '매출 임팩트 수치화', link: '자동 반영' } },
   },
   {
     input: '스타트업 CTO인데 투자자 피치덱을 혼자 만들어야 한다',
     persona: 'CTO',
     avatar: 'cto',
-    realQuestion: {
-      tag: '진짜 질문',
-      text: '투자자의 진짜 질문은 단 하나:\n왜 이 팀이어야 하는가.',
-    },
+    realQuestion: { tag: '진짜 질문', text: '투자자의 진짜 질문은 단 하나:\n왜 이 팀이어야 하는가.' },
     skeleton: 'Problem → Solution → Market → Product → Team → Ask',
-    pills: [
-      { label: '라운드?', value: 'Seed' },
-      { label: '핵심?', value: 'Why now' },
-    ],
-    judge: {
-      name: '투자자는 뭐라고 할까?',
-      quote: '기술은 알겠어. 근데 이걸 왜 지금 해야 해? "Why now"이 안 보여.',
-      action: { tag: '필수', text: 'Why now 섹션 강화', link: '자동 반영' },
-    },
+    pills: [{ label: '라운드?', value: 'Seed' }, { label: '핵심?', value: 'Why now' }],
+    judge: { name: '투자자는 뭐라고 할까?', quote: '기술은 알겠어. 근데 이걸 왜 지금 해야 해? "Why now"이 안 보여.', action: { tag: '필수', text: 'Why now 섹션 강화', link: '자동 반영' } },
   },
 ];
+
+const EXAMPLES_EN: ExampleData[] = [
+  {
+    input: "I'm a developer and my CEO just told me to write a project proposal in 2 weeks",
+    persona: 'Developer',
+    avatar: 'dev',
+    realQuestion: { tag: 'Real question', text: "You know enough.\nThe problem is translating it\ninto your CEO's language." },
+    skeleton: 'Background → Analysis → Proposal → Impact → Timeline → Risk',
+    pills: [{ label: 'Audience?', value: 'CEO' }, { label: 'Deadline?', value: '2 weeks' }],
+    judge: { name: 'What would the CEO say?', quote: "Direction is good, but competitive advantage is missing. Add that and it's approved.", action: { tag: 'Required', text: 'Add competitive analysis', link: 'Auto-applied' } },
+  },
+  {
+    input: "I'm a PM and need to deliver a strategy proposal by tomorrow",
+    persona: 'PM',
+    avatar: 'pm',
+    realQuestion: { tag: 'Real question', text: 'The board only reads the first 3 lines.\nThat\'s where you win or lose.' },
+    skeleton: 'Status → Opportunity → Strategy → Roadmap → Success criteria',
+    pills: [{ label: 'Decision maker?', value: 'Board' }, { label: 'Key metric?', value: 'ROI' }],
+    judge: { name: 'What would the board say?', quote: "Summary is too long. Cut it to one sentence. And where are the numbers?", action: { tag: 'Required', text: 'Add 1-line summary + key metrics', link: 'Auto-applied' } },
+  },
+  {
+    input: "I'm a designer told to build a business case. What even is ROI?",
+    persona: 'Designer',
+    avatar: 'designer',
+    realQuestion: { tag: 'Real question', text: "The CFO buys numbers, not aesthetics.\nOne conversion rate is all you need." },
+    skeleton: 'Current state → Alternatives → Recommendation → Financial analysis → Risk',
+    pills: [{ label: 'Goal?', value: 'Secure budget' }, { label: 'Convince?', value: 'CFO' }],
+    judge: { name: 'What would the CFO say?', quote: "Skip the design talk. Just show me how much revenue this adds.", action: { tag: 'Required', text: 'Quantify revenue impact', link: 'Auto-applied' } },
+  },
+  {
+    input: "I'm a startup CTO and need to build the investor pitch deck alone",
+    persona: 'CTO',
+    avatar: 'cto',
+    realQuestion: { tag: 'Real question', text: "Investors only have one real question:\nWhy this team?" },
+    skeleton: 'Problem → Solution → Market → Product → Team → Ask',
+    pills: [{ label: 'Round?', value: 'Seed' }, { label: 'Key?', value: 'Why now' }],
+    judge: { name: 'What would investors say?', quote: 'The tech makes sense. But why now? I don\'t see the "Why now" story.', action: { tag: 'Required', text: 'Strengthen Why Now section', link: 'Auto-applied' } },
+  },
+];
+
+function getExamples(locale: Locale): ExampleData[] {
+  return locale === 'ko' ? EXAMPLES_KO : EXAMPLES_EN;
+}
 
 /* ─── Auto-typing hook (exposes index) ─── */
 function useAutoType(examples: ExampleData[], speed = 45, pause = 2800) {
@@ -202,7 +206,7 @@ function AnalysisCard({ data }: { data: ExampleData }) {
             {data.realQuestion.tag}
           </span>
           <span className="text-[10px] text-[var(--text-tertiary)] ml-1">
-            문제는 표면. 이게 당신이 진짜 답해야 할 것
+            {data.realQuestion.tag === '진짜 질문' ? '문제는 표면. 이게 당신이 진짜 답해야 할 것' : 'The surface is not the problem. This is what you really need to answer'}
           </span>
         </motion.div>
         <motion.p
@@ -221,7 +225,7 @@ function AnalysisCard({ data }: { data: ExampleData }) {
           transition={{ delay: 0.4, duration: 0.3, ease: EASE }}
           className="mt-3 px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border-subtle)]"
         >
-          <span className="text-[10px] font-medium text-[var(--accent)] tracking-wide">문서 구조</span>
+          <span className="text-[10px] font-medium text-[var(--accent)] tracking-wide">{data.realQuestion.tag === '진짜 질문' ? '문서 구조' : 'Document structure'}</span>
           <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">{data.skeleton}</p>
         </motion.div>
       </div>
@@ -361,12 +365,14 @@ function PersonaSelector({ examples, activeIdx, onSelect }: { examples: ExampleD
 /* ─── Main Hero ─── */
 export function Hero() {
   const router = useRouter();
+  const locale = useLocale();
+  const examples = getExamples(locale);
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
-  const { display: autoText, currentIdx, jumpTo, stop: stopAutoType, userStopped } = useAutoType(EXAMPLES);
+  const { display: autoText, currentIdx, jumpTo, stop: stopAutoType, userStopped } = useAutoType(examples);
 
   const handleSubmit = () => {
-    const text = inputValue.trim() || (userStopped ? '' : autoText) || EXAMPLES[currentIdx].input;
+    const text = inputValue.trim() || (userStopped ? '' : autoText) || examples[currentIdx].input;
     if (!text) return;
     track('landing_hero_submit', { text_length: text.length, used_example: !inputValue.trim() });
     router.push(`/workspace?q=${encodeURIComponent(text)}`);
@@ -378,11 +384,12 @@ export function Hero() {
   };
 
   const handlePersonaSelect = (idx: number) => {
-    track('landing_persona_select', { persona: EXAMPLES[idx].persona });
+    track('landing_persona_select', { persona: examples[idx].persona });
     jumpTo(idx);
   };
 
-  const currentExample = EXAMPLES[currentIdx];
+  const currentExample = examples[currentIdx];
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
   return (
     <section className="relative overflow-hidden">
@@ -397,24 +404,28 @@ export function Hero() {
           {/* ─── Left: Message + Input ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
-              <span className="lg:whitespace-nowrap">내 전문 분야가 아닌 걸</span>
+              <span className="lg:whitespace-nowrap">{L('내 전문 분야가 아닌 걸', 'When you have to do')}</span>
               <br />
-              <span className="text-gold-gradient">해야 할 때.</span>
+              <span className="text-gold-gradient">{L('해야 할 때.', "what you've never done.")}</span>
             </h1>
 
             <p className="mt-5 text-[15px] md:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-md">
-              질문 하나 던지면, 30초 안에 뼈대가 나옵니다.
+              {L('질문 하나 던지면, 30초 안에 뼈대가 나옵니다.', 'Drop a question, get a structured draft in 30 seconds.')}
               <br />
-              채울수록 날카로워집니다.
+              {L('채울수록 날카로워집니다.', 'The more you add, the sharper it gets.')}
             </p>
 
             {/* ─── Live Voices: 실제 사용자가 느끼는 고통 ─── */}
             <div className="mt-6 space-y-2.5 max-w-md">
-              {[
+              {(locale === 'ko' ? [
                 { text: 'AI로 뽑아보면 수정이 반이야. 결국 내가 다시 다듬어야 함.', solve: '한 번에 쓸 수 있는 결과가 나옵니다' },
                 { text: '뭘 써야 할지 모르겠는데, 프롬프트는 또 어떻게 짜.', solve: '고민을 그대로 던지면 됩니다' },
                 { text: '검수 피로도가 너무 높더라고. 결국 다시 다 살펴보게 돼.', solve: '약한 곳을 미리 짚어줍니다' },
-              ].map((v, i) => (
+              ] : [
+                { text: 'AI output always needs heavy editing. I end up rewriting half of it.', solve: 'Get results you can actually use as-is' },
+                { text: "I don't even know what to write, let alone how to prompt AI.", solve: 'Just describe your situation — no prompt engineering' },
+                { text: 'Review fatigue is real. I always have to double-check everything.', solve: 'Weak spots are flagged before you even ask' },
+              ]).map((v, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -8 }}
@@ -453,7 +464,7 @@ export function Hero() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onFocus={handleFocus}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
-                    placeholder={focused ? '고민을 입력하세요...' : undefined}
+                    placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : undefined}
                     maxLength={200}
                     className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
                   />
@@ -482,14 +493,14 @@ export function Hero() {
               </div>
 
               {/* Persona selector */}
-              <PersonaSelector examples={EXAMPLES} activeIdx={currentIdx} onSelect={handlePersonaSelect} />
+              <PersonaSelector examples={examples} activeIdx={currentIdx} onSelect={handlePersonaSelect} />
 
               <div className="flex items-center justify-between mt-3 px-1">
                 <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0">
                     <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z" />
                   </svg>
-                  로그인 없이 무료 체험
+                  {L('로그인 없이 무료 체험', 'Free — no login required')}
                 </p>
                 <Link
                   href="/demo"
@@ -501,7 +512,7 @@ export function Hero() {
                     transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
                   }}
                 >
-                  데모 먼저 보기
+                  {L('데모 먼저 보기', 'Try the demo')}
                 </Link>
               </div>
             </div>

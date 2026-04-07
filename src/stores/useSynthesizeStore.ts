@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { SynthesizeItem, SynthesizeSource } from '@/stores/types';
+import type { SynthesizeItem } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface SynthesizeState {
   items: SynthesizeItem[];
@@ -19,8 +20,14 @@ export const useSynthesizeStore = create<SynthesizeState>((set, get) => ({
   currentId: null,
 
   loadItems: () => {
-    const items = getStorage<SynthesizeItem[]>(STORAGE_KEYS.SYNTHESIZE_LIST, []);
-    set({ items });
+    const local = getStorage<SynthesizeItem[]>(STORAGE_KEYS.SYNTHESIZE_LIST, []);
+    set({ items: local });
+    loadAndMerge<SynthesizeItem>('synthesize_items', STORAGE_KEYS.SYNTHESIZE_LIST)
+      .then((merged) => {
+        const current = get().items;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ items: [...merged, ...newLocal] });
+      });
   },
 
   createItem: () => {
@@ -38,6 +45,7 @@ export const useSynthesizeStore = create<SynthesizeState>((set, get) => ({
     const items = [...get().items, newItem];
     set({ items, currentId: newItem.id });
     setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+    upsertToSupabase('synthesize_items', newItem);
     return newItem.id;
   },
 
@@ -47,6 +55,8 @@ export const useSynthesizeStore = create<SynthesizeState>((set, get) => ({
     );
     set({ items });
     setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+    const updated = get().items.find(i => i.id === id);
+    if (updated) upsertToSupabase('synthesize_items', updated);
   },
 
   deleteItem: (id) => {
@@ -54,6 +64,7 @@ export const useSynthesizeStore = create<SynthesizeState>((set, get) => ({
     const currentId = get().currentId === id ? null : get().currentId;
     set({ items, currentId });
     setStorage(STORAGE_KEYS.SYNTHESIZE_LIST, items);
+    softDeleteFromSupabase('synthesize_items', id);
   },
 
   setCurrentId: (id) => set({ currentId: id }),

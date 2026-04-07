@@ -15,7 +15,10 @@ import { log } from './logger';
 type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
   | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refine_loops'
   | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores'
-  | 'agents' | 'agent_chains' | 'agent_activities';
+  | 'agents' | 'agent_chains' | 'agent_activities'
+  | 'synthesize_items';
+
+type SoftDeletableTable = 'projects' | 'personas' | 'reframe_items' | 'recast_items' | 'refine_loops' | 'synthesize_items';
 
 /**
  * Strip fields that must only be set by the server/database.
@@ -100,7 +103,8 @@ export async function loadAndMerge<T extends Timestamped>(
 
     if (error || !data) return local;
 
-    const remote = (data || []) as T[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const remote = ((data || []) as any[]).filter((r) => !r.deleted_at) as T[];
     const merged = mergeByTimestamp(local, remote);
 
     // Save merged back to localStorage
@@ -153,10 +157,13 @@ export async function syncToSupabase(table: TableName, localItems: any[]): Promi
 /**
  * Fetch all items for current user from Supabase.
  */
+const ALLOWED_ORDER_COLUMNS = new Set(['created_at', 'updated_at', 'name']);
+
 export async function fetchFromSupabase<T extends Record<string, unknown> | object>(
   table: TableName,
   orderBy: string = 'created_at'
 ): Promise<T[]> {
+  if (!ALLOWED_ORDER_COLUMNS.has(orderBy)) orderBy = 'created_at';
   const userId = await getCurrentUserId();
   if (!userId) return [];
 
@@ -197,7 +204,30 @@ export async function upsertToSupabase(table: TableName, item: any): Promise<voi
 }
 
 /**
- * Delete an item from Supabase.
+ * Soft-delete: set deleted_at instead of removing row.
+ * localStorage에서는 즉시 제거 (성능), Supabase에만 deleted_at 보존 (복구용).
+ */
+export async function softDeleteFromSupabase(table: SoftDeletableTable, id: string): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+
+  try {
+    const { error } = await supabase
+      .from(table)
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      log.error(`soft delete from ${table} failed: ${error.message}`, { context: 'db' });
+    }
+  } catch (err) {
+    handleError(err, `db.softDelete:${table}`);
+  }
+}
+
+/**
+ * Hard-delete an item from Supabase. Used for append-only tables.
  */
 export async function deleteFromSupabase(table: TableName, id: string): Promise<void> {
   const userId = await getCurrentUserId();

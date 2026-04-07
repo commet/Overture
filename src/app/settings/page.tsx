@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,11 +9,26 @@ import { Modal } from '@/components/ui/Modal';
 import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
-import type { LLMMode } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink } from 'lucide-react';
+import type { LLMMode, LLMProvider } from '@/stores/types';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap } from 'lucide-react';
 import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 import { useSlackStore } from '@/stores/useSlackStore';
+
+const llmProviders: { value: LLMProvider; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    value: 'anthropic',
+    label: 'Anthropic (Claude)',
+    description: 'Claude Sonnet 4 — 프록시 또는 직접 API 키',
+    icon: <Server size={16} />,
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI (GPT-4o)',
+    description: '본인의 OpenAI API 키 사용. 사용량 제한 없음.',
+    icon: <Zap size={16} />,
+  },
+];
 
 const llmModes: { value: LLMMode; label: string; description: string; icon: React.ReactNode; available: boolean }[] = [
   {
@@ -116,6 +131,15 @@ export default function SettingsPage() {
     window.location.reload();
   };
 
+  const handleProviderChange = (provider: LLMProvider) => {
+    if (provider === 'openai') {
+      // OpenAI always uses direct mode
+      updateSettings({ llm_provider: provider, llm_mode: 'direct' });
+    } else {
+      updateSettings({ llm_provider: provider });
+    }
+  };
+
   const handleModeChange = (mode: LLMMode) => {
     if (mode === 'local') return;
     updateSettings({ llm_mode: mode });
@@ -128,44 +152,78 @@ export default function SettingsPage() {
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">LLM 연결 방식과 데이터 관리</p>
       </div>
 
-      {/* LLM Connection Mode */}
+      {/* LLM Provider */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <Server size={16} className="text-[var(--accent)]" />
-          <h3 className="text-[15px] font-bold">LLM 연결 방식</h3>
+          <h3 className="text-[15px] font-bold">LLM 프로바이더</h3>
         </div>
         <div className="space-y-2">
-          {llmModes.map((mode) => (
+          {llmProviders.map((provider) => (
             <button
-              key={mode.value}
-              onClick={() => handleModeChange(mode.value)}
-              disabled={!mode.available}
+              key={provider.value}
+              onClick={() => handleProviderChange(provider.value)}
               className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
-                settings.llm_mode === mode.value
+                (settings.llm_provider || 'anthropic') === provider.value
                   ? 'border-[var(--accent)] bg-[var(--ai)]'
-                  : mode.available
-                  ? 'border-[var(--border)] hover:border-[var(--accent)]'
-                  : 'border-[var(--border)] opacity-50 cursor-not-allowed'
+                  : 'border-[var(--border)] hover:border-[var(--accent)]'
               }`}
             >
-              <div className={`mt-0.5 ${settings.llm_mode === mode.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                {mode.icon}
+              <div className={`mt-0.5 ${(settings.llm_provider || 'anthropic') === provider.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                {provider.icon}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[var(--text-primary)]">{mode.label}</span>
-                  {settings.llm_mode === mode.value && <Check size={14} className="text-[var(--accent)]" />}
-                  {!mode.available && <Badge variant="default">Coming soon</Badge>}
+                  <span className="text-[14px] font-semibold text-[var(--text-primary)]">{provider.label}</span>
+                  {(settings.llm_provider || 'anthropic') === provider.value && <Check size={14} className="text-[var(--accent)]" />}
                 </div>
-                <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{mode.description}</p>
+                <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{provider.description}</p>
               </div>
             </button>
           ))}
         </div>
       </Card>
 
-      {/* API Key (shown when direct mode) */}
-      {settings.llm_mode === 'direct' && (
+      {/* Anthropic Connection Mode (shown when anthropic provider) */}
+      {(settings.llm_provider || 'anthropic') === 'anthropic' && (
+        <Card className="animate-fade-in">
+          <div className="flex items-center gap-2 mb-4">
+            <Globe size={16} className="text-[var(--accent)]" />
+            <h3 className="text-[15px] font-bold">Anthropic 연결 방식</h3>
+          </div>
+          <div className="space-y-2">
+            {llmModes.map((mode) => (
+              <button
+                key={mode.value}
+                onClick={() => handleModeChange(mode.value)}
+                disabled={!mode.available}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
+                  settings.llm_mode === mode.value
+                    ? 'border-[var(--accent)] bg-[var(--ai)]'
+                    : mode.available
+                    ? 'border-[var(--border)] hover:border-[var(--accent)]'
+                    : 'border-[var(--border)] opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <div className={`mt-0.5 ${settings.llm_mode === mode.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                  {mode.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px] font-semibold text-[var(--text-primary)]">{mode.label}</span>
+                    {settings.llm_mode === mode.value && <Check size={14} className="text-[var(--accent)]" />}
+                    {!mode.available && <Badge variant="default">Coming soon</Badge>}
+                  </div>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{mode.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Anthropic API Key (shown when anthropic + direct mode) */}
+      {(settings.llm_provider || 'anthropic') === 'anthropic' && settings.llm_mode === 'direct' && (
         <Card className="animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
             <Key size={16} className="text-[var(--accent)]" />
@@ -183,6 +241,41 @@ export default function SettingsPage() {
               value={settings.anthropic_api_key}
               onChange={(e) => updateSettings({ anthropic_api_key: e.target.value })}
               placeholder="sk-ant-..."
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              spellCheck={false}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+            />
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
+            >
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </Card>
+      )}
+
+      {/* OpenAI API Key (shown when openai provider) */}
+      {(settings.llm_provider || 'anthropic') === 'openai' && (
+        <Card className="animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <Key size={16} className="text-[var(--accent)]" />
+            <h3 className="text-[15px] font-bold">OpenAI API Key</h3>
+          </div>
+          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
+            <p>키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.</p>
+            <p className="text-[var(--warning)] font-medium">
+              ⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.
+            </p>
+          </div>
+          <div className="relative">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={settings.openai_api_key || ''}
+              onChange={(e) => updateSettings({ openai_api_key: e.target.value })}
+              placeholder="sk-..."
               autoComplete="off"
               data-1p-ignore
               data-lpignore="true"
@@ -410,11 +503,7 @@ export default function SettingsPage() {
 }
 
 function LearningHealthCard() {
-  const [health, setHealth] = useState<ReturnType<typeof assessLearningHealth> | null>(null);
-
-  useEffect(() => {
-    setHealth(assessLearningHealth());
-  }, []);
+  const health = useMemo(() => assessLearningHealth(), []);
 
   if (!health) return null;
 

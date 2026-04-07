@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Project, ProjectRef } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
 
 interface ProjectState {
   projects: Project[];
@@ -25,7 +25,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const local = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
     set({ projects: local });
     loadAndMerge<Project>('projects', STORAGE_KEYS.PROJECTS)
-      .then((merged) => set({ projects: merged }));
+      .then((merged) => {
+        const current = get().projects;
+        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+        set({ projects: [...merged, ...newLocal] });
+      });
   },
 
   createProject: (name, description = '') => {
@@ -60,7 +64,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const currentProjectId = get().currentProjectId === id ? null : get().currentProjectId;
     set({ projects, currentProjectId });
     setStorage(STORAGE_KEYS.PROJECTS, projects);
-    deleteFromSupabase('projects', id);
+    softDeleteFromSupabase('projects', id);
   },
 
   addRef: (projectId, ref) => {

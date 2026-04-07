@@ -19,6 +19,7 @@ vi.mock('@/lib/db', () => ({
   insertToSupabase: vi.fn(),
   upsertToSupabase: vi.fn(),
   deleteFromSupabase: vi.fn(),
+  softDeleteFromSupabase: vi.fn(),
   loadAndMerge: vi.fn(() => Promise.resolve([])),
 }));
 

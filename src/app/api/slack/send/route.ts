@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { validateContentType, validateOrigin } from '@/lib/api-security';
+import { validateContentType, validateContentLength, validateOrigin } from '@/lib/api-security';
 import { markdownToSlackBlocks } from '@/lib/slack-blocks';
 
 /** Fetch Slack token using user's authenticated Supabase client (respects RLS). */
@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
   // Security checks
   const ctError = validateContentType(req);
   if (ctError) return ctError;
+  const clError = validateContentLength(req);
+  if (clError) return clError;
   const originError = validateOrigin(req);
   if (originError) return originError;
 

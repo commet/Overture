@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
-import { validateOrigin, validateContentType } from '@/lib/api-security';
+import { validateOrigin, validateContentType, validateContentLength } from '@/lib/api-security';
 
 const MAX_TOKENS_CAP = 4096;
 const DAILY_LIMIT = 10; // ~2 progressive sessions per day
@@ -112,6 +112,8 @@ export async function POST(req: NextRequest) {
   // 0. Request validation
   const ctError = validateContentType(req);
   if (ctError) return ctError;
+  const clError = validateContentLength(req);
+  if (clError) return clError;
   const csrfError = validateOrigin(req);
   if (csrfError) return csrfError;
 
@@ -181,20 +183,30 @@ export async function POST(req: NextRequest) {
       });
 
       const encoder = new TextEncoder();
+      let cancelled = false;
       const readable = new ReadableStream({
         async start(controller) {
           try {
             for await (const event of anthropicStream) {
+              if (cancelled) break;
               if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
               }
             }
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            controller.close();
+            if (!cancelled) {
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
+            }
           } catch {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`));
-            controller.close();
+            if (!cancelled) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`));
+              controller.close();
+            }
           }
+        },
+        cancel() {
+          cancelled = true;
+          anthropicStream.abort();
         },
       });
 

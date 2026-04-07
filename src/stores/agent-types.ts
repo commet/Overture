@@ -25,7 +25,7 @@ export interface AgentChain {
 // ─── 해금 조건 ───
 
 export interface UnlockCondition {
-  type: 'always' | 'chain_tasks' | 'total_tasks';
+  type: 'always' | 'chain_tasks' | 'total_tasks' | 'sessions';
   chain_id?: string;         // chain_tasks일 때: 어떤 체인의 작업 수 기준
   required: number;          // 필요 작업 수
 }
@@ -178,4 +178,5 @@ export const CHAIN_UNLOCK_THRESHOLDS = {
   master: 15,   // 체인 작업 15회 → 세 번째 에이전트 해금
 } as const;
 
-export const CONCERTMASTER_UNLOCK_THRESHOLD = 30; // 전체 작업 30회 → 악장 해금
+export const CONCERTMASTER_UNLOCK_THRESHOLD = 10; // 전체 작업 10회 → 악장 해금
+export const CONCERTMASTER_SESSION_THRESHOLD = 3; // 또는 3세션 완료 → 악장 해금

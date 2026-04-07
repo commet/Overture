@@ -26,6 +26,7 @@ import {
   XP_REWARDS,
   CHAIN_UNLOCK_THRESHOLDS,
   CONCERTMASTER_UNLOCK_THRESHOLD,
+  CONCERTMASTER_SESSION_THRESHOLD,
 } from '@/stores/agent-types';
 
 // ─── Builtin Agent Definitions ───
@@ -291,7 +292,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return;
     }
 
-    set({ agents, chains, activities });
+    // 기존 데이터 마이그레이션: 악장 해금 조건 30 → 10
+    const migratedAgents = agents.map(a => {
+      if (a.id === 'concertmaster' && a.unlock_condition.type === 'total_tasks' && a.unlock_condition.required > CONCERTMASTER_UNLOCK_THRESHOLD) {
+        return { ...a, unlock_condition: { ...a.unlock_condition, required: CONCERTMASTER_UNLOCK_THRESHOLD } };
+      }
+      return a;
+    });
+
+    set({ agents: migratedAgents, chains, activities });
 
     // 기존 Persona 마이그레이션 (아직 안 됐으면)
     get().migrateFromPersonas();
@@ -303,12 +312,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     loadAndMerge<Agent>('agents', STORAGE_KEYS.AGENTS)
       .then((merged) => {
         if (merged.length > 0) {
-          set({ agents: merged });
+          const current = get().agents;
+          const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+          set({ agents: [...merged, ...newLocal] });
           get().checkUnlocks();
         }
       });
     loadAndMerge<AgentChain>('agent_chains', STORAGE_KEYS.AGENT_CHAINS)
-      .then((merged) => { if (merged.length > 0) set({ chains: merged }); });
+      .then((merged) => {
+        if (merged.length > 0) {
+          const current = get().chains;
+          const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
+          set({ chains: [...merged, ...newLocal] });
+        }
+      });
   },
 
   // ─── CRUD ───
@@ -596,9 +613,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           shouldUnlock = (chain?.total_tasks || 0) >= agent.unlock_condition.required;
           break;
         }
-        case 'total_tasks':
-          shouldUnlock = totalTasks >= agent.unlock_condition.required;
+        case 'total_tasks': {
+          // 태스크 수 OR 세션 수 (악장 조기 해금)
+          const sessionCount = getStorage<unknown[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []).length;
+          shouldUnlock = totalTasks >= agent.unlock_condition.required
+            || sessionCount >= CONCERTMASTER_SESSION_THRESHOLD;
           break;
+        }
+        case 'sessions': {
+          const sessions = getStorage<unknown[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []).length;
+          shouldUnlock = sessions >= agent.unlock_condition.required;
+          break;
+        }
       }
 
       if (shouldUnlock) {

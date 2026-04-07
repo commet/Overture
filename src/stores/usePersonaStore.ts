@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Persona, FeedbackLog, FeedbackRecord, RehearsalResult } from '@/stores/types';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, deleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
+import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge, insertToSupabase } from '@/lib/db';
 import { track } from '@/lib/analytics';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { agentToPersona, personaToAgentInput } from '@/lib/agent-adapters';
@@ -92,9 +92,17 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
 
     set({ personas: merged, feedbackHistory: localFeedback });
     loadAndMerge<Persona>('personas', STORAGE_KEYS.PERSONAS)
-      .then((supabaseMerged) => set({ personas: supabaseMerged }));
+      .then((supabaseMerged) => {
+        const current = get().personas;
+        const newLocal = current.filter(c => !supabaseMerged.find(m => m.id === c.id));
+        set({ personas: [...supabaseMerged, ...newLocal] });
+      });
     loadAndMerge<FeedbackRecord>('feedback_records', STORAGE_KEYS.FEEDBACK_HISTORY)
-      .then((fbMerged) => set({ feedbackHistory: fbMerged }));
+      .then((fbMerged) => {
+        const current = get().feedbackHistory;
+        const newLocal = current.filter(c => !fbMerged.find(m => m.id === c.id));
+        set({ feedbackHistory: [...fbMerged, ...newLocal] });
+      });
   },
 
   createPersona: (data) => {
@@ -152,7 +160,7 @@ export const usePersonaStore = create<PersonaState>((set, get) => ({
     const personas = get().personas.filter((p) => p.id !== id);
     set({ personas });
     setStorage(STORAGE_KEYS.PERSONAS, personas);
-    deleteFromSupabase('personas', id);
+    softDeleteFromSupabase('personas', id);
   },
 
   addFeedbackLog: (personaId, log) => {

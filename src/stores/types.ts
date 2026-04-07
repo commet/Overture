@@ -67,6 +67,7 @@ export interface ReframeItem {
   user_edited_question?: boolean;
   reanalysis_count?: number;
   interview_signals?: InterviewSignals;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -196,6 +197,7 @@ export interface RecastItem {
   analysis: RecastAnalysis | null;
   steps: RecastStep[];
   status: 'input' | 'analyzing' | 'review' | 'done';
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -226,6 +228,7 @@ export interface Persona {
   extracted_traits: string[];
   feedback_logs: FeedbackLog[];
   is_example?: boolean;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -306,6 +309,7 @@ export interface Project {
   /** Validation Chain: 완료 시 확신도 (1-5). outcome과 비교하여 보정 곡선 생성. */
   confidence_at_completion?: number;
   team_id?: string;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -428,6 +432,7 @@ export interface RefineLoop {
   iterations: RefineIteration[];
   status: 'active' | 'converged' | 'stopped_by_user';
   max_iterations: number;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -596,9 +601,12 @@ export interface DecisionQualityScore {
 // ─── Settings ───
 
 export type LLMMode = 'proxy' | 'direct' | 'local';
+export type LLMProvider = 'anthropic' | 'openai';
 
 export interface Settings {
   anthropic_api_key: string;
+  openai_api_key: string;
+  llm_provider: LLMProvider;
   llm_mode: LLMMode;
   local_endpoint: string;
   language: 'ko' | 'en';
@@ -773,6 +781,31 @@ export interface WorkerTask {
   validation_feedback?: string;     // 검증 실패 시 피드백
   validation_passed?: boolean;      // true if score >= 70
   retry_count?: number;             // 재시도 횟수
+
+  // Agent autonomous planning (Feature 1)
+  plan?: AgentPlan;
+  plan_step_results?: Array<{ step_number: number; result: string }>;
+
+  // Agent delegation (Feature 2)
+  delegation_depth?: number;        // 0=원본, 1=위임받은 task (재위임 불가)
+  delegated_to?: { agent_id: string; agent_name: string };
+  delegated_from?: { agent_id: string; agent_name: string };
+}
+
+// ─── Agent Autonomous Planning ───
+
+export interface AgentPlanStep {
+  step_number: number;
+  task: string;
+  expected_output: string;
+  is_delegation?: boolean;
+  delegate_capability?: string;
+}
+
+export interface AgentPlan {
+  steps: AgentPlanStep[];
+  reasoning: string;
+  estimated_quality_gain: string;
 }
 
 // Pipeline stages (Phase 3)

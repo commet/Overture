@@ -2,6 +2,7 @@
 
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { Code2, ClipboardList, Palette } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 function RevealCard({ children, delay }: { children: React.ReactNode; delay: number }) {
   const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ delay });
@@ -12,41 +13,33 @@ function RevealCard({ children, delay }: { children: React.ReactNode; delay: num
   );
 }
 
-const scenarios = [
-  {
-    icon: Code2,
-    headline: '백엔드 개발자인데\n대표님이 기획안을 써오라고 했다',
-    before: '뭘 써야 할지 모르겠다. 기획은 내 전문이 아닌데.',
-    after: '기획안 구조가 잡혔다. 대표님이 뭘 보고 싶은지도 파악됐다.',
-    color: '#2d4a7c',
-  },
-  {
-    icon: ClipboardList,
-    headline: 'PM인데 전략 제안서를\n2시간 안에 내야 한다',
-    before: '시간이 없다. 어디서부터 시작해야 하지.',
-    after: '핵심만 뽑아서 설득력 있게 정리됐다. 약점도 미리 파악했다.',
-    color: '#6b4c9a',
-  },
-  {
-    icon: Palette,
-    headline: '디자이너인데\n비즈니스 케이스를 만들라고 했다',
-    before: '비즈니스 언어를 모르겠다. ROI가 뭐지.',
-    after: '숫자와 논리로 번역됐다. 경영진이 이해하는 언어로.',
-    color: '#2d6b2d',
-  },
+const scenarios_ko = [
+  { icon: Code2, headline: '백엔드 개발자인데\n대표님이 기획안을 써오라고 했다', before: '뭘 써야 할지 모르겠다. 기획은 내 전문이 아닌데.', after: '기획안 구조가 잡혔다. 대표님이 뭘 보고 싶은지도 파악됐다.', color: '#2d4a7c' },
+  { icon: ClipboardList, headline: 'PM인데 전략 제안서를\n2시간 안에 내야 한다', before: '시간이 없다. 어디서부터 시작해야 하지.', after: '핵심만 뽑아서 설득력 있게 정리됐다. 약점도 미리 파악했다.', color: '#6b4c9a' },
+  { icon: Palette, headline: '디자이너인데\n비즈니스 케이스를 만들라고 했다', before: '비즈니스 언어를 모르겠다. ROI가 뭐지.', after: '숫자와 논리로 번역됐다. 경영진이 이해하는 언어로.', color: '#2d6b2d' },
+];
+
+const scenarios_en = [
+  { icon: Code2, headline: "Backend developer asked\nto write a project proposal", before: "No idea where to start. Planning isn't my thing.", after: 'Proposal structure is ready. Now I know what the CEO actually wants to see.', color: '#2d4a7c' },
+  { icon: ClipboardList, headline: "PM with a strategy deck\ndue in 2 hours", before: "No time. Where do I even begin?", after: "Key points extracted and structured persuasively. Weak spots caught early.", color: '#6b4c9a' },
+  { icon: Palette, headline: "Designer told to build\na business case", before: "I don't speak business. What even is ROI?", after: "Translated into numbers and logic. In a language execs understand.", color: '#2d6b2d' },
 ];
 
 export function UseCaseFlow() {
+  const locale = useLocale();
+  const scenarios = locale === 'ko' ? scenarios_ko : scenarios_en;
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+
   return (
     <section className="relative bg-[var(--surface)]">
       <div className="absolute inset-x-0 top-0 h-32 pointer-events-none" style={{ background: 'var(--gradient-concert-hall)' }} />
       <div className="relative max-w-5xl mx-auto px-5 md:px-6 py-12 md:py-16">
         <div className="text-center mb-8 md:mb-10">
           <h2 className="text-display-lg text-[var(--text-primary)]">
-            내 전문 분야가 아닌 걸 해야 하는 사람들
+            {L('내 전문 분야가 아닌 걸 해야 하는 사람들', 'For people asked to do things outside their expertise')}
           </h2>
           <p className="mt-2 text-[13px] md:text-[15px] text-[var(--text-secondary)]">
-            막막한 상태에서 구조화된 결과물을 만들어 드립니다
+            {L('막막한 상태에서 구조화된 결과물을 만들어 드립니다', 'From blank page to structured deliverable')}
           </p>
         </div>
 
