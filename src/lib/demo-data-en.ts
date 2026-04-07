@@ -479,27 +479,27 @@ const scenario2: DemoScenario = {
 
   analysis: {
     version: 0,
-    real_question: 'When competing against a big company, you need an answer to "why should we pick the small guys?"',
+    real_question: 'There\'s really only one question to answer next week: "Why should they pick us over the big firm?"',
     hidden_assumptions: [
-      'The client is holding a pitch because they\'re NOT sure the big company is the right choice',
-      'Big company weaknesses: slow, expensive, you\'re just another account to them',
-      'It\'s not about price — it\'s about "we actually care about this project"',
+      'The client invited multiple pitches because they\'re NOT sure the big firm is the answer',
+      'Big-firm weaknesses (slow decisions, PM rotations, subcontractor structures) become your strengths',
+      'More often than not, "how much do they care about this project?" tips the decision — not price',
     ],
     skeleton: [
-      'The client\'s real problem — What they said vs. what they actually need',
-      'Why us? — What the big company can\'t do',
-      'Execution plan — Specific and fast timeline',
-      'Risk management — Address the "small company = risky" anxiety',
-      'Pricing — Value-based, not cheap-based',
+      'First — find out what the client actually needs. What\'s in the RFP and what they really want are often different',
+      'Then — identify what the big firm can\'t do. Speed, direct communication, and tailored responses are usually your cards',
+      'Next — include a specific timeline. A promise with a number ("first deliverable in 4 weeks") is powerful',
+      'Add — preemptively address "but you\'re a small company" concerns. Naming the risk first builds trust',
+      'Finally — frame pricing as "here\'s what you get for this budget," not "we\'re cheaper"',
     ],
-    insight: 'Winning a competitive pitch isn\'t about proving "we\'re better" — it\'s about making them feel "this project belongs with us."',
+    insight: '80% of winning a pitch comes from "how well you understood the client before walking in." Slide design is the other 20%.',
   },
 
   q1: {
     question: {
       id: 'demo-q1-2',
-      text: 'Who makes the final decision on the proposal?',
-      subtext: 'The same proposal lands completely differently depending on who\'s in the room.',
+      text: 'Who makes the final decision on this pitch?',
+      subtext: 'This single answer changes the entire tone and structure of your proposal.',
       options: ['The hands-on project lead', 'A department head / team lead', 'C-level executive', 'Not sure yet'],
       type: 'select',
       engine_phase: 'reframe',
@@ -508,49 +508,77 @@ const scenario2: DemoScenario = {
       'The hands-on project lead': {
         dmKey: 'manager',
         snapshotPatch: {
-          real_question: 'If the project lead decides — you need to make them feel "working with this team would be easy"',
+          real_question: 'The project lead decides. What they really want is confidence that "working with this team will be easy."',
           hidden_assumptions: [
             'Project leads want a team that\'s easy to work with — communication is everything',
-            'Big company proposals usually mean PM rotations and subcontractors doing the real work — that\'s their weakness',
+            'Big firms send a salesperson to pitch and a subcontractor to do the work — that\'s their weakness',
             'Project leads care more about actual deliverable samples than polished slides',
           ],
-          insight: 'For a hands-on project lead, "a team that talks directly to you" is your most powerful weapon.',
+          skeleton: [
+            'First — prepare a deliverable sample. "This is what it\'ll look like" beats any pitch deck',
+            'Then — have the person who\'ll actually do the work present. Big firms send salespeople; their real team never shows up',
+            'Next — show your communication style concretely. "We\'ll create a Slack channel and respond same-day"',
+            'Add — mention similar-scale projects if you have them. If not, win on demonstrated understanding',
+            'Finally — make a specific promise like "first deliverable within 2 weeks of kickoff"',
+          ],
+          insight: 'For a project lead, the most powerful differentiator is "the person presenting is the person who\'ll actually do the work."',
         },
       },
       'A department head / team lead': {
         dmKey: 'manager',
         snapshotPatch: {
-          real_question: 'If a middle manager decides — you need to make it easy for them to justify the choice to their boss',
+          real_question: 'A department head decides. Their real worry is explaining "why I picked this vendor" to their boss.',
           hidden_assumptions: [
-            'Department heads need to report upward — they need to be able to explain "why this vendor"',
+            'Department heads report upward — they need a clear, defensible rationale',
             'A quantitative comparison table makes their internal pitch much easier',
             'A clear risk mitigation plan gives the manager confidence to sign off',
           ],
-          insight: 'If a department head decides, the real audience for your proposal isn\'t them — it\'s their boss.',
+          skeleton: [
+            'First — include a comparison table. Big firm vs. us on 3 criteria. Something the manager can present upward as-is',
+            'Then — preemptively address risks. If "small company = risky" has a clear answer, the manager feels safe',
+            'Next — make the timeline specific. "What gets delivered when" makes it feel manageable',
+            'Add — include an escalation process. "If something goes wrong, here\'s what happens"',
+            'Finally — keep contract terms clean. Make it easy so the manager doesn\'t have to fight with procurement',
+          ],
+          insight: 'If a department head decides, the real audience for your proposal isn\'t them — it\'s their boss. A structure that\'s easy to report upward wins.',
         },
       },
       'C-level executive': {
         dmKey: 'clevel',
         snapshotPatch: {
-          real_question: 'If a C-level is watching — you need to sell vision and trust, not details',
+          real_question: 'A C-level is watching. In a 15-minute pitch, if they don\'t feel "this is the right team" within the first 5 minutes, the rest doesn\'t matter.',
           hidden_assumptions: [
             'C-levels don\'t evaluate features — they evaluate "can I trust this team?"',
             'Success stories from similar projects are the strongest evidence',
             'Frame everything as ROI, not price',
           ],
-          insight: 'You get 15 minutes with a C-level. If you don\'t create a "these are the right people" feeling in the first 5, the rest won\'t matter.',
+          skeleton: [
+            'First — open with the client\'s challenge stated precisely. Create a "they came prepared" feeling',
+            'Then — one similar project success story. Numbers make it strongest',
+            'Next — "why us instead of the big firm" in one sentence. Anything longer backfires',
+            'Add — an ROI frame. "Invest this much, get this much back"',
+            'Finally — signal that the founder is personally involved. C-levels look for a counterpart at their level',
+          ],
+          insight: 'For a C-level, details don\'t matter. The first impression of "these people understand our situation" is everything.',
         },
       },
       'Not sure yet': {
         dmKey: 'manager',
         snapshotPatch: {
-          real_question: 'If you don\'t know the decision-maker — finding out is more important than prepping the pitch',
+          real_question: 'If you don\'t know the decision-maker, finding that out is more urgent than prepping the pitch.',
           hidden_assumptions: [
             'Preparing a pitch without knowing the decision-maker means you\'ll probably miss the mark',
-            'Ask the contact: "What does the final decision process look like?"',
-            'Usually the person who requested the pitch is NOT the final decision-maker',
+            '"What does your final decision process look like?" is a perfectly professional question to ask',
+            'The person who requested the pitch is usually NOT the final decision-maker',
           ],
-          insight: '"Who makes the final call?" is a question you\'re absolutely supposed to ask. It\'s the professional thing to do.',
+          skeleton: [
+            'Today — ask your contact: "How does the decision process work after the pitch?"',
+            'Find out — will the final decision-maker be in the room, or will they receive a report?',
+            'If they\'re in the room — tailor the proposal to their level and interests',
+            'If they\'re not — your contact needs a summary that explains "why this vendor" on your behalf',
+            'Before the pitch — at minimum learn their title. That alone changes the tone',
+          ],
+          insight: 'A proposal built without knowing the decision-maker becomes "a proposal for everyone." A proposal for everyone gets picked by no one.',
         },
       },
     },
@@ -559,8 +587,8 @@ const scenario2: DemoScenario = {
   q2: {
     question: {
       id: 'demo-q2-2',
-      text: 'What worries you most against the big competitor?',
-      subtext: 'You need to know your weakness to build a strategy around it.',
+      text: 'What worries you most about going up against the big competitor?',
+      subtext: 'Knowing this lets you address it in the proposal before they even ask.',
       options: ['We look too small', 'Not enough references', 'Can\'t compete on price', 'Brand recognition gap'],
       type: 'select',
       engine_phase: 'reframe',
@@ -568,41 +596,41 @@ const scenario2: DemoScenario = {
     effects: {
       'We look too small': {
         snapshotPatch: {
-          insight: 'Turn "small" from a weakness into a strength: "Fast decisions, and our founder is personally involved."',
+          insight: 'Don\'t hide "small team" as a weakness in the proposal. Reframe it: "Decisions are fast, and the founder is personally involved." That turns it into a strength.',
           hidden_assumptions: [
-            'Reframe "small team = risky" as "small team = focused"',
-            'Big companies rotate PMs and subcontract the real work — contrast this directly',
+            '"Small team = risky" can be reframed as "small team = focused"',
+            'Big firms rotate PMs and subcontract the real work — contrast this directly',
             'Senior people being hands-on is your strongest card',
           ],
         },
       },
       'Not enough references': {
         snapshotPatch: {
-          insight: 'Instead of references, show "how much we\'ve already invested in understanding YOUR project." That\'s more powerful.',
+          insight: 'No references? Compete on "how much we\'ve already prepared for YOUR project." Depth of preparation beats a reference list.',
           hidden_assumptions: [
-            'Without references, compete on depth of preparation',
-            'Showing deep understanding of the client\'s industry during the pitch beats any reference list',
-            'Offering a free pilot or prototype is also a strong move',
+            'Demonstrating deep understanding of the client\'s industry during the pitch is stronger than any reference',
+            'Offering a free pilot or prototype is also a strong card to play',
+            'Acknowledge the gap honestly, then present a concrete alternative — that builds trust',
           ],
         },
       },
       'Can\'t compete on price': {
         snapshotPatch: {
-          insight: 'Competing on price against a big company is a losing game. Reframe to "value you get for the same money."',
+          insight: 'You won\'t beat a big firm on price. Reframe: "For the same budget, here\'s how much more you get from us."',
           hidden_assumptions: [
             'You need to shift from price comparison to value comparison',
-            'Not "we\'re cheaper" but "you get more for this budget"',
-            'Big companies have high overhead — make that visible and the math reverses',
+            'Big firms carry heavy overhead costs — make that visible and the math reverses',
+            'The message isn\'t "we\'re cheaper" — it\'s "faster and more for the same money"',
           ],
         },
       },
       'Brand recognition gap': {
         snapshotPatch: {
-          insight: 'Fight with "understanding of this project," not brand. Generic proposal vs. custom-built proposal.',
+          insight: 'Big firms send generic template proposals. If the client\'s name and specific challenges appear throughout yours, the "made for us" feeling is completely different.',
           hidden_assumptions: [
-            'Big companies usually recycle a generic template — a tailored proposal stands out',
-            'If the client\'s name appears 20+ times in your proposal, it feels "made for us"',
+            'Fight with "understanding of this project," not brand recognition',
             'Even one pre-pitch interview with the client changes the perception completely',
+            'Mentioning the client\'s specific situation by name is itself a differentiator',
           ],
         },
       },
@@ -779,27 +807,27 @@ const scenario3: DemoScenario = {
 
   analysis: {
     version: 0,
-    real_question: 'The question isn\'t "should we match the price cut?" — it\'s "is price actually our competitive advantage?"',
+    real_question: 'The question you need to answer this week: "Do we match the price cut, or find another way?"',
     hidden_assumptions: [
-      'First check whether the competitor\'s price cut is even sustainable',
-      'If we match the cut, run the numbers on whether margins can survive',
-      'What makes us different beyond price is the real question',
+      'First find out WHY they cut 30% — whether it\'s burning investor cash or a real cost advantage changes everything',
+      'Matching the cut keeps revenue but shrinks margins — calculate how long you can sustain that first',
+      'If customers stay with you for reasons beyond price, that\'s your starting point for a response',
     ],
     skeleton: [
-      'Competitor analysis — Why did they cut 30%? Can they sustain it?',
-      'Our position — Margin structure, customer churn data',
-      'Options — Match the cut vs. differentiate vs. hybrid',
-      'Scenario simulation — Revenue/margin impact for each option',
-      'Recommendation + decision criteria',
+      'First — figure out why they cut. Is this sustainable or a short-term land grab?',
+      'Then — check your margin structure. If you match the cut, how many months can you survive?',
+      'Next — look at actual churn data. It may be less than you think',
+      'Add — narrow it to 3 options: match the cut / differentiate / selective discounts',
+      'Finally — simulate each option 6 months out. That\'s your decision basis',
     ],
-    insight: 'Nobody wins a price war. "We don\'t compete on price" can itself be the strategy.',
+    insight: 'When it feels urgent, look at the numbers first. Actual churn, your margin cushion, their financial runway — these 3 numbers decide the strategy.',
   },
 
   q1: {
     question: {
       id: 'demo-q1-3',
       text: 'Who makes the final call on this response strategy?',
-      subtext: 'The decision-maker determines the depth and format of your analysis.',
+      subtext: 'This single answer changes the depth and format of your report.',
       options: ['The CEO directly', 'Leadership meeting', 'Board-level agenda', 'Not sure yet'],
       type: 'select',
       engine_phase: 'reframe',
@@ -808,23 +836,37 @@ const scenario3: DemoScenario = {
       'The CEO directly': {
         dmKey: 'ceo',
         snapshotPatch: {
-          real_question: 'If the CEO decides — you need to show "what happens if we match" vs. "what happens if we don\'t" side by side',
+          real_question: 'The CEO decides directly. What they need is a one-page comparison: "here\'s what happens if we match" vs. "here\'s what happens if we don\'t."',
           hidden_assumptions: [
-            'CEOs may lean on gut instinct — compress to 3 key numbers',
-            'Matching the price keeps revenue but shrinks margins — present this tradeoff clearly',
-            '"Do nothing" must also be presented as a valid option',
+            'The CEO may lean on gut instinct — compress to 3 key numbers',
+            'Matching the price keeps revenue but shrinks margins — that tradeoff needs to be clear',
+            '"Do nothing" must be included as a valid option too',
           ],
-          insight: 'For the CEO: three options + the consequences of each, on a single page. That\'s what works.',
+          skeleton: [
+            'First — lay out 3 options: match the cut / differentiate / selective discounts',
+            'Then — show the 6-month outcome for each on a single page. Revenue, margins, churn',
+            'Include this — a "do nothing" option. It becomes the baseline for comparison',
+            'Key numbers — current margin rate, estimated churn rate, competitor\'s financial runway',
+            'Your recommendation — one line + the reasoning behind it',
+          ],
+          insight: 'For the CEO: three options + each one\'s consequences on a single page. That\'s the most effective format.',
         },
       },
       'Leadership meeting': {
         dmKey: 'meeting',
         snapshotPatch: {
-          real_question: 'For a leadership meeting — each executive will ask from their org\'s perspective. Prepare answers in advance.',
+          real_question: 'The leadership team decides. Sales will ask about churn, finance about margins, product about differentiation. You need answers for all of them.',
           hidden_assumptions: [
-            'Sales exec: "How much churn?" / CFO: "Can our margins handle it?"',
+            'Each exec has a different lens — Sales: "How much churn?", CFO: "Can margins survive?", Product: "What\'s our differentiator?"',
             'To drive consensus in a room of execs, data must lead over emotion',
             'One recommended option + "if not this, then Plan B" structure accelerates decisions',
+          ],
+          skeleton: [
+            'First — map out each exec\'s likely questions. Sales / finance / product separately',
+            'Then — answer each question with numbers, not feelings',
+            'Next — build a comparison table. Everyone needs to be looking at the same data when they debate',
+            'Your recommendation — "We recommend this" + reasoning + "if not, then Plan B"',
+            'Finally — include immediate action items with owners. Make it possible to decide on the spot',
           ],
           insight: 'In a leadership meeting, it\'s not "the right answer" that wins — it\'s "once you see this data, there\'s only one answer."',
         },
@@ -832,25 +874,39 @@ const scenario3: DemoScenario = {
       'Board-level agenda': {
         dmKey: 'meeting',
         snapshotPatch: {
-          real_question: 'At board level — you need a long-term competitive strategy frame, not just a price response',
+          real_question: 'This goes to the board. You need to go beyond a price response — the frame should be "our long-term position in this market."',
           hidden_assumptions: [
             'The board looks at long-term market positioning, not short-term tactics',
             'A price response is tactical — what the board wants is strategic',
             'You also need to analyze the competitor\'s price cut impact on the overall market',
           ],
-          insight: 'For the board, the question isn\'t "should we cut prices?" — it\'s "what\'s our long-term position in this market?"',
+          skeleton: [
+            'First — start from the market-wide view. Is the competitor\'s cut an industry trend or an isolated move?',
+            'Then — define your long-term positioning. Price leader? Quality leader? Niche?',
+            'Next — separate the short-term response (this quarter) from the medium-term strategy (1-2 years)',
+            'Add — scenario-by-scenario financial impact. The board decides by numbers',
+            'Finally — frame it as a resolution: "We propose moving in this direction"',
+          ],
+          insight: 'For the board, the question isn\'t "should we cut prices?" — it\'s "what kind of company are we in this market?"',
         },
       },
       'Not sure yet': {
         dmKey: 'ceo',
         snapshotPatch: {
-          real_question: 'If you don\'t know the decision structure — prepare for the CEO but keep detailed data ready for a leadership meeting',
+          real_question: 'If you don\'t know the decision structure, prepare for the CEO but keep detailed data ready as an appendix for a leadership meeting.',
           hidden_assumptions: [
             'Urgent responses are usually decided by the CEO directly',
             'But a major pricing change may need executive consensus',
-            'Preparing two formats is wasteful — CEO-level summary + data appendix covers all scenarios',
+            'A CEO-level summary + data appendix covers any scenario without wasted effort',
           ],
-          insight: 'A one-page CEO summary + a detailed data appendix handles any decision structure.',
+          skeleton: [
+            'First — build a one-page CEO summary. Three options + your recommendation',
+            'Then — attach detailed data as an appendix. Pull it out if the leadership meeting asks for it',
+            'Check — ask the CEO: "Does this need to go to the leadership meeting too?"',
+            'Cover both — keep the summary intuitive, the appendix data-heavy',
+            'If you\'re short on time — the one-page summary comes first. The appendix can be added when questions come in',
+          ],
+          insight: 'A one-page CEO summary is enough to get started. Everything else can be added as needed.',
         },
       },
     },
@@ -859,8 +915,8 @@ const scenario3: DemoScenario = {
   q2: {
     question: {
       id: 'demo-q2-3',
-      text: 'What\'s your biggest concern?',
-      subtext: 'This shapes the strategy direction.',
+      text: 'What\'s your biggest concern right now?',
+      subtext: 'This sets the priority for your strategy.',
       options: ['Customers might leave', 'Matching the cut would destroy our margins', 'They could cut even more', 'I don\'t know what makes us different'],
       type: 'select',
       engine_phase: 'reframe',
@@ -868,7 +924,7 @@ const scenario3: DemoScenario = {
     effects: {
       'Customers might leave': {
         snapshotPatch: {
-          insight: 'If churn is your worry — first check the actual churn numbers. Perception and reality are often very different.',
+          insight: 'If churn is your worry, check the actual numbers first. It may be less than you think. And the customers leaving on price alone are often your lowest-margin accounts.',
           hidden_assumptions: [
             'Reacting without real churn data risks overreaction',
             'Customers who leave over price alone are often your lowest-margin accounts',
@@ -878,31 +934,31 @@ const scenario3: DemoScenario = {
       },
       'Matching the cut would destroy our margins': {
         snapshotPatch: {
-          insight: 'If margins are the worry, the answer is "find a way to NOT match the cut." Raise the value instead.',
+          insight: 'If margins can\'t survive a match, then matching isn\'t the answer. "Keep the price, raise the value customers feel" is the realistic path.',
           hidden_assumptions: [
             'Matching the cut may preserve revenue but profits can plummet',
             'If there\'s no margin cushion, a price war is unwinnable',
-            'Adding value to justify the current price is the more realistic strategy',
+            'Adding value to justify the current price is the more sustainable strategy',
           ],
         },
       },
       'They could cut even more': {
         snapshotPatch: {
-          insight: 'If the price war could escalate, the answer is to fight on a completely different battlefield.',
+          insight: 'If the price war could escalate, you can\'t fight on the same battlefield. Competing on value instead of price is the only lasting defense.',
           hidden_assumptions: [
             'Price wars are won by whoever has deeper pockets — it\'s a war of attrition',
-            'Analyze whether the competitor can sustain further cuts',
+            'First analyze whether the competitor can even sustain further cuts',
             'Building differentiation beyond price is the only real moat',
           ],
         },
       },
       'I don\'t know what makes us different': {
         snapshotPatch: {
-          insight: 'If you don\'t know your strengths, ask your customers. "Why do you stick with us?" — the answer is right there.',
+          insight: 'If you don\'t know your strengths, ask your customers directly. "Why do you use us?" — what they say is your real differentiator.',
           hidden_assumptions: [
             'What you think your strength is and what customers feel may be very different',
-            'Ask 5 existing customers "why haven\'t you switched to a competitor?" — the answer emerges',
-            'What customers say = the real differentiation',
+            'Ask 5 existing customers "why haven\'t you switched?" — the answer emerges fast',
+            'What customers say = the core of your strategy',
           ],
         },
       },

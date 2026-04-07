@@ -38,10 +38,20 @@ Search in BOTH locations:
 
 ### Check 2: Agent files
 
-Verify:
-- `~/.claude/agents/devils-advocate.md` exists
-- OR `.claude/agents/devils-advocate.md` exists (project)
-- File contains valid agent definition
+Verify all 7 agents exist:
+- `devils-advocate.md` — critical challenge
+- `researcher.md` — 수진, research analyst
+- `strategist.md` — 현우, strategy analyst
+- `writer.md` — 서연, communication specialist
+- `numbers.md` — 민재, quantitative analyst
+- `user-voice.md` — 지영, user advocate
+- `lead-synthesizer.md` — lead synthesis
+
+Search in BOTH locations:
+- `~/.claude/agents/{name}.md` (global)
+- `.claude/agents/{name}.md` (project)
+
+Each file must have valid YAML frontmatter with `name`, `description`, `context`, `tools`.
 
 ### Check 3: Data directory
 
@@ -103,7 +113,7 @@ Present a unified diagnostic report:
 | Check | Status | Detail |
 |-------|--------|--------|
 | Skills | 10/10 ✓ | |
-| Agents | 1/1 ✓ | |
+| Agents | 7/7 ✓ | |
 | Data dir | ✓ | .overture/ |
 | Journal | ✓ | [N] entries ([date] → [date]) |
 | Config | [✓/✗] | .overture/config.json v[version] |

@@ -232,9 +232,14 @@ export async function runDeepening(
   const locale = getCurrentLanguage();
   // Conductor: pass unlocked agent list for team-aware task decomposition
   const agentStore = useAgentStore.getState();
+  const isKo = locale === 'ko';
   const availableAgents = agentStore.getUnlockedAgents()
     .filter(a => a.capabilities.includes('task_execution'))
-    .map(a => ({ name: a.name, role: a.role, specialty: a.expertise?.split('.')[0] || a.role }));
+    .map(a => ({
+      name: isKo ? a.name : (a.nameEn || a.name),
+      role: isKo ? a.role : (a.roleEn || a.role),
+      specialty: a.expertise?.split('.')[0] || a.role,
+    }));
 
   const { system, user } = buildDeepeningPrompt(
     problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale, leadContext,

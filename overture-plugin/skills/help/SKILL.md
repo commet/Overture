@@ -94,6 +94,24 @@ Each skill automatically reads previous results and continues from there.
 
 ---
 
+## Agent Team
+
+`/overture` deploys a team of specialized agents in parallel for complex problems:
+
+| Agent | Name | What they do |
+|-------|------|-------------|
+| `researcher` | 수진 | Market research, competitive analysis, data gathering |
+| `strategist` | 현우 | Strategic analysis, option evaluation, trade-offs |
+| `writer` | 서연 | Document drafting, narrative structure |
+| `numbers` | 민재 | Financial modeling, metrics, scenario analysis |
+| `user-voice` | 지영 | User perspective, adoption barriers |
+| `devils-advocate` | — | Weakness finding, blind spots |
+| `lead-synthesizer` | — | Integrates all agent outputs into unified analysis |
+
+When your problem needs 2+ AI tasks, agents run **simultaneously** and their results get synthesized into your final document. You can see each agent's individual work.
+
+---
+
 ## Key Features (v0.5)
 
 - **Framing confidence** (0-100): Self-assessment of how well the question captures the real problem

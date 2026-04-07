@@ -127,6 +127,41 @@ See `references/persona-design.md` for detailed guidance.
   * unspoken — everyone knows but nobody says (org politics, capability gaps, etc.).
 - Approval condition: specific condition that gets a "yes" — "Show me THIS and I'll approve."
 
+## Parallel Execution Mode (recommended for 3+ personas)
+
+**Use the Agent tool to run ALL persona reviews simultaneously.** This is dramatically faster than sequential simulation.
+
+For each persona, spawn an agent with this prompt pattern:
+
+```
+You are [name], [role] at [organization].
+Influence: [level]. Decision style: [style]. Risk tolerance: [tolerance].
+Priorities: [priorities]. Known concerns: [concerns]. Success metric: [metric].
+
+[Copy the FULL speech rules and analysis method from Step 2 above into each agent prompt]
+
+Review this plan:
+[plan text from /recast]
+
+Key assumptions to probe (from /reframe — attack these FIRST):
+[assumptions.doubtful list]
+
+Respond with:
+1. First reaction (1-2 sentences, in your voice — conversational, not report tone)
+2. Failure scenario (most LIKELY way this fails — mundane, boring, common)
+3. Concerns table: each row = concern | severity (🔴/🟡/⚪) | fix direction | which plan element
+4. Approval condition (1 sentence — "Show me THIS and I approve")
+5. Translated approval (map your condition to a specific plan step)
+```
+
+**Launch all personas + devils-advocate in parallel.** 4 agents running simultaneously.
+
+After all agents return, proceed to Step 3 (Confidence Gate) and Step 4 (Synthesis) inline.
+
+---
+
+### If running inline (1-2 personas or Agent tool unavailable):
+
 ### Decide context — each persona independently:
 
 - **First reaction** — in their voice (1-2 sentences)

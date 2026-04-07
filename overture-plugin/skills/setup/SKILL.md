@@ -66,8 +66,14 @@ Checking installation...
 - ✓ /overture:configure — `~/.claude/skills/configure/SKILL.md`
 - ✓ /overture:patterns — `~/.claude/skills/patterns/SKILL.md`
 
-**Agents (1):**
+**Agents (7):**
 - ✓ devils-advocate — `~/.claude/agents/devils-advocate.md`
+- ✓ researcher (수진) — `~/.claude/agents/researcher.md`
+- ✓ strategist (현우) — `~/.claude/agents/strategist.md`
+- ✓ writer (서연) — `~/.claude/agents/writer.md`
+- ✓ numbers (민재) — `~/.claude/agents/numbers.md`
+- ✓ user-voice (지영) — `~/.claude/agents/user-voice.md`
+- ✓ lead-synthesizer — `~/.claude/agents/lead-synthesizer.md`
 
 **References (6):**
 - ✓ reframing-strategies.md
@@ -125,7 +131,7 @@ Read the installed `plugin.json` version and compare with the repo version. If o
 
 **✓ Overture v0.5.0 · Ready**
 
-10 skills · 1 agent · 6 references · journal ready
+10 skills · 7 agents · 6 references · journal ready
 
 **Quick start:**
 - `/reframe "your problem"` — sharpen your question

@@ -23,7 +23,13 @@
     "./skills/patterns/SKILL.md"
   ],
   "agents": [
-    "./agents/devils-advocate.md"
+    "./agents/devils-advocate.md",
+    "./agents/researcher.md",
+    "./agents/strategist.md",
+    "./agents/writer.md",
+    "./agents/numbers.md",
+    "./agents/user-voice.md",
+    "./agents/lead-synthesizer.md"
   ],
   "outputStylesPaths": [
     "./output-styles/overture.md"
@@ -50,6 +56,8 @@
     "stakeholder-simulation",
     "decision-quality",
     "progressive-disclosure",
-    "context-chain"
+    "context-chain",
+    "multi-agent",
+    "parallel-execution"
   ]
 }
