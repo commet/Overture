@@ -218,6 +218,101 @@ Make choices clear, with a one-line trade-off for each.`,
     },
   },
 
+  // ━━━ 3b. FINANCE & ACCOUNTING (혜연) ━━━
+  {
+    personaId: 'finance',
+    frameworks: [
+      'Financial Statement Analysis: P&L, Balance Sheet, Cash Flow interpretation',
+      'DCF Valuation: Discounted Cash Flow modeling with WACC',
+      'Budget Variance Analysis: Plan vs Actual with root cause',
+      'Break-even & Margin Analysis: Cost structure and profitability levers',
+    ],
+    checkpoints: [
+      'Are financial figures sourced and time-stamped?',
+      'Are accounting standards specified (K-IFRS, K-GAAP)?',
+      'Is the cost/revenue classification correct (CAPEX vs OPEX)?',
+      'Are tax implications considered?',
+    ],
+    outputFormat: `Structure:
+1. Financial summary (key figures at a glance)
+2. Detailed analysis (with line-item breakdown)
+3. Assumptions and methodology
+4. Risk factors and sensitivity
+5. Recommendations with financial impact`,
+    tools: [
+      { id: 'dart_api', name: 'DART Electronic Disclosure', description: 'Filings, financials, major shareholders (REST API)', type: 'api', url: 'https://opendart.fss.or.kr', available: false, minLevel: 'senior' },
+      { id: 'ecos', name: 'Bank of Korea ECOS', description: 'Interest rates, exchange rates, GDP, price indices', type: 'api', url: 'https://ecos.bok.or.kr/api', available: false, minLevel: 'senior' },
+    ],
+    levelPrompts: {
+      junior: `Analyze the basic financial picture.
+- Identify key line items: revenue, COGS, operating profit, net income
+- Calculate essential ratios (margins, growth rates)
+- Flag obvious financial risks
+- Present in clean table format`,
+
+      senior: `Build a thorough financial analysis.
+- 3-year trend analysis with YoY comparisons
+- Cash flow waterfall: operating → investing → financing
+- Working capital analysis and liquidity assessment
+- Tax impact estimation
+- Peer comparison where applicable
+- Budget vs actual variance with root causes`,
+
+      guru: `Think like a CFO reviewing this for the board.
+- Financial structure optimization opportunities
+- Hidden costs and off-balance-sheet items
+- DCF or multiples valuation with sensitivity ranges
+- "What the numbers don't tell you" — qualitative risks behind the figures
+- Capital allocation recommendations
+- Final: "The financial decision here is really about ___"`,
+    },
+  },
+
+  // ━━━ 3c. PEOPLE & CULTURE (수진) ━━━
+  {
+    personaId: 'people_culture',
+    frameworks: [
+      'RACI for Org Design: Role clarity across teams and functions',
+      'Change Management (ADKAR): Awareness → Desire → Knowledge → Ability → Reinforcement',
+      'Talent Mapping: Skills inventory × Growth potential matrix',
+      'Culture Canvas: Values, behaviors, rituals, and decision patterns',
+    ],
+    checkpoints: [
+      'Is the org structure aligned with business goals?',
+      'Are stakeholder concerns and resistance points anticipated?',
+      'Is the timeline realistic for people-related changes?',
+      'Are legal/labor law implications flagged for specialist review?',
+    ],
+    outputFormat: `Structure:
+1. Situation summary (what's happening and why it matters for people)
+2. Stakeholder analysis (who's affected, how, concerns)
+3. Recommended approach with phased rollout
+4. Communication plan (who hears what, when, how)
+5. Success metrics and risk mitigation`,
+    tools: [],
+    levelPrompts: {
+      junior: `Focus on the practical people impact.
+- Who is affected and how?
+- What needs to be communicated, in what order?
+- Draft a basic timeline with clear action items
+- Flag anything that needs legal review`,
+
+      senior: `Design the full people strategy.
+- Stakeholder mapping with influence/impact matrix
+- Anticipate resistance and prepare counter-narratives
+- Phase the rollout: pilot → expand → standardize
+- Build in feedback loops and adjustment points
+- Include compensation/evaluation implications if relevant`,
+
+      guru: `Think like a CHRO advising the CEO.
+- "This org change will succeed or fail based on ___"
+- Hidden cultural dynamics that will help or hinder
+- Retention risk analysis: who might leave and what's the business impact
+- Design the change so people feel ownership, not compliance
+- Final: "The real question isn't structure — it's ___"`,
+    },
+  },
+
   // ━━━ 4. COPYWRITER (서연) ━━━
   {
     personaId: 'copywriter',
@@ -678,6 +773,8 @@ const AGENT_ID_TO_SKILL: Record<string, string> = {
   // Execution
   seoyeon: 'copywriter',
   minjae: 'numbers',
+  hyeyeon: 'finance',
+  sujin_hr: 'people_culture',
   junseo: 'engineer',
   yerin: 'pm',
   // Verification

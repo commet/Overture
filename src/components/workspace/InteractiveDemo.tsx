@@ -444,10 +444,10 @@ function AgentRow({ worker, status, expanded, onToggle }: {
     >
       <button
         onClick={isDone ? onToggle : undefined}
-        className={`w-full flex items-center gap-2.5 p-2.5 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
+        className={`w-full flex items-center gap-3 p-3 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[13px] ${
             isWorking ? 'animate-pulse' : ''
           }`}
           style={{ backgroundColor: worker.persona.color + '20', color: worker.persona.color }}
@@ -456,22 +456,22 @@ function AgentRow({ worker, status, expanded, onToggle }: {
         </div>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{worker.persona.name}</span>
-            <span className="text-[10px] text-[var(--text-tertiary)] truncate">{worker.persona.role}</span>
+            <span className="text-[13px] font-semibold text-[var(--text-primary)] truncate">{worker.persona.name}</span>
+            <span className="text-[11px] text-[var(--text-tertiary)] truncate">{worker.persona.role}</span>
           </div>
           {isWorking && (
-            <p className="text-[10px] text-[var(--accent)] mt-0.5 truncate">{worker.task}</p>
+            <p className="text-[11px] text-[var(--accent)] mt-0.5 truncate">{worker.task}</p>
           )}
           {isDone && worker.completionNote && (
-            <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 italic truncate">
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 italic truncate">
               &ldquo;{worker.completionNote}&rdquo;
             </p>
           )}
         </div>
-        {status === 'waiting' && <span className="text-[9px] text-[var(--text-tertiary)] shrink-0">대기</span>}
-        {isWorking && <Loader2 size={13} className="animate-spin text-[var(--accent)] shrink-0" />}
+        {status === 'waiting' && <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">대기</span>}
+        {isWorking && <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />}
         {isDone && (
-          <ChevronDown size={13} className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          <ChevronDown size={14} className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
         )}
       </button>
 
@@ -485,8 +485,8 @@ function AgentRow({ worker, status, expanded, onToggle }: {
             transition={{ duration: 0.25, ease: EASE }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 border-t border-[var(--border-subtle)] mt-0">
-              <div className="pt-2.5 text-[11px] leading-[1.7] max-h-[280px] overflow-y-auto text-[var(--text-primary)] space-y-0.5">
+            <div className="px-3.5 pb-3.5 border-t border-[var(--border-subtle)] mt-0">
+              <div className="pt-3 text-[12px] leading-[1.75] max-h-[300px] overflow-y-auto text-[var(--text-primary)] space-y-0.5">
                 {renderMd(worker.result)}
               </div>
             </div>
@@ -512,15 +512,15 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
     phaseGte(phase, 'q1') ? Math.round((workingCount / total) * 30) : 0;
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-4 space-y-3.5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">분석 팀</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">분석 팀</span>
         {workingCount > 0 && !phaseGte(phase, 'draft') && (
-          <span className="text-[10px] text-[var(--accent)] font-medium">{workingCount}명 분석 중</span>
+          <span className="text-[11px] text-[var(--accent)] font-medium">{workingCount}명 분석 중</span>
         )}
         {phaseGte(phase, 'draft') && (
-          <span className="text-[10px] text-emerald-500 font-medium">분석 완료</span>
+          <span className="text-[11px] text-emerald-500 font-medium">완료</span>
         )}
       </div>
 
@@ -536,7 +536,7 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
       </div>
 
       {/* Agent rows */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {scenario.workers.map((w, i) => (
           <AgentRow
             key={w.persona.id}
@@ -919,10 +919,10 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
         <div className="w-16" />
       </div>
 
-      {/* Content: main + agent sidebar */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main column */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      {/* Content: main (centered) + agent sidebar (floating right) */}
+      <div className="relative flex-1 overflow-hidden">
+        {/* Main column — stays centered */}
+        <div ref={scrollRef} className="h-full overflow-y-auto">
           <div className="max-w-2xl mx-auto px-5 md:px-6 py-6 space-y-5">
 
             {/* 1. Typing input */}
@@ -1041,9 +1041,11 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
           </div>
         </div>
 
-        {/* Agent sidebar — desktop only */}
-        <div className="hidden lg:flex flex-col w-72 xl:w-80 border-l border-[var(--border-subtle)] shrink-0 overflow-y-auto bg-[var(--bg)]/50">
-          <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+        {/* Agent sidebar — floating right, doesn't push content */}
+        <div className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full">
+          <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
+            <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+          </div>
         </div>
       </div>
 
