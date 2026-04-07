@@ -154,7 +154,7 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   // Is the output actionable? (has concrete steps, checkpoints)
   let commitmentToAction = 0;
   if (recast?.analysis) {
-    const steps = recast.analysis.steps;
+    const steps = recast.analysis.steps || [];
     if (steps.length >= 3) commitmentToAction += 2;
     const hasCheckpoints = steps.some(s => s.checkpoint);
     if (hasCheckpoints) commitmentToAction += 1;

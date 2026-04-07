@@ -628,32 +628,37 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
 }) {
   return (
     <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
-      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
+      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--border-subtle)] to-transparent">
         <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="p-5 md:p-8 space-y-6">
-            {/* Persona */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
-                <UserCheck size={18} className="text-[var(--accent)]" />
+            {/* Persona — bigger, more prominent */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[var(--accent)]/8 flex items-center justify-center">
+                <UserCheck size={22} className="text-[var(--accent)]" />
               </div>
               <div>
-                <p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p>
-                <p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
+                <p className="text-[17px] font-bold text-[var(--text-primary)]">{fb.persona_name}</p>
+                <p className="text-[13px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
               </div>
             </div>
 
-            {/* Reaction */}
-            <blockquote className="text-[16px] text-[var(--text-primary)] leading-relaxed italic pl-5 border-l-[3px] border-[var(--text-tertiary)]/15">
+            {/* Reaction — larger, more impactful */}
+            <blockquote className="text-[17px] md:text-[18px] text-[var(--text-primary)] leading-[1.6] italic pl-5 border-l-[3px] border-[var(--accent)]/20">
               &ldquo;{fb.first_reaction}&rdquo;
             </blockquote>
 
             {/* Good parts */}
             {fb.good_parts.length > 0 && (
               <div>
-                <p className="text-[9px] font-bold text-green-600 uppercase tracking-[0.2em] mb-2">좋은 점</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <Check size={11} className="text-emerald-600" />
+                  </div>
+                  <h4 className="text-[13px] font-bold text-emerald-700 dark:text-emerald-400">Good</h4>
+                </div>
                 {fb.good_parts.map((g, i) => (
-                  <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed">
-                    <span className="text-green-500 shrink-0 mt-0.5">&#10003;</span>{g}
+                  <p key={i} className="text-[14px] text-[var(--text-secondary)] flex items-start gap-2.5 mb-2 leading-relaxed pl-7">
+                    {g}
                   </p>
                 ))}
               </div>
@@ -662,25 +667,30 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
             {/* Concerns with toggles */}
             {fb.concerns.length > 0 && (
               <div>
-                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">우려 + 수정 제안</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <span className="text-[11px] text-amber-600">!</span>
+                  </div>
+                  <h4 className="text-[13px] font-bold text-amber-700 dark:text-amber-400">Concerns</h4>
+                  <span className="text-[11px] text-[var(--text-tertiary)]">— toggle to apply</span>
+                </div>
                 <div className="space-y-3">
                   {fb.concerns.map((c: DMConcern, i: number) => (
                     <div key={i} className={`rounded-2xl border p-4 transition-all duration-500 ${
                       c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'
                     }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                      <div className="flex items-start gap-2 mb-2">
-                        <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${
-                          c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
-                        }`}>{c.severity === 'critical' ? '필수' : c.severity === 'important' ? '권장' : '참고'}</span>
-                        <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
+                      <div className="flex items-start gap-2.5 mb-2">
+                        <span className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 mt-0.5 ${
+                          c.severity === 'critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : c.severity === 'important' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                        }`}>{c.severity === 'critical' ? 'Required' : c.severity === 'important' ? 'Suggested' : 'Note'}</span>
+                        <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
                       </div>
-                      <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">&rarr; {c.fix_suggestion}</p>
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? '반영' : '스킵'}</span>
+                      <p className="text-[13px] text-[var(--accent)] leading-relaxed mb-3 pl-1">&rarr; {c.fix_suggestion}</p>
+                      <div className="flex items-center justify-end gap-2.5">
+                        <span className="text-[11px] text-[var(--text-tertiary)] font-medium">{c.applied ? 'Applied' : 'Skip'}</span>
                         <button onClick={() => onToggle(i)}
-                          className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
-                          style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                          <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 24 : 4 }} transition={SPRING} />
+                          className={`relative w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+                          <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 28 : 4 }} transition={SPRING} />
                         </button>
                       </div>
                     </div>
@@ -692,20 +702,28 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
             {/* Would ask */}
             {fb.would_ask.length > 0 && (
               <div>
-                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2">이것도 물어볼 거다</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <span className="text-[11px] text-blue-600">?</span>
+                  </div>
+                  <h4 className="text-[13px] font-bold text-blue-700 dark:text-blue-400">Would also ask</h4>
+                </div>
                 {fb.would_ask.map((q, i) => (
-                  <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed">
-                    <span className="text-[var(--accent)] shrink-0">?</span>{q}
+                  <p key={i} className="text-[14px] text-[var(--text-secondary)] flex items-start gap-2.5 mb-2 leading-relaxed pl-7">
+                    {q}
                   </p>
                 ))}
               </div>
             )}
 
             {/* Approval condition — the punchline */}
-            <div className="pt-4 mt-2 border-t border-[var(--border-subtle)]">
-              <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
-                <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">통과 조건</p>
-                <p className="text-[15px] text-[var(--text-primary)] font-semibold leading-relaxed">{fb.approval_condition}</p>
+            <div className="pt-5 mt-2 border-t border-[var(--border-subtle)]">
+              <div className="rounded-xl bg-[var(--accent)]/[0.05] border border-[var(--accent)]/15 px-5 py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={13} className="text-[var(--accent)]" />
+                  <h4 className="text-[12px] font-bold text-[var(--accent)] uppercase tracking-[0.1em]">Approval Condition</h4>
+                </div>
+                <p className="text-[16px] text-[var(--text-primary)] font-semibold leading-relaxed">{fb.approval_condition}</p>
               </div>
             </div>
 
@@ -714,7 +732,7 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
               <motion.button onClick={onDone} whileTap={{ scale: 0.98 }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer"
                 style={{ background: 'var(--gradient-gold)' }}>
-                반영하고 최종 문서 보기 <ChevronRight size={14} />
+                Apply and see final document <ChevronRight size={14} />
               </motion.button>
             )}
           </div>
@@ -853,17 +871,15 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
     return () => timers.forEach(clearTimeout);
   }, [phase, scenario.workers.length]);
 
-  // Phase: draft → auto to dm
+  // Phase: draft → initialize concerns (DM is triggered by CTA button, not auto-advance)
   useEffect(() => {
     if (phase === 'draft') {
-      // Initialize concerns from DM variant
       const dm = scenario.dmVariants[dmKey];
       if (dm) {
         setConcerns(dm.concerns.map(c => ({ ...c, applied: false })));
       }
-      return advance('dm', 2000);
     }
-  }, [phase, scenario.dmVariants, dmKey, advance]);
+  }, [phase, scenario.dmVariants, dmKey]);
 
   // Handlers
   const handleQ1 = (v: string) => {
@@ -1066,27 +1082,46 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
             <DemoDraftCard draft={scenario.draft} />
           )}
 
-          {/* Transition: draft → dm */}
-          {phaseGte(phase, 'dm') && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
-              className="flex items-center gap-4 py-5">
-              <div className="flex-1 h-px bg-[var(--accent)]/20" />
-              <div className="flex items-center gap-2 shrink-0">
-                <UserCheck size={16} className="text-[var(--accent)]" />
-                <span className="text-[14px] text-[var(--text-primary)] font-semibold">{L('의사결정권자가 뭐라고 할까?', 'What would the decision-maker say?')}</span>
-              </div>
-              <div className="flex-1 h-px bg-[var(--accent)]/20" />
+          {/* CTA to enter DM feedback — replaces auto-transition */}
+          {phase === 'draft' && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
+              className="text-center py-6">
+              <p className="text-[13px] text-[var(--text-secondary)] mb-3">
+                {L('초안이 완성됐어요. 이걸 받아본 사람은 뭐라고 할까요?', 'The draft is ready. What would the person who reads this say?')}
+              </p>
+              <motion.button
+                onClick={() => setPhase('dm')}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-[15px] font-semibold text-white cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
+                style={{ background: 'var(--gradient-gold)' }}
+              >
+                <UserCheck size={18} />
+                {L('의사결정권자 반응 보기', 'See decision-maker reaction')}
+                <ChevronRight size={15} />
+              </motion.button>
             </motion.div>
           )}
 
-          {/* 8. DM Feedback */}
+          {/* 8. DM Feedback — new page feel */}
           {phaseGte(phase, 'dm') && dm && (
-            <DemoDMFeedback
-              fb={{ ...dm, concerns }}
-              onToggle={handleToggle}
-              onDone={handleDMDone}
-              showDoneButton={phase !== 'final'}
-            />
+            <>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+                className="text-center pt-4 pb-2">
+                <h3 className="text-[18px] md:text-[20px] font-bold text-[var(--text-primary)] tracking-tight">
+                  {L('의사결정권자의 반응', 'Decision-maker\'s reaction')}
+                </h3>
+                <p className="text-[13px] text-[var(--text-secondary)] mt-1">
+                  {L('초안을 본 의사결정권자의 피드백이에요', 'Here\'s how the decision-maker reacted to your draft')}
+                </p>
+              </motion.div>
+              <DemoDMFeedback
+                fb={{ ...dm, concerns }}
+                onToggle={handleToggle}
+                onDone={handleDMDone}
+                showDoneButton={phase !== 'final'}
+              />
+            </>
           )}
 
           {/* 9. Final */}

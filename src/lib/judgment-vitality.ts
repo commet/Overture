@@ -138,7 +138,7 @@ export function buildStageFingerprint(
     fingerprint: {
       iteration_count: iterations.length,
       issues_resolved: iterations.length > 1
-        ? (iterations[0]?.convergence?.total_issues || 0) - (lastIter?.convergence?.total_issues || 0)
+        ? Math.max(0, (iterations[0]?.convergence?.total_issues || 0) - (lastIter?.convergence?.total_issues || 0))
         : 0,
       conditions_met_ratio: metConditions / totalConditions,
     },
@@ -526,7 +526,7 @@ export function detectRigiditySignals(
 
   // same_persona_set: check past feedback records
   if (pastFeedbackRecords && pastFeedbackRecords.length >= RIGIDITY_THRESHOLDS.same_persona_set.min_sessions) {
-    const recentSets = pastFeedbackRecords.slice(-3).map(r => (r.persona_ids || []).sort().join(','));
+    const recentSets = pastFeedbackRecords.slice(-3).map(r => [...(r.persona_ids || [])].sort().join(','));
     if (recentSets.length >= 3 && recentSets.every(s => s === recentSets[0])) {
       signals.push({
         id: mkId(),
