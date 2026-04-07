@@ -601,11 +601,12 @@ export interface DecisionQualityScore {
 // ─── Settings ───
 
 export type LLMMode = 'proxy' | 'direct' | 'local';
-export type LLMProvider = 'anthropic' | 'openai';
+export type LLMProvider = 'anthropic' | 'openai' | 'gemini';
 
 export interface Settings {
   anthropic_api_key: string;
   openai_api_key: string;
+  gemini_api_key: string;
   llm_provider: LLMProvider;
   llm_mode: LLMMode;
   local_endpoint: string;

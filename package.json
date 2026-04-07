@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@google/genai": "^1.48.0",
     "@marsidev/react-turnstile": "^1.5.0",
     "@supabase/supabase-js": "^2.99.2",
     "framer-motion": "^12.38.0",

@@ -997,13 +997,13 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
           {/* Transition: draft → dm */}
           {phaseGte(phase, 'dm') && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
-              className="flex items-center gap-4 py-3">
-              <div className="flex-1 h-px bg-[var(--accent)]/15" />
-              <div className="flex items-center gap-1.5 shrink-0">
-                <UserCheck size={12} className="text-[var(--accent)]/60" />
-                <span className="text-[11px] text-[var(--text-secondary)] font-medium">의사결정권자가 뭐라고 할까?</span>
+              className="flex items-center gap-4 py-5">
+              <div className="flex-1 h-px bg-[var(--accent)]/20" />
+              <div className="flex items-center gap-2 shrink-0">
+                <UserCheck size={16} className="text-[var(--accent)]" />
+                <span className="text-[14px] text-[var(--text-primary)] font-semibold">의사결정권자가 뭐라고 할까?</span>
               </div>
-              <div className="flex-1 h-px bg-[var(--accent)]/15" />
+              <div className="flex-1 h-px bg-[var(--accent)]/20" />
             </motion.div>
           )}
 

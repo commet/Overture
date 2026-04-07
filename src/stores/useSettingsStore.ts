@@ -5,6 +5,7 @@ import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 const DEFAULT_SETTINGS: Settings = {
   anthropic_api_key: '',
   openai_api_key: '',
+  gemini_api_key: '',
   llm_provider: 'anthropic',
   llm_mode: 'proxy',
   local_endpoint: '',
@@ -28,8 +29,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (settings.anthropic_api_key && settings.llm_mode === 'proxy' && (settings.llm_provider || 'anthropic') === 'anthropic') {
       settings.llm_mode = 'direct';
     }
-    // OpenAI provider always uses direct mode
-    if ((settings.llm_provider || 'anthropic') === 'openai') {
+    // OpenAI/Gemini provider always uses direct mode
+    if ((settings.llm_provider || 'anthropic') === 'openai' || (settings.llm_provider || 'anthropic') === 'gemini') {
       settings.llm_mode = 'direct';
     }
     set({ settings });

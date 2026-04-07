@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockSettings = {
   anthropic_api_key: '',
   openai_api_key: '',
+  gemini_api_key: '',
   llm_provider: 'anthropic' as const,
   llm_mode: 'proxy' as const,
   local_endpoint: '',
@@ -88,6 +89,7 @@ beforeEach(() => {
     llm_mode: 'proxy',
     anthropic_api_key: '',
     openai_api_key: '',
+    gemini_api_key: '',
     llm_provider: 'anthropic',
     local_endpoint: '',
     language: 'ko',

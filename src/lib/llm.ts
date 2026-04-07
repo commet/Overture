@@ -334,6 +334,7 @@ function getSettings(): Settings {
   return getStorage<Settings>(STORAGE_KEYS.SETTINGS, {
     anthropic_api_key: '',
     openai_api_key: '',
+    gemini_api_key: '',
     llm_provider: 'anthropic',
     llm_mode: 'proxy',
     local_endpoint: '',
@@ -368,6 +369,11 @@ export async function callLLM(
     return callOpenAI(settings.openai_api_key, messages, options);
   }
 
+  // Gemini provider — always direct (user's own key)
+  if (settings.llm_provider === 'gemini' && settings.gemini_api_key) {
+    return callGemini(settings.gemini_api_key, messages, options);
+  }
+
   if (settings.llm_mode === 'direct' && settings.anthropic_api_key) {
     return callServerWithUserKey(settings.anthropic_api_key, messages, options);
   }
@@ -391,6 +397,27 @@ async function callOpenAI(
     }),
     signal: options.signal,
   }, 3, 'openai');
+
+  const data = await res.json();
+  return data.text;
+}
+
+async function callGemini(
+  apiKey: string,
+  messages: LLMMessage[],
+  options: LLMOptions
+): Promise<string> {
+  const res = await fetchWithRetry('/api/llm/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      messages,
+      system: options.system,
+      maxTokens: options.maxTokens,
+    }),
+    signal: options.signal,
+  }, 3, 'gemini');
 
   const data = await res.json();
   return data.text;
@@ -559,11 +586,12 @@ export async function callLLMStream(
 ): Promise<void> {
   const settings = getSettings();
   const isOpenAI = settings.llm_provider === 'openai' && settings.openai_api_key;
-  const isDirect = !isOpenAI && settings.llm_mode === 'direct' && settings.anthropic_api_key;
-  const url = isOpenAI ? '/api/llm/openai' : isDirect ? '/api/llm/direct' : '/api/llm';
+  const isGemini = settings.llm_provider === 'gemini' && settings.gemini_api_key;
+  const isDirect = !isOpenAI && !isGemini && settings.llm_mode === 'direct' && settings.anthropic_api_key;
+  const url = isGemini ? '/api/llm/gemini' : isOpenAI ? '/api/llm/openai' : isDirect ? '/api/llm/direct' : '/api/llm';
 
   let headers: Record<string, string>;
-  if (isOpenAI || isDirect) {
+  if (isOpenAI || isGemini || isDirect) {
     headers = { 'Content-Type': 'application/json' };
   } else {
     headers = await getAuthHeaders();
@@ -576,13 +604,15 @@ export async function callLLMStream(
     model: options.model,
     stream: true,
   };
-  if (isOpenAI) {
+  if (isGemini) {
+    bodyObj.apiKey = settings.gemini_api_key;
+  } else if (isOpenAI) {
     bodyObj.apiKey = settings.openai_api_key;
   } else if (isDirect) {
     bodyObj.apiKey = settings.anthropic_api_key;
   }
 
-  const provider = isOpenAI ? 'openai' : 'anthropic';
+  const provider = isGemini ? 'gemini' : isOpenAI ? 'openai' : 'anthropic';
 
   try {
     checkCircuit(provider);

@@ -138,6 +138,16 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
+    id: 'minseo', name: '민서', nameEn: 'Stella', role: '마케팅·그로스 전략가', roleEn: 'Marketing & Growth', emoji: '📣', color: '#E11D48',
+    origin: 'builtin', capabilities: ['task_execution'],
+    group: 'production', chain_id: null,
+    unlock_condition: { type: 'always', required: 0 }, unlocked: true,
+    expertise: '채널 전략, 캠페인 설계, 퍼널 최적화, 그로스 루프, 마케팅 예산 배분에 강합니다. 전략을 실행 가능한 마케팅 계획으로 전환합니다.',
+    tone: '데이터 기반으로 채널과 예산을 설계하되, 고객 심리를 놓치지 않습니다.',
+    keywords: ['마케팅', '캠페인', '채널', '퍼널', '그로스', '광고', 'SEO', 'SNS', '브랜딩', '콘텐츠', 'GTM', 'marketing', 'campaign', 'growth', 'funnel', 'channel', 'ads', 'brand'],
+    is_builtin: true, archived: false,
+  },
+  {
     id: 'junseo', name: '준서', nameEn: 'Leo', role: '기술 설계자', roleEn: 'Engineer', emoji: '⚙️', color: '#14B8A6',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'production', chain_id: null,

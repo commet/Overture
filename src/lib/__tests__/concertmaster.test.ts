@@ -52,6 +52,7 @@ vi.mock('@/lib/i18n', () => ({
     }
     return text;
   }),
+  getCurrentLanguage: vi.fn(() => 'ko'),
 }));
 
 vi.mock('@/lib/storage', () => ({

@@ -30,6 +30,12 @@ function buildLlmProviders(L: (ko: string, en: string) => string): { value: LLMP
       description: L('본인의 OpenAI API 키 사용. 사용량 제한 없음.', 'Use your own OpenAI API key. No usage limits.'),
       icon: <Zap size={16} />,
     },
+    {
+      value: 'gemini',
+      label: 'Google (Gemini 2.5 Flash)',
+      description: L('본인의 Google AI API 키 사용. 사용량 제한 없음.', 'Use your own Google AI API key. No usage limits.'),
+      icon: <Zap size={16} />,
+    },
   ];
 }
 
@@ -142,8 +148,8 @@ export default function SettingsPage() {
   };
 
   const handleProviderChange = (provider: LLMProvider) => {
-    if (provider === 'openai') {
-      // OpenAI always uses direct mode
+    if (provider === 'openai' || provider === 'gemini') {
+      // OpenAI/Gemini always uses direct mode
       updateSettings({ llm_provider: provider, llm_mode: 'direct' });
     } else {
       updateSettings({ llm_provider: provider });
@@ -286,6 +292,41 @@ export default function SettingsPage() {
               value={settings.openai_api_key || ''}
               onChange={(e) => updateSettings({ openai_api_key: e.target.value })}
               placeholder="sk-..."
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              spellCheck={false}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+            />
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
+            >
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </Card>
+      )}
+
+      {/* Gemini API Key (shown when gemini provider) */}
+      {(settings.llm_provider || 'anthropic') === 'gemini' && (
+        <Card className="animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <Key size={16} className="text-[var(--accent)]" />
+            <h3 className="text-[15px] font-bold">Google AI API Key</h3>
+          </div>
+          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
+            <p>{L('키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.', 'The key is stored in browser localStorage and sent through our server for LLM calls.')}</p>
+            <p className="text-[var(--warning)] font-medium">
+              {L('⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.', '⚠ On shared computers, always delete your key after use. Browser extensions can access localStorage.')}
+            </p>
+          </div>
+          <div className="relative">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={settings.gemini_api_key || ''}
+              onChange={(e) => updateSettings({ gemini_api_key: e.target.value })}
+              placeholder="AIza..."
               autoComplete="off"
               data-1p-ignore
               data-lpignore="true"

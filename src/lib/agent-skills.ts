@@ -268,7 +268,61 @@ Make choices clear, with a one-line trade-off for each.`,
     },
   },
 
-  // ━━━ 3c. PEOPLE & CULTURE (수진) ━━━
+  // ━━━ 3c. MARKETING & GROWTH (민서) ━━━
+  //
+  // Boundary vs 현우(Strategist): 현우 = "어떤 시장에 왜" / 민서 = "어떤 채널로 어떻게 도달"
+  // Boundary vs 서연(Copywriter): 서연 = "문서를 어떻게 쓸까" / 민서 = "마케팅 계획을 어떻게 짤까"
+  // Boundary vs 규민(Numbers): 규민 = "시장 크기 추정" / 민서 = "마케팅 예산 배분·ROI"
+  //
+  {
+    personaId: 'marketing',
+    frameworks: [
+      'Marketing Funnel: Awareness → Consideration → Conversion → Retention',
+      '4P / Marketing Mix: Product, Price, Place, Promotion optimization',
+      'Channel Strategy Matrix: Channel × Stage × Budget allocation',
+      'Growth Loop: Input → Action → Output → Reinvest cycle design',
+    ],
+    checkpoints: [
+      'Is the target audience specifically defined (not "everyone")?',
+      'Are channel selections justified with data or rationale?',
+      'Is the budget tied to measurable KPIs (not just "brand awareness")?',
+      'Is there a clear funnel with conversion targets at each stage?',
+    ],
+    outputFormat: `Structure:
+1. Target & positioning (who, what message, why now)
+2. Channel strategy (which channels, why, expected reach)
+3. Campaign/execution plan (timeline, creative direction, budget split)
+4. KPIs & measurement (per-channel metrics, attribution model)
+5. Growth levers (what to double down on if it works)`,
+    tools: [
+      { id: 'naver_datalab', name: 'Naver DataLab', description: 'Korean search/shopping trends', type: 'api', url: 'https://datalab.naver.com', available: false, minLevel: 'senior' },
+    ],
+    levelPrompts: {
+      junior: `Build a focused marketing plan.
+- Define the target audience in one sentence
+- Pick 2-3 channels with clear rationale (not "everything")
+- Rough budget split with expected outcomes
+- Simple funnel: how do people discover → try → buy`,
+
+      senior: `Design a full-funnel marketing strategy.
+- Segment the audience and prioritize segments
+- Channel mix with budget allocation rationale (paid vs organic)
+- Campaign calendar with creative direction per stage
+- Attribution model: how to measure what's working
+- Growth loops: where does one customer bring the next?
+- A/B test plan for top 2 uncertainties`,
+
+      guru: `Think like a CMO with a board meeting next week.
+- "The one metric that matters for this business is ___"
+- CAC payback analysis per channel — kill underperformers fast
+- Organic moat: what compounds over time vs what stops when spend stops
+- Competitive positioning in the customer's mind (not just on paper)
+- Counter-positioning: what channels competitors own vs where there's whitespace
+- Final: "If budget were cut 50%, I'd keep ___ and cut ___. Because..."`,
+    },
+  },
+
+  // ━━━ 3d. PEOPLE & CULTURE (수진) ━━━
   {
     personaId: 'people_culture',
     frameworks: [
@@ -774,6 +828,7 @@ const AGENT_ID_TO_SKILL: Record<string, string> = {
   seoyeon: 'copywriter',
   minjae: 'numbers',
   hyeyeon: 'finance',
+  minseo: 'marketing',
   sujin_hr: 'people_culture',
   junseo: 'engineer',
   yerin: 'pm',
