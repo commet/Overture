@@ -6,23 +6,27 @@ import { usePathname } from 'next/navigation';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Layers, Map, Users, Settings, BookOpen, FolderOpen, RefreshCw, User, Sparkles } from 'lucide-react';
-
-const processSteps = [
-  { step: 'reframe', label: '악보 해석', subtitle: '문제 재정의', icon: Layers, color: '#2d4a7c' },
-  { step: 'recast', label: '편곡', subtitle: '실행 설계', icon: Map, color: '#8b6914' },
-  { step: 'rehearse', label: '리허설', subtitle: '사전 검증', icon: Users, color: '#6b4c9a' },
-  { step: 'refine', label: '합주 연습', subtitle: '피드백 반영', icon: RefreshCw, color: '#2d6b2d' },
-  { step: 'synthesize', label: '종합', subtitle: '다중 관점 통합', icon: Sparkles, color: '#9b5de5' },
-];
-
-const utilityItems = [
-  { href: '/project', label: '프로젝트', icon: FolderOpen },
-  { href: '/teams', label: '팀', icon: Users },
-  { href: '/guide', label: '사용 가이드', icon: BookOpen },
-  { href: '/settings', label: '설정', icon: Settings },
-];
+import { useLocale } from '@/hooks/useLocale';
 
 export function Sidebar() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+
+  const processSteps = [
+    { step: 'reframe', label: L('악보 해석', 'Interpret'), subtitle: L('문제 재정의', 'Reframe'), icon: Layers, color: '#2d4a7c' },
+    { step: 'recast', label: L('편곡', 'Arrange'), subtitle: L('실행 설계', 'Recast'), icon: Map, color: '#8b6914' },
+    { step: 'rehearse', label: L('리허설', 'Rehearse'), subtitle: L('사전 검증', 'Pre-validate'), icon: Users, color: '#6b4c9a' },
+    { step: 'refine', label: L('합주 연습', 'Ensemble'), subtitle: L('피드백 반영', 'Refine'), icon: RefreshCw, color: '#2d6b2d' },
+    { step: 'synthesize', label: L('종합', 'Synthesize'), subtitle: L('다중 관점 통합', 'Multi-perspective'), icon: Sparkles, color: '#9b5de5' },
+  ];
+
+  const utilityItems = [
+    { href: '/project', label: L('프로젝트', 'Projects'), icon: FolderOpen },
+    { href: '/teams', label: L('팀', 'Teams'), icon: Users },
+    { href: '/guide', label: L('사용 가이드', 'Guide'), icon: BookOpen },
+    { href: '/settings', label: L('설정', 'Settings'), icon: Settings },
+  ];
+
   const pathname = usePathname();
   const { projects, currentProjectId, loadProjects } = useProjectStore();
   const { personas, loadData: loadPersonas } = usePersonaStore();
@@ -50,7 +54,7 @@ export function Sidebar() {
         <div className="px-3 pt-4 pb-2">
           <div className="flex items-center gap-2 text-[var(--accent)]">
             <FolderOpen size={12} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">프로젝트</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">{L('프로젝트', 'Project')}</span>
           </div>
           <p className="text-[13px] font-semibold text-[var(--text-primary)] mt-1 truncate">
             {currentProject.name}
@@ -61,7 +65,7 @@ export function Sidebar() {
       {/* Process steps — primary navigation */}
       <nav className="px-2 py-3 space-y-0.5">
         <p className="px-2 text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
-          프로세스
+          {L('프로세스', 'Process')}
         </p>
         {processSteps.map((item) => {
           const Icon = item.icon;
@@ -93,7 +97,7 @@ export function Sidebar() {
       {personas.length > 0 && (
         <div className="px-3 py-2 border-t border-[var(--border-subtle)]">
           <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
-            페르소나
+            {L('페르소나', 'Personas')}
           </p>
           <div className="space-y-0.5">
             {personas.slice(0, 4).map((p) => (

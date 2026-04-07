@@ -70,6 +70,7 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
   synthesis: [
     ['종합', 3], ['요약', 3], ['정리', 2], ['초안', 2], ['통합', 2],
     ['구성', 1], ['조합', 2], ['결론', 2],
+    [/synthe/i, 3], [/summar/i, 3], [/consolidat/i, 2], [/draft/i, 2], [/conclusion/i, 2],
   ],
   strategy: [
     ['전략', 3], ['방향', 2], ['포지셔닝', 3], ['차별화', 3],
@@ -81,10 +82,13 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
     ['계산', 3], ['산출', 3], ['추정', 2], ['모델링', 3], ['예측', 2],
     ['시뮬레이션', 3], [/ROI/i, 3], [/BEP/i, 3], [/TAM/i, 3],
     ['손익', 3], ['단가', 2], ['원가', 2],
+    [/calculat/i, 3], [/estimat/i, 2], [/model/i, 2], [/forecast/i, 2], [/simulat/i, 3],
   ],
   writing: [
     ['작성', 2], ['문서', 2], ['기획안', 2], ['보고서', 1], ['카피', 3],
     ['슬라이드', 2], ['제안서', 2], ['발표', 2], ['메모', 2],
+    [/write/i, 2], [/document/i, 2], [/proposal/i, 2], [/report/i, 1], [/copy/i, 3],
+    [/slide/i, 2], [/presentation/i, 2], [/memo/i, 2],
   ],
   critique: [
     ['비판', 3], ['리스크', 3], ['위험', 3], ['검증', 2], ['반론', 3],
@@ -94,6 +98,7 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
   design: [
     [/UX/i, 3], [/UI/i, 3], ['설계', 2], ['프로토', 3], ['와이어', 3],
     ['사용성', 3], ['접근성', 2], ['인터페이스', 2], ['사용자 경험', 3],
+    [/design/i, 2], [/proto/i, 3], [/wireframe/i, 3], [/usability/i, 3], [/accessibility/i, 2],
   ],
   legal_review: [
     ['법률', 3], ['규제', 3], ['계약', 3], ['특허', 3], ['라이선스', 3],
@@ -103,7 +108,8 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
   planning: [
     ['일정', 3], ['타임라인', 3], ['마일스톤', 3], ['리소스', 2],
     ['우선순위', 2], ['스프린트', 3], ['배포', 2], ['출시', 1],
-    [/timeline/i, 3], [/milestone/i, 3],
+    [/timeline/i, 3], [/milestone/i, 3], [/schedul/i, 3], [/resource/i, 2],
+    [/priorit/i, 2], [/sprint/i, 3], [/deploy/i, 2], [/launch/i, 1],
   ],
 };
 

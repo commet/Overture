@@ -34,7 +34,7 @@ import {
 const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_at' | 'created_at' | 'updated_at'>[] = [
   // ── 리서치 체인 ──
   {
-    id: 'hayoon', name: '하윤', role: '리서치 인턴', emoji: '📝', color: '#06B6D4',
+    id: 'hayoon', name: '하윤', nameEn: 'Riley', role: '리서치 인턴', roleEn: 'Research Intern', emoji: '📝', color: '#06B6D4',
     origin: 'builtin', capabilities: ['task_execution', 'web_search'],
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -44,7 +44,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'sujin', name: '수진', role: '리서치 애널리스트', emoji: '🔍', color: '#3B82F6',
+    id: 'sujin', name: '수진', nameEn: 'Sophie', role: '리서치 애널리스트', roleEn: 'Research Analyst', emoji: '🔍', color: '#3B82F6',
     origin: 'builtin', capabilities: ['task_execution', 'web_search'],
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
@@ -54,7 +54,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'research_director', name: '도윤', role: '리서치 디렉터', emoji: '🧠', color: '#1D4ED8',
+    id: 'research_director', name: '도윤', nameEn: 'Marcus', role: '리서치 디렉터', roleEn: 'Research Director', emoji: '🧠', color: '#1D4ED8',
     origin: 'builtin', capabilities: ['task_execution', 'review', 'web_search'],
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
@@ -66,7 +66,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
 
   // ── 전략 체인 ──
   {
-    id: 'strategy_jr', name: '지호', role: '전략 주니어', emoji: '🗺️', color: '#A78BFA',
+    id: 'strategy_jr', name: '정민', nameEn: 'Alex', role: '전략 주니어', roleEn: 'Junior Strategist', emoji: '🗺️', color: '#A78BFA',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -76,7 +76,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'hyunwoo', name: '현우', role: '전략가', emoji: '🎯', color: '#8B5CF6',
+    id: 'hyunwoo', name: '현우', nameEn: 'Nathan', role: '전략가', roleEn: 'Strategist', emoji: '🎯', color: '#8B5CF6',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
@@ -86,7 +86,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'chief_strategist', name: '승현', role: '수석 전략가', emoji: '🏛️', color: '#6D28D9',
+    id: 'chief_strategist', name: '승현', nameEn: 'Victor', role: '수석 전략가', roleEn: 'Chief Strategist', emoji: '🏛️', color: '#6D28D9',
     origin: 'builtin', capabilities: ['task_execution', 'review'],
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
@@ -98,7 +98,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
 
   // ── 실행 그룹 (독립) ──
   {
-    id: 'seoyeon', name: '서연', role: '카피라이터', emoji: '✍️', color: '#F59E0B',
+    id: 'seoyeon', name: '서연', nameEn: 'Claire', role: '카피라이터', roleEn: 'Copywriter', emoji: '✍️', color: '#F59E0B',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -108,7 +108,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'minjae', name: '민재', role: '숫자 분석가', emoji: '📊', color: '#10B981',
+    id: 'minjae', name: '규민', nameEn: 'Ethan', role: '숫자 분석가', roleEn: 'Numbers Analyst', emoji: '📊', color: '#10B981',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -118,7 +118,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'junseo', name: '준서', role: '기술 설계자', emoji: '⚙️', color: '#14B8A6',
+    id: 'junseo', name: '준서', nameEn: 'Leo', role: '기술 설계자', roleEn: 'Engineer', emoji: '⚙️', color: '#14B8A6',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -128,7 +128,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'yerin', name: '예린', role: 'PM', emoji: '📋', color: '#A855F7',
+    id: 'yerin', name: '예린', nameEn: 'Grace', role: 'PM', roleEn: 'PM', emoji: '📋', color: '#A855F7',
     origin: 'builtin', capabilities: ['task_execution'],
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -140,7 +140,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
 
   // ── 검증 그룹 (독립) ──
   {
-    id: 'donghyuk', name: '동혁', role: '리스크 검토자', emoji: '⚠️', color: '#EF4444',
+    id: 'donghyuk', name: '동혁', nameEn: 'Blake', role: '리스크 검토자', roleEn: 'Risk Reviewer', emoji: '⚠️', color: '#EF4444',
     origin: 'builtin', capabilities: ['task_execution', 'review'],
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -150,7 +150,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'jieun', name: '지은', role: 'UX 설계자', emoji: '🎨', color: '#EC4899',
+    id: 'jieun', name: '지은', nameEn: 'Maya', role: 'UX 설계자', roleEn: 'UX Designer', emoji: '🎨', color: '#EC4899',
     origin: 'builtin', capabilities: ['task_execution', 'review'],
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -160,7 +160,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     is_builtin: true, archived: false,
   },
   {
-    id: 'taejun', name: '태준', role: '법률·규정 검토자', emoji: '⚖️', color: '#6B7280',
+    id: 'taejun', name: '윤석', nameEn: 'Arthur', role: '법률·규정 검토자', roleEn: 'Legal Reviewer', emoji: '⚖️', color: '#6B7280',
     origin: 'builtin', capabilities: ['task_execution', 'review'],
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
@@ -172,7 +172,7 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
 
   // ── 특수: 악장 ──
   {
-    id: 'concertmaster', name: '악장', role: 'Concertmaster', emoji: '🎻', color: '#D97706',
+    id: 'concertmaster', name: '악장', nameEn: 'Maestro', role: 'Concertmaster', roleEn: 'Concertmaster', emoji: '🎻', color: '#D97706',
     origin: 'builtin', capabilities: ['review'],
     group: 'special', chain_id: null,
     unlock_condition: { type: 'total_tasks', required: CONCERTMASTER_UNLOCK_THRESHOLD }, unlocked: false,

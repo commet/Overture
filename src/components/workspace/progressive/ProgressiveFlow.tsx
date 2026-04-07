@@ -30,6 +30,7 @@ import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext } from './WorkerPanel';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, Copy, CheckCheck, UserCheck, ArrowRight } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 /* ═══ Design tokens ═══ */
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -52,7 +53,8 @@ function getParticle(name: string): string {
 }
 
 /* ═══ Progress line ═══ */
-const PHASES = ['상황 분석', '팀 작업', '피드백', '완성'] as const;
+const PHASES_KO = ['상황 분석', '팀 작업', '피드백', '완성'] as const;
+const PHASES_EN = ['Analysis', 'Teamwork', 'Feedback', 'Complete'] as const;
 
 function phaseIdx(phase: string, round: number, hasMix: boolean): number {
   if (phase === 'complete') return 4;
@@ -63,6 +65,8 @@ function phaseIdx(phase: string, round: number, hasMix: boolean): number {
 }
 
 function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; hasMix: boolean }) {
+  const locale = useLocale();
+  const PHASES = locale === 'ko' ? PHASES_KO : PHASES_EN;
   const idx = phaseIdx(phase, round, hasMix);
   const pct = Math.min((idx / 4) * 100, 100);
   return (
@@ -107,6 +111,8 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
   prevSnapshot: AnalysisSnapshot | null;
   isActive: boolean;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const hasChanges = prevSnapshot && snapshot.version > 0;
   const questionChanged = hasChanges && prevSnapshot.real_question !== snapshot.real_question;
 
@@ -130,11 +136,11 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
           <div className="p-5 md:p-7">
             {/* Eyebrow + change summary */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">진짜 질문</span>
+              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">{L('진짜 질문', 'Real Question')}</span>
               {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
               {hasChanges && (newCount > 0 || removedCount > 0) && (
                 <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                  {newCount > 0 && `+${newCount} 추가`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} 제거`}
+                  {newCount > 0 && `+${newCount} ${L('추가', 'added')}`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} ${L('제거', 'removed')}`}
                 </span>
               )}
             </div>
@@ -166,7 +172,7 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
                   <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Sparkles size={11} className="text-[var(--accent)]" />
-                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">핵심</span>
+                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">{L('핵심', 'Key Insight')}</span>
                     </div>
                     <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
                   </div>
@@ -179,7 +185,7 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
               {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
                 <div className="rounded-xl bg-[var(--bg)]/60 p-4">
                   <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />놓치기 쉬운 것
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />{L('놓치기 쉬운 것', 'Hidden Assumptions')}
                   </p>
                   <div className="space-y-1.5">
                     <AnimatePresence>
@@ -209,7 +215,7 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
               )}
               <div className="rounded-xl bg-[var(--bg)]/60 p-4">
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />뼈대
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />{L('뼈대', 'Structure')}
                 </p>
                 <div className="space-y-1">
                   <AnimatePresence>
@@ -244,15 +250,15 @@ function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.5, ease: EASE }} className="overflow-hidden">
                   <div className="pt-4 border-t border-[var(--border-subtle)]">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">실행 계획:</span>
+                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{L('실행 계획:', 'Execution Plan:')}</span>
                       {snapshot.execution_plan.steps.map((step, i) => (
                         <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                           step.who === 'ai' ? 'bg-blue-50 text-blue-600' : step.who === 'human' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'
                         }`}>{step.task}</span>
                       ))}
                       <span className="text-[10px] text-[var(--text-tertiary)]">
-                        <span className="hidden lg:inline">← 좌측 패널에서 진행 중</span>
-                        <span className="lg:hidden">↓ 하단 팀 탭에서 진행 중</span>
+                        <span className="hidden lg:inline">{L('← 좌측 패널에서 진행 중', '← In progress on left panel')}</span>
+                        <span className="lg:hidden">{L('↓ 하단 팀 탭에서 진행 중', '↓ In progress in team tab below')}</span>
                       </span>
                     </div>
                   </div>
@@ -300,6 +306,8 @@ function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; a
 
 /* ═══ Question Card ═══ */
 function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion; onAnswer: (v: string) => void; disabled: boolean }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [input, setInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -330,22 +338,22 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
               }`} style={{ transitionProperty: 'all', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
           ))}
           <div className="flex gap-2 pt-0.5">
-            <input value={input} onChange={e => setInput(e.target.value)} placeholder="또는 직접 입력..." disabled={disabled || submitted}
+            <input value={input} onChange={e => setInput(e.target.value)} placeholder={L('또는 직접 입력...', 'Or type your own...')} disabled={disabled || submitted}
               className="flex-1 px-3.5 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
             {input.trim() && <motion.button onClick={goText} disabled={disabled || submitted} whileTap={{ scale: 0.95 }}
               className="shrink-0 px-4 py-2 text-white rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-30"
-              style={{ background: 'var(--gradient-gold)' }}>확인</motion.button>}
+              style={{ background: 'var(--gradient-gold)' }}>{L('확인', 'OK')}</motion.button>}
           </div>
         </div>
       ) : (
         <div className="flex gap-2 pl-8.5">
-          <input value={input} onChange={e => setInput(e.target.value)} placeholder="입력..." autoFocus disabled={disabled || submitted}
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder={L('입력...', 'Type here...')} autoFocus disabled={disabled || submitted}
             className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
           <motion.button onClick={goText} disabled={disabled || !input.trim() || submitted} whileTap={{ scale: 0.95 }}
             className="shrink-0 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
-            style={{ background: 'var(--gradient-gold)' }}>확인</motion.button>
+            style={{ background: 'var(--gradient-gold)' }}>{L('확인', 'OK')}</motion.button>
         </div>
       )}
     </motion.div>
@@ -354,13 +362,15 @@ function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion
 
 /* ═══ Mix Preview ═══ */
 function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null; debateResult?: DebateResult | null }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
         <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
           <div className="p-5 md:p-10 space-y-6">
-            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">초안</span>
+            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">{L('초안', 'Draft')}</span>
             <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{mix.title}</h2>
             <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[15px] text-[var(--text-secondary)] italic leading-relaxed">{renderInline(mix.executive_summary)}</blockquote>
 
@@ -375,7 +385,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
 
             {mix.next_steps.length > 0 && (
               <div className="pt-5 border-t border-[var(--border-subtle)]">
-                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">다음 단계</p>
+                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">{L('다음 단계', 'Next Steps')}</p>
                 {mix.next_steps.map((s, i) => <div key={i} className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)] mb-2 leading-relaxed"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-2 shrink-0" /><span>{s}</span></div>)}
               </div>
             )}
@@ -385,7 +395,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
                 className="pt-5 border-t border-dashed border-[var(--accent)]/20">
                 <div className="flex items-center gap-2 mb-3">
                   <span style={{ fontSize: 18 }}>🎻</span>
-                  <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em]">악장의 한마디</p>
+                  <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em]">{L('악장의 한마디', 'Concertmaster Note')}</p>
                 </div>
                 <p className="text-[13px] text-[var(--text-primary)] leading-relaxed mb-2">{cmReview.overall}</p>
                 {cmReview.contradictions.length > 0 && (
@@ -407,7 +417,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
                 className="pt-5 border-t border-dashed border-[var(--danger)]/20">
                 <div className="flex items-center gap-2 mb-3">
                   <span style={{ fontSize: 18 }}>⚔️</span>
-                  <p className="text-[9px] font-bold text-[var(--danger)] uppercase tracking-[0.2em]">팀 내 반론</p>
+                  <p className="text-[9px] font-bold text-[var(--danger)] uppercase tracking-[0.2em]">{L('팀 내 반론', 'Team Dissent')}</p>
                   <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${debateResult.severity === 'critical' ? 'bg-[var(--danger)]/10 text-[var(--danger)]' : debateResult.severity === 'important' ? 'bg-[var(--warning)]/10 text-[var(--warning)]' : 'bg-[var(--text-tertiary)]/10 text-[var(--text-tertiary)]'}`}>
                     {debateResult.severity}
                   </span>
@@ -416,7 +426,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
                 {debateResult.weakestClaim && (
                   <p className="text-[12px] text-[var(--danger)] flex items-start gap-2 mb-1">
                     <span className="shrink-0 mt-0.5">💀</span>
-                    <span><strong>{debateResult.targetAgent}</strong>의 약점: {debateResult.weakestClaim}</span>
+                    <span><strong>{debateResult.targetAgent}</strong>{L('의 약점: ', "'s weakness: ")}{debateResult.weakestClaim}</span>
                   </p>
                 )}
                 {debateResult.alternativeView && (
@@ -432,10 +442,10 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
               <motion.button onClick={onDM} disabled={busy} whileTap={{ scale: 0.98 }}
                 className="w-full flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-2xl text-[15px] font-semibold shadow-[var(--shadow-md)] cursor-pointer disabled:opacity-50"
                 style={{ background: 'var(--gradient-gold)' }}>
-                {busy ? <><Loader2 size={16} className="animate-spin" /> 시뮬레이션 중...</> : <><UserCheck size={16} /> {dm || '의사결정권자'}{getParticle(dm || '자')} 뭐라고 할까?</>}
+                {busy ? <><Loader2 size={16} className="animate-spin" /> {L('시뮬레이션 중...', 'Simulating...')}</> : <><UserCheck size={16} /> {locale === 'ko' ? <>{dm || '의사결정권자'}{getParticle(dm || '자')} 뭐라고 할까?</> : <>What would {dm || 'the decision-maker'} say?</>}</>}
               </motion.button>
               <button onClick={onSkip} disabled={busy} className="w-full text-center text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] py-1 cursor-pointer"
-                style={{ transitionProperty: 'color', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>건너뛰고 이대로 완성</button>
+                style={{ transitionProperty: 'color', transitionDuration: '300ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{L('건너뛰고 이대로 완성', 'Skip and finalize as is')}</button>
             </div>
           </div>
         </div>
@@ -446,6 +456,8 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
 
 /* ═══ DM Feedback ═══ */
 function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/types').DMFeedbackResult; onToggle: (i: number) => void; onFinalize: () => void; busy: boolean }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <div className="space-y-5">
       {/* Transition divider */}
@@ -454,7 +466,7 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
         <div className="flex-1 h-px bg-[var(--accent)]/15" />
         <div className="flex items-center gap-1.5 shrink-0">
           <UserCheck size={12} className="text-[var(--accent)]/60" />
-          <span className="text-[11px] text-[var(--text-secondary)] font-medium">의사결정권자의 반응</span>
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">{L('의사결정권자의 반응', "Decision-Maker's Response")}</span>
         </div>
         <div className="flex-1 h-px bg-[var(--accent)]/15" />
       </motion.div>
@@ -470,12 +482,12 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
             <blockquote className="text-[16px] text-[var(--text-primary)] leading-relaxed italic pl-5 border-l-[3px] border-[var(--text-tertiary)]/15">&ldquo;{fb.first_reaction}&rdquo;</blockquote>
 
             {fb.good_parts.length > 0 && <div>
-              <p className="text-[9px] font-bold text-green-600 uppercase tracking-[0.2em] mb-2">좋은 점</p>
+              <p className="text-[9px] font-bold text-green-600 uppercase tracking-[0.2em] mb-2">{L('좋은 점', 'Strengths')}</p>
               {fb.good_parts.map((g, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-green-500 shrink-0 mt-0.5">&#10003;</span>{g}</p>)}
             </div>}
 
             {fb.concerns.length > 0 && <div>
-              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">우려 + 수정 제안</p>
+              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">{L('우려 + 수정 제안', 'Concerns + Suggestions')}</p>
               <div className="space-y-3">
                 {fb.concerns.map((c: DMConcern, i: number) => (
                   <div key={i} className={`rounded-2xl border p-4 transition-all duration-500 ${c.applied ? 'border-[var(--accent)]/20 bg-[var(--accent)]/[0.02]' : 'border-[var(--border-subtle)] bg-[var(--bg)]'}`}
@@ -483,12 +495,12 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
                     <div>
                       <div className="flex items-start gap-2 mb-2">
                         <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${c.severity === 'critical' ? 'bg-red-50 text-red-600' : c.severity === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
-                          {c.severity === 'critical' ? '필수' : c.severity === 'important' ? '권장' : '참고'}</span>
+                          {c.severity === 'critical' ? L('필수', 'Required') : c.severity === 'important' ? L('권장', 'Recommended') : L('참고', 'Note')}</span>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{c.text}</p>
                       </div>
                       <p className="text-[12px] text-[var(--accent)] leading-relaxed mb-3 pl-1">→ {c.fix_suggestion}</p>
                       <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? '반영' : '스킵'}</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)]">{c.applied ? L('반영', 'Applied') : L('스킵', 'Skip')}</span>
                         <button onClick={() => onToggle(i)} className={`relative w-11 h-6 rounded-full cursor-pointer ${c.applied ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
                           style={{ transitionProperty: 'background', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
                           <motion.div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm" animate={{ left: c.applied ? 24 : 4 }} transition={SPRING} />
@@ -501,13 +513,13 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
             </div>}
 
             {fb.would_ask.length > 0 && <div>
-              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2">이것도 물어볼 거다</p>
+              <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-2">{L('이것도 물어볼 거다', 'They Would Also Ask')}</p>
               {fb.would_ask.map((q, i) => <p key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 mb-1.5 leading-relaxed"><span className="text-[var(--accent)] shrink-0">?</span>{q}</p>)}
             </div>}
 
             <div className="pt-4 mt-2 border-t border-[var(--border-subtle)]">
               <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
-                <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">통과 조건</p>
+                <p className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-2">{L('통과 조건', 'Approval Condition')}</p>
                 <p className="text-[15px] text-[var(--text-primary)] font-semibold leading-relaxed">{fb.approval_condition}</p>
               </div>
             </div>
@@ -515,7 +527,7 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
             <motion.button onClick={onFinalize} disabled={busy} whileTap={{ scale: 0.98 }}
               className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-50"
               style={{ background: 'var(--gradient-gold)' }}>
-              {busy ? <><Loader2 size={16} className="animate-spin" /> 최종본 작성 중...</> : <>반영하고 완성 <ChevronRight size={14} /></>}
+              {busy ? <><Loader2 size={16} className="animate-spin" /> {L('최종본 작성 중...', 'Finalizing...')}</> : <>{L('반영하고 완성', 'Apply and Finalize')} <ChevronRight size={14} /></>}
             </motion.button>
           </div>
         </div>
@@ -527,6 +539,8 @@ function DMFeedback({ fb, onToggle, onFinalize, busy }: { fb: import('@/stores/t
 
 /* ═══ Final deliverable — triumphant, widest ═══ */
 function FinalCard({ content }: { content: string }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [copied, setCopied] = useState(false);
   const copy = async () => { await navigator.clipboard.writeText(content); setCopied(true); track('flow_copy', {}); setTimeout(() => setCopied(false), 2000); };
   return (
@@ -537,11 +551,11 @@ function FinalCard({ content }: { content: string }) {
           <div className="px-7 py-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center"><Check size={14} className="text-[var(--accent)]" /></div>
-              <span className="text-[14px] font-semibold text-[var(--text-primary)]">최종 산출물</span>
+              <span className="text-[14px] font-semibold text-[var(--text-primary)]">{L('최종 산출물', 'Final Deliverable')}</span>
             </div>
             <motion.button onClick={copy} whileTap={{ scale: 0.95 }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium bg-[var(--bg)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--accent)]/30 cursor-pointer">
-              {copied ? <><CheckCheck size={12} /> 복사됨</> : <><Copy size={12} /> 복사</>}
+              {copied ? <><CheckCheck size={12} /> {L('복사됨', 'Copied')}</> : <><Copy size={12} /> {L('복사', 'Copy')}</>}
             </motion.button>
           </div>
           <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
@@ -586,10 +600,12 @@ function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
 
 /* ═══ Team Deploy Banner — 팀 구성 확인 ═══ */
 function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDeploy: () => void }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const names = workers.map(w => w.persona?.name || 'AI').filter(Boolean);
   const nameStr = names.length <= 3
     ? names.join(', ')
-    : `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}명`;
+    : locale === 'ko' ? `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}명` : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
@@ -599,7 +615,7 @@ function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDepl
       <div className="flex items-center gap-3 flex-wrap">
         <AvatarRow personas={workers.map(w => w.persona)} />
         <p className="text-[14px] font-medium text-[var(--text-primary)] truncate">
-          {nameStr} — 준비 완료
+          {nameStr} — {L('준비 완료', 'Ready')}
         </p>
       </div>
 
@@ -622,7 +638,7 @@ function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDepl
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
         className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
-        시작 <ChevronRight size={14} />
+        {L('시작', 'Start')} <ChevronRight size={14} />
       </motion.button>
     </motion.div>
   );
@@ -630,18 +646,20 @@ function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDepl
 
 /* ═══ Mix Trigger ═══ */
 function MixTrigger({ onMix, onMore, busy }: { onMix: () => void; onMore: () => void; busy: boolean }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="space-y-4 py-2">
-      <p className="text-[12px] text-[var(--text-tertiary)] text-center tracking-wide">초안을 만들 준비가 되었습니다</p>
+      <p className="text-[12px] text-[var(--text-tertiary)] text-center tracking-wide">{L('초안을 만들 준비가 되었습니다', 'Ready to create a draft')}</p>
       <div className="flex flex-col sm:flex-row gap-3">
         <motion.button onClick={onMix} disabled={busy} whileTap={{ scale: 0.98 }}
           className="flex-1 flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-2xl text-[15px] font-semibold shadow-[var(--shadow-md)] cursor-pointer disabled:opacity-50"
           style={{ background: 'var(--gradient-gold)' }}>
-          {busy ? <><Loader2 size={16} className="animate-spin" /> 조합 중...</> : <>초안 완성하기 <ChevronRight size={14} /></>}
+          {busy ? <><Loader2 size={16} className="animate-spin" /> {L('조합 중...', 'Combining...')}</> : <>{L('초안 완성하기', 'Create Draft')} <ChevronRight size={14} /></>}
         </motion.button>
         {!busy && <motion.button onClick={onMore} whileTap={{ scale: 0.98 }}
           className="px-6 py-4 rounded-2xl text-[14px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer"
-          style={{ transitionProperty: 'border-color', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>질문 하나 더</motion.button>}
+          style={{ transitionProperty: 'border-color', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{L('질문 하나 더', 'One more question')}</motion.button>}
       </div>
     </motion.div>
   );
@@ -654,6 +672,8 @@ function FramingConfirmation({ snapshot, onConfirm, onReject, busy }: {
   onReject: (reason: string) => void;
   busy: boolean;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState('');
   const confidence = snapshot.framing_confidence ?? 75;
@@ -669,10 +689,10 @@ function FramingConfirmation({ snapshot, onConfirm, onReject, busy }: {
           {isLowConfidence ? <AlertTriangle size={11} className="text-amber-600" /> : <Check size={11} className="text-[var(--accent)]" />}
         </div>
         <div>
-          <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">이 방향이 맞나요?</p>
+          <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">{L('이 방향이 맞나요?', 'Is this the right direction?')}</p>
           <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-            {isLowConfidence ? '이 문제는 여러 방향으로 해석될 수 있습니다.' : '분석 방향을 확인하고 다음으로 넘어갑니다.'}
-            {' '}확신도 {confidence}%
+            {isLowConfidence ? L('이 문제는 여러 방향으로 해석될 수 있습니다.', 'This problem can be interpreted in multiple ways.') : L('분석 방향을 확인하고 다음으로 넘어갑니다.', 'Confirm the analysis direction to proceed.')}
+            {' '}{L('확신도', 'Confidence')} {confidence}%
           </p>
         </div>
       </div>
@@ -681,21 +701,21 @@ function FramingConfirmation({ snapshot, onConfirm, onReject, busy }: {
         <div className="flex gap-2 pl-9">
           <motion.button onClick={onConfirm} disabled={busy} whileTap={{ scale: 0.98 }}
             className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white cursor-pointer disabled:opacity-50"
-            style={{ background: 'var(--gradient-gold)' }}>맞습니다</motion.button>
+            style={{ background: 'var(--gradient-gold)' }}>{L('맞습니다', 'Correct')}</motion.button>
           <motion.button onClick={() => setRejectMode(true)} disabled={busy} whileTap={{ scale: 0.98 }}
             className="px-4 py-2 rounded-xl text-[12px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer">
-            다시 정의</motion.button>
+            {L('다시 정의', 'Redefine')}</motion.button>
         </div>
       ) : (
         <div className="pl-9 space-y-2">
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="어떤 방향이 더 맞나요? (예: 이건 투자용이 아니라 내부 보고용이야)"
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder={L('어떤 방향이 더 맞나요? (예: 이건 투자용이 아니라 내부 보고용이야)', 'What direction fits better? (e.g., This is for internal reporting, not investors)')}
             className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30"
             onKeyDown={e => { if (e.key === 'Enter' && reason.trim()) { e.preventDefault(); onReject(reason.trim()); } }} autoFocus />
           <div className="flex gap-2">
             <motion.button onClick={() => reason.trim() && onReject(reason.trim())} disabled={busy || !reason.trim()} whileTap={{ scale: 0.98 }}
               className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white cursor-pointer disabled:opacity-50"
-              style={{ background: 'var(--gradient-gold)' }}>재분석</motion.button>
-            <button onClick={() => setRejectMode(false)} className="px-3 py-2 text-[11px] text-[var(--text-tertiary)] cursor-pointer">취소</button>
+              style={{ background: 'var(--gradient-gold)' }}>{L('재분석', 'Re-analyze')}</motion.button>
+            <button onClick={() => setRejectMode(false)} className="px-3 py-2 text-[11px] text-[var(--text-tertiary)] cursor-pointer">{L('취소', 'Cancel')}</button>
           </div>
         </div>
       )}
@@ -705,6 +725,8 @@ function FramingConfirmation({ snapshot, onConfirm, onReject, busy }: {
 
 /* ═══ Convergence Status (Weakness C fix) ═══ */
 function ConvergenceStatus({ metrics }: { metrics: ConvergenceMetrics }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const colorClass = metrics.score >= 75 ? 'text-emerald-600 bg-emerald-50' :
     metrics.score >= 50 ? 'text-amber-600 bg-amber-50' : 'text-red-500 bg-red-50';
   const barColor = metrics.score >= 75 ? 'bg-emerald-400' :
@@ -715,7 +737,7 @@ function ConvergenceStatus({ metrics }: { metrics: ConvergenceMetrics }) {
       className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[var(--bg)]/60 border border-[var(--border-subtle)]">
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">명확도</span>
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)]">{L('명확도', 'Clarity')}</span>
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colorClass}`}>{metrics.score}%</span>
         </div>
         <div className="h-1 rounded-full bg-[var(--border-subtle)] overflow-hidden">
@@ -733,19 +755,21 @@ function PipelineExitOptions({ onReframe, onRehearse }: {
   onReframe: () => void;
   onRehearse: () => void;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <div className="flex flex-col gap-2 border-t border-dashed border-[var(--border-subtle)] pt-4 mt-2">
-      <p className="text-[10px] font-medium text-[var(--text-tertiary)] tracking-wide">다른 도구로 전환</p>
+      <p className="text-[10px] font-medium text-[var(--text-tertiary)] tracking-wide">{L('다른 도구로 전환', 'Switch to another tool')}</p>
       <div className="flex gap-2">
         <button onClick={onReframe}
           className="flex-1 text-left px-3 py-2 rounded-xl bg-[var(--bg)]/60 hover:bg-[var(--accent)]/5 border border-transparent hover:border-[var(--accent)]/10 cursor-pointer transition-colors duration-300">
-          <p className="text-[11px] font-medium text-[var(--text-secondary)]">→ 문제 재정의</p>
-          <p className="text-[9px] text-[var(--text-tertiary)]">더 깊이 들어가기</p>
+          <p className="text-[11px] font-medium text-[var(--text-secondary)]">{L('→ 문제 재정의', '→ Reframe Problem')}</p>
+          <p className="text-[9px] text-[var(--text-tertiary)]">{L('더 깊이 들어가기', 'Dig deeper')}</p>
         </button>
         <button onClick={onRehearse}
           className="flex-1 text-left px-3 py-2 rounded-xl bg-[var(--bg)]/60 hover:bg-[var(--accent)]/5 border border-transparent hover:border-[var(--accent)]/10 cursor-pointer transition-colors duration-300">
-          <p className="text-[11px] font-medium text-[var(--text-secondary)]">→ 피드백 먼저</p>
-          <p className="text-[9px] text-[var(--text-tertiary)]">이해관계자 반응 시뮬레이션</p>
+          <p className="text-[11px] font-medium text-[var(--text-secondary)]">{L('→ 피드백 먼저', '→ Feedback First')}</p>
+          <p className="text-[9px] text-[var(--text-tertiary)]">{L('이해관계자 반응 시뮬레이션', 'Simulate stakeholder reactions')}</p>
         </button>
       </div>
     </div>
@@ -757,6 +781,8 @@ function PipelineExitOptions({ onReframe, onRehearse }: {
 /* ═══════════════════════════════════════════ */
 
 export function ProgressiveFlow({ projectId }: { projectId: string }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const store = useProgressiveStore();
   const session = store.currentSession();
   const [busy, setBusy] = useState(false);
@@ -876,7 +902,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         // Quality validation handled via WorkerTaskResult in worker-engine
       }
       r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
-    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '분석 실패'); store.setPhase('conversing'); }
+    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); }
     finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
@@ -897,7 +923,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (workerResults.length > 0) {
         const cmWorkers = session!.workers
           .filter(w => w.approved !== false && w.result)
-          .map(w => ({ agentName: w.persona?.name || '에이전트', agentRole: w.persona?.role || '', task: w.task, result: w.result || '' }));
+          .map(w => ({ agentName: w.persona?.name || L('에이전트', 'Agent'), agentRole: w.persona?.role || '', task: w.task, result: w.result || '' }));
         runConcertmasterReview(session!.problem_text, cmWorkers)
           .then(r => { if (r) setCmReview(r); })
           .catch(() => {});
@@ -912,8 +938,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               setDebateResult(debateRes);
               // debate 결과를 workerResults에 추가하여 mix에 반영
               workerResults.push({
-                task: `[팀 내 반론] ${debateRes.targetAgent}의 분석에 대한 비판`,
-                result: `${debateRes.challenge}\n\n약점: ${debateRes.weakestClaim}\n\n대안: ${debateRes.alternativeView}`,
+                task: locale === 'ko' ? `[팀 내 반론] ${debateRes.targetAgent}의 분석에 대한 비판` : `[Team Dissent] Critique of ${debateRes.targetAgent}'s analysis`,
+                result: locale === 'ko' ? `${debateRes.challenge}\n\n약점: ${debateRes.weakestClaim}\n\n대안: ${debateRes.alternativeView}` : `${debateRes.challenge}\n\nWeakness: ${debateRes.weakestClaim}\n\nAlternative: ${debateRes.alternativeView}`,
               });
             }
           } catch { /* debate 실패해도 mix는 진행 */ }
@@ -935,7 +961,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session.problem_text.slice(0, 100));
         }
       }
-    } catch (e) { setError(e instanceof Error ? e.message : '초안 생성 실패'); store.setPhase('conversing'); }
+    } catch (e) { setError(e instanceof Error ? e.message : L('초안 생성 실패', 'Draft creation failed')); store.setPhase('conversing'); }
     finally { setBusy(false); scroll(); }
   };
 
@@ -949,7 +975,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       const f = reviewerAgent
         ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text)
-        : await runDMFeedback(mix, dm || '의사결정권자', session!.problem_text);
+        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text);
 
       store.setDMFeedback(f);
 
@@ -961,7 +987,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session!.problem_text.slice(0, 100));
       }
     }
-    catch (e) { setError(e instanceof Error ? e.message : 'DM 피드백 실패'); }
+    catch (e) { setError(e instanceof Error ? e.message : L('DM 피드백 실패', 'DM feedback failed')); }
     finally { setBusy(false); scroll(); }
   };
 
@@ -975,22 +1001,22 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal);
       setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
-    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '실패'); store.setPhase('conversing'); setShowMix(true); }
+    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('실패', 'Failed')); store.setPhase('conversing'); setShowMix(true); }
     finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
   const onSkip = () => {
     if (!mix) return;
     const md = [`# ${mix.title}`, '', `> ${mix.executive_summary}`, '', ...mix.sections.flatMap(s => [`## ${s.heading}`, '', s.content, '']),
-      ...(mix.key_assumptions.length ? ['## 전제 조건', '', ...mix.key_assumptions.map(a => `- ${a}`), ''] : []),
-      ...(mix.next_steps.length ? ['## 다음 단계', '', ...mix.next_steps.map(s => `- ${s}`), ''] : [])].join('\n');
+      ...(mix.key_assumptions.length ? [`## ${L('전제 조건', 'Assumptions')}`, '', ...mix.key_assumptions.map(a => `- ${a}`), ''] : []),
+      ...(mix.next_steps.length ? [`## ${L('다음 단계', 'Next Steps')}`, '', ...mix.next_steps.map(s => `- ${s}`), ''] : [])].join('\n');
     store.setFinalDeliverable(md); setError(null);
   };
 
   const onFinalize = async () => {
     if (!mix || !dmFb) return; setBusy(true); setError(null); scroll();
     try { const t = await runFinalDeliverable(mix, dmFb); store.setFinalDeliverable(t); track('flow_done', { project_id: projectId, rounds: round }); }
-    catch (e) { setError(e instanceof Error ? e.message : '최종본 실패'); }
+    catch (e) { setError(e instanceof Error ? e.message : L('최종본 실패', 'Finalization failed')); }
     finally { setBusy(false); scroll(); }
   };
 
@@ -1007,7 +1033,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {/* User input — compact pill */}
           <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] w-fit max-w-full">
             <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
-              <span className="text-[var(--bg)] text-[9px] font-bold">나</span>
+              <span className="text-[var(--bg)] text-[9px] font-bold">{L('나', 'Me')}</span>
             </div>
             <p className="text-[13px] text-[var(--text-secondary)] truncate">{session.problem_text}</p>
           </motion.div>
@@ -1063,20 +1089,20 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
           {/* Loading states */}
-          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text="시작..." steps={['상황을 읽고 있습니다...', '당신이 놓치고 있는 걸 찾는 중...', '문서 뼈대를 잡고 있습니다...', '거의 다 됐습니다...']} />}
+          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text={L('시작...', 'Starting...')} steps={locale === 'ko' ? ['상황을 읽고 있습니다...', '당신이 놓치고 있는 걸 찾는 중...', '문서 뼈대를 잡고 있습니다...', '거의 다 됐습니다...'] : ['Reading the situation...', 'Finding what you might be missing...', 'Building the document structure...', 'Almost done...']} />}
           {phase === 'analyzing' && snapshots.length > 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
               <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
-              <span className="text-[13px] text-[var(--text-secondary)]">답변을 반영하는 중...</span>
+              <span className="text-[13px] text-[var(--text-secondary)]">{L('답변을 반영하는 중...', 'Incorporating your answer...')}</span>
             </motion.div>
           )}
-          {phase === 'mixing' && <LoadingState text="초안 작성 중..." steps={['팀의 분석을 하나로 엮는 중...', '문서 구조를 잡고 있습니다...', '거의 완성입니다...']} />}
+          {phase === 'mixing' && <LoadingState text={L('초안 작성 중...', 'Drafting...')} steps={locale === 'ko' ? ['팀의 분석을 하나로 엮는 중...', '문서 구조를 잡고 있습니다...', '거의 완성입니다...'] : ['Weaving the team analysis together...', 'Building document structure...', 'Almost complete...']} />}
 
           {/* Version indicator — shows what round we're on */}
           {snapshots.length > 1 && !final_ && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 w-fit">
               <Sparkles size={11} className="text-[var(--accent)]" />
-              <span className="text-[11px] text-[var(--accent)] font-medium">{snapshots.length - 1}번째 개선 반영됨</span>
+              <span className="text-[11px] text-[var(--accent)] font-medium">{locale === 'ko' ? `${snapshots.length - 1}번째 개선 반영됨` : `${snapshots.length - 1} improvement(s) applied`}</span>
             </motion.div>
           )}
 
@@ -1110,7 +1136,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                   if (r.detectedDM) store.setDecisionMaker(r.detectedDM);
                   store.replaceLatestQuestion(r.question);
                   track('framing_rejected', { reason });
-                } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : '재분석 실패'); }
+                } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('재분석 실패', 'Re-analysis failed')); }
                 finally { setBusy(false); scroll(); }
               }}
               busy={busy}
@@ -1142,7 +1168,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                   }
                   track('progressive_exit_to_reframe', { round });
                   window.location.href = `/workspace?step=reframe&handoff=progressive&itemId=${item.id}`;
-                } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }
+                } catch (e) { setError(e instanceof Error ? e.message : L('전환 실패', 'Switch failed')); }
               }}
               onRehearse={() => {
                 try {
@@ -1157,7 +1183,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                   }
                   track('progressive_exit_to_rehearse', { round });
                   window.location.href = `/workspace?step=rehearse&handoff=progressive&itemId=${item.id}`;
-                } catch (e) { setError(e instanceof Error ? e.message : '전환 실패'); }
+                } catch (e) { setError(e instanceof Error ? e.message : L('전환 실패', 'Switch failed')); }
               }}
             />
           )}
@@ -1176,20 +1202,20 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               </div>
               <p className="text-[14px] font-medium text-[var(--text-primary)]">
                 {dmFb && dmFb.concerns.filter((c: DMConcern) => c.applied).length > 0
-                  ? `피드백 ${dmFb.concerns.filter((c: DMConcern) => c.applied).length}건 반영 완료`
-                  : '최종 문서 완성'}
+                  ? locale === 'ko' ? `피드백 ${dmFb.concerns.filter((c: DMConcern) => c.applied).length}건 반영 완료` : `${dmFb.concerns.filter((c: DMConcern) => c.applied).length} feedback item(s) applied`
+                  : L('최종 문서 완성', 'Final document complete')}
               </p>
             </motion.div>
             <FinalCard content={final_} />
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
-              <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">복사해서 바로 사용하세요.</p>
+              <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">{L('복사해서 바로 사용하세요.', 'Copy and use it right away.')}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button onClick={() => { useProgressiveStore.setState({ currentSessionId: null }); window.location.reload(); }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-[13px] font-semibold cursor-pointer"
-                  style={{ background: 'var(--gradient-gold)' }}>새 프로젝트 시작 <ArrowRight size={12} /></button>
+                  style={{ background: 'var(--gradient-gold)' }}>{L('새 프로젝트 시작', 'Start New Project')} <ArrowRight size={12} /></button>
                 <button onClick={() => { if (mix) { store.setFinalDeliverable(null as unknown as string); store.setDMFeedback(null as unknown as import('@/stores/types').DMFeedbackResult); store.setMix(null as unknown as MixResult); setShowMix(true); } }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer transition-colors">
-                  이해관계자 검증 다시 하기
+                  {L('이해관계자 검증 다시 하기', 'Re-run stakeholder review')}
                 </button>
               </div>
             </motion.div>
@@ -1199,17 +1225,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             {error && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {error.startsWith('LOGIN_REQUIRED') ? (
                 <div className="rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 p-6">
-                  <p className="text-[15px] font-bold text-[var(--text-primary)] mb-1">무료 체험을 모두 사용했어요</p>
-                  <p className="text-[13px] text-[var(--text-secondary)] mb-4">로그인하면 하루 10회까지 무료로 사용할 수 있습니다.</p>
-                  <a href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-[14px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>로그인 <ChevronRight size={14} /></a>
+                  <p className="text-[15px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Free trial limit reached')}</p>
+                  <p className="text-[13px] text-[var(--text-secondary)] mb-4">{L('로그인하면 하루 10회까지 무료로 사용할 수 있습니다.', 'Sign in to get up to 10 free uses per day.')}</p>
+                  <a href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-[14px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>{L('로그인', 'Sign In')} <ChevronRight size={14} /></a>
                 </div>
               ) : (
                 <div className="flex items-start gap-2.5 px-5 py-4 rounded-2xl bg-red-50 border border-red-200 text-[13px] text-red-700">
                   <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                   <div>
-                    <span>{error?.includes('한도') || error?.includes('rate') ? '무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.' : error}</span>
+                    <span>{error?.includes('한도') || error?.includes('rate') ? L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.') : error}</span>
                     {(error?.includes('한도') || error?.includes('rate')) && (
-                      <a href="/settings" className="block mt-1.5 text-[12px] text-red-600 font-medium hover:underline">Settings에서 API 키 등록하기 →</a>
+                      <a href="/settings" className="block mt-1.5 text-[12px] text-red-600 font-medium hover:underline">{L('Settings에서 API 키 등록하기 →', 'Register API key in Settings →')}</a>
                     )}
                   </div>
                 </div>

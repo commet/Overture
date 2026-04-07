@@ -7,6 +7,7 @@ import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { WorkerTask } from '@/stores/types';
 import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { useLocale } from '@/hooks/useLocale';
 import { recordHitReaction } from '@/lib/hit-rate';
 import { recordStrategyOutcome } from '@/lib/context-strategy';
 import { selectContextStrategy } from '@/lib/context-strategy';
@@ -16,12 +17,14 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 /* ═══ Hit Reaction Bar — 자기개선 데이터 수집 ═══ */
 
 function HitReactionBar({ workerId, agentId, taskType }: { workerId: string; agentId?: string; taskType?: string }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [reacted, setReacted] = useState<'hit' | 'miss' | 'irrelevant' | null>(null);
 
   if (!agentId || reacted) {
     return reacted ? (
       <p className="text-[10px] text-[var(--text-tertiary)] mt-2 pl-0.5">
-        {reacted === 'hit' ? '새로운 관점이었군요' : reacted === 'miss' ? '다음엔 더 깊이' : '참고했습니다'}
+        {reacted === 'hit' ? L('새로운 관점이었군요', 'That was a fresh perspective') : reacted === 'miss' ? L('다음엔 더 깊이', 'Will go deeper next time') : L('참고했습니다', 'Noted')}
       </p>
     ) : null;
   }
@@ -38,18 +41,18 @@ function HitReactionBar({ workerId, agentId, taskType }: { workerId: string; age
 
   return (
     <div className="flex items-center gap-1.5 mt-2.5">
-      <span className="text-[10px] text-[var(--text-tertiary)] mr-1">이 분석이</span>
+      <span className="text-[10px] text-[var(--text-tertiary)] mr-1">{L('이 분석이', 'This analysis was')}</span>
       <button onClick={() => react('hit')}
         className="px-2.5 py-1 text-[10px] rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors">
-        새로웠다
+        {L('새로웠다', 'New insight')}
       </button>
       <button onClick={() => react('miss')}
         className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:bg-[var(--bg)] cursor-pointer transition-colors">
-        이미 알았다
+        {L('이미 알았다', 'Already knew')}
       </button>
       <button onClick={() => react('irrelevant')}
         className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-subtle)] text-[var(--text-tertiary)] hover:bg-[var(--bg)] cursor-pointer transition-colors">
-        중요하지 않다
+        {L('중요하지 않다', 'Not important')}
       </button>
     </div>
   );
@@ -62,6 +65,8 @@ function ResultModal({ worker, onClose, onApprove, onReject }: {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -86,7 +91,7 @@ function ResultModal({ worker, onClose, onApprove, onReject }: {
               {worker.persona?.role} · {worker.task}
             </p>
           </div>
-          <button onClick={onClose} className="p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="닫기">
+          <button onClick={onClose} className="p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label={L('닫기', 'Close')}>
             <X size={18} className="text-[var(--text-tertiary)]" />
           </button>
         </div>
@@ -107,20 +112,20 @@ function ResultModal({ worker, onClose, onApprove, onReject }: {
         {(onApprove || onReject) && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-[var(--border-subtle)] shrink-0">
             <span className="text-[13px] text-[var(--text-secondary)]">
-              {worker.approved === true ? '초안에 반영됩니다' : worker.approved === false ? '초안에서 제외됩니다' : '반영 여부를 선택하세요'}
+              {worker.approved === true ? L('초안에 반영됩니다', 'Included in draft') : worker.approved === false ? L('초안에서 제외됩니다', 'Excluded from draft') : L('반영 여부를 선택하세요', 'Choose whether to include')}
             </span>
             <div className="flex gap-2.5">
               {onReject && worker.approved !== false && (
                 <button onClick={() => onReject(worker.id)}
                   className="flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-[13px] text-red-600 dark:text-red-400 hover:bg-[var(--bg)] rounded-xl border border-[var(--border-subtle)] cursor-pointer transition-colors min-h-[44px]">
-                  제외
+                  {L('제외', 'Exclude')}
                 </button>
               )}
               {onApprove && worker.approved !== true && (
                 <button onClick={() => onApprove(worker.id)}
                   className="flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-[13px] text-white font-semibold rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow min-h-[44px]"
                   style={{ background: 'var(--gradient-gold)' }}>
-                  반영
+                  {L('반영', 'Apply')}
                 </button>
               )}
             </div>
@@ -146,18 +151,20 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const store = useProgressiveStore();
   const [showModal, setShowModal] = useState(false);
   const [inputVal, setInputVal] = useState(worker.who === 'both' && worker.result ? worker.result : '');
   const persona = worker.persona;
 
   const statusLabel = {
-    pending: '대기 중',
-    running: '작업 중...',
-    done: '완료',
-    error: '오류',
-    waiting_input: '입력 필요',
-    validation_failed: '품질 확인 필요',
+    pending: L('대기 중', 'Pending'),
+    running: L('작업 중...', 'Working...'),
+    done: L('완료', 'Done'),
+    error: L('오류', 'Error'),
+    waiting_input: L('입력 필요', 'Input needed'),
+    validation_failed: L('품질 확인 필요', 'Quality check needed'),
   }[worker.status];
 
   useEffect(() => {
@@ -189,7 +196,7 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
         <div className="w-px h-6 bg-[var(--border-subtle)]" />
         <WorkerAvatar persona={persona} size="sm" />
         <span className="text-[12px] text-[var(--text-tertiary)]">
-          {persona?.name || 'AI'} · 대기 중
+          {persona?.name || 'AI'} · {L('대기 중', 'Pending')}
         </span>
       </motion.div>
     );
@@ -203,13 +210,13 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
         <div className="w-px self-stretch bg-red-300" />
         <WorkerAvatar persona={persona} size="sm" />
         <div className="flex-1">
-          <span className="text-[13px] text-red-600 font-medium">{persona?.name || 'AI'}: 작업 중 문제가 생겼어요</span>
+          <span className="text-[13px] text-red-600 font-medium">{persona?.name || 'AI'}: {L('작업 중 문제가 생겼어요', 'Something went wrong')}</span>
           <p className="text-[12px] text-red-600 mt-0.5">{worker.error}</p>
         </div>
         {onRetry && (
           <button onClick={() => onRetry(worker.id)}
             className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 shrink-0 cursor-pointer">
-            <RotateCw size={11} /> 재시도
+            <RotateCw size={11} /> {L('재시도', 'Retry')}
           </button>
         )}
       </motion.div>
@@ -229,13 +236,13 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
               <span className="text-[var(--text-tertiary)] font-normal ml-1.5 text-[11px]">{persona?.role}</span>
             </p>
             <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-              <p className="text-[11px] font-semibold text-amber-900 mb-1">품질 확인이 필요합니다</p>
+              <p className="text-[11px] font-semibold text-amber-900 mb-1">{L('품질 확인이 필요합니다', 'Quality check needed')}</p>
               {worker.validation_feedback && <p className="text-[10px] text-amber-700 mb-2">{worker.validation_feedback}</p>}
               <div className="flex gap-2">
                 {onRetry && <button onClick={() => onRetry(worker.id)}
-                  className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-50">다시 생성</button>}
+                  className="text-[10px] px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-50">{L('다시 생성', 'Regenerate')}</button>}
                 <button onClick={() => store.updateWorker(worker.id, { status: 'done', completed_at: new Date().toISOString() })}
-                  className="text-[10px] px-2.5 py-1 rounded-lg text-amber-600 cursor-pointer hover:text-amber-800">그냥 사용</button>
+                  className="text-[10px] px-2.5 py-1 rounded-lg text-amber-600 cursor-pointer hover:text-amber-800">{L('그냥 사용', 'Use anyway')}</button>
               </div>
             </div>
           </div>
@@ -259,29 +266,29 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
 
             {worker.who === 'both' && worker.result && (
               <div className="mt-2 text-[12px] text-[var(--text-secondary)] bg-[var(--bg)]/60 rounded-xl p-3 leading-[1.7]">
-                <p className="text-[10px] font-medium text-[var(--text-tertiary)] mb-1">초안 작성함</p>
+                <p className="text-[10px] font-medium text-[var(--text-tertiary)] mb-1">{L('초안 작성함', 'Draft written')}</p>
                 <p className="whitespace-pre-wrap line-clamp-4">{worker.result}</p>
               </div>
             )}
 
             <div className="mt-2">
               <textarea value={inputVal} onChange={(e) => setInputVal(e.target.value)}
-                placeholder={worker.who === 'both' ? '수정하거나 그대로 확인...' : '내용을 입력해주세요...'}
+                placeholder={worker.who === 'both' ? L('수정하거나 그대로 확인...', 'Edit or confirm as-is...') : L('내용을 입력해주세요...', 'Enter your input...')}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 resize-none min-h-[70px] max-h-[150px]"
                 rows={3} maxLength={5000}
-                aria-label={`${persona?.name || 'AI'} 작업 입력`} />
+                aria-label={`${persona?.name || 'AI'} ${L('작업 입력', 'task input')}`} />
               <div className="flex justify-end gap-2 mt-2">
                 {worker.who === 'both' && worker.result && (
                   <button onClick={() => onSubmitInput(worker.id, worker.result!)}
                     className="px-3.5 py-2.5 text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl border border-[var(--border-subtle)] cursor-pointer min-h-[44px]">
-                    초안 그대로
+                    {L('초안 그대로', 'Keep draft')}
                   </button>
                 )}
                 <button onClick={() => { if (inputVal.trim()) onSubmitInput(worker.id, inputVal.trim()); }}
                   disabled={!inputVal.trim()}
                   className="px-3.5 py-2 text-[12px] text-white font-semibold rounded-xl disabled:opacity-30 cursor-pointer"
                   style={{ background: 'var(--gradient-gold)' }}>
-                  확인
+                  {L('확인', 'Confirm')}
                 </button>
               </div>
             </div>
@@ -321,8 +328,8 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
                   Lv.{agentLevel}
                 </span>
               )}
-              {isApproved && <span className="ml-2 text-[11px] text-emerald-600 font-medium">반영</span>}
-              {isRejected && <span className="ml-2 text-[11px] text-red-500 font-medium">제외</span>}
+              {isApproved && <span className="ml-2 text-[11px] text-emerald-600 font-medium">{L('반영', 'Applied')}</span>}
+              {isRejected && <span className="ml-2 text-[11px] text-red-500 font-medium">{L('제외', 'Excluded')}</span>}
             </p>
             {/* Task name */}
             <p className="text-[11px] text-[var(--accent)] mt-0.5">{worker.task}</p>
@@ -344,7 +351,7 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
               {(worker.result || '').length > 150 && (
                 <button onClick={() => setShowModal(true)}
                   className="flex items-center gap-1 mt-2 text-[11px] text-[var(--accent)] hover:underline cursor-pointer">
-                  <ExternalLink size={10} /> 전문 보기
+                  <ExternalLink size={10} /> {L('전문 보기', 'View full')}
                 </button>
               )}
             </div>
@@ -356,19 +363,19 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
                   <button onClick={() => onApprove(worker.id)}
                     className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-white rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
                     style={{ background: 'var(--gradient-gold)' }}>
-                    <Check size={12} /> 반영
+                    <Check size={12} /> {L('반영', 'Apply')}
                   </button>
                 )}
                 {onReject && !isRejected && (
                   <button onClick={() => onReject(worker.id)}
                     className="flex items-center gap-1.5 px-4 py-2 text-[12px] text-red-600 hover:bg-red-50 rounded-xl border border-red-200 hover:border-red-400 cursor-pointer transition-colors">
-                    제외
+                    {L('제외', 'Exclude')}
                   </button>
                 )}
                 {(isApproved || isRejected) && (
                   <button onClick={() => isApproved ? onReject?.(worker.id) : onApprove?.(worker.id)}
                     className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
-                    변경
+                    {L('변경', 'Change')}
                   </button>
                 )}
               </div>

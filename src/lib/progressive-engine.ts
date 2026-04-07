@@ -18,6 +18,7 @@ import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressi
 import { runDebateRound, type DebateResult } from '@/lib/debate-engine';
 import { generateId } from '@/lib/uuid';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { getCurrentLanguage } from '@/lib/i18n';
 import type {
   AnalysisSnapshot,
   ConvergenceMetrics,
@@ -109,9 +110,10 @@ export async function runInitialAnalysis(
   question: FlowQuestion;
   detectedDM: string | null;
 }> {
-  const { system, user } = buildInitialAnalysisPrompt(problemText);
+  const locale = getCurrentLanguage();
+  const { system, user } = buildInitialAnalysisPrompt(problemText, locale);
 
-  // 스트리밍 콜백이 있으면 실시간 표시 후 JSON 파싱, 없으면 기존 방식
+  // Stream: real-time display then JSON parse, or standard approach
   const result = onToken
     ? await callLLMStreamThenParse<InitialAnalysisResponse>(
         [{ role: 'user', content: user }],
@@ -127,7 +129,7 @@ export async function runInitialAnalysis(
 
   const snapshot: AnalysisSnapshot = {
     version: 0,
-    real_question: result.real_question || '분석 중...',
+    real_question: result.real_question || (locale === 'ko' ? '분석 중...' : 'Analyzing...'),
     hidden_assumptions: result.hidden_assumptions || [],
     skeleton: result.skeleton || [],
     framing_confidence: framingConfidence,
@@ -136,7 +138,7 @@ export async function runInitialAnalysis(
 
   const question: FlowQuestion = {
     id: generateId(),
-    text: result.next_question?.text || '이 결과물을 누가 최종 판단해?',
+    text: result.next_question?.text || (locale === 'ko' ? '이 결과물을 누가 최종 판단해?' : 'Who will make the final decision on this?'),
     subtext: result.next_question?.subtext,
     options: result.next_question?.options,
     type: result.next_question?.type || 'select',
@@ -164,8 +166,9 @@ export async function refineInitialFraming(
   question: FlowQuestion;
   detectedDM: string | null;
 }> {
+  const locale = getCurrentLanguage();
   const { system, user } = buildInitialRefinementPrompt(
-    problemText, rejectedQuestion, rejectionReason,
+    problemText, rejectedQuestion, rejectionReason, locale,
   );
 
   const result = onToken
@@ -183,7 +186,7 @@ export async function refineInitialFraming(
 
   const snapshot: AnalysisSnapshot = {
     version: 0,
-    real_question: result.real_question || '분석 중...',
+    real_question: result.real_question || (locale === 'ko' ? '분석 중...' : 'Analyzing...'),
     hidden_assumptions: result.hidden_assumptions || [],
     skeleton: result.skeleton || [],
     framing_confidence: framingConfidence,
@@ -195,7 +198,7 @@ export async function refineInitialFraming(
     snapshot,
     question: {
       id: generateId(),
-      text: result.next_question?.text || '이제 이 방향이 맞나요?',
+      text: result.next_question?.text || (locale === 'ko' ? '이제 이 방향이 맞나요?' : 'Does this direction look right now?'),
       subtext: result.next_question?.subtext,
       options: result.next_question?.options,
       type: result.next_question?.type || 'select',
@@ -223,14 +226,15 @@ export async function runDeepening(
   readyForMix: boolean;
   convergenceMetrics: ConvergenceMetrics;
 }> {
-  // 지휘자: 해금된 에이전트 목록을 LLM에 전달 → 팀 구성 인식 태스크 분해
+  const locale = getCurrentLanguage();
+  // Conductor: pass unlocked agent list for team-aware task decomposition
   const agentStore = useAgentStore.getState();
   const availableAgents = agentStore.getUnlockedAgents()
     .filter(a => a.capabilities.includes('task_execution'))
     .map(a => ({ name: a.name, role: a.role, specialty: a.expertise?.split('.')[0] || a.role }));
 
   const { system, user } = buildDeepeningPrompt(
-    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents,
+    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale,
   );
 
   const result = onToken
@@ -278,13 +282,13 @@ export async function runDeepening(
     shouldProceedToMix = false;
     question = {
       id: generateId(),
-      text: `아직 완전히 명확하지 않습니다 (명확도: ${convergence.score}%). 어떻게 할까요?`,
+      text: locale === 'ko'
+        ? `아직 완전히 명확하지 않습니다 (명확도: ${convergence.score}%). 어떻게 할까요?`
+        : `Not fully clear yet (clarity: ${convergence.score}%). What would you like to do?`,
       subtext: convergence.guidance,
-      options: [
-        '지금 바로 문서로 만들기',
-        '한 라운드 더 진행하기',
-        '문제를 다시 정의하기',
-      ],
+      options: locale === 'ko'
+        ? ['지금 바로 문서로 만들기', '한 라운드 더 진행하기', '문제를 다시 정의하기']
+        : ['Create the document now', 'Go one more round', 'Redefine the problem'],
       type: 'select',
       engine_phase: 'reframe',
     };
@@ -322,8 +326,9 @@ export async function runMix(
   workerResults?: Array<{ task: string; result: string }>,
   signal?: AbortSignal,
 ): Promise<MixResult> {
+  const locale = getCurrentLanguage();
   const { system, user } = buildMixPrompt(
-    problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults,
+    problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults, locale,
   );
 
   const result = await callLLMJson<MixResponse>(
@@ -332,7 +337,7 @@ export async function runMix(
   );
 
   return {
-    title: result.title || '기획안',
+    title: result.title || (locale === 'ko' ? '기획안' : 'Proposal'),
     executive_summary: result.executive_summary || '',
     sections: result.sections || [],
     key_assumptions: result.key_assumptions || [],
@@ -349,7 +354,8 @@ export async function runDMFeedback(
   problemContext: string,
   signal?: AbortSignal,
 ): Promise<DMFeedbackResult> {
-  const { system, user } = buildDMFeedbackPrompt(mix, decisionMaker, problemContext);
+  const locale = getCurrentLanguage();
+  const { system, user } = buildDMFeedbackPrompt(mix, decisionMaker, problemContext, locale);
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
@@ -381,7 +387,8 @@ export async function runBossDMFeedback(
   problemContext: string,
   signal?: AbortSignal,
 ): Promise<DMFeedbackResult> {
-  const { system, user } = buildBossDMFeedbackPrompt(mix, agent, problemContext);
+  const locale = getCurrentLanguage();
+  const { system, user } = buildBossDMFeedbackPrompt(mix, agent, problemContext, locale);
 
   const result = await callLLMJson<DMFeedbackResponse>(
     [{ role: 'user', content: user }],
@@ -390,7 +397,7 @@ export async function runBossDMFeedback(
 
   return {
     persona_name: result.persona_name || agent.name,
-    persona_role: result.persona_role || '팀장',
+    persona_role: result.persona_role || (locale === 'ko' ? '팀장' : 'Team Lead'),
     first_reaction: result.first_reaction || '',
     good_parts: result.good_parts || [],
     concerns: (result.concerns || []).map((c): DMConcern => ({
@@ -416,12 +423,12 @@ export async function runFinalDeliverable(
     .filter(c => c.applied)
     .map(c => ({ concern: c.text, fix: c.fix_suggestion }));
 
+  const locale = getCurrentLanguage();
   if (appliedFixes.length === 0) {
-    // 반영할 것 없으면 mix를 그대로 마크다운으로 변환
-    return formatMixAsMarkdown(mix);
+    return formatMixAsMarkdown(mix, undefined, locale);
   }
 
-  const { system, user } = buildFinalDeliverablePrompt(mix, appliedFixes);
+  const { system, user } = buildFinalDeliverablePrompt(mix, appliedFixes, locale);
 
   const result = await callLLMJson<FinalResponse>(
     [{ role: 'user', content: user }],
@@ -436,12 +443,12 @@ export async function runFinalDeliverable(
     next_steps: result.next_steps || mix.next_steps,
   };
 
-  return formatMixAsMarkdown(finalMix, result.changes_applied);
+  return formatMixAsMarkdown(finalMix, result.changes_applied, locale);
 }
 
 // ─── Helpers ───
 
-function formatMixAsMarkdown(mix: MixResult, changes?: string[]): string {
+function formatMixAsMarkdown(mix: MixResult, changes?: string[], locale: 'ko' | 'en' = 'en'): string {
   const lines: string[] = [
     `# ${mix.title}`,
     '',
@@ -454,7 +461,7 @@ function formatMixAsMarkdown(mix: MixResult, changes?: string[]): string {
   }
 
   if (mix.key_assumptions.length > 0) {
-    lines.push('## 전제 조건', '');
+    lines.push(locale === 'ko' ? '## 전제 조건' : '## Key Assumptions', '');
     for (const a of mix.key_assumptions) {
       lines.push(`- ${a}`);
     }
@@ -462,7 +469,7 @@ function formatMixAsMarkdown(mix: MixResult, changes?: string[]): string {
   }
 
   if (mix.next_steps.length > 0) {
-    lines.push('## 다음 단계', '');
+    lines.push(locale === 'ko' ? '## 다음 단계' : '## Next Steps', '');
     for (const s of mix.next_steps) {
       lines.push(`- ${s}`);
     }
@@ -470,7 +477,7 @@ function formatMixAsMarkdown(mix: MixResult, changes?: string[]): string {
   }
 
   if (changes && changes.length > 0) {
-    lines.push('---', '', '*반영된 수정사항:*');
+    lines.push('---', '', locale === 'ko' ? '*반영된 수정사항:*' : '*Changes applied:*');
     for (const c of changes) {
       lines.push(`- ${c}`);
     }
@@ -496,7 +503,8 @@ export async function runConcertmasterReview(
   const concertmaster = useAgentStore.getState().getAgent('concertmaster');
   if (!concertmaster?.unlocked) return null;
 
-  const { system, user } = buildConcertmasterReviewPrompt(problemText, workerResults);
+  const locale = getCurrentLanguage();
+  const { system, user } = buildConcertmasterReviewPrompt(problemText, workerResults, locale);
 
   try {
     const result = await callLLMJson<ConcertmasterReview>(
@@ -527,7 +535,7 @@ export async function runDebate(
 ): Promise<DebateResult | null> {
   // Critic 에이전트 찾기
   const agents = useAgentStore.getState().getUnlockedAgents();
-  const critic = agents.find(a => (a.keywords || []).some(kw => ['리스크', '위험', '비판'].includes(kw)));
+  const critic = agents.find(a => (a.keywords || []).some(kw => ['리스크', '위험', '비판', 'risk', 'danger', 'critique'].includes(kw)));
   if (!critic) return null;
 
   return runDebateRound({

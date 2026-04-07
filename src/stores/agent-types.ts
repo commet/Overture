@@ -39,7 +39,9 @@ export interface Agent {
 
   // Identity
   name: string;
-  role: string;              // 구체적 역할: "리서치 애널리스트", "PM" 등
+  nameEn?: string;           // English display name
+  role: string;
+  roleEn?: string;           // English role label
   emoji: string;
   color: string;
   origin: AgentOrigin;

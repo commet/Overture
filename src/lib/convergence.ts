@@ -1,5 +1,6 @@
 import type { RefineLoop, FeedbackRecord, ApprovalCondition, Persona } from '@/stores/types';
 import { computeSimilarity } from './similarity';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 export interface ConvergenceResult {
   converged: boolean;
@@ -90,7 +91,7 @@ export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
       approval_total: highInfluenceConditions.length,
       total_issues: 0,
       issue_trend: [],
-      guidance: '이슈를 선택하고 개선을 시작하세요.',
+      guidance: getCurrentLanguage() === 'ko' ? '이슈를 선택하고 개선을 시작하세요.' : 'Select issues and start improving.',
     };
   }
 
@@ -115,18 +116,29 @@ export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
 
   // Guidance
   let guidance: string;
+  const ko = getCurrentLanguage() === 'ko';
   if (converged) {
-    guidance = '핵심 위협이 해소되고 주요 승인 조건이 충족되었습니다. 합주를 마무리할 수 있습니다.';
+    guidance = ko
+      ? '핵심 위협이 해소되고 주요 승인 조건이 충족되었습니다. 합주를 마무리할 수 있습니다.'
+      : 'Critical risks resolved and key approval conditions met. Ready to finalize.';
   } else if (criticalRemaining > 0) {
-    guidance = `핵심 위협 ${criticalRemaining}건이 남아있습니다. 이것을 먼저 해결해야 합니다.`;
+    guidance = ko
+      ? `핵심 위협 ${criticalRemaining}건이 남아있습니다. 이것을 먼저 해결해야 합니다.`
+      : `${criticalRemaining} critical risk(s) remaining. Resolve these first.`;
   } else if (metCount < highTotal) {
-    guidance = `핵심 위협은 해소되었지만, 고영향력 승인 조건 ${highTotal - metCount}건이 아직 미충족입니다.`;
+    guidance = ko
+      ? `핵심 위협은 해소되었지만, 고영향력 승인 조건 ${highTotal - metCount}건이 아직 미충족입니다.`
+      : `Critical risks resolved, but ${highTotal - metCount} high-influence approval condition(s) still unmet.`;
   } else {
-    guidance = '진행 중입니다. 이슈를 선택하고 다음 반복을 진행하세요.';
+    guidance = ko
+      ? '진행 중입니다. 이슈를 선택하고 다음 반복을 진행하세요.'
+      : 'In progress. Select issues and continue to the next iteration.';
   }
 
   if (loop.iterations.length >= loop.max_iterations && !converged) {
-    guidance = `최대 반복 횟수(${loop.max_iterations}회)에 도달했습니다. ${guidance}`;
+    guidance = ko
+      ? `최대 반복 횟수(${loop.max_iterations}회)에 도달했습니다. ${guidance}`
+      : `Maximum iterations (${loop.max_iterations}) reached. ${guidance}`;
   }
 
   return {

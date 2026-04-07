@@ -13,6 +13,7 @@
 
 import { callLLMJson, callLLMStream, callLLM } from '@/lib/llm';
 import { buildWorkerTaskPrompt } from '@/lib/progressive-prompts';
+import { getCurrentLanguage } from '@/lib/i18n';
 import { validateWorkerOutput, type ValidationResult } from '@/lib/worker-quality';
 import type { WorkerTask, AgentPlan, AgentPlanStep } from '@/stores/types';
 import type { Agent } from '@/stores/agent-types';
@@ -178,6 +179,7 @@ export async function executePlan(
       // 위임 대상 없으면 직접 실행으로 fallthrough
     }
 
+    const locale = getCurrentLanguage();
     const { system, user } = buildWorkerTaskPrompt(
       step.task,
       step.expected_output,
@@ -185,9 +187,10 @@ export async function executePlan(
       enrichedContext,
       task.persona ?? undefined,
       level,
-      undefined, // agent는 이미 prompt에 반영됨
+      undefined,
       task.framework,
       task.task_type,
+      locale,
     );
 
     // Stream prefix로 현재 step 표시

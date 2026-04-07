@@ -15,6 +15,7 @@ import { WorkerPanel, WorkerDrawer, useWorkers } from '@/components/workspace/pr
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useLocale } from '@/hooks/useLocale';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { runInitialAnalysis } from '@/lib/progressive-engine';
 import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle, Layers } from 'lucide-react';
@@ -35,13 +36,15 @@ import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
 /* ─── Step-level error fallback ─── */
 function StepErrorFallback() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <AlertTriangle size={28} className="text-[var(--text-tertiary)] mb-3" />
-      <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-1">이 단계에서 오류가 발생했습니다</p>
-      <p className="text-[12px] text-[var(--text-secondary)] mb-4">다른 단계는 정상적으로 사용할 수 있습니다.</p>
+      <p className="text-[14px] font-semibold text-[var(--text-primary)] mb-1">{L('이 단계에서 오류가 발생했습니다', 'An error occurred in this step')}</p>
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">{L('다른 단계는 정상적으로 사용할 수 있습니다.', 'Other steps are still available.')}</p>
       <button onClick={() => window.location.reload()} className="px-4 py-2 text-[13px] font-medium rounded-lg bg-[var(--accent)] text-white hover:shadow-sm transition-all cursor-pointer">
-        새로고침
+        {L('새로고침', 'Refresh')}
       </button>
     </div>
   );
@@ -49,6 +52,8 @@ function StepErrorFallback() {
 
 /* ─── Progressive Layout: flow + worker panel ─── */
 function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: string; projectName?: string; onReset: () => void }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const workers = useWorkers();
   const hasWorkers = workers.length > 0;
 
@@ -67,7 +72,7 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
             </span>
           </div>
           <button onClick={onReset} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
-            새 프로젝트
+            {L('새 프로젝트', 'New Project')}
           </button>
         </div>
 
@@ -104,6 +109,8 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   user: unknown;
   reviewerAgentId?: string;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [phase, setPhase] = useState<HeroPhase>('idle');
   const [demoScenario, setDemoScenario] = useState<typeof DEMO_SCENARIOS[number] | null>(null);
   const [problemInput, setProblemInput] = useState('');
@@ -171,13 +178,13 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
 
       if (isRateLimit) {
         // Rate limit: 세션 보존 (사용자 입력 날리지 않음), 안내 제공
-        setError('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.');
+        setError(L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.'));
       } else {
         // 다른 에러: 세션 정리
         const sid = progressiveStore.currentSessionId;
         if (sid) progressiveStore.deleteSession(sid);
         setCurrentProjectId(null);
-        setError(errMsg || '분석에 실패했습니다. 다시 시도해주세요.');
+        setError(errMsg || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.'));
       }
       setPhase('idle');
       setStreamingText('');
@@ -233,7 +240,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                   </div>
                   <div className="mt-6 mb-8 flex items-center gap-4">
                     <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                    <span className="text-[11px] text-[var(--text-tertiary)]">새로 시작하기</span>
+                    <span className="text-[11px] text-[var(--text-tertiary)]">{L('새로 시작하기', 'Start new')}</span>
                     <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                   </div>
                 </div>
@@ -244,26 +251,25 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                 <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
                   <div className="flex items-center gap-2 text-[13px]">
                     <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
-                    <span className="text-[var(--text-primary)]">로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회</span>
+                    <span className="text-[var(--text-primary)]">{locale === 'ko' ? <>로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회</> : <>Try <strong>1 free session</strong> without login · 2 per day with login</>}</span>
                   </div>
-                  <Link href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">로그인</Link>
+                  <Link href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">{L('로그인', 'Log in')}</Link>
                 </div>
               )}
 
               {/* Heading */}
               <div className="mb-8 text-center">
                 <h1 className="text-display-lg text-[var(--text-primary)]">
-                  막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span>
+                  {locale === 'ko' ? <>막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span></> : <>Stuck on a task?<br /><span className="text-gold-gradient">We'll figure it out together</span></>}
                 </h1>
                 <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
-                  상황을 알려주세요. AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />
-                  의사결정권자 반응까지 시뮬레이션합니다.
+                  {locale === 'ko' ? <>상황을 알려주세요. AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation. An AI team will analyze, draft,<br className="hidden md:block" />and simulate decision-maker reactions.</>}
                 </p>
               </div>
 
               {/* Scenario cards — click = demo showcase */}
               <div className="mb-6">
-                <p className="text-[12px] text-[var(--text-tertiary)] mb-3">이런 상황이라면, 체험해보세요</p>
+                <p className="text-[12px] text-[var(--text-tertiary)] mb-3">{L('이런 상황이라면, 체험해보세요', 'Try these scenarios')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {DEMO_SCENARIOS.map(s => (
                     <button key={s.id} onClick={() => setDemoScenario(s)}
@@ -274,7 +280,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                       </div>
                       <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">&ldquo;{s.problemText}&rdquo;</p>
                       <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
-                        체험해보기 <ChevronRight size={11} />
+                        {L('체험해보기', 'Try it')} <ChevronRight size={11} />
                       </div>
                     </button>
                   ))}
@@ -285,12 +291,12 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
                 <div className="p-4 md:p-5">
                   <p className="text-[12px] text-[var(--text-tertiary)] mb-2.5">
-                    {problemInput.trim() ? '수정하거나 그대로 시작하세요' : '내 상황을 직접 입력할 수도 있어요'}
+                    {problemInput.trim() ? L('수정하거나 그대로 시작하세요', 'Edit or start as-is') : L('내 상황을 직접 입력할 수도 있어요', 'Or describe your own situation')}
                   </p>
                   <div className="flex items-start gap-3">
                     <textarea value={problemInput} onChange={(e) => setProblemInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-                      placeholder="예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어"
+                      placeholder={L('예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어', "e.g., I need to write a report by next week but don't know where to start")}
                       rows={problemInput.trim() ? 3 : 1} maxLength={5000}
                       onFocus={(e) => { e.target.rows = 3; }}
                       onBlur={(e) => { if (!e.target.value) e.target.rows = 1; }}
@@ -298,7 +304,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                     <button onClick={() => handleSubmit()} disabled={!problemInput.trim()}
                       className="shrink-0 px-5 py-3 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] transition-shadow hover:shadow-[var(--shadow-md)]"
                       style={{ background: 'var(--gradient-gold)' }}>
-                      시작 <ChevronRight size={12} className="inline ml-1" />
+                      {L('시작', 'Start')} <ChevronRight size={12} className="inline ml-1" />
                     </button>
                   </div>
 
@@ -307,9 +313,9 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                       <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
                       <div>
                         <span>{error}</span>
-                        {error.includes('API 키') && (
+                        {(error.includes('API 키') || error.includes('API key')) && (
                           <a href="/settings" className="block mt-1.5 text-[12px] text-[var(--accent)] font-medium hover:underline">
-                            Settings에서 API 키 등록하기 →
+                            {L('Settings에서 API 키 등록하기 →', 'Register your API key in Settings →')}
                           </a>
                         )}
                       </div>
@@ -328,7 +334,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
               {/* 축소된 입력 */}
               <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] w-fit max-w-full mb-8">
                 <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
-                  <span className="text-[var(--bg)] text-[9px] font-bold">나</span>
+                  <span className="text-[var(--bg)] text-[9px] font-bold">{L('나', 'Me')}</span>
                 </div>
                 <p className="text-[13px] text-[var(--text-secondary)] truncate">{problemInput}</p>
               </motion.div>
@@ -347,7 +353,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                 ))}
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.4 }}
                   className="text-[11px] text-[var(--text-tertiary)] pt-1">
-                  팀이 구성되었습니다. 상황을 분석합니다...
+                  {L('팀이 구성되었습니다. 상황을 분석합니다...', 'Team assembled. Analyzing the situation...')}
                 </motion.p>
               </div>
             </motion.div>
@@ -370,10 +376,10 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
                     <Sparkles size={14} className="text-[var(--accent)]" />
                   </motion.div>
-                  <span className="text-[12px] font-medium text-[var(--accent)]">분석 중</span>
+                  <span className="text-[12px] font-medium text-[var(--accent)]">{L('분석 중', 'Analyzing')}</span>
                 </div>
                 <div className="text-[14px] md:text-[15px] leading-[1.85] text-[var(--text-primary)] whitespace-pre-wrap break-words min-h-[80px]">
-                  {streamingText || '상황을 읽고 있습니다...'}
+                  {streamingText || L('상황을 읽고 있습니다...', 'Reading the situation...')}
                   <span className="inline-block w-[2px] h-[18px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
                 </div>
               </div>
@@ -386,15 +392,17 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
 }
 
 /* ─── Step metadata ─── */
-const STEPS: { id: StepId; number: string; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
-  { id: 'reframe',    number: '01', label: '문제 재정의', desc: '숨겨진 전제 발견', icon: <MessageSquare size={16} />, color: '#2d4a7c' },
-  { id: 'recast',     number: '02', label: '실행 설계',   desc: '구조와 역할 배분', icon: <Sliders size={16} />,        color: '#8b6914' },
-  { id: 'rehearse',   number: '03', label: '사전 검증',   desc: '판단자 시뮬레이션', icon: <UserCheck size={16} />,      color: '#6b4c9a' },
-  { id: 'refine',     number: '04', label: '수정 반영',   desc: '피드백 수렴',       icon: <RefreshCw size={16} />,      color: '#2d6b2d' },
-  { id: 'synthesize', number: '05', label: '종합',       desc: '다중 관점 통합',     icon: <Layers size={16} />,         color: '#9b5de5' },
+const STEPS: { id: StepId; number: string; label: string; labelEn: string; desc: string; descEn: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'reframe',    number: '01', label: '문제 재정의', labelEn: 'Reframe',    desc: '숨겨진 전제 발견', descEn: 'Uncover hidden assumptions', icon: <MessageSquare size={16} />, color: '#2d4a7c' },
+  { id: 'recast',     number: '02', label: '실행 설계',   labelEn: 'Recast',     desc: '구조와 역할 배분', descEn: 'Structure & assign roles',    icon: <Sliders size={16} />,        color: '#8b6914' },
+  { id: 'rehearse',   number: '03', label: '사전 검증',   labelEn: 'Rehearse',   desc: '판단자 시뮬레이션', descEn: 'Simulate decision-makers',   icon: <UserCheck size={16} />,      color: '#6b4c9a' },
+  { id: 'refine',     number: '04', label: '수정 반영',   labelEn: 'Refine',     desc: '피드백 수렴',       descEn: 'Converge feedback',          icon: <RefreshCw size={16} />,      color: '#2d6b2d' },
+  { id: 'synthesize', number: '05', label: '종합',       labelEn: 'Synthesize', desc: '다중 관점 통합',     descEn: 'Integrate perspectives',     icon: <Layers size={16} />,         color: '#9b5de5' },
 ];
 
 function WorkspaceContent() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const searchParams = useSearchParams();
   const { activeStep, setActiveStep } = useWorkspaceStore();
   const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
@@ -454,7 +462,7 @@ function WorkspaceContent() {
           const sid = progressiveStore.currentSessionId;
           if (sid) progressiveStore.deleteSession(sid);
           setCurrentProjectId(null);
-          setStartError(err instanceof Error ? err.message : '분석에 실패했습니다.');
+          setStartError(err instanceof Error ? err.message : L('분석에 실패했습니다.', 'Analysis failed.'));
         }).finally(() => setIsStarting(false));
       }, 100);
     }
@@ -505,12 +513,12 @@ function WorkspaceContent() {
       setCurrentProjectId(null);
       const raw = err instanceof Error ? err.message : '';
       const errMsg = raw.includes('fetch') || raw.includes('network') || raw.includes('Failed to fetch')
-        ? '인터넷 연결을 확인해주세요.'
+        ? L('인터넷 연결을 확인해주세요.', 'Please check your internet connection.')
         : raw.includes('rate') || raw.includes('limit') || raw.includes('429')
-        ? '오늘의 분석 횟수를 모두 사용했습니다. 내일 다시 시도해주세요.'
+        ? L('오늘의 분석 횟수를 모두 사용했습니다. 내일 다시 시도해주세요.', 'Daily analysis limit reached. Please try again tomorrow.')
         : raw.includes('too long') || raw.includes('token')
-        ? '입력이 너무 깁니다. 핵심만 간결하게 입력해주세요.'
-        : raw || '분석에 실패했습니다. 다시 시도해주세요.';
+        ? L('입력이 너무 깁니다. 핵심만 간결하게 입력해주세요.', 'Input is too long. Please keep it concise.')
+        : raw || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.');
       setStartError(errMsg);
       track('workspace_start_error', { error: errMsg });
     } finally {
@@ -592,7 +600,7 @@ function WorkspaceContent() {
                       onClick={() => { setCurrentProjectId(null); setProjectMenuOpen(false); }}
                       className="w-full text-left px-3 py-2 text-[12px] text-[var(--accent)] font-medium cursor-pointer hover:bg-[var(--bg)]"
                     >
-                      + 새 프로젝트
+                      {L('+ 새 프로젝트', '+ New Project')}
                     </button>
                   </div>
                 </div>
@@ -629,7 +637,7 @@ function WorkspaceContent() {
                     >
                       {step.icon}
                     </div>
-                    <span className="hidden sm:inline">{step.label}</span>
+                    <span className="hidden sm:inline">{locale === 'ko' ? step.label : step.labelEn}</span>
                   </button>
                 </div>
               );
@@ -651,7 +659,7 @@ function WorkspaceContent() {
               <div className="flex items-center gap-2 text-[12px]">
                 <Sparkles size={13} className="text-[var(--accent)] shrink-0" />
                 <span className="text-[var(--text-primary)]">
-                  로그인 없이 <strong>3회 무료</strong> · <Link href="/login" className="text-[var(--accent)] font-semibold underline">로그인</Link>하면 하루 5회
+                  {locale === 'ko' ? <>로그인 없이 <strong>3회 무료</strong> · <Link href="/login" className="text-[var(--accent)] font-semibold underline">로그인</Link>하면 하루 5회</> : <><strong>3 free</strong> without login · <Link href="/login" className="text-[var(--accent)] font-semibold underline">Log in</Link> for 5 per day</>}
                 </span>
               </div>
             </div>
@@ -695,7 +703,7 @@ function WorkspaceContent() {
               <div style={{ color: activeStep === step.id ? step.color : undefined }}>
                 {step.icon}
               </div>
-              <span className="text-[10px] font-semibold">{step.label.slice(0, 2)}</span>
+              <span className="text-[10px] font-semibold">{locale === 'ko' ? step.label.slice(0, 2) : step.labelEn.slice(0, 3)}</span>
             </button>
           ))}
         </div>
@@ -705,6 +713,8 @@ function WorkspaceContent() {
 }
 
 function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [staleCount, setStaleCount] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
@@ -730,8 +740,7 @@ function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
         <div className="flex items-center gap-2 text-[12px]">
           <Clock size={13} className="text-[var(--risk-manageable)] shrink-0" />
           <span className="text-[var(--text-primary)]">
-            {staleCount}개 프로젝트 결과 기록 가능 ·{' '}
-            <button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button>
+            {locale === 'ko' ? <>{staleCount}개 프로젝트 결과 기록 가능 ·{' '}<button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button></> : <>{staleCount} project(s) ready for outcome recording ·{' '}<button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">Record</button></>}
           </span>
         </div>
         <button onClick={() => setDismissed(true)} className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer">
@@ -743,11 +752,13 @@ function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
 }
 
 function SuspenseFallback() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="text-center space-y-3">
         <div className="w-8 h-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin mx-auto" />
-        <p className="text-[13px] text-[var(--text-secondary)]">워크스페이스 준비 중...</p>
+        <p className="text-[13px] text-[var(--text-secondary)]">{L('워크스페이스 준비 중...', 'Preparing workspace...')}</p>
       </div>
     </div>
   );

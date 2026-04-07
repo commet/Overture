@@ -7,17 +7,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
 import { SyncStatus } from '@/components/ui/SyncStatus';
-
-const navItems = [
-  { href: '/workspace', label: '워크스페이스', primary: true },
-  { href: '/project', label: '프로젝트' },
-  { href: '/agents', label: '에이전트' },
-  { href: '/boss', label: '팀장' },
-  { href: '/guide', label: '가이드' },
-  { href: '/settings', label: '설정' },
-];
+import { useLocale } from '@/hooks/useLocale';
 
 export function Header() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+
+  const navItems = [
+    { href: '/workspace', label: L('워크스페이스', 'Workspace'), primary: true },
+    { href: '/project', label: L('프로젝트', 'Projects') },
+    { href: '/agents', label: L('에이전트', 'Agents') },
+    { href: '/boss', label: L('팀장', 'Manager') },
+    { href: '/guide', label: L('가이드', 'Guide') },
+    { href: '/settings', label: L('설정', 'Settings') },
+  ];
+
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
@@ -145,7 +149,7 @@ export function Header() {
                         className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                       >
                         <LogOut size={14} />
-                        로그아웃
+                        {L('로그아웃', 'Sign Out')}
                       </button>
                     </div>
                   )}
@@ -155,7 +159,7 @@ export function Header() {
                   href="/login"
                   className="px-3.5 py-1.5 rounded-full text-[13px] font-semibold text-[var(--accent)] hover:bg-[var(--ai)]/50 transition-colors"
                 >
-                  로그인
+                  {L('로그인', 'Sign In')}
                 </Link>
               )
             )}
@@ -198,7 +202,7 @@ export function Header() {
                     className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                   >
                     <LogOut size={14} />
-                    로그아웃 ({displayName})
+                    {L('로그아웃', 'Sign Out')} ({displayName})
                   </button>
                 ) : (
                   <Link
@@ -206,7 +210,7 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="block px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[var(--accent)]"
                   >
-                    로그인
+                    {L('로그인', 'Sign In')}
                   </Link>
                 )}
               </div>

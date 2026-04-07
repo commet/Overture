@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Sparkles, Check, ArrowRight, UserCheck } from 'lucide-react';
+import { ChevronRight, Sparkles, Check, ArrowRight, UserCheck, Loader2, ChevronDown } from 'lucide-react';
 import { WorkerAvatar } from './progressive/WorkerAvatar';
 import type { DemoScenario } from '@/lib/demo-data';
 import { applyPatch, buildFinal } from '@/lib/demo-data';
@@ -145,6 +145,20 @@ function TeamEntrance({ scenario, onDone }: { scenario: DemoScenario; onDone: ()
       </motion.p>
     </motion.div>
   );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEAM ENTRANCE TRIGGER — desktop invisible timing bridge
+   ═══════════════════════════════════════════════════════════ */
+
+function TeamEntranceTrigger({ onDone }: { onDone: () => void }) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  useEffect(() => {
+    const t = setTimeout(() => onDoneRef.current(), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  return null;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -389,6 +403,197 @@ function DemoWorkerReport({ worker }: { worker: DemoScenario['workers'][number] 
           </div>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AGENT SIDEBAR — right panel showing agent status + results
+   ═══════════════════════════════════════════════════════════ */
+
+type AgentStatus = 'waiting' | 'working' | 'done';
+
+function getAgentStatuses(phase: DemoPhase, visibleWorkers: number, total: number): AgentStatus[] {
+  if (!phaseGte(phase, 'q1')) return Array(total).fill('waiting');
+  if (phase === 'q1') return ['working', 'waiting', 'waiting'].slice(0, total) as AgentStatus[];
+  if (phase === 'update1') return ['working', 'working', 'waiting'].slice(0, total) as AgentStatus[];
+  if (phase === 'q2' || phase === 'update2') return Array(total).fill('working') as AgentStatus[];
+  // workers phase onward: done based on visibleWorkers
+  return Array.from({ length: total }, (_, i) => i < visibleWorkers ? 'done' : 'working') as AgentStatus[];
+}
+
+function AgentRow({ worker, status, expanded, onToggle }: {
+  worker: DemoScenario['workers'][number];
+  status: AgentStatus;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const isDone = status === 'done';
+  const isWorking = status === 'working';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className={`rounded-xl border transition-colors duration-300 ${
+        isDone ? 'border-[var(--border-subtle)] bg-[var(--surface)]' :
+        isWorking ? 'border-[var(--accent)]/15 bg-[var(--accent)]/[0.02]' :
+        'border-transparent bg-transparent opacity-40'
+      }`}
+    >
+      <button
+        onClick={isDone ? onToggle : undefined}
+        className={`w-full flex items-center gap-2.5 p-2.5 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
+      >
+        <div
+          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] ${
+            isWorking ? 'animate-pulse' : ''
+          }`}
+          style={{ backgroundColor: worker.persona.color + '20', color: worker.persona.color }}
+        >
+          {worker.persona.emoji}
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{worker.persona.name}</span>
+            <span className="text-[10px] text-[var(--text-tertiary)] truncate">{worker.persona.role}</span>
+          </div>
+          {isWorking && (
+            <p className="text-[10px] text-[var(--accent)] mt-0.5 truncate">{worker.task}</p>
+          )}
+          {isDone && worker.completionNote && (
+            <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 italic truncate">
+              &ldquo;{worker.completionNote}&rdquo;
+            </p>
+          )}
+        </div>
+        {status === 'waiting' && <span className="text-[9px] text-[var(--text-tertiary)] shrink-0">대기</span>}
+        {isWorking && <Loader2 size={13} className="animate-spin text-[var(--accent)] shrink-0" />}
+        {isDone && (
+          <ChevronDown size={13} className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+        )}
+      </button>
+
+      {/* Expandable result */}
+      <AnimatePresence>
+        {expanded && isDone && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 border-t border-[var(--border-subtle)] mt-0">
+              <div className="pt-2.5 text-[11px] leading-[1.7] max-h-[280px] overflow-y-auto text-[var(--text-primary)] space-y-0.5">
+                {renderMd(worker.result)}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
+  scenario: DemoScenario;
+  phase: DemoPhase;
+  visibleWorkers: number;
+}) {
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const total = scenario.workers.length;
+  const statuses = getAgentStatuses(phase, visibleWorkers, total);
+  const doneCount = statuses.filter(s => s === 'done').length;
+  const workingCount = statuses.filter(s => s === 'working').length;
+  const progressPct = phaseGte(phase, 'draft') ? 100 :
+    phaseGte(phase, 'workers') ? Math.round((doneCount / total) * 100) :
+    phaseGte(phase, 'q1') ? Math.round((workingCount / total) * 30) : 0;
+
+  return (
+    <div className="p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">분석 팀</span>
+        {workingCount > 0 && !phaseGte(phase, 'draft') && (
+          <span className="text-[10px] text-[var(--accent)] font-medium">{workingCount}명 분석 중</span>
+        )}
+        {phaseGte(phase, 'draft') && (
+          <span className="text-[10px] text-emerald-500 font-medium">분석 완료</span>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-[2px] bg-[var(--border-subtle)] rounded-full overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: 'var(--gradient-gold)' }}
+          initial={{ width: '0%' }}
+          animate={{ width: `${progressPct}%` }}
+          transition={{ duration: 0.6, ease: EASE }}
+        />
+      </div>
+
+      {/* Agent rows */}
+      <div className="space-y-1.5">
+        {scenario.workers.map((w, i) => (
+          <AgentRow
+            key={w.persona.id}
+            worker={w}
+            status={statuses[i]}
+            expanded={expandedIdx === i}
+            onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE AGENT COMPACT BAR — shown below analysis on mobile
+   ═══════════════════════════════════════════════════════════ */
+
+function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
+  scenario: DemoScenario;
+  phase: DemoPhase;
+  visibleWorkers: number;
+}) {
+  if (!phaseGte(phase, 'q1')) return null;
+  const total = scenario.workers.length;
+  const statuses = getAgentStatuses(phase, visibleWorkers, total);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)]"
+    >
+      <div className="flex -space-x-1.5">
+        {scenario.workers.map((w, i) => (
+          <div
+            key={w.persona.id}
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] border-2 border-[var(--surface)] ${
+              statuses[i] === 'working' ? 'animate-pulse' : statuses[i] === 'waiting' ? 'opacity-30' : ''
+            }`}
+            style={{ backgroundColor: w.persona.color + '20' }}
+          >
+            {w.persona.emoji}
+          </div>
+        ))}
+      </div>
+      <span className="text-[10px] text-[var(--text-secondary)] flex-1">
+        {statuses.every(s => s === 'done') ? '분석 완료' :
+         `${statuses.filter(s => s === 'working').length}명 분석 중...`}
+      </span>
+      {statuses.some(s => s === 'working') && (
+        <Loader2 size={11} className="animate-spin text-[var(--accent)]" />
+      )}
+      {statuses.every(s => s === 'done') && (
+        <Check size={11} className="text-emerald-500" />
+      )}
     </motion.div>
   );
 }
@@ -714,72 +919,75 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
         <div className="w-16" />
       </div>
 
-      {/* Scrollable content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-5 md:px-6 py-6 space-y-5">
+      {/* Content: main + agent sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Main column */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-5 md:px-6 py-6 space-y-5">
 
-          {/* 1. Typing input */}
-          {phaseGte(phase, 'typing') && (
-            <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} />
-          )}
+            {/* 1. Typing input */}
+            {phaseGte(phase, 'typing') && (
+              <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} />
+            )}
 
-          {/* 2. Team entrance */}
-          {phaseGte(phase, 'team') && (
-            <TeamEntrance scenario={scenario} onDone={() => setPhase('analysis')} />
-          )}
+            {/* 2. Team entrance — sidebar replaces this on desktop, keep for mobile timing */}
+            <div className="lg:hidden">
+              {phaseGte(phase, 'team') && (
+                <TeamEntrance scenario={scenario} onDone={() => setPhase('analysis')} />
+              )}
+            </div>
+            {/* Desktop: invisible trigger for team→analysis transition */}
+            <div className="hidden lg:block">
+              {phase === 'team' && <TeamEntranceTrigger onDone={() => setPhase('analysis')} />}
+            </div>
 
-          {/* 3. Analysis card (v0) */}
-          {phaseGte(phase, 'analysis') && currentSnapshot && (
-            <DemoAnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
-          )}
+            {/* 3. Analysis card (v0) */}
+            {phaseGte(phase, 'analysis') && currentSnapshot && (
+              <DemoAnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
+            )}
 
-          {/* 4. Q1 */}
-          {phase === 'q1' && (
-            <DemoQuestionCard
-              text={scenario.q1.question.text}
-              subtext={scenario.q1.question.subtext}
-              options={scenario.q1.question.options || []}
-              onSelect={handleQ1}
-            />
-          )}
+            {/* Mobile: compact agent bar */}
+            <div className="lg:hidden">
+              <DemoAgentCompactBar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+            </div>
 
-          {/* Q1 answer pill */}
-          {q1Answer && phaseGte(phase, 'update1') && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
-              <Check size={10} className="text-[var(--accent)]" />
-              <span className="text-[var(--text-primary)] font-medium">{q1Answer}</span>
-            </motion.div>
-          )}
+            {/* 4. Q1 */}
+            {phase === 'q1' && (
+              <DemoQuestionCard
+                text={scenario.q1.question.text}
+                subtext={scenario.q1.question.subtext}
+                options={scenario.q1.question.options || []}
+                onSelect={handleQ1}
+              />
+            )}
 
-          {/* 5. Q2 */}
-          {phase === 'q2' && (
-            <DemoQuestionCard
-              text={scenario.q2.question.text}
-              subtext={scenario.q2.question.subtext}
-              options={scenario.q2.question.options || []}
-              onSelect={handleQ2}
-            />
-          )}
+            {/* Q1 answer pill */}
+            {q1Answer && phaseGte(phase, 'update1') && (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+                <Check size={10} className="text-[var(--accent)]" />
+                <span className="text-[var(--text-primary)] font-medium">{q1Answer}</span>
+              </motion.div>
+            )}
 
-          {/* Q2 answer pill */}
-          {q2Answer && phaseGte(phase, 'update2') && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
-              <Check size={10} className="text-[var(--accent)]" />
-              <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
-            </motion.div>
-          )}
+            {/* 5. Q2 */}
+            {phase === 'q2' && (
+              <DemoQuestionCard
+                text={scenario.q2.question.text}
+                subtext={scenario.q2.question.subtext}
+                options={scenario.q2.question.options || []}
+                onSelect={handleQ2}
+              />
+            )}
 
-          {/* 6. Workers */}
-          {phaseGte(phase, 'workers') && (
-            <>
-              <WorkerMiniBar scenario={scenario} visibleCount={visibleWorkers} />
-              {scenario.workers.slice(0, visibleWorkers).map((w, i) => (
-                <DemoWorkerReport key={w.persona.id} worker={w} />
-              ))}
-            </>
-          )}
+            {/* Q2 answer pill */}
+            {q2Answer && phaseGte(phase, 'update2') && (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+                <Check size={10} className="text-[var(--accent)]" />
+                <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
+              </motion.div>
+            )}
 
           {/* 7. Draft */}
           {phaseGte(phase, 'draft') && (
@@ -829,7 +1037,13 @@ export function InteractiveDemo({ scenario, onStartReal, onBack }: InteractiveDe
             </>
           )}
 
-          <div ref={bottomRef} className="h-4" />
+            <div ref={bottomRef} className="h-4" />
+          </div>
+        </div>
+
+        {/* Agent sidebar — desktop only */}
+        <div className="hidden lg:flex flex-col w-72 xl:w-80 border-l border-[var(--border-subtle)] shrink-0 overflow-y-auto bg-[var(--bg)]/50">
+          <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
         </div>
       </div>
 

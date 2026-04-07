@@ -524,15 +524,15 @@ describe('Scenario J: 불확실한 가정 → 편곡 체인', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('recast', profile);
     // 3개 가정 중 2개가 doubtful, 1개 uncertain = 3건 불확실
-    const assumptionMsg = coaching.find(c => c.message.includes('불확실한 가정'));
+    const assumptionMsg = coaching.find(c => c.message.includes('uncertainAssumptions'));
     expect(assumptionMsg).toBeDefined();
-    expect(assumptionMsg!.message).toMatch(/[2-3]건/);
+    expect(assumptionMsg!.message).toContain('count=3');
   });
 
   it('recast 코칭: detail에 실제 가정 텍스트가 포함되어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('recast', profile);
-    const assumptionMsg = coaching.find(c => c.message.includes('불확실한 가정'));
+    const assumptionMsg = coaching.find(c => c.message.includes('uncertainAssumptions'));
     expect(assumptionMsg?.detail).toBeDefined();
     // 가격 또는 경쟁사 또는 영업팀 관련 텍스트
     expect(assumptionMsg!.detail).toMatch(/가격|경쟁사|영업팀/);
@@ -905,9 +905,9 @@ describe('Scenario Q: 가정 evaluation 조합별 recast 코칭', () => {
 
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('recast', profile);
-    const uncertainMsg = coaching.find(c => c.message.includes('불확실한 가정'));
+    const uncertainMsg = coaching.find(c => c.message.includes('uncertainAssumptions'));
     expect(uncertainMsg).toBeDefined();
-    expect(uncertainMsg!.message).toContain('2건');
+    expect(uncertainMsg!.message).toContain('count=2');
     // detail에 실제 가정 텍스트
     expect(uncertainMsg!.detail).toContain('의심 가정');
   });

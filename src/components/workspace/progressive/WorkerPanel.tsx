@@ -17,6 +17,7 @@ import {
 import type { WorkerTask } from '@/stores/types';
 import type { WorkerContext } from '@/lib/worker-engine';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { useLocale } from '@/hooks/useLocale';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 const EMPTY: WorkerTask[] = [];
@@ -70,6 +71,8 @@ const EMOJI_OPTIONS = ['🔍', '🎯', '📊', '✍️', '⚠️', '🎨', '⚖�
 const COLOR_OPTIONS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6B7280', '#06B6D4', '#14B8A6', '#A855F7'];
 
 function PersonaSettings({ onClose }: { onClose: () => void }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const builtins = getBuiltinPersonas();
   const [customization, setCustomization] = useState(loadCustomization);
   const [addMode, setAddMode] = useState(false);
@@ -102,13 +105,13 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-[12px] font-semibold text-[var(--text-primary)]">팀원 설정</span>
-        <button onClick={onClose} className="text-[10px] text-[var(--accent)] cursor-pointer">완료</button>
+        <span className="text-[12px] font-semibold text-[var(--text-primary)]">{L('팀원 설정', 'Team Settings')}</span>
+        <button onClick={onClose} className="text-[10px] text-[var(--accent)] cursor-pointer">{L('완료', 'Done')}</button>
       </div>
 
       {/* Built-in persona names */}
       <div className="space-y-1.5">
-        <p className="text-[11px] text-[var(--text-secondary)] font-medium">기본 팀원 이름 변경</p>
+        <p className="text-[11px] text-[var(--text-secondary)] font-medium">{L('기본 팀원 이름 변경', 'Rename default members')}</p>
         {builtins.map(p => (
           <div key={p.id} className="flex items-center gap-2">
             <span className="text-[13px] w-6 text-center">{p.emoji}</span>
@@ -126,13 +129,13 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
       {/* Custom personas */}
       {customization.customPersonas.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-[var(--text-tertiary)] font-medium">추가된 팀원</p>
+          <p className="text-[10px] text-[var(--text-tertiary)] font-medium">{L('추가된 팀원', 'Custom members')}</p>
           {customization.customPersonas.map(p => (
             <div key={p.id} className="flex items-center gap-2">
               <span className="text-[13px] w-6 text-center">{p.emoji}</span>
               <span className="flex-1 text-[11px] text-[var(--text-primary)]">{p.name}</span>
               <span className="text-[9px] text-[var(--text-tertiary)]">{p.role}</span>
-              <button onClick={() => handleRemoveCustom(p.id)} className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer transition-colors" aria-label="삭제">
+              <button onClick={() => handleRemoveCustom(p.id)} className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer transition-colors" aria-label={L('삭제', 'Delete')}>
                 <Trash2 size={13} />
               </button>
             </div>
@@ -146,11 +149,11 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
           onClick={() => setAddMode(true)}
           className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] hover:underline cursor-pointer"
         >
-          <Plus size={12} /> 새 팀원 추가
+          <Plus size={12} /> {L('새 팀원 추가', 'Add new member')}
         </button>
       ) : (
         <div className="space-y-2 p-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)]">
-          <p className="text-[10px] font-semibold text-[var(--text-primary)]">새 팀원</p>
+          <p className="text-[10px] font-semibold text-[var(--text-primary)]">{L('새 팀원', 'New member')}</p>
 
           {/* Emoji picker */}
           <div className="flex flex-wrap gap-1">
@@ -164,23 +167,23 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
 
           <div className="flex gap-2">
             <input value={newPersona.name} onChange={e => setNewPersona(p => ({ ...p, name: e.target.value }))}
-              placeholder="이름" maxLength={10}
+              placeholder={L('이름', 'Name')} maxLength={10}
               className="flex-1 px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px] focus:outline-none focus:border-[var(--accent)]/30" />
             <input value={newPersona.role} onChange={e => setNewPersona(p => ({ ...p, role: e.target.value }))}
-              placeholder="역할 (e.g., 데이터 사이언티스트)" maxLength={20}
+              placeholder={L('역할 (e.g., 데이터 사이언티스트)', 'Role (e.g., Data Scientist)')} maxLength={20}
               className="flex-1 px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px] focus:outline-none focus:border-[var(--accent)]/30" />
           </div>
 
           <textarea value={newPersona.expertise} onChange={e => setNewPersona(p => ({ ...p, expertise: e.target.value }))}
-            placeholder="전문 영역 설명 (프롬프트에 주입됩니다)" maxLength={100}
+            placeholder={L('전문 영역 설명 (프롬프트에 주입됩니다)', 'Describe expertise (injected into prompts)')} maxLength={100}
             className="w-full px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px] resize-none focus:outline-none focus:border-[var(--accent)]/30" rows={2} />
 
           <input value={newPersona.tone} onChange={e => setNewPersona(p => ({ ...p, tone: e.target.value }))}
-            placeholder="말투 스타일 (e.g., 데이터 기반으로 차분하게)" maxLength={60}
+            placeholder={L('말투 스타일 (e.g., 데이터 기반으로 차분하게)', 'Tone style (e.g., calm and data-driven)')} maxLength={60}
             className="w-full px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px] focus:outline-none focus:border-[var(--accent)]/30" />
 
           <input value={keywordInput} onChange={e => setKeywordInput(e.target.value)}
-            placeholder="매칭 키워드 (쉼표 구분: 데이터, 분석, ML)"
+            placeholder={L('매칭 키워드 (쉼표 구분: 데이터, 분석, ML)', 'Matching keywords (comma-separated: data, analysis, ML)')}
             className="w-full px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px] focus:outline-none focus:border-[var(--accent)]/30" />
 
           {/* Color picker */}
@@ -193,10 +196,10 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex justify-end gap-2">
-            <button onClick={() => setAddMode(false)} className="px-3 py-1.5 text-[10px] text-[var(--text-tertiary)] cursor-pointer">취소</button>
+            <button onClick={() => setAddMode(false)} className="px-3 py-1.5 text-[10px] text-[var(--text-tertiary)] cursor-pointer">{L('취소', 'Cancel')}</button>
             <button onClick={handleAddPersona} disabled={!newPersona.name.trim() || !newPersona.role.trim()}
               className="px-3 py-1.5 text-[10px] text-white font-semibold rounded-lg disabled:opacity-30 cursor-pointer"
-              style={{ background: 'var(--gradient-gold)' }}>추가</button>
+              style={{ background: 'var(--gradient-gold)' }}>{L('추가', 'Add')}</button>
           </div>
         </div>
       )}
@@ -207,6 +210,8 @@ function PersonaSettings({ onClose }: { onClose: () => void }) {
 // ─── Team header with active personas ───
 
 function TeamHeader({ workers, onOpenSettings }: { workers: WorkerTask[]; onOpenSettings: () => void }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const doneCount = workers.filter(w => w.status === 'done').length;
   const runningCount = workers.filter(w => w.status === 'running').length;
   const waitingCount = workers.filter(w => w.status === 'waiting_input').length;
@@ -220,7 +225,7 @@ function TeamHeader({ workers, onOpenSettings }: { workers: WorkerTask[]; onOpen
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-[var(--accent)]" />
-          <span className="text-[13px] font-semibold text-[var(--text-primary)]">팀</span>
+          <span className="text-[13px] font-semibold text-[var(--text-primary)]">{L('팀', 'Team')}</span>
           <span className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
             {doneCount}/{workers.length}
           </span>
@@ -228,7 +233,7 @@ function TeamHeader({ workers, onOpenSettings }: { workers: WorkerTask[]; onOpen
             <span className="text-[12px]">{activeEmojis.join('')}</span>
           )}
         </div>
-        <button onClick={onOpenSettings} className="p-2 text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors" title="팀원 설정" aria-label="팀원 설정">
+        <button onClick={onOpenSettings} className="p-2 text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors" title={L('팀원 설정', 'Team settings')} aria-label={L('팀원 설정', 'Team settings')}>
           <Settings size={14} />
         </button>
       </div>
@@ -246,11 +251,11 @@ function TeamHeader({ workers, onOpenSettings }: { workers: WorkerTask[]; onOpen
 
       {/* Status summary */}
       <p className="text-[10px] text-[var(--text-secondary)]">
-        {runningCount > 0 && `${runningCount}명 작업 중`}
+        {runningCount > 0 && L(`${runningCount}명 작업 중`, `${runningCount} working`)}
         {runningCount > 0 && waitingCount > 0 && ' · '}
-        {waitingCount > 0 && `입력 대기 ${waitingCount}개`}
-        {runningCount === 0 && waitingCount === 0 && doneCount === workers.length && '모든 작업 완료'}
-        {runningCount === 0 && waitingCount === 0 && doneCount < workers.length && `대기 중 ${workers.length - doneCount}명`}
+        {waitingCount > 0 && L(`입력 대기 ${waitingCount}개`, `${waitingCount} awaiting input`)}
+        {runningCount === 0 && waitingCount === 0 && doneCount === workers.length && L('모든 작업 완료', 'All tasks complete')}
+        {runningCount === 0 && waitingCount === 0 && doneCount < workers.length && L(`대기 중 ${workers.length - doneCount}명`, `${workers.length - doneCount} pending`)}
       </p>
     </>
   );
@@ -268,19 +273,21 @@ function StatusIndicator({ worker }: { worker: WorkerTask }) {
   return <span className="w-2 h-2 rounded-full bg-[var(--text-tertiary)] block" />;
 }
 
-function statusText(worker: WorkerTask): string {
-  if (worker.status === 'running') return '작업 중';
-  if (worker.status === 'done' && worker.approved === true) return '반영';
-  if (worker.status === 'done' && worker.approved === false) return '제외';
-  if (worker.status === 'done') return '완료';
-  if (worker.status === 'error') return '오류';
-  if (worker.status === 'waiting_input') return '입력 필요';
-  return '대기';
+function statusText(worker: WorkerTask, locale: string = 'ko'): string {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  if (worker.status === 'running') return L('작업 중', 'Working');
+  if (worker.status === 'done' && worker.approved === true) return L('반영', 'Applied');
+  if (worker.status === 'done' && worker.approved === false) return L('제외', 'Excluded');
+  if (worker.status === 'done') return L('완료', 'Done');
+  if (worker.status === 'error') return L('오류', 'Error');
+  if (worker.status === 'waiting_input') return L('입력 필요', 'Input needed');
+  return L('대기', 'Pending');
 }
 
 // ─── Desktop Panel (compact status board) ───
 
 export function WorkerPanel({ className }: { className?: string }) {
+  const locale = useLocale();
   const workers = useWorkers();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -327,7 +334,7 @@ export function WorkerPanel({ className }: { className?: string }) {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <StatusIndicator worker={w} />
-              <span className="text-[10px] text-[var(--text-secondary)]">{statusText(w)}</span>
+              <span className="text-[10px] text-[var(--text-secondary)]">{statusText(w, locale)}</span>
             </div>
           </motion.div>
         ))}
@@ -339,6 +346,8 @@ export function WorkerPanel({ className }: { className?: string }) {
 // ─── Mobile Drawer ───
 
 export function WorkerDrawer({ className }: { className?: string }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [open, setOpen] = useState(false);
   const workers = useWorkers();
 
@@ -364,16 +373,16 @@ export function WorkerDrawer({ className }: { className?: string }) {
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <AvatarRow personas={workers.map(w => w.persona)} maxShow={3} />
           <span className="text-[12px] font-semibold text-[var(--text-primary)] shrink-0">
-            팀 {doneCount}/{workers.length}
+            {L('팀', 'Team')} {doneCount}/{workers.length}
           </span>
           {waitingCount > 0 && (
             <span className="text-[10px] font-medium text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full shrink-0">
-              입력 {waitingCount}
+              {L('입력', 'Input')} {waitingCount}
             </span>
           )}
           {runningCount > 0 && waitingCount === 0 && (
             <span className="text-[10px] text-[var(--accent)] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full shrink-0">
-              진행 {runningCount}
+              {L('진행', 'Active')} {runningCount}
             </span>
           )}
         </div>
@@ -394,12 +403,12 @@ export function WorkerDrawer({ className }: { className?: string }) {
               <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border-subtle)] shrink-0">
                 <div className="flex items-center gap-2">
                   <Users size={14} className="text-[var(--accent)]" />
-                  <span className="text-[13px] font-semibold text-[var(--text-primary)]">팀</span>
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)]">{L('팀', 'Team')}</span>
                   <span className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
                     {doneCount}/{workers.length}
                   </span>
                 </div>
-                <button onClick={() => setOpen(false)} className="p-2.5 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="닫기">
+                <button onClick={() => setOpen(false)} className="p-2.5 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label={L('닫기', 'Close')}>
                   <X size={18} className="text-[var(--text-tertiary)]" />
                 </button>
               </div>
@@ -414,7 +423,7 @@ export function WorkerDrawer({ className }: { className?: string }) {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <StatusIndicator worker={w} />
-                      <span className="text-[11px] text-[var(--text-secondary)]">{statusText(w)}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)]">{statusText(w, locale)}</span>
                     </div>
                   </div>
                 ))}

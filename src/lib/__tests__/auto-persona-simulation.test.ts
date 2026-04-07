@@ -29,6 +29,12 @@ import type { ReframeItem, RecastItem, SuggestedReviewer } from '@/stores/types'
 
 // ── Mocks ──
 
+vi.mock('@/lib/supabase', () => ({
+  supabase: { auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })) } },
+  getCurrentUserId: vi.fn(() => Promise.resolve(null)),
+  clearUserCache: vi.fn(),
+}));
+
 vi.mock('@/lib/llm', () => ({
   callLLMJson: vi.fn(),
 }));

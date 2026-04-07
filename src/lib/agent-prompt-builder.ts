@@ -33,7 +33,7 @@ export function buildAgentContext(agent: Agent): string {
 
   if (obs.length === 0) return '';
 
-  const lines = ['## 이전 작업에서 파악한 것'];
+  const lines = ['## Insights from previous work'];
   for (const o of obs) {
     lines.push(`- ${o.observation}`);
   }
@@ -50,7 +50,7 @@ export function buildAgentContext(agent: Agent): string {
 export function buildSearchContext(searchResults: SearchResult[]): string {
   if (searchResults.length === 0) return '';
 
-  const lines = ['## 참고: 웹 검색 결과'];
+  const lines = ['## Reference: Web search results'];
   for (const r of searchResults.slice(0, 5)) {
     lines.push(`- **${r.title}**: ${r.snippet}`);
     if (r.url) lines.push(`  출처: ${r.url}`);

@@ -65,19 +65,27 @@ export interface StepCoaching {
    Constants
    ──────────────────────────────────── */
 
-const STRATEGY_DISPLAY: Record<ReframingStrategy, string> = {
-  challenge_existence: '존재 의심',
-  narrow_scope: '범위 집중',
-  diagnose_root: '원인 진단',
-  redirect_angle: '관점 전환',
-};
+import { getCurrentLanguage } from '@/lib/i18n';
 
-const EVAL_DISPLAY: Record<string, string> = {
-  question_accepted: '질문 채택률',
-  assumptions_engaged: '가정 검토율',
-  no_immediate_reanalyze: '1회 분석 충분율',
-  has_useful_assumptions: '미확인 가정 발견율',
-};
+function getStrategyDisplay(): Record<ReframingStrategy, string> {
+  const ko = getCurrentLanguage() === 'ko';
+  return {
+    challenge_existence: ko ? '존재 의심' : 'Challenge Existence',
+    narrow_scope: ko ? '범위 집중' : 'Narrow Scope',
+    diagnose_root: ko ? '원인 진단' : 'Root Cause Diagnosis',
+    redirect_angle: ko ? '관점 전환' : 'Redirect Angle',
+  };
+}
+
+function getEvalDisplay(): Record<string, string> {
+  const ko = getCurrentLanguage() === 'ko';
+  return {
+    question_accepted: ko ? '질문 채택률' : 'Question Acceptance Rate',
+    assumptions_engaged: ko ? '가정 검토율' : 'Assumption Review Rate',
+    no_immediate_reanalyze: ko ? '1회 분석 충분율' : 'First-pass Sufficiency Rate',
+    has_useful_assumptions: ko ? '미확인 가정 발견율' : 'Unchecked Assumption Discovery Rate',
+  };
+}
 
 /* ────────────────────────────────────
    1. buildConcertmasterProfile
@@ -186,7 +194,9 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
       insights.push({
         id: 'eval_summary',
         category: 'growth',
-        message: `${evalSummary.total_sessions}회 분석, 평균 활용률 ${pct}%`,
+        message: getCurrentLanguage() === 'ko'
+          ? `${evalSummary.total_sessions}회 분석, 평균 활용률 ${pct}%`
+          : `${evalSummary.total_sessions} analyses, average utilization ${pct}%`,
         tier: 2,
         priority: priority++,
       });
@@ -195,12 +205,14 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
     // Worst performing evals → coaching
     const worstEvals = getWorstPerformingEvals();
     for (const mutation of worstEvals.slice(0, 2)) {
-      const evalName = EVAL_DISPLAY[mutation.evalId] || mutation.evalId;
+      const evalName = getEvalDisplay()[mutation.evalId] || mutation.evalId;
       const pct = Math.round(mutation.passRate * 100);
       insights.push({
         id: `coaching_${mutation.evalId}`,
         category: 'coaching',
-        message: `${evalName}이 ${pct}%로 낮습니다`,
+        message: getCurrentLanguage() === 'ko'
+          ? `${evalName}이 ${pct}%로 낮습니다`
+          : `${evalName} is low at ${pct}%`,
         detail: mutation.instruction,
         tier: 2,
         priority: priority++,
@@ -214,8 +226,12 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_high',
           category: 'pattern',
-          message: `AI 제안 수정률 ${pct}% — 자기 판단이 강한 패턴입니다.`,
-          detail: '이 패턴이 향후 AI 제안에 반영됩니다.',
+          message: getCurrentLanguage() === 'ko'
+            ? `AI 제안 수정률 ${pct}% — 자기 판단이 강한 패턴입니다.`
+            : `AI suggestion override rate ${pct}% — strong independent judgment pattern.`,
+          detail: getCurrentLanguage() === 'ko'
+            ? '이 패턴이 향후 AI 제안에 반영됩니다.'
+            : 'This pattern will be reflected in future AI suggestions.',
           tier: 2,
           priority: priority++,
         });
@@ -223,8 +239,12 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_low',
           category: 'coaching',
-          message: `AI 제안을 거의 그대로 수용하고 있습니다 (수정률 ${pct}%).`,
-          detail: 'AI 제안을 비판적으로 검토하면 더 나은 결과를 얻을 수 있습니다.',
+          message: getCurrentLanguage() === 'ko'
+            ? `AI 제안을 거의 그대로 수용하고 있습니다 (수정률 ${pct}%).`
+            : `Accepting AI suggestions almost as-is (override rate ${pct}%).`,
+          detail: getCurrentLanguage() === 'ko'
+            ? 'AI 제안을 비판적으로 검토하면 더 나은 결과를 얻을 수 있습니다.'
+            : 'Critically reviewing AI suggestions can lead to better results.',
           tier: 2,
           priority: priority++,
         });
@@ -256,12 +276,14 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
     const sorted = perf.filter((p) => p.sample_count >= 3).sort((a, b) => b.avg_pass_rate - a.avg_pass_rate);
     if (sorted.length >= 2) {
       const best = sorted[0];
-      const bestName = STRATEGY_DISPLAY[best.strategy] || best.strategy;
+      const bestName = getStrategyDisplay()[best.strategy] || best.strategy;
       const bestPct = Math.round(best.avg_pass_rate * 100);
       insights.push({
         id: 'strategy_best',
         category: 'growth',
-        message: `"${bestName}" 전략의 활용률이 ${bestPct}%로 가장 높습니다`,
+        message: getCurrentLanguage() === 'ko'
+          ? `"${bestName}" 전략의 활용률이 ${bestPct}%로 가장 높습니다`
+          : `"${bestName}" strategy has the highest utilization at ${bestPct}%`,
         tier: 3,
         priority: priority++,
       });
@@ -418,7 +440,7 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const sessionInsights = getSessionInsights();
     const patternInsight = sessionInsights.find((si) => si.type === 'pattern');
     if (patternInsight) {
-      const strategyName = STRATEGY_DISPLAY[profile.dominantStrategy];
+      const strategyName = getStrategyDisplay()[profile.dominantStrategy];
       results.push({
         message: t('coaching.reframe.strategyRepetition', { strategy: strategyName }),
         tone: 'challenge',
