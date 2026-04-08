@@ -140,7 +140,8 @@ export function buildProcessSummary(projectId: string): ProcessSummary | null {
     let maxVal = -1;
     let minVal = 6;
     for (const key of elements) {
-      const val = (latestDQ[key] as number) || 0;
+      const raw = latestDQ[key];
+      const val = typeof raw === 'number' ? raw : 0;
       if (val > maxVal) { maxVal = val; strongestElement = DQ_ELEMENT_LABELS[key]; }
       if (val < minVal) { minVal = val; weakestElement = DQ_ELEMENT_LABELS[key]; }
     }

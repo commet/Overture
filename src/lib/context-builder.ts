@@ -157,21 +157,21 @@ export function buildProjectItemsContext(projectId: string): string {
   const parts: string[] = [];
 
   if (decompositions.length > 0) {
-    const latest = decompositions[decompositions.length - 1];
+    const latest = [...decompositions].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
     if (latest.analysis) {
       parts.push(`[악보 해석] 핵심 질문: ${latest.selected_question || latest.analysis.surface_task}`);
     }
   }
 
   if (recasts.length > 0) {
-    const latest = recasts[recasts.length - 1];
+    const latest = [...recasts].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
     if (latest.analysis) {
       parts.push(`[편곡] ${latest.steps.length}단계, AI ${latest.analysis.ai_ratio}% / 사람 ${latest.analysis.human_ratio}%`);
     }
   }
 
   if (syntheses.length > 0) {
-    const latest = syntheses[syntheses.length - 1];
+    const latest = [...syntheses].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
     if (latest.final_synthesis) {
       parts.push(`[합성 결론] ${latest.final_synthesis.slice(0, 100)}`);
     }

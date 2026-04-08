@@ -235,7 +235,9 @@ export function buildProvenanceChain(
   }
 
   // Trace into rehearsal risks
-  const latestFeedback = feedbackRecords[feedbackRecords.length - 1];
+  const latestFeedback = feedbackRecords.length > 0
+    ? [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!
+    : undefined;
   if (latestFeedback) {
     const allRisks = (latestFeedback.results || []).flatMap(r => r.classified_risks || []);
     for (const risk of allRisks) {
@@ -378,7 +380,9 @@ export function computeProjectGamma(
     fingerprints.push(fp);
     stageGammas.push({ phase: 'recast', gamma: computeStageGamma(fp) });
   }
-  const latestFeedback = feedbackRecords[feedbackRecords.length - 1];
+  const latestFeedback = feedbackRecords.length > 0
+    ? [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!
+    : undefined;
   if (latestFeedback) {
     const fp = buildStageFingerprint('rehearse', latestFeedback);
     fingerprints.push(fp);
@@ -557,7 +561,9 @@ export function detectRigiditySignals(
 
   // translated_approval_ignored: specific step suggestions not reflected
   if (refineLoop && feedbackRecords.length > 0) {
-    const latestFeedback = feedbackRecords[feedbackRecords.length - 1];
+    const latestFeedback = feedbackRecords.length > 0
+    ? [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!
+    : undefined;
     const translatedApprovals = (latestFeedback?.results || [])
       .flatMap(r => r.translated_approvals || [])
       .filter(ta => ta.affected_steps.length > 0 && !ta.met);
