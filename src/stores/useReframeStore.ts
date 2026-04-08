@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import type { ReframeItem } from '@/stores/types';
-import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
-import { generateId } from '@/lib/uuid';
-import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { STORAGE_KEYS } from '@/lib/storage';
+import { generateId, loadItems, addNewItem, addItemIfNew, updateItem, deleteItem } from './createItemStore';
+
+const TABLE = 'reframe_items' as const;
+const KEY = STORAGE_KEYS.REFRAME_LIST;
 
 interface ReframeState {
   items: ReframeItem[];
@@ -20,68 +22,20 @@ export const useReframeStore = create<ReframeState>((set, get) => ({
   items: [],
   currentId: null,
 
-  loadItems: () => {
-    // Instant: load from localStorage
-    const local = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
-    set({ items: local });
-    // Background: merge with Supabase (fetches remote + merges + saves)
-    loadAndMerge<ReframeItem>('reframe_items', STORAGE_KEYS.REFRAME_LIST)
-      .then((merged) => {
-        const current = get().items;
-        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
-        set({ items: [...merged, ...newLocal] });
-      });
-  },
+  loadItems: () => loadItems(KEY, TABLE, () => get().items, (items) => set({ items })),
 
   createItem: (inputText: string) => {
     const now = new Date().toISOString();
-    const newItem: ReframeItem = {
-      id: generateId(),
-      input_text: inputText,
-      analysis: null,
-      selected_question: '',
-      final_decomposition: [],
-      status: 'input',
-      created_at: now,
-      updated_at: now,
-    };
-    const items = [...get().items, newItem];
-    set({ items, currentId: newItem.id });
-    setStorage(STORAGE_KEYS.REFRAME_LIST, items);
-    upsertToSupabase('reframe_items', newItem);
-    return newItem.id;
+    return addNewItem(KEY, TABLE, () => get().items, (items, id) => set({ items, currentId: id }), {
+      id: generateId(), input_text: inputText, analysis: null,
+      selected_question: '', final_decomposition: [], status: 'input',
+      created_at: now, updated_at: now,
+    });
   },
 
-  addItem: (item) => {
-    if (get().items.some(i => i.id === item.id)) return;
-    const items = [...get().items, item];
-    set({ items, currentId: item.id });
-    setStorage(STORAGE_KEYS.REFRAME_LIST, items);
-    upsertToSupabase('reframe_items', item);
-  },
-
-  updateItem: (id, data) => {
-    const items = get().items.map((item) =>
-      item.id === id ? { ...item, ...data, updated_at: new Date().toISOString() } : item
-    );
-    set({ items });
-    setStorage(STORAGE_KEYS.REFRAME_LIST, items);
-    const updated = get().items.find(i => i.id === id);
-    if (updated) upsertToSupabase('reframe_items', updated);
-  },
-
-  deleteItem: (id) => {
-    const items = get().items.filter((item) => item.id !== id);
-    const currentId = get().currentId === id ? null : get().currentId;
-    set({ items, currentId });
-    setStorage(STORAGE_KEYS.REFRAME_LIST, items);
-    softDeleteFromSupabase('reframe_items', id);
-  },
-
+  addItem: (item) => addItemIfNew(KEY, TABLE, () => get().items, (items, id) => set({ items, currentId: id }), item),
+  updateItem: (id, data) => updateItem(KEY, TABLE, () => get().items, (items) => set({ items }), id, data),
+  deleteItem: (id) => deleteItem(KEY, TABLE, () => get().items, (items) => set({ items }), () => get().currentId, (cid) => set({ currentId: cid }), id),
   setCurrentId: (id) => set({ currentId: id }),
-
-  getCurrentItem: () => {
-    const { items, currentId } = get();
-    return items.find((item) => item.id === currentId);
-  },
+  getCurrentItem: () => get().items.find((item) => item.id === get().currentId),
 }));

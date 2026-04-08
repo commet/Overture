@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import type { RefineLoop, RefineIteration, ApprovalCondition } from '@/stores/types';
-import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
-import { generateId } from '@/lib/uuid';
+import { STORAGE_KEYS } from '@/lib/storage';
 import { checkLoopConvergence } from '@/lib/convergence';
-import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db';
+import { generateId, loadItems, addNewItem, updateItem, deleteItem, updateNestedField } from './createItemStore';
+
+const TABLE = 'refine_loops' as const;
+const KEY = STORAGE_KEYS.REFINE_LOOPS;
 
 interface RefineState {
   loops: RefineLoop[];
@@ -31,20 +33,11 @@ export const useRefineStore = create<RefineState>((set, get) => ({
   loops: [],
   activeLoopId: null,
 
-  loadLoops: () => {
-    const local = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
-    set({ loops: local });
-    loadAndMerge<RefineLoop>('refine_loops', STORAGE_KEYS.REFINE_LOOPS)
-      .then((merged) => {
-        const current = get().loops;
-        const newLocal = current.filter(c => !merged.find(m => m.id === c.id));
-        set({ loops: [...merged, ...newLocal] });
-      });
-  },
+  loadLoops: () => loadItems(KEY, TABLE, () => get().loops, (loops) => set({ loops })),
 
   createLoop: (params) => {
     const now = new Date().toISOString();
-    const loop: RefineLoop = {
+    return addNewItem(KEY, TABLE, () => get().loops, (loops, id) => set({ loops, activeLoopId: id }), {
       id: generateId(),
       project_id: params.projectId,
       name: params.name || params.goal.slice(0, 30),
@@ -58,63 +51,26 @@ export const useRefineStore = create<RefineState>((set, get) => ({
       max_iterations: 3,
       created_at: now,
       updated_at: now,
-    };
-    const loops = [...get().loops, loop];
-    set({ loops, activeLoopId: loop.id });
-    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
-    upsertToSupabase('refine_loops', loop);
-    return loop.id;
-  },
-
-  updateLoop: (id, data) => {
-    const loops = get().loops.map((l) =>
-      l.id === id ? { ...l, ...data, updated_at: new Date().toISOString() } : l
-    );
-    set({ loops });
-    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
-    const updated = get().loops.find(l => l.id === id);
-    if (updated) upsertToSupabase('refine_loops', updated);
-  },
-
-  deleteLoop: (id) => {
-    const loops = get().loops.filter((l) => l.id !== id);
-    const activeLoopId = get().activeLoopId === id ? null : get().activeLoopId;
-    set({ loops, activeLoopId });
-    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
-    softDeleteFromSupabase('refine_loops', id);
-  },
-
-  setActiveLoopId: (id) => set({ activeLoopId: id }),
-
-  getActiveLoop: () => {
-    const { loops, activeLoopId } = get();
-    return loops.find((l) => l.id === activeLoopId);
-  },
-
-  addIteration: (loopId, iteration) => {
-    const loops = get().loops.map((l) => {
-      if (l.id !== loopId) return l;
-      return {
-        ...l,
-        iterations: [...l.iterations, { ...iteration, created_at: new Date().toISOString() }],
-        updated_at: new Date().toISOString(),
-      };
     });
-    set({ loops });
-    setStorage(STORAGE_KEYS.REFINE_LOOPS, loops);
-    const updated = get().loops.find(l => l.id === loopId);
-    if (updated) upsertToSupabase('refine_loops', updated);
   },
 
-  getLoopsByProject: (projectId) =>
-    get().loops.filter((l) => l.project_id === projectId),
+  updateLoop: (id, data) => updateItem(KEY, TABLE, () => get().loops, (loops) => set({ loops }), id, data),
+  deleteLoop: (id) => deleteItem(KEY, TABLE, () => get().loops, (loops) => set({ loops }), () => get().activeLoopId, (aid) => set({ activeLoopId: aid }), id),
+  setActiveLoopId: (id) => set({ activeLoopId: id }),
+  getActiveLoop: () => get().loops.find((l) => l.id === get().activeLoopId),
+
+  addIteration: (loopId, iteration) =>
+    updateNestedField(KEY, TABLE, () => get().loops, (loops) => set({ loops }), loopId, (l) => ({
+      ...l, iterations: [...l.iterations, { ...iteration, created_at: new Date().toISOString() }],
+    })),
+
+  getLoopsByProject: (projectId) => get().loops.filter((l) => l.project_id === projectId),
 
   checkConvergence: (loopId) => {
     const loop = get().loops.find((l) => l.id === loopId);
     if (!loop) return {
       converged: false, critical_remaining: 0, approval_met: 0,
-      approval_total: 0, total_issues: 0, issue_trend: [],
-      guidance: '',
+      approval_total: 0, total_issues: 0, issue_trend: [], guidance: '',
     };
     return checkLoopConvergence(loop);
   },
