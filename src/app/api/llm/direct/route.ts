@@ -1,29 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { validateOrigin, validateContentType, validateContentLength } from '@/lib/api-security';
-
-const MAX_TOKENS_CAP = 4096;
-const MAX_MESSAGE_LENGTH = 50_000;
-const MAX_SYSTEM_LENGTH = 10_000;
-const MAX_MESSAGES = 20;
-const MAX_TOTAL_BODY = 500_000; // 500KB
-const VALID_ROLES = new Set(['user', 'assistant']);
-
-function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
-  if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false;
-  let totalSize = 0;
-  return messages.every(
-    (m: unknown) => {
-      if (typeof m !== 'object' || m === null) return false;
-      if (!('role' in m) || !VALID_ROLES.has((m as { role: unknown }).role as string)) return false;
-      if (!('content' in m) || typeof (m as { content: unknown }).content !== 'string') return false;
-      const content = (m as { content: string }).content;
-      if (content.length > MAX_MESSAGE_LENGTH) return false;
-      totalSize += content.length;
-      return totalSize <= MAX_TOTAL_BODY;
-    }
-  );
-}
+import { validateMessages, validateSystemPrompt, validateApiKey, validateRequest, normalizeMaxTokens } from '@/lib/llm-validation';
 
 /**
  * Direct mode endpoint — uses the user's own API key (sent from client).
@@ -32,31 +9,18 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
  * The key is only used server-side and never stored.
  */
 export async function POST(req: NextRequest) {
-  // Request validation
-  const ctError = validateContentType(req);
-  if (ctError) return ctError;
-  const clError = validateContentLength(req);
-  if (clError) return clError;
-  const csrfError = validateOrigin(req);
-  if (csrfError) return csrfError;
+  const reqError = validateRequest(req);
+  if (reqError) return reqError;
 
   try {
     const body = await req.json();
     const { apiKey, messages, system } = body;
-    const maxTokens = Math.min(Number(body.maxTokens) || 2000, MAX_TOKENS_CAP);
+    const maxTokens = normalizeMaxTokens(body.maxTokens);
 
-    // Validate API key format and length
-    if (typeof apiKey !== 'string' || !apiKey.startsWith('sk-ant-') || apiKey.length < 20 || apiKey.length > 200) {
-      return NextResponse.json({ error: '유효한 Anthropic API 키가 아닙니다.' }, { status: 400 });
-    }
-
-    if (typeof system !== 'string' || system.length > MAX_SYSTEM_LENGTH) {
-      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
-    }
-
-    if (!validateMessages(messages)) {
-      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
-    }
+    const keyCheck = validateApiKey(apiKey, 'anthropic');
+    if (!keyCheck.valid) return NextResponse.json({ error: keyCheck.error }, { status: 400 });
+    if (!validateSystemPrompt(system)) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    if (!validateMessages(messages)) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
 
     const client = new Anthropic({ apiKey });
     const stream = body.stream === true;
