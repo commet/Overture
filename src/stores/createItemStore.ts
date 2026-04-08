@@ -54,8 +54,10 @@ export function updateItem<T extends Timestamped>(
   id: string,
   data: Partial<T>,
 ): void {
+  // Strip immutable fields to prevent local/remote divergence
+  const { id: _id, created_at: _ca, ...safeData } = data as Record<string, unknown>;
   const items = getItems().map((item) =>
-    item.id === id ? { ...item, ...data, updated_at: new Date().toISOString() } : item,
+    item.id === id ? { ...item, ...safeData, updated_at: new Date().toISOString() } : item,
   );
   setItems(items);
   setStorage(storageKey, items);
@@ -104,8 +106,13 @@ export function updateNestedField<T extends Timestamped>(
   id: string,
   updater: (item: T) => T,
 ): void {
+  const original = getItems().find((item) => item.id === id);
+  if (!original) return;
+  const changed = updater(original);
+  // Skip write if updater returned same reference (no-op)
+  if (changed === original) return;
   const items = getItems().map((item) =>
-    item.id === id ? { ...updater(item), updated_at: new Date().toISOString() } : item,
+    item.id === id ? { ...changed, updated_at: new Date().toISOString() } : item,
   );
   setItems(items);
   setStorage(storageKey, items);

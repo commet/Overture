@@ -69,8 +69,8 @@ export const useRefineStore = create<RefineState>((set, get) => ({
   checkConvergence: (loopId) => {
     const loop = get().loops.find((l) => l.id === loopId);
     if (!loop) return {
-      converged: false, critical_remaining: 0, approval_met: 0,
-      approval_total: 0, total_issues: 0, issue_trend: [], guidance: '',
+      converged: false, critical_remaining: -1, approval_met: 0,
+      approval_total: 0, total_issues: -1, issue_trend: [], guidance: 'Loop not found',
     };
     return checkLoopConvergence(loop);
   },

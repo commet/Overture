@@ -191,12 +191,12 @@ describe('RefineStore Simulation', () => {
 
       expect(result).toEqual({
         converged: false,
-        critical_remaining: 0,
+        critical_remaining: -1,
         approval_met: 0,
         approval_total: 0,
-        total_issues: 0,
+        total_issues: -1,
         issue_trend: [],
-        guidance: '',
+        guidance: 'Loop not found',
       });
       // Should NOT have called the real convergence check
       expect(mockCheckConvergence).not.toHaveBeenCalled();
