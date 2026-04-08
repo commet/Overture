@@ -511,8 +511,9 @@ export function detectRigiditySignals(
 
   // feedback_predictable: re-review novelty < threshold
   if (feedbackRecords.length >= 2) {
-    const initial = feedbackRecords[feedbackRecords.length - 2];
-    const reReview = feedbackRecords[feedbackRecords.length - 1];
+    const sortedFB = [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    const initial = sortedFB[sortedFB.length - 2];
+    const reReview = sortedFB[sortedFB.length - 1];
     if (initial && reReview && initial.project_id === reReview.project_id) {
       const novelty = measureFeedbackNovelty(initial, reReview);
       if (novelty < RIGIDITY_THRESHOLDS.feedback_predictable.novelty_threshold) {

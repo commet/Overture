@@ -105,7 +105,7 @@ export function buildProcessSummary(projectId: string): ProcessSummary | null {
   const rehearseRefId = findRef('rehearse');
   const feedbackRecord = feedbackRecords.find(
     f => f.id === rehearseRefId
-  ) || feedbackRecords[feedbackRecords.length - 1];
+  ) || [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
 
   let personasUsed = 0;
   const risks = { critical: 0, manageable: 0, unspoken: 0 };
@@ -123,14 +123,16 @@ export function buildProcessSummary(projectId: string): ProcessSummary | null {
   // ── Refine ──
   const refineLoops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
   const refineLoop = refineLoops.find(l => l.project_id === projectId)
-    || refineLoops[refineLoops.length - 1];
+    || [...refineLoops].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
 
   const convergenceIterations = refineLoop?.iterations?.length || 0;
   const converged = refineLoop?.status === 'converged';
 
   // ── DQ ──
   const dqScores = getDQScores(projectId);
-  const latestDQ = dqScores.length > 0 ? dqScores[dqScores.length - 1] : null;
+  const latestDQ = dqScores.length > 0
+    ? [...dqScores].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!
+    : null;
 
   let strongestElement: string | null = null;
   let weakestElement: string | null = null;
