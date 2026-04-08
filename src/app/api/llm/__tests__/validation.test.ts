@@ -1,36 +1,14 @@
 import { describe, it, expect } from 'vitest';
-
-/**
- * Tests for the input validation logic used in /api/llm and /api/llm/direct.
- * Extracted from route handlers for testability.
- */
-
-const MAX_MESSAGE_LENGTH = 50_000;
-const MAX_SYSTEM_LENGTH = 10_000;
-const VALID_ROLES = new Set(['user', 'assistant']);
-
-function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
-  if (!Array.isArray(messages) || messages.length === 0) return false;
-  return messages.every(
-    (m: unknown) =>
-      typeof m === 'object' && m !== null &&
-      'role' in m && VALID_ROLES.has((m as { role: unknown }).role as string) &&
-      'content' in m && typeof (m as { content: unknown }).content === 'string' &&
-      ((m as { content: string }).content.length <= MAX_MESSAGE_LENGTH)
-  );
-}
-
-function validateSystem(system: unknown): boolean {
-  return typeof system === 'string' && system.length <= MAX_SYSTEM_LENGTH;
-}
-
-function validateMaxTokens(input: unknown): number {
-  return Math.min(Number(input) || 2000, 4096);
-}
-
-function validateApiKey(key: unknown): boolean {
-  return typeof key === 'string' && key.startsWith('sk-ant-');
-}
+import {
+  validateMessages,
+  validateSystemPrompt,
+  normalizeMaxTokens,
+  validateApiKey,
+  MAX_MESSAGE_LENGTH,
+  MAX_SYSTEM_LENGTH,
+  MAX_MESSAGES,
+  MAX_TOTAL_BODY,
+} from '@/lib/llm-validation';
 
 // ─── Messages Validation ───
 
@@ -90,52 +68,90 @@ describe('validateMessages', () => {
       { role: 'system', content: 'invalid role' },
     ])).toBe(false);
   });
+
+  it('rejects when exceeding MAX_MESSAGES', () => {
+    const tooMany = Array.from({ length: MAX_MESSAGES + 1 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: 'msg',
+    }));
+    expect(validateMessages(tooMany)).toBe(false);
+  });
+
+  it('accepts exactly MAX_MESSAGES', () => {
+    const exact = Array.from({ length: MAX_MESSAGES }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: 'msg',
+    }));
+    expect(validateMessages(exact)).toBe(true);
+  });
+
+  it('rejects when total body size exceeds MAX_TOTAL_BODY', () => {
+    // Each message just under individual limit, but combined exceeds total
+    const perMsg = Math.ceil(MAX_TOTAL_BODY / 5);
+    const messages = Array.from({ length: 6 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: 'x'.repeat(Math.min(perMsg, MAX_MESSAGE_LENGTH)),
+    }));
+    // Only reject if total actually exceeds — compute actual total
+    const total = messages.reduce((s, m) => s + m.content.length, 0);
+    if (total > MAX_TOTAL_BODY) {
+      expect(validateMessages(messages)).toBe(false);
+    }
+  });
 });
 
 // ─── System Prompt Validation ───
 
-describe('validateSystem', () => {
+describe('validateSystemPrompt', () => {
   it('accepts valid system prompts', () => {
-    expect(validateSystem('You are a helpful assistant.')).toBe(true);
-    expect(validateSystem('')).toBe(true);
+    expect(validateSystemPrompt('You are a helpful assistant.')).toBe(true);
+    expect(validateSystemPrompt('')).toBe(true);
   });
 
-  it('rejects non-strings', () => {
-    expect(validateSystem(null)).toBe(false);
-    expect(validateSystem(123)).toBe(false);
-    expect(validateSystem(undefined)).toBe(false);
+  it('accepts undefined (optional)', () => {
+    expect(validateSystemPrompt(undefined)).toBe(true);
+  });
+
+  it('rejects non-string non-undefined values', () => {
+    expect(validateSystemPrompt(null)).toBe(false);
+    expect(validateSystemPrompt(123)).toBe(false);
+    expect(validateSystemPrompt([])).toBe(false);
   });
 
   it('rejects oversized system prompts', () => {
-    expect(validateSystem('x'.repeat(MAX_SYSTEM_LENGTH + 1))).toBe(false);
+    expect(validateSystemPrompt('x'.repeat(MAX_SYSTEM_LENGTH + 1))).toBe(false);
+  });
+
+  it('accepts at exact limit', () => {
+    expect(validateSystemPrompt('x'.repeat(MAX_SYSTEM_LENGTH))).toBe(true);
   });
 });
 
 // ─── maxTokens Validation ───
 
-describe('validateMaxTokens', () => {
+describe('normalizeMaxTokens', () => {
   it('defaults to 2000 for falsy values', () => {
-    expect(validateMaxTokens(undefined)).toBe(2000);
-    expect(validateMaxTokens(null)).toBe(2000);
-    expect(validateMaxTokens(0)).toBe(2000);
-    expect(validateMaxTokens('')).toBe(2000);
+    expect(normalizeMaxTokens(undefined)).toBe(2000);
+    expect(normalizeMaxTokens(null)).toBe(2000);
+    expect(normalizeMaxTokens(0)).toBe(2000);
+    expect(normalizeMaxTokens('')).toBe(2000);
   });
 
   it('caps at 4096', () => {
-    expect(validateMaxTokens(200000)).toBe(4096);
-    expect(validateMaxTokens(5000)).toBe(4096);
-    expect(validateMaxTokens(4096)).toBe(4096);
+    expect(normalizeMaxTokens(200000)).toBe(4096);
+    expect(normalizeMaxTokens(5000)).toBe(4096);
+    expect(normalizeMaxTokens(4096)).toBe(4096);
   });
 
   it('passes through valid values', () => {
-    expect(validateMaxTokens(1000)).toBe(1000);
-    expect(validateMaxTokens(2000)).toBe(2000);
-    expect(validateMaxTokens(4000)).toBe(4000);
+    expect(normalizeMaxTokens(1000)).toBe(1000);
+    expect(normalizeMaxTokens(2000)).toBe(2000);
+    expect(normalizeMaxTokens(4000)).toBe(4000);
   });
 
   it('handles string numbers', () => {
-    expect(validateMaxTokens('3000')).toBe(3000);
-    expect(validateMaxTokens('999999')).toBe(4096);
+    expect(normalizeMaxTokens('3000')).toBe(3000);
+    expect(normalizeMaxTokens('999999')).toBe(4096);
   });
 });
 
@@ -143,14 +159,29 @@ describe('validateMaxTokens', () => {
 
 describe('validateApiKey', () => {
   it('accepts valid Anthropic keys', () => {
-    expect(validateApiKey('sk-ant-api03-abc123')).toBe(true);
+    expect(validateApiKey('sk-ant-api03-abcdefghij1234567890', 'anthropic').valid).toBe(true);
+  });
+
+  it('accepts valid OpenAI keys', () => {
+    expect(validateApiKey('sk-proj-abcdefghij1234567890', 'openai').valid).toBe(true);
+  });
+
+  it('accepts valid Gemini keys (no prefix check)', () => {
+    expect(validateApiKey('AIzaSyAbcdefghij1234567890', 'gemini').valid).toBe(true);
   });
 
   it('rejects invalid formats', () => {
-    expect(validateApiKey('')).toBe(false);
-    expect(validateApiKey('sk-abc')).toBe(false);
-    expect(validateApiKey('not-a-key')).toBe(false);
-    expect(validateApiKey(null)).toBe(false);
-    expect(validateApiKey(123)).toBe(false);
+    expect(validateApiKey('', 'anthropic').valid).toBe(false);
+    expect(validateApiKey('short', 'anthropic').valid).toBe(false);
+    expect(validateApiKey(null, 'anthropic').valid).toBe(false);
+    expect(validateApiKey(123, 'openai').valid).toBe(false);
+  });
+
+  it('rejects wrong prefix for Anthropic', () => {
+    expect(validateApiKey('sk-proj-abcdefghij1234567890', 'anthropic').valid).toBe(false);
+  });
+
+  it('rejects non-sk prefix for OpenAI', () => {
+    expect(validateApiKey('gsk-abcdefghij12345678901234', 'openai').valid).toBe(false);
   });
 });

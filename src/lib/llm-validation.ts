@@ -34,8 +34,9 @@ export function normalizeMaxTokens(raw?: unknown): number {
   return Math.min(Number(raw) || 2000, MAX_TOKENS_CAP);
 }
 
-/** Validate system prompt string. */
-export function validateSystemPrompt(system: unknown): system is string {
+/** Validate system prompt string (undefined is allowed — SDKs treat it as optional). */
+export function validateSystemPrompt(system: unknown): system is string | undefined {
+  if (system === undefined) return true;
   return typeof system === 'string' && system.length <= MAX_SYSTEM_LENGTH;
 }
 

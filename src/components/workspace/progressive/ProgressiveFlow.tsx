@@ -31,12 +31,14 @@ import { WorkerReportBlock } from './WorkerCard';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext } from './WorkerPanel';
-import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, Copy, CheckCheck, UserCheck, ArrowRight } from 'lucide-react';
+import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
+import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
-
-/* ═══ Design tokens ═══ */
-const EASE = [0.32, 0.72, 0, 1] as const;
-const SPRING = { type: 'spring' as const, stiffness: 400, damping: 30 };
+import { EASE, SPRING } from './shared/constants';
+import { diffItems } from './shared/diffItems';
+import { renderInline, renderMd } from './shared/renderMd';
+import { AnalysisCard } from './shared/AnalysisCard';
+import { QuestionCard } from './shared/QuestionCard';
 
 /* Phase-aware ambient glow — the page itself tells you where you are */
 function PhaseAmbient({ phase }: { phase: string }) {
@@ -89,211 +91,15 @@ function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; 
   );
 }
 
-/* ═══ Diff helpers — compare snapshots ═══ */
+/* LiveAnalysis + VersionPills → replaced by shared AnalysisCard */
 
-function diffItems(prev: string[], curr: string[]): Array<{ text: string; status: 'new' | 'same' | 'removed' }> {
-  const prevSet = new Set(prev);
-  const currSet = new Set(curr);
-  const result: Array<{ text: string; status: 'new' | 'same' | 'removed' }> = [];
-  // Removed items first (brief flash)
-  for (const item of prev) {
-    if (!currSet.has(item)) result.push({ text: item, status: 'removed' });
-  }
-  // Current items
-  for (const item of curr) {
-    result.push({ text: item, status: prevSet.has(item) ? 'same' : 'new' });
-  }
-  return result;
-}
-
-/* ═══ THE LIVING ANALYSIS — ONE card that morphs in place, with visible diffs ═══ */
-
-function LiveAnalysis({ snapshot, prevSnapshot, isActive }: {
-  snapshot: AnalysisSnapshot;
-  prevSnapshot: AnalysisSnapshot | null;
-  isActive: boolean;
-}) {
-  const locale = useLocale();
-  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const hasChanges = prevSnapshot && snapshot.version > 0;
-  const questionChanged = hasChanges && prevSnapshot.real_question !== snapshot.real_question;
-
-  // Compute diffs
-  const skeletonDiff = hasChanges
-    ? diffItems(prevSnapshot.skeleton, snapshot.skeleton)
-    : snapshot.skeleton.map(s => ({ text: s, status: 'same' as const }));
-  const assumptionDiff = hasChanges
-    ? diffItems(prevSnapshot.hidden_assumptions, snapshot.hidden_assumptions)
-    : snapshot.hidden_assumptions.map(a => ({ text: a, status: 'same' as const }));
-
-  const newCount = skeletonDiff.filter(d => d.status === 'new').length + assumptionDiff.filter(d => d.status === 'new').length;
-  const removedCount = skeletonDiff.filter(d => d.status === 'removed').length + assumptionDiff.filter(d => d.status === 'removed').length;
-
-  return (
-    <motion.div layout className="rounded-2xl"
-      style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-      <div className={`rounded-2xl p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
-        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          {isActive && <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />}
-          <div className="p-5 md:p-7">
-            {/* Eyebrow + change summary */}
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">{L('진짜 질문', 'Real Question')}</span>
-              {snapshot.version > 0 && <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">v{snapshot.version + 1}</span>}
-              {hasChanges && (newCount > 0 || removedCount > 0) && (
-                <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                  {newCount > 0 && `+${newCount} ${L('추가', 'added')}`}{newCount > 0 && removedCount > 0 && ' · '}{removedCount > 0 && `−${removedCount} ${L('제거', 'removed')}`}
-                </span>
-              )}
-            </div>
-
-            {/* Real question — shows change if updated */}
-            <div className="mb-4">
-              {questionChanged && (
-                <motion.p initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 2, ease: EASE }}
-                  className="text-[13px] text-[var(--text-tertiary)] line-through mb-1.5 leading-relaxed"
-                  style={{ fontFamily: 'var(--font-display)' }}>
-                  {prevSnapshot.real_question}
-                </motion.p>
-              )}
-              <AnimatePresence mode="wait">
-                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="text-[18px] md:text-[22px] font-bold text-[var(--text-primary)] leading-[1.35] tracking-tight"
-                  style={{ fontFamily: 'var(--font-display)' }}>
-                  {snapshot.real_question}
-                </motion.h2>
-              </AnimatePresence>
-            </div>
-
-            {/* Insight badge */}
-            <AnimatePresence>
-              {snapshot.insight && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
-                  <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Sparkles size={11} className="text-[var(--accent)]" />
-                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">{L('핵심', 'Key Insight')}</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Two-column: Assumptions | Skeleton — with diff indicators */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-              {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
-                <div className="rounded-xl bg-[var(--bg)]/60 p-4">
-                  <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400/60" />{L('놓치기 쉬운 것', 'Hidden Assumptions')}
-                  </p>
-                  <div className="space-y-1.5">
-                    <AnimatePresence>
-                      {assumptionDiff.filter(d => d.status === 'removed').map((d, i) => (
-                        <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.8, ease: EASE }}
-                          className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
-                          <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">−</span>
-                          <span>{d.text}</span>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    {assumptionDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                      <motion.div key={`${snapshot.version}-a${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
-                        className={`flex items-start gap-2 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
-                          d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
-                        }`}>
-                        <span className={`text-[9px] font-bold shrink-0 mt-1 ${
-                          d.status === 'new' ? 'text-emerald-500' : 'text-red-400/50'
-                        }`}>{d.status === 'new' ? '+' : '?'}</span>
-                        <span>{d.text}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="rounded-xl bg-[var(--bg)]/60 p-4">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />{L('뼈대', 'Structure')}
-                </p>
-                <div className="space-y-1">
-                  <AnimatePresence>
-                    {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
-                      <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.8, ease: EASE }}
-                        className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
-                        <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">−</span>
-                        <span>{d.text}</span>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                    <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                      className={`flex items-start gap-2.5 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
-                        d.status === 'new' ? 'bg-emerald-50/60 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
-                      }`}>
-                      <span className={`font-mono text-[10px] w-3.5 text-right shrink-0 mt-0.5 ${
-                        d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/40'
-                      }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
-                      <span>{d.text}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Execution plan — compact indicator (workers handle the detail) */}
-            <AnimatePresence>
-              {snapshot.execution_plan && snapshot.execution_plan.steps.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.5, ease: EASE }} className="overflow-hidden">
-                  <div className="pt-4 border-t border-[var(--border-subtle)]">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{L('실행 계획:', 'Execution Plan:')}</span>
-                      {snapshot.execution_plan.steps.map((step, i) => (
-                        <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          step.who === 'ai' ? 'bg-blue-50 text-blue-600' : step.who === 'human' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'
-                        }`}>{step.task}</span>
-                      ))}
-                      <span className="text-[10px] text-[var(--text-tertiary)]">
-                        <span className="hidden lg:inline">{L('← 좌측 패널에서 진행 중', '← In progress on left panel')}</span>
-                        <span className="lg:hidden">{L('↓ 하단 팀 탭에서 진행 중', '↓ In progress in team tab below')}</span>
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ═══ Version pills ═══ */
-function VersionPills({ snapshots, current }: { snapshots: AnalysisSnapshot[]; current: number }) {
-  if (snapshots.length <= 1) return null;
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {snapshots.map((_, i) => (
-        <span key={i} className={`text-[10px] px-2.5 py-1 rounded-full ${
-          i === current ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold' : 'bg-[var(--bg)] text-[var(--text-tertiary)]'
-        }`}>v{i + 1}{i < current ? ' ✓' : ''}</span>
-      ))}
-    </div>
-  );
-}
-
-/* ═══ Answered Q&A — horizontal pills ═══ */
+/* ═══ Answered Q&A — horizontal pills with "sent to team" indicator ═══ */
 function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; answer: FlowAnswer | null }> }) {
+  const locale = useLocale();
   const answered = qaPairs.filter(qa => qa.answer);
   if (!answered.length) return null;
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {answered.map((qa, i) => (
         <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05, ...SPRING }}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
@@ -302,65 +108,15 @@ function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; a
           <span className="text-[var(--text-primary)] font-medium max-w-[100px] truncate">{qa.answer!.value}</span>
         </motion.div>
       ))}
+      <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+        className="text-[10px] text-[var(--accent)]/60 flex items-center gap-1">
+        <ArrowRight size={9} /> {locale === 'ko' ? '팀 분석에 반영' : 'sent to team'}
+      </motion.span>
     </div>
   );
 }
 
-/* ═══ Question Card ═══ */
-function QuestionCard({ question, onAnswer, disabled }: { question: FlowQuestion; onAnswer: (v: string) => void; disabled: boolean }) {
-  const locale = useLocale();
-  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const [input, setInput] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-  const go = (v: string) => { if (disabled || submitted) return; setSelected(v); setSubmitted(true); onAnswer(v); };
-  const goText = () => { if (!input.trim() || disabled || submitted) return; setSubmitted(true); onAnswer(input.trim()); };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 12, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
-      className="rounded-xl bg-[var(--accent)]/[0.02] border border-[var(--accent)]/10 p-4 md:p-5">
-      <div className="flex items-start gap-2.5 mb-3.5">
-        <div className="w-6 h-6 rounded-full bg-[var(--accent)]/10 flex items-center justify-center shrink-0 mt-0.5">
-          <ArrowRight size={11} className="text-[var(--accent)]" />
-        </div>
-        <div>
-          <p className="text-[14px] md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug tracking-tight">{question.text}</p>
-          {question.subtext && <p className="mt-1.5 text-[12px] text-[var(--text-secondary)] leading-relaxed italic">{question.subtext}</p>}
-        </div>
-      </div>
-
-      {question.options?.length ? (
-        <div className="space-y-1.5 pl-8.5">
-          {question.options.map((opt, i) => (
-            <motion.button key={i} onClick={() => go(opt)} disabled={disabled || submitted} whileTap={{ scale: 0.98 }}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-normal border cursor-pointer ${
-                selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text-primary)] font-medium' :
-                submitted ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-30' :
-                'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40'
-              }`} style={{ transitionProperty: 'all', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
-          ))}
-          <div className="flex gap-2 pt-0.5">
-            <input value={input} onChange={e => setInput(e.target.value)} placeholder={L('또는 직접 입력...', 'Or type your own...')} disabled={disabled || submitted}
-              className="flex-1 px-3.5 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
-            {input.trim() && <motion.button onClick={goText} disabled={disabled || submitted} whileTap={{ scale: 0.95 }}
-              className="shrink-0 px-4 py-2 text-white rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-30"
-              style={{ background: 'var(--gradient-gold)' }}>{L('확인', 'OK')}</motion.button>}
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2 pl-8.5">
-          <input value={input} onChange={e => setInput(e.target.value)} placeholder={L('입력...', 'Type here...')} autoFocus disabled={disabled || submitted}
-            className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }} />
-          <motion.button onClick={goText} disabled={disabled || !input.trim() || submitted} whileTap={{ scale: 0.95 }}
-            className="shrink-0 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
-            style={{ background: 'var(--gradient-gold)' }}>{L('확인', 'OK')}</motion.button>
-        </div>
-      )}
-    </motion.div>
-  );
-}
+/* QuestionCard → imported from shared/ */
 
 /* ═══ Mix Preview ═══ */
 function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null; debateResult?: DebateResult | null }) {
@@ -487,19 +243,19 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
       <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
         <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="p-5 md:p-10 space-y-6">
-            {/* Reviewer — person, not icon */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[16px] font-bold text-[var(--accent)]">{initial}</div>
+            {/* Reviewer — larger avatar like demo */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[var(--accent)]/8 flex items-center justify-center text-[18px] font-bold text-[var(--accent)]">{initial}</div>
               <div>
-                <p className="text-[15px] font-semibold text-[var(--text-primary)]">{fb.persona_name}</p>
-                <p className="text-[11px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
+                <p className="text-[17px] font-bold text-[var(--text-primary)]">{fb.persona_name}</p>
+                <p className="text-[13px] text-[var(--text-tertiary)]">{fb.persona_role}</p>
               </div>
             </div>
 
-            {/* First reaction — speech bubble, not courtroom quote */}
-            <div className="relative rounded-2xl rounded-tl-sm bg-[var(--accent)]/[0.04] px-5 py-4">
-              <p className="text-[15px] text-[var(--text-primary)] leading-relaxed">&ldquo;{fb.first_reaction}&rdquo;</p>
-            </div>
+            {/* First reaction — impactful blockquote */}
+            <blockquote className="text-[17px] md:text-[18px] text-[var(--text-primary)] leading-[1.6] italic pl-5 border-l-[3px] border-[var(--accent)]/20">
+              &ldquo;{fb.first_reaction}&rdquo;
+            </blockquote>
 
             {/* Good parts — prominent, not secondary */}
             {fb.good_parts.length > 0 && (
@@ -588,40 +344,39 @@ function FinalCard({ content }: { content: string }) {
       <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
         <div className="rounded-[calc(1rem-2px)] md:rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
           <div className="h-[3px]" style={{ background: 'var(--gradient-gold)' }} />
-          <div className="px-7 py-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
+          <div className="px-5 md:px-7 py-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center"><Check size={14} className="text-[var(--accent)]" /></div>
-              <span className="text-[14px] font-semibold text-[var(--text-primary)]">{L('최종 산출물', 'Final Deliverable')}</span>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+                <Check size={13} className="text-white" />
+              </div>
+              <div>
+                <span className="text-[14px] font-semibold text-[var(--text-primary)]">{L('완성된 기획안', 'Final Document')}</span>
+                <span className="text-[11px] text-[var(--text-tertiary)] ml-2">{L('바로 보낼 수 있어요', 'Ready to send')}</span>
+              </div>
             </div>
-            <motion.button onClick={copy} whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium bg-[var(--bg)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--accent)]/30 cursor-pointer">
-              {copied ? <><CheckCheck size={12} /> {L('복사됨', 'Copied')}</> : <><Copy size={12} /> {L('복사', 'Copy')}</>}
-            </motion.button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={copy}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
+                  copied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                }`}>
+                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
+                Slack
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
+                Email
+              </button>
+            </div>
           </div>
-          <div className="p-5 md:p-10 space-y-1">{renderMd(content)}</div>
+          <div className="p-5 md:p-8 space-y-1">{renderMd(content)}</div>
         </div>
       </div>
     </motion.div>
   );
 }
 
-/* ═══ Markdown ═══ */
-function renderInline(text: string): React.ReactNode {
-  const p = text.split(/(\*\*[^*]+\*\*)/g);
-  if (p.length === 1) return text;
-  return p.map((s, i) => s.startsWith('**') && s.endsWith('**') ? <strong key={i} className="font-semibold text-[var(--text-primary)]">{s.slice(2, -2)}</strong> : s);
-}
-function renderMd(c: string) {
-  return c.split('\n').map((l, k) => {
-    if (l.startsWith('# ')) return <h1 key={k} className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] mt-1 mb-4 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{l.slice(2)}</h1>;
-    if (l.startsWith('## ')) return <h2 key={k} className="text-[16px] font-bold text-[var(--text-primary)] mt-7 mb-2 tracking-tight">{l.slice(3)}</h2>;
-    if (l.startsWith('> ')) return <blockquote key={k} className="border-l-[3px] border-[var(--accent)]/20 pl-5 py-1 text-[14px] text-[var(--text-secondary)] italic my-3 leading-relaxed">{renderInline(l.slice(2))}</blockquote>;
-    if (l.startsWith('- ')) return <div key={k} className="flex items-start gap-2.5 text-[14px] text-[var(--text-primary)] ml-1 leading-[1.8]"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/50 mt-2.5 shrink-0" /><span>{renderInline(l.slice(2))}</span></div>;
-    if (l.startsWith('---')) return <hr key={k} className="border-[var(--border-subtle)] my-6" />;
-    if (l.trim() === '') return <div key={k} className="h-3" />;
-    return <p key={k} className="text-[14px] text-[var(--text-primary)] leading-[1.85]">{renderInline(l)}</p>;
-  });
-}
+/* renderInline, renderMd — imported from shared/ */
 
 /* ═══ Loading ═══ */
 function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
@@ -642,40 +397,47 @@ function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
 function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDeploy: () => void }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const names = workers.map(w => w.persona?.name || 'AI').filter(Boolean);
-  const nameStr = names.length <= 3
-    ? names.join(', ')
-    : locale === 'ko' ? `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}명` : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
+  const staggerDelay = 0.3;
+  const teamDoneDelay = 0.2 + workers.length * staggerDelay;
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-4">
+      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-3">
 
-      {/* Avatars row + warm intro */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <AvatarRow personas={workers.map(w => w.persona)} />
-        <p className="text-[14px] font-medium text-[var(--text-primary)] truncate">
-          {nameStr} — {L('준비 완료', 'Ready')}
-        </p>
-      </div>
-
-      {/* Member list */}
+      {/* Staggered team entrance */}
       <div className="space-y-2">
-        {workers.map(w => (
-          <div key={w.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
+        {workers.map((w, i) => (
+          <motion.div key={w.id}
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 + i * staggerDelay, duration: 0.4, ease: EASE }}
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
             <WorkerAvatar persona={w.persona} size="md" />
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-medium text-[var(--text-primary)]">
-                {w.persona?.name || 'AI'}
-                <span className="text-[var(--text-secondary)] font-normal ml-1.5 text-[12px]">{w.persona?.role}</span>
-              </p>
-              <p className="text-[13px] text-[var(--text-secondary)] line-clamp-2 mt-0.5" title={w.task}>{w.task}</p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[14px] font-medium text-[var(--text-primary)]">{w.persona?.name || 'AI'}</span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona?.role}</span>
+              </div>
+              <p className="text-[12px] text-[var(--text-secondary)] line-clamp-1 mt-0.5" title={w.task}>{w.task}</p>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
+      {/* "Team assembled" message */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: teamDoneDelay, duration: 0.4 }}
+        className="text-[12px] text-[var(--text-tertiary)] text-center">
+        {L('팀이 구성되었습니다. 시작하시겠어요?', 'Team assembled. Ready to start?')}
+      </motion.p>
+
+      {/* Start button — appears after team entrance completes */}
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: teamDoneDelay + 0.3, duration: 0.5, ease: EASE }}
         className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
         {L('시작', 'Start')} <ChevronRight size={14} />
@@ -835,7 +597,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const mountedRef = useRef(true);
   const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
-  const scroll = useCallback(() => { setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200); }, []);
+  const scroll = useCallback((mode: 'bottom' | 'top' = 'bottom') => {
+    setTimeout(() => window.scrollTo({ top: mode === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' }), 200);
+  }, []);
 
   // Cleanup: abort all in-flight requests on unmount
   useEffect(() => {
@@ -869,6 +633,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
   // Workers that have completed (for inline display in flow)
   const completedWorkers = workers.filter(w => w.status === 'done' || w.status === 'waiting_input' || w.status === 'error');
+  // Staggered reveal — completed workers appear with cascade delay
+  const revealedIds = useStaggeredReveal(workers, session?.id ?? null);
+  const revealedWorkers = completedWorkers.filter(w => revealedIds.has(w.id));
 
   if (!session) return null;
 
@@ -1083,7 +850,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       }
     }
     catch (e) { setError(e instanceof Error ? e.message : L('DM 피드백 실패', 'DM feedback failed')); }
-    finally { setBusy(false); scroll(); }
+    finally { setBusy(false); scroll('top'); }
   };
 
   const onDeepen = async () => {
@@ -1101,7 +868,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       track('flow_deepen', { has_boss: !!reviewerAgent });
     }
     catch (e) { setError(e instanceof Error ? e.message : L('심화 검토 실패', 'Deep review failed')); }
-    finally { setBusy(false); scroll(); }
+    finally { setBusy(false); scroll('top'); }
   };
 
   const onMore = async () => {
@@ -1171,25 +938,31 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           )}
 
           {/* Question FIRST — user action at the top, not buried below */}
-          {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} />}
+          {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} locale={locale} />}
 
-          {/* Inline worker reports — appear in main flow as conversations */}
-          {deployPhase === 'deployed' && completedWorkers.length > 0 && !final_ && (
+          {/* Inline worker reports — staggered reveal for polished feel */}
+          {deployPhase === 'deployed' && !final_ && (
             <div className="space-y-4">
-              {/* Running workers — subtle indicators */}
+              {/* Running workers — minimal: avatar + task + spinner (no streaming text) */}
               {workers.filter(w => w.status === 'running').map(w => (
-                <WorkerReportBlock key={w.id} worker={w} />
+                <motion.div key={w.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--bg)]/40">
+                  <WorkerAvatar persona={w.persona} size="sm" pulse />
+                  <span className="text-[13px] text-[var(--text-secondary)] flex-1 truncate">{w.persona?.name || 'AI'} — {w.task}</span>
+                  <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />
+                </motion.div>
               ))}
-              {/* Completed/waiting workers — full report blocks */}
-              {completedWorkers.map(w => (
-                <WorkerReportBlock
-                  key={w.id}
-                  worker={w}
-                  onSubmitInput={w.status === 'waiting_input' ? workerActions.handleSubmit : undefined}
-                  onRetry={w.status === 'error' ? workerActions.handleRetry : undefined}
-                  onApprove={w.status === 'done' ? workerActions.handleApprove : undefined}
-                  onReject={w.status === 'done' ? workerActions.handleReject : undefined}
-                />
+              {/* Revealed workers — polished report blocks with fade+slide entrance */}
+              {revealedWorkers.map(w => (
+                <motion.div key={w.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+                  <WorkerReportBlock
+                    worker={w}
+                    onSubmitInput={w.status === 'waiting_input' ? workerActions.handleSubmit : undefined}
+                    onRetry={w.status === 'error' ? workerActions.handleRetry : undefined}
+                    onApprove={w.status === 'done' ? workerActions.handleApprove : undefined}
+                    onReject={w.status === 'done' ? workerActions.handleReject : undefined}
+                  />
+                </motion.div>
               ))}
             </div>
           )}
@@ -1236,10 +1009,12 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Living Analysis — the evolving draft with visible diffs */}
           {latest && !final_ && (
-            <LiveAnalysis
+            <AnalysisCard
               snapshot={latest}
               prevSnapshot={snapshots.length > 1 ? snapshots[snapshots.length - 2] : null}
               isActive={!mix}
+              showExecutionPlan
+              locale={locale}
             />
           )}
 
@@ -1370,6 +1145,30 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               )}
             </motion.div>}
           </AnimatePresence>
+
+          {/* Phase progress dots — bottom milestone indicator */}
+          <div className="pt-8 pb-4">
+            <div className="flex items-center justify-center gap-1.5">
+              {(locale === 'ko'
+                ? ['상황 파악', '질문', '팀 작업', '피드백', '완성']
+                : ['Analysis', 'Questions', 'Team Work', 'Feedback', 'Done']
+              ).map((label, i) => {
+                const milestonePhases = ['analyzing', 'conversing', 'mixing', 'dm_feedback', 'complete'];
+                const milestoneIdx = milestonePhases.indexOf(phase);
+                const reached = i <= milestoneIdx;
+                const current = i === milestoneIdx;
+                return (
+                  <div key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <div className={`w-4 h-px transition-colors duration-500 ${reached ? 'bg-[var(--accent)]/40' : 'bg-[var(--border-subtle)]'}`} />}
+                    <div className={`flex items-center gap-1 transition-all duration-300 ${current ? 'opacity-100' : reached ? 'opacity-60' : 'opacity-25'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${reached ? 'bg-[var(--accent)]' : 'bg-[var(--text-tertiary)]'}`} />
+                      <span className={`text-[9px] ${current ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-tertiary)]'}`}>{label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </motion.div>
     </>

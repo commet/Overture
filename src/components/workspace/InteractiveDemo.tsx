@@ -8,10 +8,10 @@ import type { DemoScenario } from '@/lib/demo-data';
 import { applyPatch, buildFinal } from '@/lib/demo-data';
 import type { AnalysisSnapshot, DMConcern } from '@/stores/types';
 import { track } from '@/lib/analytics';
-
-/* ═══ Constants ═══ */
-const EASE = [0.32, 0.72, 0, 1] as const;
-const SPRING = { type: 'spring' as const, stiffness: 400, damping: 30 };
+import { EASE, SPRING } from './progressive/shared/constants';
+import { renderInline, renderMd } from './progressive/shared/renderMd';
+import { AnalysisCard } from './progressive/shared/AnalysisCard';
+import { QuestionCard } from './progressive/shared/QuestionCard';
 
 /* ═══ Phase State Machine ═══ */
 type DemoPhase =
@@ -30,42 +30,7 @@ type DemoPhase =
 const PHASE_ORDER: DemoPhase[] = ['typing', 'team', 'analysis', 'q1', 'update1', 'q2', 'update2', 'workers', 'draft', 'dm', 'final'];
 const phaseGte = (current: DemoPhase, target: DemoPhase) => PHASE_ORDER.indexOf(current) >= PHASE_ORDER.indexOf(target);
 
-/* ═══ Diff utility ═══ */
-function diffItems(prev: string[], curr: string[]): Array<{ text: string; status: 'new' | 'same' | 'removed' }> {
-  const prevSet = new Set(prev);
-  const currSet = new Set(curr);
-  const result: Array<{ text: string; status: 'new' | 'same' | 'removed' }> = [];
-  for (const item of prev) {
-    if (!currSet.has(item)) result.push({ text: item, status: 'removed' });
-  }
-  for (const item of curr) {
-    result.push({ text: item, status: prevSet.has(item) ? 'same' : 'new' });
-  }
-  return result;
-}
-
-/* ═══ Markdown renderer (from ProgressiveFlow) ═══ */
-function renderInline(text: string): React.ReactNode {
-  const p = text.split(/(\*\*[^*]+\*\*)/g);
-  if (p.length === 1) return text;
-  return p.map((s, i) => s.startsWith('**') && s.endsWith('**') ? <strong key={i} className="font-semibold text-[var(--text-primary)]">{s.slice(2, -2)}</strong> : s);
-}
-
-function renderMd(c: string) {
-  return c.split('\n').map((l, k) => {
-    if (l.startsWith('# ')) return <h1 key={k} className="text-[24px] md:text-[28px] font-bold text-[var(--text-primary)] mt-1 mb-4 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{l.slice(2)}</h1>;
-    if (l.startsWith('### ')) return <h3 key={k} className="text-[14px] font-bold text-[var(--text-primary)] mt-5 mb-1.5">{l.slice(4)}</h3>;
-    if (l.startsWith('## ')) return <h2 key={k} className="text-[16px] font-bold text-[var(--text-primary)] mt-7 mb-2 tracking-tight">{l.slice(3)}</h2>;
-    if (l.startsWith('> ')) return <blockquote key={k} className="border-l-[3px] border-[var(--accent)]/20 pl-5 py-1 text-[14px] text-[var(--text-secondary)] italic my-3 leading-relaxed">{renderInline(l.slice(2))}</blockquote>;
-    if (l.startsWith('- ')) return <div key={k} className="flex items-start gap-2.5 text-[14px] text-[var(--text-primary)] ml-1 leading-[1.8]"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/50 mt-2.5 shrink-0" /><span>{renderInline(l.slice(2))}</span></div>;
-    if (l.startsWith('| ')) return <p key={k} className="text-[13px] text-[var(--text-secondary)] font-mono leading-[1.8]">{l}</p>;
-    if (l.startsWith('---') || l.startsWith('|--')) return <hr key={k} className="border-[var(--border-subtle)] my-1" />;
-    if (l.match(/^\d+\. /)) return <div key={k} className="flex items-start gap-2.5 text-[14px] text-[var(--text-primary)] ml-1 leading-[1.8]"><span className="text-[var(--accent)]/60 font-mono text-[12px] mt-0.5 shrink-0">{l.match(/^\d+/)![0]}.</span><span>{renderInline(l.replace(/^\d+\.\s*/, ''))}</span></div>;
-    if (l.startsWith('<!--')) return null;
-    if (l.trim() === '') return <div key={k} className="h-3" />;
-    return <p key={k} className="text-[14px] text-[var(--text-primary)] leading-[1.85]">{renderInline(l)}</p>;
-  });
-}
+/* diffItems, renderInline, renderMd — imported from shared/ */
 
 /* ═══════════════════════════════════════════════════════════
    TYPING INPUT — char-by-char animation
@@ -161,185 +126,9 @@ function TeamEntranceTrigger({ onDone }: { onDone: () => void }) {
   return null;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ANALYSIS CARD — with diff highlights (from LiveAnalysis)
-   ═══════════════════════════════════════════════════════════ */
+/* DemoAnalysisCard → replaced by shared AnalysisCard */
 
-function DemoAnalysisCard({ snapshot, prevSnapshot }: {
-  snapshot: AnalysisSnapshot;
-  prevSnapshot: AnalysisSnapshot | null;
-}) {
-  const hasChanges = prevSnapshot && snapshot.version > (prevSnapshot.version ?? 0);
-  const questionChanged = hasChanges && prevSnapshot.real_question !== snapshot.real_question;
-
-  const skeletonDiff = hasChanges
-    ? diffItems(prevSnapshot.skeleton, snapshot.skeleton)
-    : snapshot.skeleton.map(s => ({ text: s, status: 'same' as const }));
-  const assumptionDiff = hasChanges
-    ? diffItems(prevSnapshot.hidden_assumptions, snapshot.hidden_assumptions)
-    : snapshot.hidden_assumptions.map(a => ({ text: a, status: 'same' as const }));
-
-  const newCount = skeletonDiff.filter(d => d.status === 'new').length + assumptionDiff.filter(d => d.status === 'new').length;
-  const removedCount = skeletonDiff.filter(d => d.status === 'removed').length + assumptionDiff.filter(d => d.status === 'removed').length;
-
-  return (
-    <motion.div
-      initial={prevSnapshot ? { opacity: 0.85 } : { opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prevSnapshot ? 0.3 : 0.6, ease: EASE }}
-      className="rounded-2xl">
-      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5">
-        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
-          <div className="p-5 md:p-7">
-            {/* Version progress — shows accumulation */}
-            {snapshot.version > 0 && (
-              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-                className="flex items-center gap-3 mb-4 pb-3 border-b border-[var(--border-subtle)]">
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: snapshot.version + 1 }, (_, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${
-                      i <= snapshot.version ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'
-                    } ${i === snapshot.version ? 'w-6' : 'w-1.5'}`} />
-                  ))}
-                </div>
-                <span className="text-[12px] font-medium text-[var(--accent)]">
-                  {snapshot.version === 1 ? 'Updated with your answer' : `Refined ${snapshot.version}x`}
-                </span>
-                {hasChanges && (newCount > 0 || removedCount > 0) && (
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-                    {newCount > 0 && `+${newCount}`}{newCount > 0 && removedCount > 0 && ' '}{removedCount > 0 && `−${removedCount}`}
-                  </span>
-                )}
-              </motion.div>
-            )}
-
-            {/* Eyebrow */}
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] rounded-full bg-[var(--accent)]/8 px-2.5 py-0.5">Real Question</span>
-            </div>
-
-            {/* Real question with change */}
-            <div className="mb-4">
-              {questionChanged && (
-                <div className="mb-2 px-3 py-1.5 rounded-lg bg-[var(--bg)]/60 border-l-2 border-[var(--text-tertiary)]/20">
-                  <p className="text-[12px] text-[var(--text-tertiary)] line-through leading-relaxed"
-                    style={{ fontFamily: 'var(--font-display)' }}>
-                    {prevSnapshot.real_question}
-                  </p>
-                </div>
-              )}
-              <AnimatePresence mode="wait">
-                <motion.h2 key={snapshot.real_question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="text-[18px] md:text-[22px] font-bold text-[var(--text-primary)] leading-[1.35] tracking-tight"
-                  style={{ fontFamily: 'var(--font-display)' }}>
-                  {snapshot.real_question}
-                </motion.h2>
-              </AnimatePresence>
-            </div>
-
-            {/* Insight — the most quotable line */}
-            <AnimatePresence>
-              {snapshot.insight && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
-                  <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Sparkles size={11} className="text-[var(--accent)]" />
-                      <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">Insight</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Framework — the actionable structure */}
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--accent)] flex items-center gap-2">
-                  <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
-                  Framework
-                </p>
-                {hasChanges && newCount > 0 && (
-                  <span className="text-[9px] font-semibold text-[var(--accent)] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">
-                    답변 반영 +{newCount}
-                  </span>
-                )}
-              </div>
-              <div className="space-y-1">
-                <AnimatePresence>
-                  {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
-                    <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.8, ease: EASE }}
-                      className="text-[13px] text-red-300 line-through leading-relaxed overflow-hidden pl-3 border-l-2 border-red-200">
-                      {d.text}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
-                  <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                    className={`flex items-start gap-3 text-[13px] leading-[1.7] py-1.5 rounded-lg transition-all duration-700 ${
-                      d.status === 'new'
-                        ? 'text-[var(--text-primary)] font-medium bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12 px-3 -mx-1'
-                        : 'text-[var(--text-primary)] px-1'
-                    }`}>
-                    <span className={`font-mono text-[11px] w-5 text-center shrink-0 mt-0.5 rounded ${
-                      d.status === 'new' ? 'text-[var(--accent)] font-bold bg-[var(--accent)]/10' : 'text-[var(--accent)]/40 bg-[var(--accent)]/[0.04]'
-                    }`}>{d.status === 'new' ? '✦' : `${i + 1}`}</span>
-                    <span className="flex-1">{d.text}</span>
-                    {d.status === 'new' && (
-                      <span className="text-[9px] text-[var(--accent)]/60 font-medium shrink-0 mt-0.5">NEW</span>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   QUESTION CARD — select only, no free text in demo
-   ═══════════════════════════════════════════════════════════ */
-
-function DemoQuestionCard({ text, subtext, options, onSelect }: {
-  text: string;
-  subtext?: string;
-  options: string[];
-  onSelect: (v: string) => void;
-}) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const go = (v: string) => { if (selected) return; setSelected(v); setTimeout(() => onSelect(v), 300); };
-
-  // Use 2x2 grid if all options are short (< 20 chars), otherwise 4x1 stack
-  const useGrid = options.every(o => o.length < 20);
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 12, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
-      className="rounded-xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/15 p-5 md:p-6">
-      <div className="mb-4">
-        <p className="text-[16px] md:text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">{text}</p>
-        {subtext && <p className="mt-2 text-[13px] text-[var(--text-secondary)] leading-relaxed">{subtext}</p>}
-      </div>
-      <div className={useGrid ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
-        {options.map((opt, i) => (
-          <motion.button key={i} onClick={() => go(opt)} disabled={!!selected} whileTap={{ scale: 0.97 }}
-            className={`w-full text-left px-4 py-3 rounded-xl text-[13px] leading-snug border cursor-pointer ${
-              selected === opt ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold shadow-sm' :
-              selected ? 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-20 scale-[0.98]' :
-              'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/[0.03]'
-            }`} style={{ transitionProperty: 'all', transitionDuration: '350ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{opt}</motion.button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+/* DemoQuestionCard → replaced by shared QuestionCard */
 
 /* ═══════════════════════════════════════════════════════════
    WORKER MINI BAR — inline status indicator
@@ -1070,7 +859,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 3. Analysis card (v0) */}
             {phaseGte(phase, 'analysis') && currentSnapshot && (
-              <DemoAnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
+              <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} />
             )}
 
             {/* Mobile: compact agent bar — hide after draft since sidebar summary / connector takes over */}
@@ -1082,11 +871,11 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 4. Q1 */}
             {phase === 'q1' && (
-              <DemoQuestionCard
-                text={scenario.q1.question.text}
-                subtext={scenario.q1.question.subtext}
-                options={scenario.q1.question.options || []}
-                onSelect={handleQ1}
+              <QuestionCard
+                question={scenario.q1.question}
+                onAnswer={handleQ1}
+                allowFreeText={false}
+                locale={locale}
               />
             )}
 
@@ -1107,11 +896,11 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 5. Q2 */}
             {phase === 'q2' && (
-              <DemoQuestionCard
-                text={scenario.q2.question.text}
-                subtext={scenario.q2.question.subtext}
-                options={scenario.q2.question.options || []}
-                onSelect={handleQ2}
+              <QuestionCard
+                question={scenario.q2.question}
+                onAnswer={handleQ2}
+                allowFreeText={false}
+                locale={locale}
               />
             )}
 

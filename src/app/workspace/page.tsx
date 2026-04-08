@@ -11,7 +11,8 @@ import { RehearseStep } from '@/components/workspace/RehearseStep';
 import { RefineStep } from '@/components/workspace/RefineStep';
 import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
-import { WorkerPanel, WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
+import { WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
+import { AgentSidebar } from '@/components/workspace/progressive/AgentSidebar';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -25,6 +26,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
+import { EASE } from '@/components/workspace/progressive/shared/constants';
 import { useHandoffStore } from '@/stores/useHandoffStore';
 import { getPersonaPool } from '@/lib/worker-personas';
 import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
@@ -77,18 +79,18 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
           </button>
         </div>
 
-        {/* Desktop: flex layout with worker panel */}
+        {/* Desktop: flex layout with agent sidebar on right */}
         <div className="flex">
-          {hasWorkers && (
-            <div className="hidden lg:block w-[320px] shrink-0 sticky top-14 h-[calc(100vh-120px)] overflow-y-auto border-r border-[var(--border-subtle)]/50">
-              <WorkerPanel />
-            </div>
-          )}
           <div className={`flex-1 px-4 md:px-6 ${hasWorkers ? 'pb-[60px] lg:pb-0' : ''}`}>
             <ErrorBoundary fallback={<StepErrorFallback />}>
               <ProgressiveFlow projectId={projectId} />
             </ErrorBoundary>
           </div>
+          {hasWorkers && (
+            <div className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-120px)] overflow-y-auto border-l border-[var(--border-subtle)]/50">
+              <AgentSidebar />
+            </div>
+          )}
         </div>
 
         {/* Mobile: bottom drawer */}
@@ -99,7 +101,7 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
 }
 
 
-const EASE_HERO = [0.32, 0.72, 0, 1] as const;
+/* EASE — imported from shared/constants */
 
 /* ─── HeroFlow: idle → assembling → analyzing → ready ─── */
 type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
@@ -226,7 +228,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
           {/* ═══ IDLE: 시나리오 선택 + 입력 ═══ */}
           {phase === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: EASE_HERO }}>
+              transition={{ duration: 0.4, ease: EASE }}>
 
               {/* Returning user: previous projects */}
               {projects.length > 0 && (
@@ -332,7 +334,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
           {/* ═══ ASSEMBLING: 팀 등장 ═══ */}
           {phase === 'assembling' && (
             <motion.div key="assembling" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: EASE_HERO }} className="pt-8 md:pt-16">
+              transition={{ duration: 0.4, ease: EASE }} className="pt-8 md:pt-16">
 
               {/* 축소된 입력 */}
               <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] w-fit max-w-full mb-8">
@@ -347,7 +349,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
                 {previewPersonas.map((p, i) => (
                   <motion.div key={p.id}
                     initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.3, duration: 0.4, ease: EASE_HERO }}
+                    transition={{ delay: 0.2 + i * 0.3, duration: 0.4, ease: EASE }}
                     className="flex items-center gap-3">
                     <WorkerAvatar persona={p} size="sm" />
                     <span className="text-[13px] font-medium text-[var(--text-primary)]">{p.name}</span>
@@ -365,7 +367,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
           {/* ═══ ANALYZING: 스트리밍 분석 ═══ */}
           {phase === 'analyzing' && (
             <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: EASE_HERO }} className="pt-8 md:pt-12">
+              transition={{ duration: 0.4, ease: EASE }} className="pt-8 md:pt-12">
 
               {/* 상단: 팀 아바타 + 문제 */}
               <div className="flex items-center gap-3 mb-6">

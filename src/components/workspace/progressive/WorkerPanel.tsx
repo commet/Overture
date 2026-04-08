@@ -18,8 +18,7 @@ import type { WorkerTask } from '@/stores/types';
 import type { WorkerContext } from '@/lib/worker-engine';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { useLocale } from '@/hooks/useLocale';
-
-const EASE = [0.32, 0.72, 0, 1] as const;
+import { EASE } from './shared/constants';
 const EMPTY: WorkerTask[] = [];
 
 // ─── Shared hooks for worker data ───

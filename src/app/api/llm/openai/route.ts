@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     const stream = body.stream === true;
     const modelId = ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
 
-    // Convert to OpenAI message format: system prompt as first message
+    // Convert to OpenAI message format: system prompt as first message (skip if absent)
     const openaiMessages: OpenAI.ChatCompletionMessageParam[] = [
-      { role: 'system', content: system },
+      ...(system ? [{ role: 'system' as const, content: system }] : []),
       ...messages.map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,

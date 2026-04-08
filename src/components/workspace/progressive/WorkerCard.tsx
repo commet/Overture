@@ -11,8 +11,7 @@ import { useLocale } from '@/hooks/useLocale';
 import { recordHitReaction } from '@/lib/hit-rate';
 import { recordStrategyOutcome } from '@/lib/context-strategy';
 import { selectContextStrategy } from '@/lib/context-strategy';
-
-const EASE = [0.32, 0.72, 0, 1] as const;
+import { EASE } from './shared/constants';
 
 /* ═══ Hit Reaction Bar — 자기개선 데이터 수집 ═══ */
 
