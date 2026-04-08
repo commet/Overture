@@ -6,7 +6,7 @@ import { TypeToggle } from './TypeToggle';
 import { useBossStore } from '@/stores/useBossStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType } from '@/lib/boss/personality-types';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { SajuPreview } from './SajuPreview';
 
 const EXAMPLE_SITUATIONS = [
@@ -33,7 +33,7 @@ const stagger: Variants = {
 };
 
 const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 14 },
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
 
@@ -41,6 +41,7 @@ export function BossSetup() {
   const { axes, gender, birthYear, birthMonth, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getPersonalityType(typeCode);
@@ -60,7 +61,6 @@ export function BossSetup() {
     }
   };
 
-  // MBTI + 상황만 필수. 연/월은 선택.
   const isReady = situation.trim().length > 0;
 
   return (
@@ -71,93 +71,90 @@ export function BossSetup() {
       animate="show"
       exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.3 } }}
     >
-      {/* ── Hero ── */}
+      {/* ── Hero (compact) ── */}
       <motion.div className="bs-hero" variants={fadeUp}>
         <h1 className="bs-title">
-          팀장한테<br/>
-          <span className="bs-title-accent">할 말 있어?</span>
+          팀장한테 <span className="bs-title-accent">할 말 있어?</span>
         </h1>
         <p className="bs-sub">미리 시뮬레이션 해봐. 진짜 뭐라 하는지.</p>
       </motion.div>
 
-      {/* ── Boss Profile (compact) ── */}
-      <motion.div className="bs-profile" variants={fadeUp}>
-        <div className="bs-profile-label">팀장은 어떤 사람이야?</div>
-
-        {/* MBTI pills */}
+      {/* ── MBTI selector (bare, no card wrapper) ── */}
+      <motion.div className="bs-type-section" variants={fadeUp}>
         <TypeToggle />
 
-        {/* Type badge */}
+        {/* Personality — compact 1-line preview */}
         <AnimatePresence mode="wait">
           {typeData && (
-            <motion.div
+            <motion.button
               key={typeCode}
-              className="bs-badge"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              type="button"
+              onClick={() => setShowDetail(!showDetail)}
+              className="bs-persona-line"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.25 }}
             >
-              <span className="bs-badge-emoji">{typeData.emoji}</span>
-              <span className="bs-badge-code">{typeData.code}</span>
-              <span className="bs-badge-name">{typeData.name}</span>
-              <span className="bs-badge-sep">·</span>
-              <span className="bs-badge-vibe">{typeData.bossVibe}</span>
-              <p className="bs-badge-trigger">🎯 중요하게 보는 것: {typeData.triggers}</p>
-            </motion.div>
+              <span className="bs-persona-emoji">{typeData.emoji}</span>
+              <span className="bs-persona-name">{typeData.name}</span>
+              <span className="bs-persona-vibe">{typeData.bossVibe}</span>
+              <ChevronDown size={12} className="bs-persona-chevron" style={{ transform: showDetail ? 'rotate(180deg)' : 'none' }} />
+            </motion.button>
           )}
         </AnimatePresence>
 
-        {/* 선택 요소: 성별 + 연도(띠) + 월(별자리) */}
-        <div className="bs-meta-row">
-          <div className="bs-gender">
-            {(['남', '여'] as const).map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGender(g)}
-                className="bs-gen-btn"
-                data-active={gender === g}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-          <div className="bs-birth">
-            <input
-              type="number"
-              placeholder="연도"
-              value={birthYear || ''}
-              onChange={(e) => setBirth(Number(e.target.value), birthMonth)}
-              className="bs-num bs-num-y"
-              min={1940} max={2006}
-            />
-            <input
-              type="number"
-              placeholder="월"
-              value={birthMonth || ''}
-              onChange={(e) => setBirth(birthYear, Number(e.target.value))}
-              className="bs-num bs-num-m"
-              min={1} max={12}
-            />
-          </div>
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.4 }}>연도와 월은 선택 — 넣으면 띠와 별자리가 반영돼요</p>
+        {/* Expanded detail card */}
+        <AnimatePresence>
+          {showDetail && typeData && (
+            <motion.div
+              className="bs-detail-card"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="bs-detail-inner">
+                {/* Speech bubble */}
+                <div className="bs-detail-speech">&ldquo;{typeData.speechPatterns[0]}&rdquo;</div>
 
-        {/* 띠 + 별자리 프리뷰 */}
-        <SajuPreview year={birthYear} month={birthMonth} />
+                {/* Traits */}
+                <div className="bs-detail-traits">
+                  <span className="bs-detail-trait">{typeData.shortDesc}</span>
+                  <span className="bs-detail-trait bs-detail-trait--accent">🎯 {typeData.triggers.split(',')[0].trim()}</span>
+                </div>
+
+                {/* Gender + Birth */}
+                <div className="bs-detail-meta">
+                  <div className="bs-gender">
+                    {(['남', '여'] as const).map((g) => (
+                      <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bs-birth">
+                    <input type="number" placeholder="연도" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
+                    <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
+                  </div>
+                </div>
+                <SajuPreview year={birthYear} month={birthMonth} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
-      {/* ── The Main Input ── */}
-      <motion.div className="bs-input-area" variants={fadeUp}>
-        <div className="bs-input-label">뭐라고 하고 싶어?</div>
+      {/* ── Input + CTA (one block, always visible) ── */}
+      <motion.div className="bs-input-block" variants={fadeUp}>
         <div className="bs-input-wrap">
           <textarea
             value={situation}
             onChange={(e) => setSituation(e.target.value)}
             onKeyDown={handleKeyDown}
             className="bs-textarea"
-            rows={3}
+            rows={2}
             maxLength={500}
           />
           <AnimatedPlaceholder
@@ -167,34 +164,27 @@ export function BossSetup() {
             className="bs-placeholder"
           />
         </div>
-      </motion.div>
-
-      {/* ── CTA ── */}
-      <motion.div className="bs-cta-area" variants={fadeUp}>
-        <motion.button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!isReady || isLaunching}
-          className="bs-cta"
-          whileHover={isReady ? { scale: 1.01 } : {}}
-          whileTap={isReady ? { scale: 0.98 } : {}}
-        >
-          {isLaunching ? (
-            <motion.span
-              className="bs-cta-loading"
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-            >
-              팀장 소환 중...
-            </motion.span>
-          ) : (
-            <>
-              팀장 반응 보기
-              <ArrowRight size={18} strokeWidth={2.5} />
-            </>
-          )}
-        </motion.button>
-        <p className="bs-fine">성격유형 기반 AI 시뮬레이션 · 실제와 다를 수 있음</p>
+        <div className="bs-cta-row">
+          <p className="bs-fine">AI 시뮬레이션 · 실제와 다를 수 있음</p>
+          <motion.button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!isReady || isLaunching}
+            className="bs-cta"
+            whileTap={isReady ? { scale: 0.97 } : {}}
+          >
+            {isLaunching ? (
+              <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                소환 중...
+              </motion.span>
+            ) : (
+              <>
+                팀장 반응 보기
+                <ArrowRight size={16} strokeWidth={2.5} />
+              </>
+            )}
+          </motion.button>
+        </div>
       </motion.div>
     </motion.div>
   );

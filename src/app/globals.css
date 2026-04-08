@@ -536,22 +536,22 @@ button, a, input, textarea {
 /* ━━━ Setup Phase ━━━ */
 
 .bs {
-  padding: 40px 0 60px;
+  padding: 24px 0 40px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px;
 }
 
-/* Hero */
+/* ── Hero (compact — everything above the fold) ── */
 .bs-hero {
-  padding: 20px 0 4px;
+  padding: 8px 0 0;
 }
 
 .bs-title {
   font-family: var(--font-display);
-  font-size: clamp(36px, 9vw, 52px);
+  font-size: clamp(28px, 7vw, 40px);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.04em;
   color: var(--text-primary);
 }
@@ -564,31 +564,94 @@ button, a, input, textarea {
 }
 
 .bs-sub {
-  margin-top: 10px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 14px;
   color: var(--text-secondary);
   letter-spacing: -0.01em;
 }
 
-/* Profile block — glass depth */
-.bs-profile {
+/* ── Type section (bare — no card wrapper) ── */
+.bs-type-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(165deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 85%, var(--bg)) 100%);
-  border: 1px solid var(--border-subtle);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  gap: 8px;
 }
 
-.bs-profile-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  letter-spacing: 0.02em;
+/* Persona line — compact 1-line preview */
+.bs-persona-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bs-persona-line:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.bs-persona-emoji { font-size: 18px; flex-shrink: 0; }
+.bs-persona-name { font-size: 13px; font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
+.bs-persona-vibe { font-size: 12px; color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-persona-chevron { color: var(--text-tertiary); flex-shrink: 0; transition: transform 0.2s; }
+
+/* Detail card (expands below persona line) */
+.bs-detail-card {
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.bs-detail-inner {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bs-detail-speech {
+  padding: 10px 14px;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.5;
+  border: 1px solid var(--border-subtle);
+}
+
+.bs-detail-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bs-detail-trait {
+  padding: 3px 9px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.bs-detail-trait--accent {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 20%, var(--border-subtle));
+}
+
+.bs-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* ── Type Toggle (compact pills) ── */
@@ -646,32 +709,6 @@ button, a, input, textarea {
   border-radius: 8px;
   background: var(--text-primary);
   z-index: -1;
-}
-
-/* Type badge */
-.bs-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  background: var(--bg);
-  border: 1px solid var(--border-subtle);
-  font-size: 13px;
-  flex-wrap: wrap;
-}
-
-.bs-badge-emoji { font-size: 18px; }
-.bs-badge-code { font-weight: 800; color: var(--text-primary); }
-.bs-badge-name { font-weight: 600; color: var(--accent); }
-.bs-badge-sep { color: var(--border); }
-.bs-badge-vibe { color: var(--text-secondary); }
-.bs-badge-trigger {
-  width: 100%;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 6px;
-  line-height: 1.4;
 }
 
 /* Meta row (birth + gender) */
@@ -738,19 +775,16 @@ button, a, input, textarea {
   color: var(--bg);
 }
 
-/* ── Main input area ── */
+/* ── Input + CTA block ── */
 
-.bs-input-area {
+.bs-input-block {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .bs-input-label {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
+  display: none; /* label is now implied by the placeholder */
 }
 
 .bs-input-wrap {
@@ -793,30 +827,32 @@ button, a, input, textarea {
   color: var(--text-tertiary);
 }
 
-/* ── CTA ── */
+/* ── CTA row ── */
 
-.bs-cta-area {
+.bs-cta-row {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .bs-cta {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 18px 24px;
-  border-radius: var(--radius-lg);
+  gap: 6px;
+  padding: 12px 24px;
+  border-radius: 14px;
   background: var(--text-primary);
   color: var(--bg);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   border: none;
   letter-spacing: -0.01em;
   box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: transform 0.15s var(--ease-spring), box-shadow 0.2s;
 }
 .bs-cta:hover:not(:disabled) {
@@ -824,19 +860,16 @@ button, a, input, textarea {
 }
 
 .bs-cta:disabled {
-  opacity: 0.2;
+  opacity: 0.15;
   cursor: not-allowed;
-}
-
-.bs-cta-loading {
-  font-weight: 600;
 }
 
 .bs-fine {
   font-size: 11px;
   color: var(--text-tertiary);
-  text-align: center;
   letter-spacing: 0.01em;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ━━━ Chat Phase ━━━ */
