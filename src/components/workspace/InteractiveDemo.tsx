@@ -247,7 +247,7 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
                   <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Sparkles size={11} className="text-[var(--accent)]" />
-                      <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">Insight</span>
+                      <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">Insight</span>
                     </div>
                     <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
                   </div>
@@ -257,11 +257,18 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
 
             {/* Framework — the actionable structure */}
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg)]/40 p-4 md:p-5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent)] mb-3 flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
-                Framework
-              </p>
-              <div className="space-y-1.5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--accent)] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[9px]">📐</span>
+                  Framework
+                </p>
+                {hasChanges && newCount > 0 && (
+                  <span className="text-[9px] font-semibold text-[var(--accent)] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full">
+                    답변 반영 +{newCount}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1">
                 <AnimatePresence>
                   {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
                     <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
@@ -274,13 +281,18 @@ function DemoAnalysisCard({ snapshot, prevSnapshot }: {
                 {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
                   <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                    className={`flex items-start gap-3 text-[13px] leading-[1.75] py-1 transition-colors duration-1000 ${
-                      d.status === 'new' ? 'text-[var(--text-primary)] font-medium bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg px-2 -mx-2' : 'text-[var(--text-primary)]'
+                    className={`flex items-start gap-3 text-[13px] leading-[1.7] py-1.5 rounded-lg transition-all duration-700 ${
+                      d.status === 'new'
+                        ? 'text-[var(--text-primary)] font-medium bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12 px-3 -mx-1'
+                        : 'text-[var(--text-primary)] px-1'
                     }`}>
-                    <span className={`font-mono text-[11px] w-4 text-center shrink-0 mt-0.5 rounded ${
-                      d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/50 bg-[var(--accent)]/[0.06]'
+                    <span className={`font-mono text-[11px] w-5 text-center shrink-0 mt-0.5 rounded ${
+                      d.status === 'new' ? 'text-[var(--accent)] font-bold bg-[var(--accent)]/10' : 'text-[var(--accent)]/40 bg-[var(--accent)]/[0.04]'
                     }`}>{d.status === 'new' ? '✦' : `${i + 1}`}</span>
-                    <span>{d.text}</span>
+                    <span className="flex-1">{d.text}</span>
+                    {d.status === 'new' && (
+                      <span className="text-[9px] text-[var(--accent)]/60 font-medium shrink-0 mt-0.5">NEW</span>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -420,23 +432,28 @@ function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
       initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.15, duration: 0.4, ease: EASE }}
-      className={`rounded-xl border transition-colors duration-300 ${
-        isDone ? 'border-[var(--border-subtle)] bg-[var(--surface)]' :
-        isWorking ? 'border-[var(--accent)]/15 bg-[var(--accent)]/[0.02]' :
-        'border-transparent bg-transparent opacity-40'
+      className={`rounded-xl border transition-all duration-300 ${
+        isDone ? 'border-emerald-300/50 dark:border-emerald-700/30 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm' :
+        isWorking ? 'border-[var(--accent)]/35 bg-[var(--accent)]/[0.06] shadow-[0_0_12px_-2px_rgba(180,160,100,0.12)]' :
+        'border-transparent bg-transparent opacity-25'
       }`}
     >
       <button
         onClick={isDone ? onToggle : undefined}
         className={`w-full flex items-center gap-3 p-3 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
       >
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[13px] ${
-            isWorking ? 'animate-pulse' : ''
-          }`}
-          style={{ backgroundColor: worker.persona.color + '20', color: worker.persona.color }}
-        >
-          {worker.persona.emoji}
+        <div className="relative shrink-0">
+          {isWorking && (
+            <div className="absolute inset-[-3px] rounded-full animate-pulse opacity-30 border-2 border-current" style={{ color: worker.persona.color }} />
+          )}
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] relative ${
+              isWorking ? 'ring-2 ring-[var(--accent)]/20' : ''
+            }`}
+            style={{ backgroundColor: worker.persona.color + (isWorking ? '30' : '20'), color: worker.persona.color }}
+          >
+            {worker.persona.emoji}
+          </div>
         </div>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-1.5">
@@ -452,10 +469,20 @@ function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
             </p>
           )}
         </div>
-        {status === 'waiting' && <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">standby</span>}
-        {isWorking && <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />}
+        {status === 'waiting' && <span className="text-[9px] text-[var(--text-tertiary)]/50 shrink-0 uppercase tracking-wider">standby</span>}
+        {isWorking && (
+          <span className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
+            <Loader2 size={11} className="animate-spin" />
+            <span className="text-[10px] font-medium">분석 중</span>
+          </span>
+        )}
         {isDone && (
-          <ChevronDown size={14} className={`text-[var(--text-tertiary)] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Check size={10} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            {expanded && <ChevronDown size={12} className="text-[var(--text-tertiary)] rotate-180 transition-transform duration-200" />}
+          </div>
         )}
       </button>
 
@@ -502,13 +529,22 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Analysis Team</span>
         {phase === 'analysis' && (
           <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="text-[11px] text-[var(--text-tertiary)] font-medium">assembling</motion.span>
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bg)] text-[10px] text-[var(--text-tertiary)] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] animate-pulse" />
+            assembling
+          </motion.span>
         )}
         {workingCount > 0 && phaseGte(phase, 'q1') && !phaseGte(phase, 'draft') && (
-          <span className="text-[11px] text-[var(--accent)] font-medium">{workingCount} analyzing</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[10px] text-[var(--accent)] font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+            {workingCount} analyzing
+          </span>
         )}
         {phaseGte(phase, 'draft') && (
-          <span className="text-[11px] text-emerald-500 font-medium">Done</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-100/60 dark:bg-emerald-900/20 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            <Check size={10} />
+            Complete
+          </span>
         )}
       </div>
 
@@ -536,6 +572,41 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
           />
         ))}
       </div>
+
+      {/* Summary section — appears when all done */}
+      <AnimatePresence>
+        {phaseGte(phase, 'draft') && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.03] p-3.5 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={11} className="text-[var(--accent)]" />
+                <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">Summary</span>
+              </div>
+              {scenario.workers.map((w) => (
+                <div key={w.persona.id} className="flex items-start gap-2">
+                  <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] shrink-0 mt-0.5"
+                    style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    {w.completionNote || w.task}
+                  </p>
+                </div>
+              ))}
+              <div className="pt-1.5 border-t border-[var(--accent)]/10">
+                <p className="text-[10px] text-[var(--accent)]/70 flex items-center gap-1">
+                  <ArrowRight size={8} />
+                  아래 기획안에 반영됨
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -672,7 +743,7 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
                     <span className="text-[11px] text-amber-600">!</span>
                   </div>
                   <h4 className="text-[13px] font-bold text-amber-700 dark:text-amber-400">Concerns</h4>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">— toggle to apply</span>
+                  <span className="text-[11px] text-[var(--text-tertiary)]">— 반영 여부를 선택하세요</span>
                 </div>
                 <div className="space-y-3">
                   {fb.concerns.map((c: DMConcern, i: number) => (
@@ -688,15 +759,15 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true }: {
                       <p className="text-[13px] text-[var(--accent)] leading-relaxed mb-3 pl-1">&rarr; {c.fix_suggestion}</p>
                       <div className="flex items-center justify-end">
                         <button onClick={() => onToggle(i)}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium cursor-pointer transition-all duration-300 ${
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-all duration-300 ${
                             c.applied
-                              ? 'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20'
-                              : 'bg-[var(--bg)] text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30'
+                              ? 'bg-[var(--accent)]/12 text-[var(--accent)] border border-[var(--accent)]/25 shadow-sm'
+                              : 'bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.03]'
                           }`}>
                           {c.applied ? (
-                            <><Check size={12} /> Applied</>
+                            <><Check size={12} /> 반영됨</>
                           ) : (
-                            <>Apply this fix</>
+                            <>반영하기</>
                           )}
                         </button>
                       </div>
@@ -823,6 +894,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
   const [phase, setPhase] = useState<DemoPhase>('typing');
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dmRef = useRef<HTMLDivElement>(null);
 
   // Snapshot history
   const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
@@ -850,7 +922,14 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
     const key = `${phase}-${visibleWorkers}`;
     if (key === lastScrollPhase.current) return;
     lastScrollPhase.current = key;
-    scrollToBottom();
+    // DM page transition: scroll to DM section top instead of bottom
+    if (phase === 'dm') {
+      setTimeout(() => {
+        dmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    } else {
+      scrollToBottom();
+    }
   }, [phase, visibleWorkers, scrollToBottom]);
 
   // Auto-advance for non-interactive phases
@@ -994,9 +1073,11 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               <DemoAnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
             )}
 
-            {/* Mobile: compact agent bar */}
+            {/* Mobile: compact agent bar — hide after draft since sidebar summary / connector takes over */}
             <div className="lg:hidden">
-              <DemoAgentCompactBar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+              {!phaseGte(phase, 'draft') && (
+                <DemoAgentCompactBar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+              )}
             </div>
 
             {/* 4. Q1 */}
@@ -1049,119 +1130,114 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               </div>
             )}
 
-          {/* 6. Team working — main column bridge between Q&A and draft */}
-          {phaseGte(phase, 'workers') && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.02] p-4 md:p-5"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-                  <Sparkles size={10} className="text-[var(--accent)]" />
-                </div>
-                <span className="text-[13px] font-semibold text-[var(--text-primary)]">
-                  {phaseGte(phase, 'draft')
-                    ? L('팀 분석이 반영된 기획안이에요', 'The plan now includes team analysis')
-                    : L('당신의 답변을 바탕으로 팀이 분석 중이에요', 'Team is analyzing based on your answers')}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {scenario.workers.map((w, i) => {
-                  const done = i < visibleWorkers;
-                  return (
-                    <motion.div
-                      key={w.persona.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.2, duration: 0.3, ease: EASE }}
-                      className="flex items-center gap-3"
-                    >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] shrink-0 ${
-                        done ? '' : 'animate-pulse'
-                      }`} style={{ backgroundColor: w.persona.color + '15' }}>
-                        {w.persona.emoji}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[12px] font-medium text-[var(--text-primary)]">{w.persona.name}</span>
-                          <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona.role}</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--text-secondary)] truncate">{w.task}</p>
-                      </div>
-                      {done
-                        ? <Check size={14} className="text-emerald-500 shrink-0" />
-                        : <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />
-                      }
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {phaseGte(phase, 'draft') && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                  className="mt-3 pt-3 border-t border-[var(--accent)]/10 flex items-center gap-1.5">
-                  <div className="flex -space-x-1.5">
-                    {scenario.workers.map(w => (
-                      <div key={w.persona.id} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] border-2 border-[var(--surface)]"
-                        style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
-                    ))}
-                  </div>
-                  <span className="text-[11px] text-[var(--accent)] font-medium">
-                    {L('분석 결과가 아래 기획안에 반영되었어요', 'Analysis results are reflected in the plan below')}
-                  </span>
-                  <ArrowRight size={11} className="text-[var(--accent)]" />
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-
-          {/* 7. Draft */}
-          {phaseGte(phase, 'draft') && (
-            <DemoDraftCard draft={scenario.draft} />
-          )}
-
-          {/* CTA to enter DM feedback — replaces auto-transition */}
-          {phase === 'draft' && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
-              className="text-center py-6">
-              <p className="text-[13px] text-[var(--text-secondary)] mb-3">
-                {L('초안이 완성됐어요. 이걸 받아본 사람은 뭐라고 할까요?', 'The draft is ready. What would the person who reads this say?')}
-              </p>
-              <motion.button
-                onClick={() => setPhase('dm')}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-[15px] font-semibold text-white cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
-                style={{ background: 'var(--gradient-gold)' }}
+          {/* 6. Team status bar — smooth transition between states */}
+          <AnimatePresence mode="wait">
+            {phaseGte(phase, 'workers') && !phaseGte(phase, 'draft') && (
+              <motion.div key="team-working"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6, transition: { duration: 0.25 } }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/15"
               >
-                <UserCheck size={18} />
-                {L('의사결정권자 반응 보기', 'See decision-maker reaction')}
-                <ChevronRight size={15} />
-              </motion.button>
-            </motion.div>
-          )}
-
-          {/* 8. DM Feedback — new page feel */}
-          {phaseGte(phase, 'dm') && dm && (
-            <>
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
-                className="text-center pt-4 pb-2">
-                <h3 className="text-[18px] md:text-[20px] font-bold text-[var(--text-primary)] tracking-tight">
-                  {L('의사결정권자의 반응', 'Decision-maker\'s reaction')}
-                </h3>
-                <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-                  {L('초안을 본 의사결정권자의 피드백이에요', 'Here\'s how the decision-maker reacted to your draft')}
-                </p>
+                <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />
+                <span className="text-[13px] text-[var(--text-primary)] font-medium">
+                  {L('당신의 답변을 바탕으로 팀이 분석 중이에요', 'Team is analyzing based on your answers')}
+                </span>
+                <span className="text-[11px] text-[var(--accent)] font-semibold shrink-0">{visibleWorkers}/{scenario.workers.length}</span>
               </motion.div>
-              <DemoDMFeedback
-                fb={{ ...dm, concerns }}
-                onToggle={handleToggle}
-                onDone={handleDMDone}
-                showDoneButton={phase !== 'final'}
-              />
-            </>
-          )}
+            )}
+            {phase === 'draft' && (
+              <motion.div key="team-done"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)]"
+              >
+                <div className="flex -space-x-1.5">
+                  {scenario.workers.map(w => (
+                    <div key={w.persona.id} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] border-2 border-[var(--surface)]"
+                      style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
+                  ))}
+                </div>
+                <span className="text-[12px] text-[var(--text-secondary)] flex-1">
+                  {L('팀 분석 완료', 'Team analysis complete')}
+                </span>
+                <span className="hidden lg:flex text-[10px] text-[var(--accent)] font-medium items-center gap-1">
+                  {L('우측 패널에서 확인', 'See right panel')} <ArrowRight size={9} />
+                </span>
+                <span className="lg:hidden">
+                  <Check size={12} className="text-emerald-500" />
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 7-8. Draft → DM page transition (single AnimatePresence for sync) */}
+          <AnimatePresence mode="wait">
+            {phase === 'draft' && (
+              <motion.div key="draft-page"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16, transition: { duration: 0.35, ease: EASE } }}
+                transition={{ duration: 0.7, ease: EASE }}
+              >
+                <DemoDraftCard draft={scenario.draft} />
+
+                {/* CTA to enter DM feedback */}
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
+                  className="text-center py-6">
+                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">
+                    {L('초안이 완성됐어요. 이걸 받아본 사람은 뭐라고 할까요?', 'The draft is ready. What would the person who reads this say?')}
+                  </p>
+                  <motion.button
+                    onClick={() => setPhase('dm')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-[15px] font-semibold text-white cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
+                    style={{ background: 'var(--gradient-gold)' }}
+                  >
+                    <UserCheck size={18} />
+                    {L('의사결정권자 반응 보기', 'See decision-maker reaction')}
+                    <ChevronRight size={15} />
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {phaseGte(phase, 'dm') && dm && (
+              <motion.div key="dm-page" ref={dmRef}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16, transition: { duration: 0.3, ease: EASE } }}
+                transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
+              >
+                {/* Page divider */}
+                <div className="flex items-center gap-4 py-4 mb-2">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/20 to-transparent" />
+                  <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Next Step</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/20 to-transparent" />
+                </div>
+
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5, ease: EASE }}
+                  className="text-center pb-4">
+                  <h3 className="text-[20px] md:text-[22px] font-bold text-[var(--text-primary)] tracking-tight">
+                    {L('의사결정권자의 반응', 'Decision-maker\'s reaction')}
+                  </h3>
+                  <p className="text-[13px] text-[var(--text-secondary)] mt-1.5">
+                    {L('초안을 본 의사결정권자의 피드백이에요', 'Here\'s how the decision-maker reacted to your draft')}
+                  </p>
+                </motion.div>
+                <DemoDMFeedback
+                  fb={{ ...dm, concerns }}
+                  onToggle={handleToggle}
+                  onDone={handleDMDone}
+                  showDoneButton={phase !== 'final'}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 9. Final */}
           {phase === 'final' && (
