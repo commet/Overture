@@ -13,6 +13,7 @@
 import { getSessionInsights, getEvalSummary, analyzeStrategyPerformance } from '@/lib/eval-engine';
 import { getWorstPerformingEvals } from '@/lib/prompt-mutation';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
+import { data, getLatestDone, getDoneItems } from '@/lib/storage-helpers';
 import { getDQScores, analyzeDQTrend } from '@/lib/decision-quality';
 import { getSignals } from '@/lib/signal-recorder';
 import { t } from '@/lib/i18n';
@@ -93,8 +94,8 @@ function getEvalDisplay(): Record<string, string> {
 
 export function buildConcertmasterProfile(): ConcertmasterProfile {
   const evalSummary = getEvalSummary();
-  const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
-  const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
+  const judgments = data.judgments();
+  const projects = data.projects();
 
   const totalJudgments = judgments.length;
   const overrides = judgments.filter((j) => j.user_changed);
@@ -255,7 +256,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
   // ── Tier 3: Cross-project + strategy performance ──
   if (profile.tier >= 3) {
     // Coda insights
-    const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
+    const projects = data.projects();
     const withReflection = projects.filter(
       (p) => p.meta_reflection?.surprising_discovery || p.meta_reflection?.next_time_differently
     );
@@ -292,7 +293,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
 
   // ── Tier 2+: Vitality Engine insights ──
   if (profile.tier >= 2) {
-    const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
+    const vitalityAssessments = data.vitalityAssessments();
     if (vitalityAssessments.length >= 3) {
       const trend = analyzeVitalityTrend(vitalityAssessments);
       if (trend.trend === 'declining') {
@@ -360,7 +361,7 @@ export function getStepCoaching(step: CoachingStep, profile: ConcertmasterProfil
   // Vitality coaching — max 1, only if vitality concerns exist (tier 2+)
   // Insert at front so it survives the slice(0, 2) truncation
   if (profile.tier >= 2) {
-    const vitalityAssessments = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
+    const vitalityAssessments = data.vitalityAssessments();
     const latest = vitalityAssessments[vitalityAssessments.length - 1];
     if (latest && latest.signals?.length > 0) {
       if (!['reframe', 'recast', 'rehearse', 'refine'].includes(step)) return candidates.slice(0, 2);
@@ -415,7 +416,7 @@ function getReframeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
 
   // Positive: improving assumption discovery rate
   if (profile.tier >= 2) {
-    const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+    const reframeItems = data.reframeItems();
     const doneItems = reframeItems.filter(d => d.status === 'done' && d.analysis);
     if (doneItems.length >= 2) {
       const recent = doneItems.slice(-2);
@@ -494,7 +495,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
 
   if (profile.totalJudgments < 3) {
     // Cross-stage: check reframe for unverified assumptions (always show if available)
-    const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+    const reframeItems = data.reframeItems();
     const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
     if (latestReframe?.analysis) {
       const uncertain = (latestReframe.analysis.hidden_assumptions || []).filter(
@@ -510,7 +511,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     return results;
   }
 
-  const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
+  const judgments = data.judgments();
   const actorOverrides = judgments.filter((j) => j.type === 'actor_override');
 
   // Override rate > 40%
@@ -540,7 +541,7 @@ function getRecastCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   }
 
   // Cross-stage: check reframe for unverified assumptions
-  const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+  const reframeItems = data.reframeItems();
   const latestReframe = reframeItems.filter(d => d.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
   if (latestReframe?.analysis) {
     const uncertain = (latestReframe.analysis.hidden_assumptions || []).filter(
@@ -571,7 +572,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   }
 
   // Positive: improving persona accuracy over time
-  const allRatings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
+  const allRatings = data.ratings();
   if (allRatings.length >= 4) {
     const sorted = [...allRatings].sort((a, b) => a.created_at.localeCompare(b.created_at));
     const firstHalf = sorted.slice(0, Math.floor(sorted.length / 2));
@@ -588,7 +589,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   }
 
   // Cross-stage: check recast for key assumptions to test
-  const recastItems = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []);
+  const recastItems = data.recastItems();
   const latestRecast = recastItems.filter(o => o.status === 'done').sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop();
   if (latestRecast?.analysis?.key_assumptions) {
     const highImportance = latestRecast.analysis.key_assumptions.filter(ka => ka.importance === 'high');
@@ -601,7 +602,7 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
   }
 
   // Persona accuracy summary
-  const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
+  const ratings = data.ratings();
   if (ratings.length > 0) {
     const byPersona: Record<string, PersonaAccuracyRating[]> = {};
     for (const r of ratings) {
@@ -664,7 +665,7 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   }
 
   // Cross-stage: DQ trend from previous projects
-  const dqScores = getStorage<DecisionQualityScore[]>(STORAGE_KEYS.DQ_SCORES, []);
+  const dqScores = data.dqScores();
   if (dqScores.length >= 2) {
     const sorted = [...dqScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
     const prev = sorted[sorted.length - 2];
@@ -707,7 +708,7 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
   }
 
   // Check if there are active refine loops
-  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
+  const loops = data.refineLoops();
   if (loops.length > 0) {
     const activeLoop = [...loops].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
     const iterationCount = Array.isArray(activeLoop?.iterations) ? activeLoop.iterations.length : 0;
@@ -810,7 +811,7 @@ const AXIS_LABELS: Record<string, string> = {
 };
 
 export function buildLearningCurve(): LearningCurve {
-  const projects = getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
+  const projects = data.projects();
   const dqScores = getDQScores();
   const sorted = [...dqScores].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
@@ -866,7 +867,7 @@ export function buildLearningCurve(): LearningCurve {
   }
 
   // ── Axis Fingerprint (Sliding Window: last 10 decisions) ──
-  const reframeItems = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []);
+  const reframeItems = data.reframeItems();
   const doneItems = reframeItems.filter(d => d.status === 'done' && d.analysis);
   const recentItems = doneItems.slice(-10);
 

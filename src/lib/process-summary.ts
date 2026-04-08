@@ -10,6 +10,7 @@
 
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getDQScores } from '@/lib/decision-quality';
+import { getLatestDone } from '@/lib/storage-helpers';
 import type {
   ReframeItem,
   RecastItem,
@@ -76,7 +77,7 @@ export function buildProcessSummary(projectId: string): ProcessSummary | null {
   const reframeRefId = findRef('reframe');
   const reframeItem = reframeItems.find(
     d => d.status === 'done' && d.id === reframeRefId
-  ) || reframeItems.filter(d => d.status === 'done').pop();
+  ) || getLatestDone(reframeItems);
 
   const assumptions = reframeItem?.analysis?.hidden_assumptions || [];
   const assumptionsFound = assumptions.length;
@@ -94,7 +95,7 @@ export function buildProcessSummary(projectId: string): ProcessSummary | null {
   const recastRefId = findRef('recast');
   const recastItem = recastItems.find(
     o => o.status === 'done' && o.id === recastRefId
-  ) || recastItems.filter(o => o.status === 'done').pop();
+  ) || getLatestDone(recastItems);
 
   const steps = recastItem?.analysis?.steps || [];
   const hasCheckpoints = steps.some(s => s.checkpoint);
