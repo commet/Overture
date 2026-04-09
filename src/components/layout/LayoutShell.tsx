@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { AuthGuard } from './AuthGuard';
 
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/workspace'];
+const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/workspace', '/boss'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
@@ -35,7 +35,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   // Protected routes
   const content = needsAuth ? <AuthGuard>{children}</AuthGuard> : children;
 
-  if (isWorkspace) {
+  // Full-width, no sidebar (workspace, boss)
+  const isBoss = pathname.startsWith('/boss');
+  if (isWorkspace || isBoss) {
     return <div className="flex-1">{content}</div>;
   }
 
