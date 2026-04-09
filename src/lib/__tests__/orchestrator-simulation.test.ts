@@ -207,7 +207,7 @@ describe('selectAgents', () => {
 // ── 3. assignFramework ──
 
 describe('assignFramework', () => {
-  it('strategist + needs_analysis → Jobs-to-be-Done', () => {
+  it('strategist + needs_analysis → WWHTBT', () => {
     const result = assignFramework('hyunwoo', '신제품 기획', {
       stakes: 'important',
       domains: ['strategy'],
@@ -215,7 +215,7 @@ describe('assignFramework', () => {
       agentCount: 2,
     });
     expect(result).toBeDefined();
-    expect(result!.toLowerCase()).toContain('jobs');
+    expect(result!.toLowerCase()).toContain('wwhtbt');
   });
 
   it('critic + on_fire → Pre-mortem', () => {
@@ -229,7 +229,7 @@ describe('assignFramework', () => {
     expect(result!.toLowerCase()).toContain('pre-mortem');
   });
 
-  it('numbers + any → Unit Economics', () => {
+  it('numbers + needs_analysis → Market Sizing Convergence', () => {
     const result = assignFramework('minjae', '수익 구조 분석', {
       stakes: 'important',
       domains: ['numbers'],
@@ -237,7 +237,7 @@ describe('assignFramework', () => {
       agentCount: 2,
     });
     expect(result).toBeDefined();
-    expect(result!.toLowerCase()).toContain('unit');
+    expect(result!.toLowerCase()).toContain('market sizing convergence');
   });
 
   it('알 수 없는 에이전트 → null', () => {
@@ -250,7 +250,7 @@ describe('assignFramework', () => {
     expect(result).toBeNull();
   });
 
-  it('copywriter → Pyramid Principle', () => {
+  it('copywriter + needs_analysis → SCQA', () => {
     const result = assignFramework('seoyeon', '보고서 작성', {
       stakes: 'important',
       domains: ['copy'],
@@ -258,7 +258,7 @@ describe('assignFramework', () => {
       agentCount: 2,
     });
     expect(result).toBeDefined();
-    expect(result!.toLowerCase()).toContain('pyramid');
+    expect(result!.toLowerCase()).toContain('scqa');
   });
 });
 

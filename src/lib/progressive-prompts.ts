@@ -261,13 +261,18 @@ ${persona.expertise}
 ${persona.tone}`);
   }
 
-  // 2. Skill frameworks — focused on 1 if specified, otherwise all
+  // 2. Skill frameworks — inject only the assigned framework in full;
+  //    if none assigned, inject only framework NAMES (not full descriptions) to save tokens
   if (focusedSkill) {
     systemParts.push(`\n[Assigned Framework: ${focusedSkill.framework}]
 Use this framework for your analysis.`);
   } else if (skills) {
-    systemParts.push(`\nYour analysis tools:
-${skills.frameworks.map(f => `- ${f}`).join('\n')}`);
+    const frameworkNames = skills.frameworks.map(f => {
+      const colonIdx = f.indexOf(':');
+      return colonIdx > 0 ? f.slice(0, colonIdx).trim() : f.slice(0, 80).trim();
+    });
+    systemParts.push(`\nYour analysis tools: ${frameworkNames.join(', ')}.
+Select the most relevant framework for this task.`);
   }
 
   // 3. Level-specific instruction

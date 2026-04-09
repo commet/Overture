@@ -774,41 +774,52 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         }
       }
 
-      // Lead Agent Synthesis: 리드가 있으면 워커 결과를 통합 분석
+      // Lead Agent Synthesis + Mix: 병렬 실행
+      // Lead synthesis는 Mix의 품질을 높이지만 필수가 아님 (null 허용).
+      // Lead를 먼저 시작하고 Mix와 병렬로 진행 — Lead가 먼저 끝나면 Mix에 반영, 아니면 Mix는 Lead 없이 실행.
       let leadSynthesis: LeadSynthesisResult | null = null;
       const sessionLead = session?.lead_agent;
+      let leadPromise: Promise<LeadSynthesisResult | null> = Promise.resolve(null);
+
       if (sessionLead && workerResults.length > 0) {
-        try {
+        const leadAgent = useAgentStore.getState().getAgent(sessionLead.agent_id);
+        if (leadAgent) {
           store.setPhase('lead_synthesizing');
-          const leadAgent = useAgentStore.getState().getAgent(sessionLead.agent_id);
-          if (leadAgent) {
-            const leadConfig: LeadAgentConfig = {
-              agentId: leadAgent.id, agentName: leadAgent.name, agentNameEn: leadAgent.nameEn || leadAgent.name,
-              agentRole: leadAgent.role, agentRoleEn: leadAgent.roleEn || leadAgent.role,
-              expertise: leadAgent.expertise || '', tone: leadAgent.tone || '',
-              domain: (session?.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
-            };
-            const attributedResults = enrichedResults.map(w => ({
-              agentName: w.agentName || L('에이전트', 'Agent'),
-              agentRole: w.agentRole || '',
-              task: w.task,
-              result: w.result,
-            }));
-            const realQ = latest?.real_question || session!.problem_text;
-            leadSynthesis = await runLeadSynthesis(session!.problem_text, realQ, attributedResults, leadConfig, abortRef.current?.signal);
-            // Verify session is still valid after async operation
-            const currentSession = store.currentSession();
-            if (currentSession?.id !== session?.id) throw new Error('Session changed');
-            store.setLeadSynthesis(leadSynthesis);
-          }
-        } catch {
-          leadSynthesis = null;
-          store.setPhase('mixing'); // Immediate phase recovery on failure
+          const leadConfig: LeadAgentConfig = {
+            agentId: leadAgent.id, agentName: leadAgent.name, agentNameEn: leadAgent.nameEn || leadAgent.name,
+            agentRole: leadAgent.role, agentRoleEn: leadAgent.roleEn || leadAgent.role,
+            expertise: leadAgent.expertise || '', tone: leadAgent.tone || '',
+            domain: (session?.lead_agent?.domain || 'strategy') as import('@/lib/orchestrator-classify').Domain,
+          };
+          const attributedResults = enrichedResults.map(w => ({
+            agentName: w.agentName || L('에이전트', 'Agent'),
+            agentRole: w.agentRole || '',
+            task: w.task,
+            result: w.result,
+          }));
+          const realQ = latest?.real_question || session!.problem_text;
+          // Lead synthesis를 비동기로 시작 (await 하지 않음)
+          leadPromise = runLeadSynthesis(session!.problem_text, realQ, attributedResults, leadConfig, abortRef.current?.signal)
+            .then(result => {
+              const currentSession = store.currentSession();
+              if (currentSession?.id !== session?.id) return null;
+              store.setLeadSynthesis(result);
+              return result;
+            })
+            .catch(() => null);
         }
-        store.setPhase('mixing');
       }
 
+      // Lead synthesis 완료 대기 (짧은 타임아웃) — 끝났으면 Mix에 포함, 아니면 null로 진행
+      store.setPhase('mixing');
+      leadSynthesis = await Promise.race([
+        leadPromise,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 4000)),
+      ]);
+
       const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined, undefined, leadSynthesis);
+      // Lead가 Mix보다 늦게 끝났으면 비동기로 저장 (Mix에는 미포함이지만 UI에는 표시)
+      if (!leadSynthesis) leadPromise.then(late => { if (late) store.setLeadSynthesis(late); });
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round, has_lead: !!leadSynthesis });
 
       // Phase 6: Boss reviewer가 있으면 자동 DM 피드백

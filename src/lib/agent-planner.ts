@@ -138,6 +138,8 @@ export async function executePlan(
     task.agent_id ? (await import('@/stores/useAgentStore')).useAgentStore.getState().getAgent(task.agent_id)?.level ?? 1 : 1,
   );
 
+  let pendingValidation: Promise<{ validation: ValidationResult | undefined; stepIdx: number }> | null = null;
+
   for (const step of plan.steps) {
     if (signal?.aborted) break;
 
@@ -208,25 +210,38 @@ export async function executePlan(
       );
     });
 
-    // 중간 검증
-    let validation: ValidationResult | undefined;
-    try {
-      validation = await validateWorkerOutput(step.task, step.expected_output, text);
-    } catch {
-      // 검증 실패 → 무시하고 계속
+    // 이전 step의 비동기 검증 결과 확인 (early stop 판단)
+    if (pendingValidation) {
+      const prev = await pendingValidation;
+      if (prev.validation && prev.stepIdx >= 0) {
+        step_results[prev.stepIdx].validation = prev.validation;
+        // Early stop: 높은 품질 + 남은 step이 통합/정리만이면 중단
+        if (prev.validation.score >= 90 && plan.steps.length > 1) {
+          const remaining = plan.steps.filter(s => s.step_number > step.step_number);
+          const isRemainingJustAggregation = remaining.length > 0 && remaining.every(s =>
+            s.task.includes('통합') || s.task.includes('정리') || s.task.includes('종합'),
+          );
+          if (isRemainingJustAggregation) break;
+        }
+      }
+      pendingValidation = null;
     }
 
-    step_results.push({ step, result: text, validation });
+    step_results.push({ step, result: text });
     accumulatedContext += `\n\n[단계 ${step.step_number} 결과]\n${text}`;
 
-    // Early stop: 높은 품질 + 원래 task를 이미 충분히 다루는 경우
-    if (validation && validation.score >= 90 && plan.steps.length > 1 && step.step_number < plan.steps.length) {
-      // 남은 step이 통합/정리 성격이면 early stop
-      const remaining = plan.steps.filter(s => s.step_number > step.step_number);
-      const isRemainingJustAggregation = remaining.every(s =>
-        s.task.includes('통합') || s.task.includes('정리') || s.task.includes('종합'),
-      );
-      if (isRemainingJustAggregation) break;
+    // 검증을 비동기로 시작 — 다음 step과 병렬 실행
+    const stepIdx = step_results.length - 1;
+    pendingValidation = validateWorkerOutput(step.task, step.expected_output, text)
+      .then(v => ({ validation: v, stepIdx }))
+      .catch(() => ({ validation: undefined, stepIdx }));
+  }
+
+  // 마지막 step의 비동기 검증 결과 수집
+  if (pendingValidation) {
+    const last = await pendingValidation;
+    if (last.validation && last.stepIdx >= 0 && last.stepIdx < step_results.length) {
+      step_results[last.stepIdx].validation = last.validation;
     }
   }
 

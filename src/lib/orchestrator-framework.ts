@@ -13,56 +13,103 @@ import { getSkillSet } from './agent-skills';
 // key: "personaId:decisionType" 또는 "personaId:domain" 또는 "personaId:*"
 // value: 프레임워크 문자열의 시작 부분 (partial match)
 const FRAMEWORK_PRIORITY: Record<string, string[]> = {
-  // ─── Researcher (수진) ───
-  'researcher:*':              ['MECE', 'So What'],
+  // ─── Researcher (다은) ───
+  'researcher:on_fire':        ['Confidence Levels', 'So What'],
+  'researcher:needs_analysis': ['Analysis of Competing Hypotheses', 'Triangulation', 'MECE'],
+  'researcher:known_path':     ['MECE', 'So What'],
+  'researcher:*':              ['Confidence Levels', 'MECE', 'So What'],
 
   // ─── Strategist (현우) ───
-  'strategist:known_path':     ['SWOT', 'Value Chain'],
-  'strategist:needs_analysis': ['Jobs-to-be-Done', 'Porter'],
-  'strategist:no_answer':      ['Jobs-to-be-Done', 'Porter'],
-  'strategist:on_fire':        ['SWOT'],
-  'strategist:*':              ['SWOT', 'Jobs-to-be-Done'],
+  'strategist:known_path':     ['Playing to Win', 'Value Chain'],
+  'strategist:needs_analysis': ['WWHTBT', '7 Powers', 'Jobs-to-be-Done'],
+  'strategist:no_answer':      ['WWHTBT', 'Playing to Win', 'Jobs-to-be-Done'],
+  'strategist:on_fire':        ['Pre-mortem', 'Playing to Win'],
+  'strategist:*':              ['Playing to Win', 'WWHTBT', 'Jobs-to-be-Done'],
 
-  // ─── Numbers (민재) ───
+  // ─── Numbers (규민) ───
   'numbers:on_fire':           ['Break-even', 'Sensitivity'],
-  'numbers:needs_analysis':    ['Unit Economics', 'TAM'],
-  'numbers:*':                 ['Unit Economics', 'TAM'],
+  'numbers:needs_analysis':    ['Market Sizing Convergence', 'Contribution Margin', 'Cohort'],
+  'numbers:known_path':        ['Driver-Based', 'Unit Economics'],
+  'numbers:*':                 ['Driver-Based', 'Market Sizing Convergence', 'Unit Economics'],
+
+  // ─── Finance (혜연) ───
+  'finance:needs_analysis':    ['Valuation Triangulation', 'DuPont', 'Quality of Earnings'],
+  'finance:on_fire':           ['Cash Conversion', 'Startup Finance'],
+  'finance:known_path':        ['Financial Statement', 'Budget Variance'],
+  'finance:*':                 ['Valuation Triangulation', 'Financial Statement'],
+
+  // ─── Marketing (민서) ───
+  'marketing:needs_analysis':  ['Growth Loops', 'Growth Accounting', 'North Star'],
+  'marketing:on_fire':         ['Channel Strategy', 'Sean Ellis'],
+  'marketing:known_path':      ['Channel Strategy', 'JTBD in Marketing'],
+  'marketing:*':               ['Growth Loops', 'North Star', 'Channel Strategy'],
+
+  // ─── People & Culture (수진) ───
+  'people_culture:needs_analysis': ['Team Topologies', 'Conway', 'OCAI'],
+  'people_culture:on_fire':    ['Switch Framework', 'ADKAR'],
+  'people_culture:known_path': ['RACI', 'Total Rewards'],
+  'people_culture:*':          ['Team Topologies', 'Switch Framework'],
 
   // ─── Copywriter (서연) ───
-  'copywriter:*':              ['Pyramid Principle', 'PREP'],
+  'copywriter:needs_analysis': ['SCQA', 'Pyramid Principle'],
+  'copywriter:on_fire':        ['PAS', 'SCQA'],
+  'copywriter:known_path':     ['Pyramid Principle', 'StoryBrand'],
+  'copywriter:*':              ['SCQA', 'Pyramid Principle', 'PAS'],
 
   // ─── Critic (동혁) ───
   'critic:on_fire':            ['Pre-mortem', 'Red Team'],
-  'critic:needs_analysis':     ['Assumption Mapping', 'Pre-mortem'],
-  'critic:known_path':         ['Second-order', 'Assumption Mapping'],
-  'critic:*':                  ['Pre-mortem', 'Assumption Mapping'],
+  'critic:needs_analysis':     ['Key Assumptions Check', 'Bow-Tie', 'Pre-mortem'],
+  'critic:known_path':         ['Expected Value', 'Second-order', 'Key Assumptions'],
+  'critic:no_answer':          ['HILP', 'Pre-mortem', 'Cognitive Bias'],
+  'critic:*':                  ['Key Assumptions Check', 'Pre-mortem', 'Expected Value'],
 
   // ─── UX Designer (지은) ───
-  'ux:*':                      ['Nielsen', 'User Journey', 'Jobs-to-be-Done'],
+  'ux:needs_analysis':         ['Service Blueprint', 'Forces Diagram', 'Laws of UX'],
+  'ux:on_fire':                ['Nielsen', 'Laws of UX'],
+  'ux:known_path':             ['Laws of UX', 'Gestalt', 'User Journey'],
+  'ux:*':                      ['Laws of UX', 'Service Blueprint', 'Nielsen'],
 
-  // ─── Legal (태준) ───
-  'legal:*':                   ['법적 리스크', '규제 체크리스트'],
+  // ─── Legal (윤석) ───
+  'legal:needs_analysis':      ['Contract Analysis', 'IP Assignment', 'AI-Specific'],
+  'legal:on_fire':             ['Legal Risk Matrix', 'Privacy'],
+  'legal:known_path':          ['Regulatory Compliance', 'Contract Analysis'],
+  'legal:*':                   ['Legal Risk Matrix', 'Contract Analysis', 'Privacy'],
 
   // ─── Intern (하윤) ───
-  'intern:*':                  ['5W1H', '벤치마킹'],
+  'intern:*':                  ['Hypothesis-Testing', 'Source Evaluation', '5W1H'],
 
   // ─── Engineer (준서) ───
-  'engineer:*':                ['C4 Model', 'ADR', 'Buy vs Build'],
+  'engineer:needs_analysis':   ['Domain-Driven', 'Monolith-First', 'SRE'],
+  'engineer:on_fire':          ['C4 Model', 'ADR'],
+  'engineer:known_path':       ['ADR', 'Technology Radar', 'Buy vs Build'],
+  'engineer:*':                ['Domain-Driven', 'C4 Model', 'ADR'],
 
   // ─── PM (예린) ───
-  'pm:*':                      ['RACI', 'MoSCoW', 'Risk Register'],
+  'pm:needs_analysis':         ['Opportunity Solution Tree', 'RICE', 'Working Backwards'],
+  'pm:on_fire':                ['RACI', 'Pre-mortem'],
+  'pm:known_path':             ['Shape Up', 'Decision Log', 'RACI'],
+  'pm:*':                      ['Opportunity Solution Tree', 'RICE', 'RACI'],
 
   // ─── Research Director (도윤) ───
-  'research_director:*':       ['교차 분석', '숨은 연결', '전략적 함의'],
+  'research_director:needs_analysis': ['Pyramid Principle', 'Key Assumptions Check', 'Linchpin'],
+  'research_director:on_fire':        ['SCQA', 'Pre-mortem'],
+  'research_director:*':              ['Pyramid Principle', 'SCQA', 'Key Assumptions'],
 
-  // ─── Strategy Junior (지호) — agent ID: strategy_jr ───
-  'strategy_jr:*':             ['비교 매트릭스', 'SWOT', '포지셔닝'],
+  // ─── Strategy Junior (정민) ───
+  'strategy_jr:needs_analysis': ['Rumelt', 'ERRC', 'Decision Classification'],
+  'strategy_jr:known_path':     ['Comparison Matrix', 'SWOT'],
+  'strategy_jr:*':              ['Rumelt', 'SWOT', 'Decision Classification'],
 
-  // ─── Strategy Chief (승현) — agent ID: chief_strategist ───
-  'chief_strategist:*':        ['시나리오 플래닝', '의사결정 나무', '비대칭 베팅'],
+  // ─── Strategy Chief (승현) ───
+  'chief_strategist:needs_analysis': ['Scenario Planning', 'Wardley', 'Real Options'],
+  'chief_strategist:on_fire':        ['Kill Criteria', 'Cynefin', 'Scenario Planning'],
+  'chief_strategist:no_answer':      ['Wardley', 'Real Options', 'Cynefin'],
+  'chief_strategist:*':              ['Scenario Planning', 'Wardley', 'Kill Criteria'],
 
   // ─── Concertmaster (악장) ───
-  'concertmaster:*':           ['일관성 체크', '빈틈 분석', '품질 채점'],
+  'concertmaster:needs_analysis': ['Dialectical Synthesis', 'Assumption Audit', 'Murder Board'],
+  'concertmaster:on_fire':        ['6-Point Cognitive Bias', 'Meta-Pattern'],
+  'concertmaster:*':              ['Dialectical Synthesis', '6-Point Cognitive Bias', 'Assumption Audit'],
 };
 
 /* ─── personaId 추론 (agentId → personaId) ─── */
