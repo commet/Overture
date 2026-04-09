@@ -6,7 +6,7 @@ import { TypeToggle } from './TypeToggle';
 import { useBossStore } from '@/stores/useBossStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType } from '@/lib/boss/personality-types';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { SajuPreview } from './SajuPreview';
 
 const EXAMPLE_SITUATIONS = [
@@ -41,7 +41,6 @@ export function BossSetup() {
   const { axes, gender, birthYear, birthMonth, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
-  const [showDetail, setShowDetail] = useState(false);
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getPersonalityType(typeCode);
@@ -79,51 +78,32 @@ export function BossSetup() {
         <p className="bs-sub">미리 시뮬레이션 해봐. 진짜 뭐라 하는지.</p>
       </motion.div>
 
-      {/* ── MBTI selector (bare, no card wrapper) ── */}
+      {/* ── MBTI selector ── */}
       <motion.div className="bs-type-section" variants={fadeUp}>
         <TypeToggle />
 
-        {/* Personality — compact 1-line preview */}
+        {/* Personality — always visible card */}
         <AnimatePresence mode="wait">
           {typeData && (
-            <motion.button
-              key={typeCode}
-              type="button"
-              onClick={() => setShowDetail(!showDetail)}
-              className="bs-persona-line"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 8 }}
-              transition={{ duration: 0.25 }}
-            >
-              <span className="bs-persona-emoji">{typeData.emoji}</span>
-              <span className="bs-persona-name">{typeData.name}</span>
-              <span className="bs-persona-vibe">{typeData.bossVibe}</span>
-              <ChevronDown size={14} className="bs-persona-chevron" style={{ transform: showDetail ? 'rotate(180deg)' : 'none' }} />
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        {/* Expanded detail card */}
-        <AnimatePresence>
-          {showDetail && typeData && (
             <motion.div
-              className="bs-detail-card"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              key={typeCode}
+              className="bs-persona-card"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              style={{ overflow: 'hidden' }}
             >
-              <div className="bs-detail-inner">
-                {/* Speech bubble */}
-                <div className="bs-detail-speech">&ldquo;{typeData.speechPatterns[0]}&rdquo;</div>
-
-                {/* Traits */}
-                <div className="bs-detail-traits">
-                  <span className="bs-detail-trait">{typeData.shortDesc}</span>
-                  <span className="bs-detail-trait bs-detail-trait--accent">🎯 {typeData.triggers.split(',')[0].trim()}</span>
+              <div className="bs-persona-header">
+                <span className="bs-persona-emoji">{typeData.emoji}</span>
+                <div className="bs-persona-info">
+                  <span className="bs-persona-name">{typeData.name}</span>
+                  <span className="bs-persona-vibe">{typeData.bossVibe}</span>
                 </div>
+              </div>
+              <div className="bs-persona-speech">&ldquo;{typeData.speechPatterns[0]}&rdquo;</div>
+              <div className="bs-persona-traits">
+                <span className="bs-persona-trait">{typeData.shortDesc}</span>
+                <span className="bs-persona-trait bs-persona-trait--accent">🎯 {typeData.triggers.split(',')[0].trim()}</span>
               </div>
             </motion.div>
           )}
@@ -131,24 +111,26 @@ export function BossSetup() {
       </motion.div>
 
       {/* ── Gender + Birth (always visible) ── */}
-      <motion.div className="bs-profile-bar" variants={fadeUp}>
-        <div className="bs-profile-field">
-          <label className="bs-profile-label">성별</label>
-          <div className="bs-gender">
-            {(['남', '여'] as const).map((g) => (
-              <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
-                {g === '남' ? '남성' : '여성'}
-              </button>
-            ))}
+      <motion.div className="bs-profile-section" variants={fadeUp}>
+        <div className="bs-profile-bar">
+          <div className="bs-profile-field">
+            <label className="bs-profile-label">성별</label>
+            <div className="bs-gender">
+              {(['남', '여'] as const).map((g) => (
+                <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
+                  {g === '남' ? '남성' : '여성'}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="bs-profile-divider" />
-        <div className="bs-profile-field">
-          <label className="bs-profile-label">생년월 <span className="bs-optional">선택</span></label>
-          <div className="bs-birth">
-            <input type="number" placeholder="예: 1975" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
-            <span className="bs-dot">·</span>
-            <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
+          <div className="bs-profile-divider" />
+          <div className="bs-profile-field">
+            <label className="bs-profile-label">생년월 <span className="bs-optional">선택</span></label>
+            <div className="bs-birth">
+              <input type="number" placeholder="예: 1975" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
+              <span className="bs-dot">·</span>
+              <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
+            </div>
           </div>
         </div>
         <SajuPreview year={birthYear} month={birthMonth} />

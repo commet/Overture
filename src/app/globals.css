@@ -577,62 +577,55 @@ button, a, input, textarea {
   gap: 10px;
 }
 
-/* Persona line — compact 1-line preview */
-.bs-persona-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: var(--surface);
+/* Persona card — always visible */
+.bs-persona-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 92%, var(--gold-muted)) 100%);
   border: 1.5px solid var(--border-subtle);
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.bs-persona-line:hover {
-  border-color: var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   box-shadow: var(--shadow-sm);
 }
 
-.bs-persona-emoji { font-size: 20px; flex-shrink: 0; }
-.bs-persona-name { font-size: 14px; font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
-.bs-persona-vibe { font-size: 13px; color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bs-persona-chevron { color: var(--text-tertiary); flex-shrink: 0; transition: transform 0.2s; }
-
-/* Detail card (expands below persona line) */
-.bs-detail-card {
-  border-radius: 14px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-}
-
-.bs-detail-inner {
-  padding: 14px 16px;
+.bs-persona-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
-.bs-detail-speech {
+.bs-persona-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bs-persona-emoji { font-size: 24px; flex-shrink: 0; }
+.bs-persona-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; }
+.bs-persona-vibe { font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.bs-persona-speech {
   padding: 10px 14px;
   border-radius: 12px 12px 12px 4px;
   background: var(--bg);
   font-size: 14px;
   font-weight: 500;
+  font-style: italic;
   color: var(--text-primary);
   line-height: 1.5;
   border: 1px solid var(--border-subtle);
+  position: relative;
 }
 
-.bs-detail-traits {
+.bs-persona-traits {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
 
-.bs-detail-trait {
+.bs-persona-trait {
   padding: 4px 10px;
   border-radius: 16px;
   font-size: 12px;
@@ -641,9 +634,10 @@ button, a, input, textarea {
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
 }
-.bs-detail-trait--accent {
+.bs-persona-trait--accent {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 20%, var(--border-subtle));
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
 }
 
 /* ── Type Toggle (redesigned pills) ── */
@@ -660,11 +654,13 @@ button, a, input, textarea {
 }
 .bt-desc {
   font-size: 11px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+  opacity: 0.65;
   text-align: center;
   line-height: 1.35;
   min-height: 30px;
-  transition: color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .bt-pair {
@@ -703,7 +699,13 @@ button, a, input, textarea {
   z-index: -1;
 }
 
-/* ── Profile bar (gender + birth — always visible) ── */
+/* ── Profile section (gender + birth + saju) ── */
+.bs-profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .bs-profile-bar {
   display: flex;
   align-items: flex-start;
@@ -1314,6 +1316,9 @@ button, a, input, textarea {
 [data-theme="dark"] .bs-cta { background: var(--accent); color: #1c1917; }
 [data-theme="dark"] .bc-send { background: var(--accent); color: #1c1917; }
 [data-theme="dark"] .bs-gen-btn[data-active="true"] { background: var(--accent); color: #1c1917; }
+[data-theme="dark"] .bs-persona-card {
+  background: linear-gradient(165deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 90%, var(--accent)) 100%);
+}
 [data-theme="dark"] .bs-profile-bar {
   background: linear-gradient(165deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 85%, var(--bg)) 100%);
   box-shadow: var(--shadow-sm);

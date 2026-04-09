@@ -246,8 +246,8 @@ export function getAllTypes(): PersonalityType[] {
 
 /** 4축 설명 (토글 UI용) — boss 맥락 힌트 포함 */
 export const AXES = [
-  { key: 'ei' as const, left: { code: 'E', label: '외향', desc: '회의에서 말 많고 즉석 피드백' }, right: { code: 'I', label: '내향', desc: '메일/메시지로 지시, 조용히 관찰' } },
-  { key: 'sn' as const, left: { code: 'S', label: '감각', desc: '숫자·근거·사실 요구' }, right: { code: 'N', label: '직관', desc: '큰 그림·방향성 중시' } },
-  { key: 'tf' as const, left: { code: 'T', label: '사고', desc: '논리로 판단, 감정 별로' }, right: { code: 'F', label: '감정', desc: '분위기·관계 먼저 챙김' } },
-  { key: 'jp' as const, left: { code: 'J', label: '판단', desc: '계획·마감·체계 집착' }, right: { code: 'P', label: '인식', desc: '유연하고 즉흥적, "일단 해봐"' } },
+  { key: 'ei' as const, left: { code: 'E', label: '외향', desc: '회의에서 적극 발언, 즉석 피드백' }, right: { code: 'I', label: '내향', desc: '메일/메시지 지시, 조용히 관찰' } },
+  { key: 'sn' as const, left: { code: 'S', label: '감각', desc: '숫자·근거·사실 기반 판단' }, right: { code: 'N', label: '직관', desc: '큰 그림·방향성 중시' } },
+  { key: 'tf' as const, left: { code: 'T', label: '사고', desc: '논리·효율 우선, 감정은 후순위' }, right: { code: 'F', label: '감정', desc: '분위기·관계 먼저 챙김' } },
+  { key: 'jp' as const, left: { code: 'J', label: '판단', desc: '계획·마감·체계를 중시' }, right: { code: 'P', label: '인식', desc: '유연하고 즉흥적, "일단 해봐"' } },
 ] as const;
