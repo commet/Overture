@@ -606,6 +606,12 @@ export type LLMMode = 'proxy' | 'direct' | 'local';
 export type LLMProvider = 'anthropic' | 'openai' | 'gemini';
 
 export interface Settings {
+  // User profile
+  user_name?: string;
+  user_role?: string;
+  user_seniority?: 'junior' | 'mid' | 'senior' | 'lead';
+  user_context?: string;
+  // LLM
   anthropic_api_key: string;
   openai_api_key: string;
   gemini_api_key: string;

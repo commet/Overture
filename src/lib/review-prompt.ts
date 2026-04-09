@@ -11,6 +11,7 @@
 import { sanitizeForPrompt } from './persona-prompt';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
+import type { Settings } from '@/stores/types';
 
 type Locale = 'ko' | 'en';
 type ReviewMode = 'quick' | 'deep';
@@ -90,6 +91,43 @@ function buildBossBlock(agent: Agent, locale: Locale): string {
   if (agentCtx) lines.push('', agentCtx);
 
   return lines.join('\n');
+}
+
+// ── User profile context ──
+
+function buildUserProfileBlock(locale: Locale): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('sot_settings') : null;
+    if (!raw) return '';
+    const settings: Partial<Settings> = JSON.parse(raw);
+    const { user_name, user_role, user_seniority, user_context } = settings;
+    if (!user_name && !user_role && !user_seniority && !user_context) return '';
+
+    const s = sanitizeForPrompt;
+    const seniorityMap: Record<string, string> = locale === 'ko'
+      ? { junior: '주니어 (1-3년차)', mid: '미들 (4-7년차)', senior: '시니어 (8년차+)', lead: '팀장/리드급' }
+      : { junior: 'Junior (1-3 yrs)', mid: 'Mid-level (4-7 yrs)', senior: 'Senior (8+ yrs)', lead: 'Team Lead' };
+
+    const lines: string[] = [];
+    if (locale === 'ko') {
+      lines.push('[이 문서를 가져온 사람]');
+      if (user_name) lines.push(`- 이름: ${s(user_name)}`);
+      if (user_role) lines.push(`- 역할: ${s(user_role)}`);
+      if (user_seniority) lines.push(`- 경력: ${seniorityMap[user_seniority] || user_seniority}`);
+      if (user_context) lines.push(`- 본인 소개: ${s(user_context)}`);
+      lines.push('→ 이 사람의 수준과 역할에 맞게 피드백의 깊이와 용어를 조절하세요.');
+    } else {
+      lines.push('[About the person who wrote this document]');
+      if (user_name) lines.push(`- Name: ${s(user_name)}`);
+      if (user_role) lines.push(`- Role: ${s(user_role)}`);
+      if (user_seniority) lines.push(`- Experience: ${seniorityMap[user_seniority] || user_seniority}`);
+      if (user_context) lines.push(`- About: ${s(user_context)}`);
+      lines.push('→ Adjust feedback depth and terminology to match this person.');
+    }
+    return '\n' + lines.join('\n');
+  } catch {
+    return '';
+  }
 }
 
 // ── Main prompt builder ──
@@ -175,7 +213,7 @@ ${lengthGuide}
 - ✗ "실행 가능성에 대한 우려가 있습니다" "구조적 개선이 필요합니다"
 - ✓ "이 일정으로 가능해요? 재무팀 데이터 받는 데만 일주일인데요"
 - ✓ "시장 분석은 좋은데, 예산 부분이 좀 약해요. 작년 실적 넣으면 바로 될 것 같아요"
-${bossBlock}
+${bossBlock}${buildUserProfileBlock('ko')}
 ${perspective ? `\n[리뷰 관점] 특히 "${s(perspective)}" 관점에서 집중 검토하세요.` : ''}${intensity ? `\n[리뷰 강도] ${s(intensity)}` : ''}
 
 JSON만 응답하세요:
@@ -248,7 +286,7 @@ ${lengthGuide}
 - ✗ "There are concerns regarding feasibility" "Structural improvements are needed"
 - ✓ "Can this really ship in 2 weeks? The data team alone takes a week"
 - ✓ "The market analysis is solid, but the budget section needs last year's numbers"
-${bossBlock}
+${bossBlock}${buildUserProfileBlock('en')}
 ${perspective ? `\n[Review focus] Pay special attention to "${s(perspective)}".` : ''}${intensity ? `\n[Review intensity] ${s(intensity)}` : ''}
 
 Respond with JSON only:

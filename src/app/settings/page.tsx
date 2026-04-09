@@ -10,7 +10,7 @@ import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode, LLMProvider } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap } from 'lucide-react';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap, User } from 'lucide-react';
 import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 import { useSlackStore } from '@/stores/useSlackStore';
@@ -167,6 +167,80 @@ export default function SettingsPage() {
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">{L('설정', 'Settings')}</h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">{L('LLM 연결 방식과 데이터 관리', 'LLM connection and data management')}</p>
       </div>
+
+      {/* ── My Profile ── */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <User size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[15px] font-bold">{L('내 프로필', 'My Profile')}</h3>
+        </div>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+          {L('AI가 내 역할과 수준에 맞게 피드백 톤과 깊이를 조절합니다.', 'AI adjusts feedback tone and depth based on your role and level.')}
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1 block">{L('이름', 'Name')}</label>
+              <input
+                type="text"
+                value={settings.user_name || ''}
+                onChange={(e) => updateSettings({ user_name: e.target.value })}
+                placeholder={L('홍길동', 'Your name')}
+                maxLength={30}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
+            <div>
+              <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1 block">{L('역할', 'Role')}</label>
+              <input
+                type="text"
+                value={settings.user_role || ''}
+                onChange={(e) => updateSettings({ user_role: e.target.value })}
+                placeholder={L('마케터, 개발자, 기획자...', 'Marketer, Developer...')}
+                maxLength={50}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">{L('경력', 'Experience')}</label>
+            <div className="flex gap-1.5">
+              {([
+                { value: 'junior' as const, label: L('1-3년차', '1-3 yrs') },
+                { value: 'mid' as const, label: L('4-7년차', '4-7 yrs') },
+                { value: 'senior' as const, label: L('8년차+', '8+ yrs') },
+                { value: 'lead' as const, label: L('팀장/리드', 'Lead') },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => updateSettings({ user_seniority: settings.user_seniority === opt.value ? undefined : opt.value })}
+                  className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors cursor-pointer ${
+                    settings.user_seniority === opt.value
+                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                      : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1 block">{L('자유 소개', 'About me')}</label>
+            <textarea
+              value={settings.user_context || ''}
+              onChange={(e) => updateSettings({ user_context: e.target.value })}
+              placeholder={L('예: 스타트업에서 B2B SaaS 마케팅을 담당하고 있어요. 데이터 분석은 좀 약한 편이라 숫자 근거를 잘 챙겨주면 좋겠어요.', 'e.g., I handle B2B SaaS marketing at a startup. I\'m not great with data analysis, so I appreciate help with numbers.')}
+              maxLength={300}
+              rows={3}
+              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2.5 text-[14px] leading-relaxed focus:outline-none focus:border-[var(--accent)] resize-none"
+            />
+          </div>
+        </div>
+      </Card>
 
       {/* LLM Provider */}
       <Card>
