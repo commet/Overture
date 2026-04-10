@@ -129,19 +129,32 @@ export function buildUserContextForReview(locale: 'ko' | 'en'): string {
   const lines: string[] = [];
 
   if (locale === 'ko') {
-    lines.push('[이 문서를 가져온 사람]');
-    if (profile.name) lines.push(`- 이름: ${s(profile.name)}`);
-    if (profile.role) lines.push(`- 역할: ${s(profile.role)}`);
-    if (profile.seniority) lines.push(`- 경력: ${seniorityMap[profile.seniority] || profile.seniority}`);
-    if (profile.context) lines.push(`- 본인 소개: ${s(profile.context)}`);
-    lines.push('→ 이 사람의 수준과 역할에 맞게 피드백의 깊이와 용어를 조절하세요.');
+    lines.push('[이 문서를 작성한 사람]');
+    if (profile.name) lines.push(`- ${s(profile.name)}, ${s(profile.role || '')}${profile.seniority ? `, ${seniorityMap[profile.seniority]}` : ''}`);
+    else if (profile.role) lines.push(`- ${s(profile.role)}${profile.seniority ? `, ${seniorityMap[profile.seniority]}` : ''}`);
+    else if (profile.seniority) lines.push(`- ${seniorityMap[profile.seniority]}`);
+    if (profile.context) lines.push(`- ${s(profile.context)}`);
+    // 경력별 구체적 지시
+    if (profile.seniority === 'junior') {
+      lines.push('→ 전문 용어 대신 쉬운 표현으로. 기본적인 실수도 짚어주세요.');
+    } else if (profile.seniority === 'lead') {
+      lines.push('→ 전략적 관점에서 피드백. 실행 디테일보다 방향성과 임팩트 중심으로.');
+    } else {
+      lines.push('→ 이 사람의 역할에 맞는 깊이로 피드백하세요.');
+    }
   } else {
-    lines.push('[About the person who wrote this document]');
-    if (profile.name) lines.push(`- Name: ${s(profile.name)}`);
-    if (profile.role) lines.push(`- Role: ${s(profile.role)}`);
-    if (profile.seniority) lines.push(`- Experience: ${seniorityMap[profile.seniority] || profile.seniority}`);
-    if (profile.context) lines.push(`- About: ${s(profile.context)}`);
-    lines.push('→ Adjust feedback depth and terminology to match this person.');
+    lines.push('[About the document author]');
+    if (profile.name) lines.push(`- ${s(profile.name)}, ${s(profile.role || '')}${profile.seniority ? `, ${seniorityMap[profile.seniority]}` : ''}`);
+    else if (profile.role) lines.push(`- ${s(profile.role)}${profile.seniority ? `, ${seniorityMap[profile.seniority]}` : ''}`);
+    else if (profile.seniority) lines.push(`- ${seniorityMap[profile.seniority]}`);
+    if (profile.context) lines.push(`- ${s(profile.context)}`);
+    if (profile.seniority === 'junior') {
+      lines.push('→ Use plain language. Point out basic mistakes too.');
+    } else if (profile.seniority === 'lead') {
+      lines.push('→ Focus on strategic impact, not execution details.');
+    } else {
+      lines.push('→ Match feedback depth to this person\'s role.');
+    }
   }
 
   return '\n' + lines.join('\n');
