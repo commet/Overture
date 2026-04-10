@@ -81,24 +81,8 @@ ${sajuSection}
  * 부하직원이 처음 말을 거는 상황.
  */
 export function buildFirstMessageContext(): string {
-  let userBlock = '';
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('sot_settings') : null;
-    if (raw) {
-      const s = JSON.parse(raw);
-      const parts: string[] = [];
-      if (s.user_name) parts.push(`이름: ${s.user_name}`);
-      if (s.user_role) parts.push(`역할: ${s.user_role}`);
-      if (s.user_seniority) {
-        const map: Record<string, string> = { junior: '주니어 (1-3년차)', mid: '미들 (4-7년차)', senior: '시니어 (8년차+)', lead: '팀장/리드급' };
-        parts.push(`경력: ${map[s.user_seniority] || s.user_seniority}`);
-      }
-      if (s.user_context) parts.push(`특이사항: ${s.user_context}`);
-      if (parts.length > 0) {
-        userBlock = `\n\n## 이 부하직원 정보\n${parts.map(p => `- ${p}`).join('\n')}\n이 사람의 경력과 역할에 맞게 대화 수준을 맞추세요.`;
-      }
-    }
-  } catch { /* ignore */ }
+  const { buildUserContextForBoss } = require('@/lib/user-context') as { buildUserContextForBoss: () => string };
+  const userBlock = buildUserContextForBoss();
 
   return `\n\n## 상황
 부하직원이 당신에게 처음 말을 걸었습니다. 평소 성격대로 자연스럽게 반응하세요.${userBlock}`;

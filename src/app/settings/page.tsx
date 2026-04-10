@@ -10,7 +10,8 @@ import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode, LLMProvider } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap, User } from 'lucide-react';
+import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap, User, BarChart3 } from 'lucide-react';
+import { getObservationsSummary } from '@/lib/user-context';
 import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 import { useSlackStore } from '@/stores/useSlackStore';
@@ -240,6 +241,9 @@ export default function SettingsPage() {
             />
           </div>
         </div>
+
+        {/* AI Observations — read-only */}
+        <ObservationsBlock locale={locale} />
       </Card>
 
       {/* LLM Provider */}
@@ -650,6 +654,31 @@ export default function SettingsPage() {
           <Button variant="danger" onClick={handleReset}>{L('삭제', 'Delete')}</Button>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function ObservationsBlock({ locale }: { locale: string }) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const { items, hasData } = useMemo(() => getObservationsSummary(locale as 'ko' | 'en'), [locale]);
+
+  if (!hasData) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <BarChart3 size={12} className="text-[var(--text-tertiary)]" />
+        <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">{L('AI가 관찰한 패턴', 'AI-Observed Patterns')}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item, i) => (
+          <div key={i} className="px-3 py-2 rounded-lg bg-[var(--bg)]">
+            <p className="text-[10px] text-[var(--text-tertiary)] mb-0.5">{item.label}</p>
+            <p className="text-[13px] font-medium text-[var(--text-primary)]">{item.value}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-[var(--text-tertiary)] mt-2">{L('이 정보는 AI가 피드백 깊이를 조절하는 데 자동 사용됩니다.', 'This data is automatically used to adjust AI feedback depth.')}</p>
     </div>
   );
 }
