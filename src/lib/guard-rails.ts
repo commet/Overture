@@ -42,24 +42,34 @@ function checkFirstLineConclusion(text: string): boolean {
 /* ─── Signal Evaluator ─── */
 
 function evaluateSignal(signal: ValidationSignal, output: string): { score: number; passed: boolean } {
+  // perMatchBonus가 있으면 매칭 수에 비례한 점수, 없으면 충족 시 weight 전체 부여.
+  // 개별 시그널 점수는 weight의 2배를 상한으로 cap (전체 score는 runValidationRule에서 100 cap).
+  const cap = signal.weight * 2;
+
   switch (signal.type) {
     case 'keywords': {
       const matches = countMatches(output, signal.patterns || []);
       const met = matches >= (signal.minCount ?? 1);
-      const bonus = signal.perMatchBonus ? matches * signal.perMatchBonus : 0;
-      return { score: met ? Math.min(signal.weight, signal.weight + bonus) : Math.min(signal.weight, bonus), passed: met };
+      const score = signal.perMatchBonus
+        ? Math.min(cap, matches * signal.perMatchBonus)
+        : (met ? signal.weight : 0);
+      return { score, passed: met };
     }
     case 'numeric': {
       const count = countNumericValues(output);
       const met = count >= (signal.minCount ?? 1);
-      const bonus = signal.perMatchBonus ? count * signal.perMatchBonus : 0;
-      return { score: met ? Math.min(signal.weight, bonus || signal.weight) : Math.min(signal.weight, bonus), passed: met };
+      const score = signal.perMatchBonus
+        ? Math.min(cap, count * signal.perMatchBonus)
+        : (met ? signal.weight : 0);
+      return { score, passed: met };
     }
     case 'bullets': {
       const count = countBulletPoints(output);
       const met = count >= (signal.minCount ?? 1);
-      const bonus = signal.perMatchBonus ? count * signal.perMatchBonus : 0;
-      return { score: met ? Math.min(signal.weight, bonus || signal.weight) : Math.min(signal.weight, bonus), passed: met };
+      const score = signal.perMatchBonus
+        ? Math.min(cap, count * signal.perMatchBonus)
+        : (met ? signal.weight : 0);
+      return { score, passed: met };
     }
     case 'first_line_conclusion': {
       const met = checkFirstLineConclusion(output);

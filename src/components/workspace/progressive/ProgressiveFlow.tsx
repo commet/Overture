@@ -25,6 +25,7 @@ import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-engine';
+import { withTranscript } from '@/lib/execution-transcript';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
 import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask, LeadSynthesisResult } from '@/stores/types';
@@ -771,12 +772,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       onError: (id: string, error: string) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
     };
 
+    // Transcript wrapping — 한 번만, 최외곽에서
+    const trackedCallbacks = withTranscript(session.id, workerCallbacks);
+
     const stages = store.currentSession()?.stages;
     const hasMultipleStages = stages && stages.length > 1;
 
     workersRef.current = (hasMultipleStages
-      ? runPipeline(ws, stages, ctx, workerCallbacks, workerAbortRef.current.signal)
-      : runAllAIWorkers(ws, ctx, workerCallbacks, workerAbortRef.current.signal)
+      ? runPipeline(ws, stages, ctx, trackedCallbacks, workerAbortRef.current.signal)
+      : runAllAIWorkers(ws, ctx, trackedCallbacks, workerAbortRef.current.signal)
     ).catch((err) => {
       console.error('[Worker orchestration error]', err);
       if (mountedRef.current) {

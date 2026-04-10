@@ -20,7 +20,7 @@ import { buildSearchContext, type SearchResult } from '@/lib/agent-prompt-builde
 import { gatherToolContext } from '@/lib/agent-tools';
 import { shouldPlan, planTask, executePlan } from '@/lib/agent-planner';
 import { getAvailableCapabilities } from '@/lib/agent-delegator';
-import { withTranscript, appendToTranscript } from '@/lib/execution-transcript';
+import { appendToTranscript } from '@/lib/execution-transcript';
 
 // ─── Context ───
 
@@ -210,9 +210,6 @@ export async function runAllAIWorkers(
   },
   signal?: AbortSignal,
 ): Promise<void> {
-  // Wrap callbacks with transcript recording (no-op if no sessionId)
-  const tracked = withTranscript(context.sessionId, callbacks);
-
   // v2: Include workers that need AI execution:
   // 1. AI agents (agent_type='ai' or legacy who='ai'/'both')
   // 2. Self/Human agents with ai_scope that are in ai_preparing state (AI 보조 분석)
@@ -238,7 +235,7 @@ export async function runAllAIWorkers(
       const worker = queue.shift();
       if (!worker) return;
 
-      tracked.onStart(worker.id);
+      callbacks.onStart(worker.id);
 
       let attempt = 0;
       let finalResult: WorkerTaskResult | null = null;
@@ -248,7 +245,7 @@ export async function runAllAIWorkers(
           const result = await runWorkerTask(
             worker,
             context,
-            (text) => tracked.onStream(worker.id, text),
+            (text) => callbacks.onStream(worker.id, text),
             signal,
           );
 
@@ -266,9 +263,9 @@ export async function runAllAIWorkers(
           }
 
           // 최대 재시도 도달 → 콜백으로 사용자 선택 요청 (30초 타임아웃)
-          if (tracked.onValidationFailed) {
+          if (callbacks.onValidationFailed) {
             const action = await Promise.race([
-              tracked.onValidationFailed(worker.id, result.validation),
+              callbacks.onValidationFailed(worker.id, result.validation),
               new Promise<'accept'>(r => setTimeout(() => r('accept'), 30_000)),
             ]);
             if (action === 'retry') {
@@ -288,13 +285,13 @@ export async function runAllAIWorkers(
           }
         } catch (err) {
           if (signal?.aborted) return;
-          tracked.onError(worker.id, err instanceof Error ? err.message : String(err));
+          callbacks.onError(worker.id, err instanceof Error ? err.message : String(err));
           break;
         }
       }
 
       if (finalResult) {
-        tracked.onComplete(worker.id, finalResult.text, finalResult.validation);
+        callbacks.onComplete(worker.id, finalResult.text, finalResult.validation);
       }
     }
   };
