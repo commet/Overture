@@ -859,7 +859,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 3. Analysis card (v0) */}
             {phaseGte(phase, 'analysis') && currentSnapshot && (
-              <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} />
+              <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} team={scenario.team} />
             )}
 
             {/* Mobile: compact agent bar — hide after draft since sidebar summary / connector takes over */}

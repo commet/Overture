@@ -1198,6 +1198,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               isActive={!mix}
               showExecutionPlan
               locale={locale}
+              team={workers.filter(w => w.persona).map(w => ({ emoji: w.persona!.emoji || '', color: w.persona!.color || '', name: w.persona!.name || '' }))}
             />
           )}
 
