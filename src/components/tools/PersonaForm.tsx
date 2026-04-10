@@ -200,6 +200,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
     decision_style: persona?.decision_style as Persona['decision_style'],
     risk_tolerance: persona?.risk_tolerance as Persona['risk_tolerance'],
     success_metric: persona?.success_metric || '',
+    contact: persona?.contact as { email?: string; slack_id?: string } | undefined,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -239,6 +240,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       decision_style: undefined,
       risk_tolerance: undefined,
       success_metric: '',
+      contact: undefined,
     });
     setStep('review');
   };
@@ -266,6 +268,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         decision_style: undefined,
         risk_tolerance: undefined,
         success_metric: '',
+        contact: undefined,
       });
       setStep('review');
     } catch (err) {
@@ -301,6 +304,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         decision_style: undefined,
         risk_tolerance: undefined,
         success_metric: '',
+        contact: undefined,
       });
       setStep('review');
     } catch (err) {
@@ -577,6 +581,24 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
             value={form.known_concerns} onChange={(e) => handleFieldChange('known_concerns', e.target.value)} />
           <Field label="관계 메모" placeholder="나와의 관계, 보고 빈도 등" maxLength={300}
             value={form.relationship_notes} onChange={(e) => handleFieldChange('relationship_notes', e.target.value)} />
+
+          {/* Contact — for human agent integration */}
+          <div className="pt-2 border-t border-[var(--border-subtle)]">
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">연락처 <span className="font-normal text-[var(--text-tertiary)]">(선택 — 실제 질문 발송용)</span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">📧 이메일</label>
+                <input type="email" value={form.contact?.email || ''} onChange={(e) => setForm(f => ({ ...f, contact: { ...f.contact, email: e.target.value || undefined } }))} placeholder="name@company.com" maxLength={120}
+                  className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">💬 Slack ID</label>
+                <input type="text" value={form.contact?.slack_id || ''} onChange={(e) => setForm(f => ({ ...f, contact: { ...f.contact, slack_id: e.target.value || undefined } }))} placeholder="U0123ABCDEF" maxLength={30}
+                  className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+            </div>
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">입력하면 기획 과정에서 이 사람에게 직접 질문을 보낼 수 있습니다.</p>
+          </div>
 
           {/* Structured persona fields */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">

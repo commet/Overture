@@ -20,6 +20,7 @@ import { buildLeadDecompositionContext, type LeadAgentConfig } from '@/lib/lead-
 import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -851,7 +852,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           leadCtx = buildLeadDecompositionContext(cfg, locale as 'ko' | 'en');
         }
       }
-      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal, leadCtx);
+      const personas = usePersonaStore.getState().personas.filter(p => !p.is_example && !p.deleted_at).map(p => ({ name: p.name, role: p.role, hasContact: !!(p.contact?.email || p.contact?.slack_id) }));
+      const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal, leadCtx, personas.length > 0 ? personas : undefined);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
       // Prepare workers when execution_plan appears
@@ -1049,7 +1051,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           moreLeadCtx = buildLeadDecompositionContext(cfg, locale as 'ko' | 'en');
         }
       }
-      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal, moreLeadCtx);
+      const personas2 = usePersonaStore.getState().personas.filter(p => !p.is_example && !p.deleted_at).map(p => ({ name: p.name, role: p.role, hasContact: !!(p.contact?.email || p.contact?.slack_id) }));
+      const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal, moreLeadCtx, personas2.length > 0 ? personas2 : undefined);
       setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('실패', 'Failed')); store.setPhase('conversing'); setShowMix(true); }

@@ -235,6 +235,7 @@ export async function runDeepening(
   onToken?: (text: string) => void,
   signal?: AbortSignal,
   leadContext?: string,
+  registeredPersonas?: Array<{ name: string; role: string; hasContact: boolean }>,
 ): Promise<{
   snapshot: AnalysisSnapshot;
   question: FlowQuestion | null;
@@ -254,7 +255,7 @@ export async function runDeepening(
     }));
 
   const { system, user } = buildDeepeningPrompt(
-    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale, leadContext,
+    problemText, currentSnapshot, questionsAndAnswers, round, maxRounds, availableAgents, locale, leadContext, registeredPersonas,
   );
 
   const result = onToken

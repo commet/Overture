@@ -212,6 +212,11 @@ export interface FeedbackLog {
   created_at: string;
 }
 
+export interface PersonaContact {
+  email?: string;
+  slack_id?: string;
+}
+
 export interface Persona {
   id: string;
   name: string;
@@ -228,6 +233,8 @@ export interface Persona {
   extracted_traits: string[];
   /** 사용자가 자연어로 서술한 원본 설명. 프롬프트에 그대로 주입하여 시뮬레이션 정확도 높임. */
   user_description?: string;
+  /** 실제 연락처 — human agent로 질문 발송 시 사용 */
+  contact?: PersonaContact;
   feedback_logs: FeedbackLog[];
   is_example?: boolean;
   deleted_at?: string | null;

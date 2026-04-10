@@ -8,6 +8,7 @@ import type { WorkerTask } from '@/stores/types';
 import { resolveAgentType } from '@/stores/types';
 import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useLocale } from '@/hooks/useLocale';
 import { recordHitReaction } from '@/lib/hit-rate';
 import { recordStrategyOutcome } from '@/lib/context-strategy';
@@ -464,6 +465,36 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
                 </button>
               )}
             </div>
+
+            {/* Simulation vs Reality comparison (human workers with matching persona) */}
+            {aTypeInit === 'human' && worker.status === 'done' && worker.result && worker.contact?.name && (() => {
+              const personaStore = usePersonaStore.getState();
+              const matchedPersona = personaStore.personas.find(p =>
+                !p.deleted_at && p.name === worker.contact?.name
+              );
+              // Find most recent feedback that mentions this persona
+              const feedbackHistory = personaStore.feedbackHistory || [];
+              const simulation = feedbackHistory.find((fr: { persona_ids?: string[]; results?: Array<{ persona_id: string; overall_reaction: string }> }) =>
+                matchedPersona && fr.persona_ids?.includes(matchedPersona.id)
+              );
+              const simResult = simulation?.results?.find((r: { persona_id: string }) => r.persona_id === matchedPersona?.id) as { overall_reaction?: string } | undefined;
+              if (!simResult) return null;
+              return (
+                <div className="mt-3 rounded-xl border border-purple-200 bg-purple-50/30 p-3">
+                  <p className="text-[10px] font-bold text-purple-600 mb-2">{L('시뮬레이션 vs 실제 응답', 'Simulation vs Reality')}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[9px] font-medium text-purple-500 mb-1">{L('AI 시뮬레이션', 'AI Simulation')}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] line-clamp-4">{simResult.overall_reaction}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-medium text-emerald-600 mb-1">{L('실제 응답', 'Actual Response')}</p>
+                      <p className="text-[11px] text-[var(--text-primary)] line-clamp-4">{worker.result.slice(0, 200)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Approve / Reject actions */}
             {(onApprove || onReject) && (

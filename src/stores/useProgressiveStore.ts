@@ -475,6 +475,25 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         decision: pw.decision || undefined,
         ai_preliminary: null,
         question_to_human: pw.questionToHuman || undefined,
+        // Auto-match contact from registered personas
+        contact: (() => {
+          if (pw.agentType !== 'human') return undefined;
+          const hint = pw.humanContactHint?.toLowerCase() || '';
+          const { usePersonaStore: pStore } = require('@/stores/usePersonaStore');
+          const personas = pStore?.getState?.()?.personas || [];
+          const match = personas.find((p: { name: string; role: string; contact?: { email?: string; slack_id?: string }; deleted_at?: string | null }) =>
+            !p.deleted_at && (p.contact?.email || p.contact?.slack_id) &&
+            (p.name.toLowerCase().includes(hint) || p.role.toLowerCase().includes(hint) || hint.includes(p.name.toLowerCase()))
+          );
+          if (match?.contact) {
+            return {
+              name: match.name,
+              channel: match.contact.slack_id ? 'slack' as const : 'email' as const,
+              address: match.contact.slack_id || match.contact.email || '',
+            };
+          }
+          return undefined;
+        })(),
         snapshot_version: snapshotVersion,
       };
     });
