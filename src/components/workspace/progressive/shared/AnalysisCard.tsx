@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, AlertTriangle } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { AnalysisSnapshot } from '@/stores/types';
 import { EASE } from './constants';
 import { diffItems } from './diffItems';
@@ -35,7 +35,7 @@ interface AnalysisCardProps {
   isActive?: boolean;
   showExecutionPlan?: boolean;
   locale?: 'ko' | 'en';
-  /** Team avatars for attribution — shows "분석 팀 조사 반영" */
+  /** Team avatars for attribution */
   team?: Array<{ emoji: string; color: string; name: string }>;
 }
 
@@ -141,164 +141,138 @@ export function AnalysisCard({
               )}
             </AnimatePresence>
 
-            {/* ═══ Redesigned: Blindspots → Bridge → Skeleton ═══ */}
-            <div className="space-y-0">
+            {/* ═══ Compact Blindspot Callout + Step Flow ═══ */}
 
-              {/* ─── Team Attribution Bar ─── */}
-              {team && team.length > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.4 }}
-                  className="flex items-center gap-2.5 mb-5 py-2 px-3.5 rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10">
-                  <div className="flex -space-x-1.5">
-                    {team.slice(0, 4).map((t, i) => (
-                      <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] border-[1.5px] border-[var(--surface)]"
-                        style={{ backgroundColor: t.color + '25' }}>{t.emoji}</div>
-                    ))}
-                  </div>
-                  <span className="text-[11px] font-medium text-[var(--accent)]/70">
-                    {L('분석 팀 조사 결과 반영', 'Analysis team findings reflected')}
-                  </span>
+            {/* ─── Blindspots: Single compact callout block ─── */}
+            <AnimatePresence>
+              {removedAssumptions.map((d, i) => (
+                <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.8, ease: EASE }}
+                  className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                  <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">−</span>
+                  <span>{d.text}</span>
                 </motion.div>
-              )}
+              ))}
+            </AnimatePresence>
 
-              {/* ─── Blindspots: Warning Cards ─── */}
-              <AnimatePresence>
-                {removedAssumptions.map((d, i) => (
-                  <motion.div key={`removed-a-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{ duration: 0.8, ease: EASE }}
-                    className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden px-4 py-2 mb-1">
-                    <span className="text-red-300 text-[9px] font-bold shrink-0 mt-0.5">−</span>
-                    <span>{d.text}</span>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {activeAssumptions.length > 0 && (
-                <div className="mb-2">
-                  {/* Section header */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-[22px] h-[22px] rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <AlertTriangle size={12} className="text-amber-500/80" />
-                    </div>
-                    <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                      {L('놓치기 쉬운 것', 'Hidden Assumptions')}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-tertiary)]">
-                      {activeAssumptions.length}
-                    </span>
-                  </div>
-
-                  {/* Warning cards */}
-                  <div className="space-y-2.5">
-                    {activeAssumptions.map((d, i) => (
-                      <motion.div key={`${snapshot.version}-a${i}`}
-                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08, duration: 0.4, ease: EASE }}
-                        className={`rounded-xl border-l-[3px] transition-colors duration-1000 ${
-                          d.status === 'new'
-                            ? 'border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/15'
-                            : 'border-l-amber-300/40 bg-amber-50/25 dark:bg-amber-950/8'
-                        }`}>
-                        <div className="flex items-start gap-3 px-4 py-3.5">
-                          <span className={`text-[18px] leading-none shrink-0 mt-0.5 select-none ${
-                            d.status === 'new' ? 'text-amber-500' : 'text-amber-400/50'
-                          }`}>!</span>
-                          <p className="text-[13px] md:text-[14px] text-[var(--text-primary)] leading-[1.7]">
-                            {renderText(d.text)}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ─── Bridge: Visual Connection ─── */}
-              {activeAssumptions.length > 0 && activeSkeleton.length > 0 && (
-                <div className="flex items-center gap-3 py-4">
-                  <div className="h-px flex-1 bg-gradient-to-r from-amber-300/25 via-[var(--border-subtle)] to-[var(--accent)]/25" />
-                  <span className="text-[10px] font-bold text-[var(--text-tertiary)]/60 uppercase tracking-[0.12em] whitespace-nowrap select-none">
-                    {L('이 함정을 넘어서', 'Navigating these')} ↓
+            {activeAssumptions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="mb-6 rounded-xl bg-amber-50/40 dark:bg-amber-950/10 border border-amber-200/25 dark:border-amber-800/15 overflow-hidden">
+                {/* Callout header */}
+                <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                  <span className="text-amber-500 text-[15px] leading-none select-none">&#9888;</span>
+                  <span className="text-[12px] font-bold text-amber-700/80 dark:text-amber-400/80 tracking-tight">
+                    {L('시작 전에 알아둘 것', 'Before you begin')}
                   </span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-amber-300/25 via-[var(--border-subtle)] to-[var(--accent)]/25" />
+                  {team && team.length > 0 && (
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <span className="flex -space-x-1">
+                        {team.slice(0, 3).map((t, i) => (
+                          <span key={i} className="inline-flex w-4 h-4 rounded-full items-center justify-center text-[7px] border border-amber-100 dark:border-amber-900/30"
+                            style={{ backgroundColor: t.color + '20' }}>{t.emoji}</span>
+                        ))}
+                      </span>
+                      <span className="text-[10px] text-amber-600/50 dark:text-amber-400/40">
+                        {L('팀 조사', 'team')}
+                      </span>
+                    </span>
+                  )}
                 </div>
-              )}
+                {/* Compact numbered items */}
+                <div className="px-4 pb-3.5 space-y-0">
+                  {activeAssumptions.map((d, i) => (
+                    <motion.div key={`${snapshot.version}-a${i}`}
+                      initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06, duration: 0.35, ease: EASE }}
+                      className={`flex items-baseline gap-2.5 py-2 transition-colors duration-1000 ${
+                        i < activeAssumptions.length - 1 ? 'border-b border-amber-200/15 dark:border-amber-800/10' : ''
+                      } ${d.status === 'new' ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                      <span className={`text-[11px] font-bold tabular-nums shrink-0 ${
+                        d.status === 'new' ? 'text-amber-500' : 'text-amber-400/40'
+                      }`}>{i + 1}</span>
+                      <p className="text-[13px] leading-[1.65]">{renderText(d.text)}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
-              {/* ─── Skeleton: Step Timeline ─── */}
-              <AnimatePresence>
-                {removedSkeleton.map((d, i) => (
-                  <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{ duration: 0.8, ease: EASE }}
-                    className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden px-4 py-2 mb-1">
-                    <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">−</span>
-                    <span>{d.text}</span>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+            {/* ─── Skeleton: The main event — step flow ─── */}
+            <AnimatePresence>
+              {removedSkeleton.map((d, i) => (
+                <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.8, ease: EASE }}
+                  className="flex items-start gap-2 text-[12px] text-red-300 line-through leading-relaxed overflow-hidden">
+                  <span className="text-red-300 font-mono text-[9px] shrink-0 mt-1">−</span>
+                  <span>{d.text}</span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
-              {activeSkeleton.length > 0 && (
-                <div>
-                  {/* Section header */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-[22px] h-[22px] rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
-                      <span className="text-[var(--accent)] text-[11px] font-bold">#</span>
-                    </div>
-                    <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                      {L('뼈대', 'Structure')}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-tertiary)]">
-                      {activeSkeleton.length}{L('단계', ' steps')}
-                    </span>
-                  </div>
-
-                  {/* Timeline */}
-                  <div className="relative ml-1">
-                    {/* Vertical connecting line */}
-                    {activeSkeleton.length > 1 && (
-                      <div className="absolute left-[13px] top-[20px] bottom-[20px] w-px bg-[var(--accent)]/12" />
-                    )}
-
-                    <div className="space-y-3">
-                      {activeSkeleton.map((d, i) => {
-                        const { prefix, body } = splitSkeleton(d.text);
-                        return (
-                          <motion.div key={`${snapshot.version}-s${i}`}
-                            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.07, duration: 0.4, ease: EASE }}
-                            className="flex gap-3.5 relative">
-                            {/* Step number circle */}
-                            <div className="shrink-0 relative z-10 pt-0.5">
-                              <div className={`w-[28px] h-[28px] rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-500 ${
-                                d.status === 'new'
-                                  ? 'bg-[var(--accent)] text-white shadow-sm shadow-[var(--accent)]/25'
-                                  : 'bg-[var(--surface)] border-2 border-[var(--accent)]/20 text-[var(--accent)]'
+            {activeSkeleton.length > 0 && (
+              <div>
+                {activeSkeleton.map((d, i) => {
+                  const { prefix, body } = splitSkeleton(d.text);
+                  const isLast = i === activeSkeleton.length - 1;
+                  return (
+                    <motion.div key={`${snapshot.version}-s${i}`}
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07, duration: 0.4, ease: EASE }}
+                      className={`relative transition-colors duration-1000 ${!isLast ? 'border-b border-[var(--border-subtle)]/60' : ''}`}>
+                      <div className={`flex gap-4 py-4 ${i === 0 ? 'pt-1' : ''}`}>
+                        {/* Step indicator */}
+                        <div className="shrink-0 pt-0.5">
+                          <span className={`inline-flex items-center justify-center w-[26px] h-[26px] rounded-lg text-[12px] font-bold transition-all duration-500 ${
+                            d.status === 'new'
+                              ? 'bg-[var(--accent)] text-white'
+                              : 'bg-[var(--accent)]/8 text-[var(--accent)]/70'
+                          }`}>
+                            {i + 1}
+                          </span>
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          {prefix ? (
+                            <>
+                              <h4 className={`text-[15px] md:text-[16px] font-bold tracking-tight mb-1 transition-colors duration-500 ${
+                                d.status === 'new' ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]'
                               }`}>
-                                {i + 1}
-                              </div>
-                            </div>
-                            {/* Step content card */}
-                            <div className={`flex-1 rounded-xl px-4 py-3 border transition-all duration-1000 ${
-                              d.status === 'new'
-                                ? 'bg-[var(--accent)]/[0.04] border-[var(--accent)]/12 shadow-sm shadow-[var(--accent)]/5'
-                                : 'bg-[var(--bg)]/40 border-transparent'
-                            }`}>
-                              {prefix && (
-                                <h4 className="text-[14px] md:text-[15px] font-bold text-[var(--text-primary)] mb-1 tracking-tight">
-                                  {prefix}
-                                </h4>
-                              )}
-                              <p className="text-[13px] text-[var(--text-secondary)] leading-[1.7]">
+                                {prefix}
+                              </h4>
+                              <p className="text-[13px] md:text-[14px] text-[var(--text-secondary)] leading-[1.7]">
                                 {renderText(body)}
                               </p>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+                            </>
+                          ) : (
+                            <p className="text-[13px] md:text-[14px] text-[var(--text-primary)] leading-[1.7]">
+                              {renderText(body)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
 
-            </div>
+            {/* Team attribution — bottom, only if no blindspots showed it */}
+            {team && team.length > 0 && activeAssumptions.length === 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                className="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--border-subtle)]/50">
+                <div className="flex -space-x-1">
+                  {team.slice(0, 3).map((t, i) => (
+                    <span key={i} className="inline-flex w-4 h-4 rounded-full items-center justify-center text-[7px] border border-[var(--surface)]"
+                      style={{ backgroundColor: t.color + '20' }}>{t.emoji}</span>
+                  ))}
+                </div>
+                <span className="text-[10px] text-[var(--text-tertiary)]">
+                  {L('분석 팀 조사 결과 반영', 'Analysis team findings reflected')}
+                </span>
+              </motion.div>
+            )}
 
             {/* Execution plan footer — workspace only */}
             <AnimatePresence>
