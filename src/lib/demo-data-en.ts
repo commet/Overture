@@ -976,7 +976,7 @@ const scenario3: DemoScenario = {
       persona: HYUNWOO,
       task: 'Develop response strategy scenarios',
       completionNote: 'Three scenarios mapped out.',
-      result: '**Bottom line: "Don\'t cut prices — raise value" is the winning strategy.**\n\n- Scenario A (Match the cut): Revenue holds, margins drop 40%, risk of losses within 6 months\n- Scenario B (Differentiate): Accept 5-10% churn, maintain margins, increase per-customer value\n- Scenario C (Selective discounts): 15% discount only for at-risk customers, minimize margin impact',
+      result: '**Bottom line: "Don\'t cut prices — raise value" is the winning strategy.**\n\n- Scenario A (Match the cut): Revenue holds, margins drop 75%, near-breakeven within months\n- Scenario B (Differentiate): Accept 5-10% churn, maintain margins, increase per-customer value\n- Scenario C (Selective discounts): 15% discount only for at-risk customers, minimize margin impact',
     },
     {
       persona: DONGHYUK,
@@ -1087,7 +1087,7 @@ Instead of a blanket price cut, we respond with **service differentiation.** Tar
 | | Match the Cut | Differentiate (Recommended) | Selective Discounts |
 |--|--------------|---------------------------|-------------------|
 | Churn | Minimal | 5-10% | 3-5% |
-| Margins | 40% decline | Maintained | Slight decline |
+| Margins | 75% decline | Maintained | Slight decline |
 | In 6 months | Risk of losses | Stronger position | Stable |
 <!-- PATCH_1 -->
 
