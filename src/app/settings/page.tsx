@@ -4,65 +4,31 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { clearAllStorage, STORAGE_KEYS, getStorage } from '@/lib/storage';
 import { downloadJson } from '@/lib/export';
 import { deleteAllUserData } from '@/lib/db';
 import type { LLMMode, LLMProvider } from '@/stores/types';
-import { Key, Download, Upload, Trash2, Eye, EyeOff, Server, Cpu, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, Zap, User, BarChart3 } from 'lucide-react';
+import { Download, Upload, Trash2, Eye, EyeOff, Server, Globe, Check, Volume2, TrendingUp, Brain, MessageSquare, Unlink, User, BarChart3 } from 'lucide-react';
 import { getObservationsSummary } from '@/lib/user-context';
 import { assessLearningHealth } from '@/lib/learning-health';
 import { playTransitionTone, resumeAudioContext, startAmbient, stopAmbient, isAmbientPlaying } from '@/lib/audio';
 import { useSlackStore } from '@/stores/useSlackStore';
 import { useLocale } from '@/hooks/useLocale';
 
-function buildLlmProviders(L: (ko: string, en: string) => string): { value: LLMProvider; label: string; description: string; icon: React.ReactNode }[] {
+function buildLlmProviders(L: (ko: string, en: string) => string) {
   return [
-    {
-      value: 'anthropic',
-      label: 'Anthropic (Claude)',
-      description: L('Claude Sonnet 4 — 프록시 또는 직접 API 키', 'Claude Sonnet 4 — proxy or direct API key'),
-      icon: <Server size={16} />,
-    },
-    {
-      value: 'openai',
-      label: 'OpenAI (GPT-4o)',
-      description: L('본인의 OpenAI API 키 사용. 사용량 제한 없음.', 'Use your own OpenAI API key. No usage limits.'),
-      icon: <Zap size={16} />,
-    },
-    {
-      value: 'gemini',
-      label: 'Google (Gemini 2.5 Flash)',
-      description: L('본인의 Google AI API 키 사용. 사용량 제한 없음.', 'Use your own Google AI API key. No usage limits.'),
-      icon: <Zap size={16} />,
-    },
+    { value: 'anthropic' as LLMProvider, label: 'Claude', description: L('Claude Sonnet 4 — 프록시 또는 직접 API 키', 'Claude Sonnet 4 — proxy or direct API key') },
+    { value: 'openai' as LLMProvider, label: 'GPT-4o', description: L('본인의 OpenAI API 키 사용', 'Use your own OpenAI API key') },
+    { value: 'gemini' as LLMProvider, label: 'Gemini', description: L('본인의 Google AI API 키 사용', 'Use your own Google AI API key') },
   ];
 }
 
-function buildLlmModes(L: (ko: string, en: string) => string): { value: LLMMode; label: string; description: string; icon: React.ReactNode; available: boolean }[] {
+function buildLlmModes(L: (ko: string, en: string) => string) {
   return [
-    {
-      value: 'proxy',
-      label: L('서버 프록시 (권장)', 'Server Proxy (Recommended)'),
-      description: L('API 키 없이 바로 사용. 일일 사용량 제한 있음.', 'Use instantly without an API key. Daily usage limits apply.'),
-      icon: <Globe size={16} />,
-      available: true,
-    },
-    {
-      value: 'direct',
-      label: L('직접 API 키', 'Direct API Key'),
-      description: L('본인의 Anthropic API 키 사용. 사용량 제한 없음.', 'Use your own Anthropic API key. No usage limits.'),
-      icon: <Key size={16} />,
-      available: true,
-    },
-    {
-      value: 'local',
-      label: L('로컬 모델 (Ollama)', 'Local Model (Ollama)'),
-      description: L('로컬 LLM 엔드포인트에 연결. 완전한 프라이버시.', 'Connect to a local LLM endpoint. Full privacy.'),
-      icon: <Cpu size={16} />,
-      available: false,
-    },
+    { value: 'proxy' as LLMMode, label: L('프록시', 'Proxy'), description: L('API 키 없이 바로 사용 (권장)', 'Use without API key (recommended)'), available: true },
+    { value: 'direct' as LLMMode, label: L('직접 키', 'Direct Key'), description: L('본인의 API 키 사용. 제한 없음', 'Use your own API key. No limits'), available: true },
+    { value: 'local' as LLMMode, label: L('로컬', 'Local'), description: L('Ollama 로컬 엔드포인트', 'Ollama local endpoint'), available: false },
   ];
 }
 
@@ -253,79 +219,58 @@ export default function SettingsPage() {
           <h3 className="text-[15px] font-bold">{L('AI 엔진', 'AI Engine')}</h3>
         </div>
 
-        {/* Provider selection */}
-        <div className="space-y-2">
+        {/* Provider — compact segmented control */}
+        <div className="flex gap-1.5">
           {llmProviders.map((provider) => (
             <button
               key={provider.value}
               onClick={() => handleProviderChange(provider.value)}
-              className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
+              className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors cursor-pointer ${
                 (settings.llm_provider || 'anthropic') === provider.value
-                  ? 'border-[var(--accent)] bg-[var(--ai)]'
-                  : 'border-[var(--border)] hover:border-[var(--accent)]'
+                  ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
               }`}
             >
-              <div className={`mt-0.5 ${(settings.llm_provider || 'anthropic') === provider.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                {provider.icon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[var(--text-primary)]">{provider.label}</span>
-                  {(settings.llm_provider || 'anthropic') === provider.value && <Check size={14} className="text-[var(--accent)]" />}
-                </div>
-                <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{provider.description}</p>
-              </div>
+              {provider.label}
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
+          {llmProviders.find(p => p.value === (settings.llm_provider || 'anthropic'))?.description}
+        </p>
 
-        {/* Anthropic connection mode */}
+        {/* Anthropic connection mode — compact segmented control */}
         {(settings.llm_provider || 'anthropic') === 'anthropic' && (
-          <div className="animate-fade-in">
-            <div className="border-t border-[var(--border-subtle)] my-4" />
-            <h4 className="text-[13px] font-semibold text-[var(--text-secondary)] mb-2">{L('연결 방식', 'Connection Mode')}</h4>
-            <div className="space-y-2">
+          <div className="animate-fade-in mt-4">
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">{L('연결 방식', 'Connection Mode')}</label>
+            <div className="flex gap-1.5">
               {llmModes.map((mode) => (
                 <button
                   key={mode.value}
                   onClick={() => handleModeChange(mode.value)}
                   disabled={!mode.available}
-                  className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
+                  className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors ${
                     settings.llm_mode === mode.value
-                      ? 'border-[var(--accent)] bg-[var(--ai)]'
+                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)] cursor-pointer'
                       : mode.available
-                      ? 'border-[var(--border)] hover:border-[var(--accent)]'
-                      : 'border-[var(--border)] opacity-50 cursor-not-allowed'
+                      ? 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer'
+                      : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-50 cursor-not-allowed'
                   }`}
                 >
-                  <div className={`mt-0.5 ${settings.llm_mode === mode.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                    {mode.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-semibold text-[var(--text-primary)]">{mode.label}</span>
-                      {settings.llm_mode === mode.value && <Check size={14} className="text-[var(--accent)]" />}
-                      {!mode.available && <Badge variant="default">Coming soon</Badge>}
-                    </div>
-                    <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{mode.description}</p>
-                  </div>
+                  {mode.label}
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
+              {llmModes.find(m => m.value === settings.llm_mode)?.description}
+            </p>
           </div>
         )}
 
         {/* Anthropic API Key */}
         {(settings.llm_provider || 'anthropic') === 'anthropic' && settings.llm_mode === 'direct' && (
-          <div className="animate-fade-in">
-            <div className="border-t border-[var(--border-subtle)] my-4" />
-            <div className="flex items-center gap-2 mb-2">
-              <Key size={14} className="text-[var(--text-secondary)]" />
-              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">Anthropic API Key</h4>
-            </div>
-            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
-              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
-            </p>
+          <div className="animate-fade-in mt-4">
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">Anthropic API Key</label>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -350,15 +295,8 @@ export default function SettingsPage() {
 
         {/* OpenAI API Key + Model */}
         {(settings.llm_provider || 'anthropic') === 'openai' && (
-          <div className="animate-fade-in">
-            <div className="border-t border-[var(--border-subtle)] my-4" />
-            <div className="flex items-center gap-2 mb-2">
-              <Key size={14} className="text-[var(--text-secondary)]" />
-              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">OpenAI API Key</h4>
-            </div>
-            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
-              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
-            </p>
+          <div className="animate-fade-in mt-4">
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">OpenAI API Key</label>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -398,15 +336,8 @@ export default function SettingsPage() {
 
         {/* Gemini API Key + Model */}
         {(settings.llm_provider || 'anthropic') === 'gemini' && (
-          <div className="animate-fade-in">
-            <div className="border-t border-[var(--border-subtle)] my-4" />
-            <div className="flex items-center gap-2 mb-2">
-              <Key size={14} className="text-[var(--text-secondary)]" />
-              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">Google AI API Key</h4>
-            </div>
-            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
-              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
-            </p>
+          <div className="animate-fade-in mt-4">
+            <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">Google AI API Key</label>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
