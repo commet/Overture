@@ -687,8 +687,31 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           table: 'progressive_sessions',
           filter: `id=eq.${session.id}`,
         }, (payload) => {
-          // Remote update detected — reload sessions to get fresh data
-          if (payload.new && mountedRef.current) {
+          // Remote update — per-worker patch instead of full session overwrite
+          // Only applies human response arrivals; preserves local AI worker progress
+          if (!payload.new || !mountedRef.current) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const remoteData = (payload.new as any)?.data;
+          if (remoteData?.workers && Array.isArray(remoteData.workers)) {
+            const localWorkers = store.currentSession()?.workers ?? [];
+            let patched = false;
+            for (const rw of remoteData.workers) {
+              const lw = localWorkers.find(w => w.id === rw.id);
+              if (lw && rw.status === 'done' && lw.status !== 'done' && rw.human_input) {
+                store.updateWorker(rw.id, {
+                  status: 'done',
+                  result: rw.result,
+                  human_input: rw.human_input,
+                  response_at: rw.response_at,
+                  completed_at: rw.completed_at,
+                  approved: rw.approved ?? true,
+                });
+                patched = true;
+              }
+            }
+            // Fallback: if no per-worker patch matched, reload fully (e.g., remote schema changed)
+            if (!patched) store.loadSessions();
+          } else {
             store.loadSessions();
           }
         })
@@ -812,9 +835,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
               .then(r => r.json())
               .then(r => {
-                if (r.ok) store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
+                if (r.ok) {
+                  store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
+                } else {
+                  store.updateWorker(hw.id, { status: 'error', error: `발송 실패: ${r.error || '알 수 없는 오류'}` });
+                }
               })
-              .catch(() => { /* fail silently */ });
+              .catch(() => {
+                store.updateWorker(hw.id, { status: 'error', error: '네트워크 오류로 발송하지 못했습니다' });
+              });
           }
         });
       });

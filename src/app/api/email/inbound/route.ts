@@ -92,20 +92,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unknown or expired reply token' }, { status: 404 });
   }
 
-  // Atomic JSONB update — avoids read-modify-write race condition
+  // Idempotency: claim this message by atomically updating status sent→responded.
+  // If another webhook already processed it, 0 rows updated → skip RPC.
   const safeResponse = responseText.slice(0, 10000);
-  await admin.rpc('update_worker_response', {
-    p_session_id: tracked.session_id,
-    p_worker_id: tracked.worker_id,
-    p_response: safeResponse,
-  });
-
-  // Mark message as responded
-  await admin
+  const { data: claimed } = await admin
     .from('human_agent_messages')
     .update({ status: 'responded', response_text: safeResponse, responded_at: new Date().toISOString() })
     .eq('session_id', tracked.session_id)
-    .eq('worker_id', tracked.worker_id);
+    .eq('worker_id', tracked.worker_id)
+    .eq('status', 'sent')
+    .select('session_id')
+    .maybeSingle();
+
+  if (claimed) {
+    await admin.rpc('update_worker_response', {
+      p_session_id: tracked.session_id,
+      p_worker_id: tracked.worker_id,
+      p_response: safeResponse,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

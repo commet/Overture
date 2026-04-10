@@ -79,19 +79,25 @@ export async function POST(req: NextRequest) {
       if (tracked) {
         const responseText = (event.text || '').slice(0, 10000);
 
-        // Atomic JSONB update — avoids read-modify-write race condition
-        await admin.rpc('update_worker_response', {
-          p_session_id: tracked.session_id,
-          p_worker_id: tracked.worker_id,
-          p_response: responseText,
-        });
-
-        // Mark message as responded
-        await admin
+        // Idempotency: claim this message by atomically updating status sent→responded.
+        // If another webhook already processed it, 0 rows updated → skip RPC.
+        const { data: claimed } = await admin
           .from('human_agent_messages')
           .update({ status: 'responded', response_text: responseText, responded_at: new Date().toISOString() })
           .eq('session_id', tracked.session_id)
-          .eq('worker_id', tracked.worker_id);
+          .eq('worker_id', tracked.worker_id)
+          .eq('status', 'sent')
+          .select('session_id')
+          .maybeSingle();
+
+        if (claimed) {
+          // First processor — execute RPC
+          await admin.rpc('update_worker_response', {
+            p_session_id: tracked.session_id,
+            p_worker_id: tracked.worker_id,
+            p_response: responseText,
+          });
+        }
       }
     }
   }
