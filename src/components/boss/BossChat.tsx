@@ -304,8 +304,8 @@ export function BossChat() {
           </div>
           <div className="bc-identity">
             <div className="bc-name-row">
-              <strong className="bc-name">{typeCode}</strong>
-              <span className="bc-type-name">{typeData?.name}</span>
+              <strong className="bc-name">{typeData?.name || typeCode}</strong>
+              <span className="bc-type-name">{typeCode}</span>
             </div>
             <span className="bc-vibe" style={{
               color: bossMood === 'warming' ? 'var(--success)' : bossMood === 'cooling' ? 'var(--danger)' : undefined,
