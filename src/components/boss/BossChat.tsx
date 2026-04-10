@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, RotateCcw, Bookmark, Check, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { ChatMessage } from './ChatMessage';
+import { PostVerdictPanel } from './PostVerdictPanel';
+import { VerdictShareCard } from './VerdictShareCard';
+import { recordCollection } from './CollectionProgress';
 import { useBossStore } from '@/stores/useBossStore';
 import { callLLMStream } from '@/lib/llm';
 import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext, type BossMood } from '@/lib/boss/boss-prompt';
@@ -147,6 +150,7 @@ export function BossChat() {
   const [bossState, setBossState] = useState<'idle' | 'reading' | 'typing'>('idle');
   const [calibrationStep, setCalibrationStep] = useState<'none' | 'similarity' | 'detail' | 'done'>('none');
   const [bossMood, setBossMood] = useState<BossMood>('neutral');
+  const [shareMode, setShareMode] = useState(false);
   const [verdict, setVerdict] = useState<{ verdict: string; reason: string; tip?: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -230,6 +234,16 @@ export function BossChat() {
             try {
               const parsed = JSON.parse(jsonMatch[0]);
               setVerdict({ verdict: parsed.verdict, reason: parsed.reason || '', tip: parsed.tip });
+              // Record to collection
+              const tc = `${useBossStore.getState().axes.ei}${useBossStore.getState().axes.sn}${useBossStore.getState().axes.tf}${useBossStore.getState().axes.jp}`;
+              const tp = getType(tc);
+              recordCollection({
+                typeCode: tc,
+                verdict: parsed.verdict,
+                situation: useBossStore.getState().lastSituation,
+                completedAt: new Date().toISOString(),
+                emoji: tp?.emoji || '👔',
+              });
             } catch { /* JSON 파싱 실패 시 무시 */ }
             const clean = raw.replace(jsonMatch[0], '').trim();
             useBossStore.getState().updateStreamingText(clean);
@@ -429,6 +443,20 @@ export function BossChat() {
             </div>
           </motion.div>
         )}
+
+        {/* Post-verdict actions */}
+        {verdict && !isStreaming && !shareMode && (
+          <PostVerdictPanel verdict={verdict} onShare={() => setShareMode(true)} />
+        )}
+        {verdict && shareMode && (
+          <VerdictShareCard
+            verdict={verdict}
+            typeCode={typeCode}
+            situation={useBossStore.getState().lastSituation}
+            onClose={() => setShareMode(false)}
+          />
+        )}
+
         <div ref={chatEndRef} />
       </div>
 

@@ -8,6 +8,7 @@ import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { ArrowRight } from 'lucide-react';
 import { SajuPreview } from './SajuPreview';
+import { CollectionProgress } from './CollectionProgress';
 
 const EXAMPLE_SITUATIONS = [
   '연봉 협상을 하고 싶은데요',
@@ -77,6 +78,9 @@ export function BossSetup() {
         </h1>
         <p className="bs-sub">미리 시뮬레이션 해봐. 진짜 뭐라 하는지.</p>
       </motion.div>
+
+      {/* ── Collection progress ── */}
+      <CollectionProgress />
 
       {/* ── MBTI selector ── */}
       <motion.div className="bs-type-section" variants={fadeUp}>

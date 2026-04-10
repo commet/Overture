@@ -125,6 +125,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   const progressiveStore = useProgressiveStore();
   const phaseRef = React.useRef<HeroPhase>('idle');
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchParams = useSearchParams();
 
   // Keep ref in sync for use inside async callback
   phaseRef.current = phase;
@@ -133,6 +134,15 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   React.useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
+
+  // Auto-select demo scenario from ?demo= query param
+  React.useEffect(() => {
+    const demoId = searchParams.get('demo');
+    if (demoId && !demoScenario) {
+      const matched = demoScenarios.find(s => s.id === demoId);
+      if (matched) setDemoScenario(matched);
+    }
+  }, [searchParams, demoScenarios, demoScenario]);
 
   const handleSubmit = async (directText?: string) => {
     const text = (directText || problemInput).trim();

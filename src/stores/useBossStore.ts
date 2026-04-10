@@ -59,6 +59,11 @@ interface BossState {
   getPersonalityType: () => PersonalityType | undefined;
   reset: () => void;
 
+  // Retention — 리셋 + 컬렉션
+  lastSituation: string;
+  resetForNewType: (situation: string) => void;
+  resetForNewSituation: () => void;
+
   // Agent 연동 액션
   saveAsAgent: (name?: string) => string | null;
   loadBossFromAgent: (agentId: string) => void;
@@ -77,6 +82,7 @@ const INITIAL_STATE = {
   streamingText: '',
   phase: 'setup' as const,
   loadedAgentId: null as string | null,
+  lastSituation: '',
 };
 
 export const useBossStore = create<BossState>((set, get) => ({
@@ -132,7 +138,11 @@ export const useBossStore = create<BossState>((set, get) => ({
       content,
       timestamp: Date.now(),
     };
-    set((s) => ({ messages: [...s.messages, msg] }));
+    const isFirst = get().messages.length === 0;
+    set((s) => ({
+      messages: [...s.messages, msg],
+      ...(isFirst ? { lastSituation: content } : {}),
+    }));
   },
 
   setStreaming: (v) => set({ isStreaming: v, streamingText: v ? '' : get().streamingText }),
@@ -175,8 +185,33 @@ export const useBossStore = create<BossState>((set, get) => ({
   },
 
   reset: () => {
-    // 패시브 교정은 BossChat 언마운트 cleanup에서만 실행 (이중 호출 방지)
     set({ ...INITIAL_STATE });
+  },
+
+  resetForNewType: (situation) => {
+    const current = `${get().axes.ei}${get().axes.sn}${get().axes.tf}${get().axes.jp}`;
+    // 현재 유형 제외 랜덤 선택
+    const allCodes = ['ISTJ','ISFJ','INFJ','INTJ','ISTP','ISFP','INFP','INTP','ESTP','ESFP','ENFP','ENTP','ESTJ','ESFJ','ENFJ','ENTJ'];
+    const others = allCodes.filter(c => c !== current);
+    const picked = others[Math.floor(Math.random() * others.length)];
+    set({
+      axes: { ei: picked[0] as 'E'|'I', sn: picked[1] as 'S'|'N', tf: picked[2] as 'T'|'F', jp: picked[3] as 'J'|'P' },
+      messages: [],
+      isStreaming: false,
+      streamingText: '',
+      phase: 'chat',
+      loadedAgentId: null,
+      lastSituation: situation,
+    });
+  },
+
+  resetForNewSituation: () => {
+    set({
+      messages: [],
+      isStreaming: false,
+      streamingText: '',
+      loadedAgentId: null,
+    });
   },
 
   // ─── Agent 연동 ───
