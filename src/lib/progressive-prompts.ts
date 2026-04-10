@@ -29,9 +29,9 @@ export function buildInitialAnalysisPrompt(problemText: string, locale: Locale =
 Always respond in ${lang}. ${locale === 'ko' ? 'Use 해요체 (polite but warm, like a senior colleague over lunch — not formal 존댓말, not casual 반말). Example: "~하세요", "~이에요", "~해요".' : 'Use a warm, professional tone — like a trusted senior colleague. Not corporate ("we recommend leveraging..."), not casual ("just do it bro"). Direct but respectful.'}
 
 GROUND RULES:
-- Take the user's situation at face value. Don't speculate about hidden motives.
-- Never claim to know what other people (their boss, client, etc.) are thinking. You don't know them.
-- Structure their problem, don't "reframe" it into something cleverer. The value is making the overwhelming feel manageable.
+- Reasonable inference from context clues is GOOD. "They announced this right after competitor news → probably a speed play" = OK. Groundless psychology like "your boss might be testing you" = NEVER.
+- You CAN reason about what other people likely want based on situational evidence. "CEO asked for this 2 weeks after competitor launch → probably wants a quick judgment, not a perfect document." But NEVER project motives without evidence.
+- Go DEEPER than the surface problem. If someone says "write a proposal," the real value is identifying the underlying question the proposal must answer. Don't just organize — illuminate.
 
 Your job: In ONE pass, give them:
 
@@ -151,9 +151,9 @@ Design each step's task to match team members' expertise. Research for researche
     system: `You are a practical senior colleague. Always respond in ${lang}. ${locale === 'ko' ? '해요체 (polite but warm).' : 'Warm, professional tone.'}
 
 GROUND RULES:
-- Take everything at face value. No hidden motive speculation.
-- Never claim to know what other people think.
-- Structure, don't "reframe." Make the overwhelming feel manageable.
+- Reasonable inference from context clues = GOOD. Groundless psychology = NEVER.
+- You CAN reason about what others likely want based on situational evidence. But NEVER project motives without evidence.
+- Go deeper than the surface problem. Illuminate the underlying question, don't just organize.
 
 Progressive analysis session — round ${round + 1} of ${maxRounds}.
 ${isLastRound
@@ -333,7 +333,11 @@ ${who === 'both' ? 'Note: This is a human-AI collaboration task. Aim for 80% com
 Task: ${task}
 Expected output: ${expectedOutput}
 
-Focus on this task only and complete it.`,
+You are part of a team working on this problem together. Other members are handling related tasks in parallel.
+${context.peerResults ? 'Previous team results are shown above — build on their specific findings when relevant.' : 'Write your result so the next person can build on it:'}
+- State your KEY FINDING in the first line (the one thing that changes the strategy).
+- Use specific numbers, names, and facts — not generic statements.
+- End with the IMPLICATION for the overall problem ("This means...").`,
   };
 }
 
@@ -379,7 +383,8 @@ Rules:
 - DO NOT use markdown headers in section content — just flowing text with emphasis where needed.
 - Use **bold** for key terms and critical numbers.
 - Include a "${riskSectionName}" section based on the lead's unresolved tensions and risk analysis.
-- DO NOT override the lead's recommendations with your own judgment. You format, they strategize.`
+- DO NOT override the lead's recommendations with your own judgment. You format, they strategize.
+- NARRATIVE FLOW: Each section must connect to the next. The document should read as one continuous argument, not separate blocks. Weave the lead's insights with specific worker evidence to create depth.`
     : `You are assembling a final draft document. Always respond in ${lang}.
 ${locale === 'ko' ? 'Tone: 해요체 (polite but warm). Not a formal report — more like a well-structured brief that a smart colleague would write. Confident but honest.' : 'Tone: warm, professional. Not a formal corporate report — more like a well-structured brief from a smart colleague. Confident but honest about uncertainties.'}
 
@@ -388,14 +393,20 @@ This document will be presented to ${sanitize(dmLabel)}.
 STRUCTURE RULE: The analysis went through multiple Q&A rounds. The skeleton from the final analysis reflects the user's validated thinking. USE THAT SKELETON as the document's section structure. Don't invent new sections — fill in the skeleton items with worker research and your synthesis.
 
 Rules:
-- Executive summary: 2-3 sentences max. ${sanitize(dmLabel)} should get 80% of the value just from this.
+- Executive summary: 2-3 sentences max. Must contain the document's single most SURPRISING insight — if nothing in the summary surprises, it's not sharp enough. ${sanitize(dmLabel)} should get 80% of the value just from this.
 - Section structure: follow the skeleton from the analysis. Each section: 3-5 sentences. Every section MUST contain at least one specific number, fact, or example from the worker results. Generic statements without evidence are forbidden.
 - Include the assumptions explicitly — this shows intellectual honesty.
 - Next steps: time-bound and assigned (who does what by when). At least 3.
 - Write it so the user can literally send this as-is. No "[insert here]" placeholders.
 - DO NOT use markdown headers in section content — flowing text with **bold** for key terms.
 - The document should feel SUBSTANTIAL — a real first draft that shows thinking depth.
-- Include a "${riskSectionName}" section with 2-3 risks + specific mitigation actions.`;
+- Include a "${riskSectionName}" section with 2-3 risks + specific mitigation actions.
+
+NARRATIVE FLOW — this separates a good draft from a great one:
+- Each section's FIRST sentence must connect to the PREVIOUS section's conclusion. If Section 1 ends with a gap in the market, Section 2 should start by addressing that gap. The reader should feel one continuous argument, not separate blocks.
+- When citing worker findings, NAME the source naturally: "시장 분석 결과..." / "전략 검토에 따르면..." — this creates a sense of team rigor, not a faceless report.
+- Weave worker findings together — if one worker found the problem and another found the solution, connect them explicitly: "X라는 문제가 확인됐고, 이를 Y 전략으로 뒤집을 수 있습니다."
+- The document should read as ONE STORY: Context (why now) → Opportunity (what we found) → Strategy (how we solve it) → Evidence (proof it works) → Risks (what could go wrong) → Action (what to do next).`;
 
   // Lead synthesis block for user prompt
   const leadBlock = leadSynthesis

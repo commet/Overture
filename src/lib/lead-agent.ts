@@ -159,7 +159,7 @@ export function buildLeadSynthesisPrompt(
     : '';
 
   const resultsBlock = workerResults.map((w, i) =>
-    `[${i + 1}. ${w.agentName}(${w.agentRole}) — ${w.task}]\n${w.result.slice(0, 800)}`,
+    `[${i + 1}. ${w.agentName}(${w.agentRole}) — ${w.task}]\n${w.result.slice(0, 1500)}`,
   ).join('\n\n');
 
   return {
