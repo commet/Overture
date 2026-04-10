@@ -16,7 +16,8 @@ type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
   | 'feedback_records' | 'judgment_records' | 'accuracy_ratings' | 'refine_loops'
   | 'quality_signals' | 'outcome_records' | 'retrospective_answers' | 'decision_quality_scores'
   | 'agents' | 'agent_chains' | 'agent_activities'
-  | 'synthesize_items';
+  | 'synthesize_items'
+  | 'progressive_sessions';
 
 type SoftDeletableTable = 'projects' | 'personas' | 'reframe_items' | 'recast_items' | 'refine_loops' | 'synthesize_items';
 
@@ -257,6 +258,7 @@ export async function deleteAllUserData(): Promise<void> {
     'quality_signals', 'accuracy_ratings', 'feedback_records', 'judgment_records',
     'refine_loops', 'reframe_items', 'recast_items',
     'personas', 'projects',
+    'progressive_sessions',
   ];
 
   for (const table of tables) {

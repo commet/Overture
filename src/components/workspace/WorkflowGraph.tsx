@@ -22,62 +22,7 @@ const ACTORS: Record<string, { label: string; color: string; bg: string; text: s
   'ai→human': { label: 'AI→사람', color: '#2d6b6b', bg: '#eaf5f5', text: '#1e5050', Icon: ArrowRight },
 };
 
-/** Strip Korean particles from end of option text */
-function stripParticles(text: string): string {
-  return text
-    .replace(/\s*(중에서|사이에서|으로|를|을|에서|로|이|가|은|는|와|과|도|만)\s*.*$/, '')
-    .replace(/\s*(결정|선택|판단|비교|검토).*$/, '')
-    .trim();
-}
-
-/** Extract selectable options from judgment text */
-function extractOptions(judgment?: string): string[] {
-  if (!judgment) return [];
-
-  // Strategy 1: "vs" separated
-  if (judgment.includes(' vs ')) {
-    const sentences = judgment.split(/[.]\s*/);
-    for (const sentence of sentences) {
-      if (!sentence.includes(' vs ')) continue;
-      const cleaned = sentence.replace(/^[^:]*:\s*/, '');
-      const opts = cleaned
-        .split(/\s+vs\.?\s+/)
-        .map(o => stripParticles(o))
-        .filter(o => o.length >= 2 && o.length <= 40);
-      if (opts.length >= 2) return opts;
-    }
-  }
-
-  // Strategy 2: "/" separated (but not dates like 2024/2025)
-  if (judgment.includes('/') && !/\d{4}\/\d/.test(judgment)) {
-    const clauses = judgment.split(/[,.]\s*/);
-    for (const clause of clauses) {
-      if (!clause.includes('/')) continue;
-      const opts = clause.split('/').map(o => o.trim()).filter(o => o.length >= 2 && o.length <= 40);
-      if (opts.length >= 2 && opts.length <= 5) return opts;
-    }
-  }
-
-  // Strategy 3: "~할지 ~할지" pattern (Korean decision phrasing)
-  const haljiMatch = judgment.match(/(.{2,20})할지[,\s]+(.{2,20})할지/);
-  if (haljiMatch) {
-    return [haljiMatch[1].trim() + '하기', haljiMatch[2].trim() + '하기'];
-  }
-
-  // Strategy 4: "~인지 ~인지" pattern
-  const injiMatch = judgment.match(/(.{2,20})인지[,\s]+(.{2,20})인지/);
-  if (injiMatch) {
-    return [injiMatch[1].trim(), injiMatch[2].trim()];
-  }
-
-  // Strategy 5: numbered list "1) A 2) B" or "1. A 2. B"
-  const numbered = judgment.match(/[1-5][.)]\s*([^1-5]{2,30})/g);
-  if (numbered && numbered.length >= 2) {
-    return numbered.map(n => n.replace(/^[1-5][.)]\s*/, '').trim()).filter(o => o.length >= 2);
-  }
-
-  return [];
-}
+import { extractOptions } from '@/lib/extract-options';
 
 /* ────────────────────────────────────
    Role Distribution Dashboard

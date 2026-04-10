@@ -171,7 +171,14 @@ Your job each round:
 3. Update hidden assumptions — only change what the answer resolved or revealed. Don't shuffle items for novelty.
 4. Update skeleton — only modify items DIRECTLY AFFECTED by the new answer. Keep stable items unchanged. Never exceed 5-6 items.
    Use natural sequence connectors (${locale === 'ko' ? '먼저, 그다음, 그리고 등 — vary naturally' : 'First, Then, Next, etc. — vary naturally'}).
-${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. Match team members' expertise.${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
+${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps max. For each step:
+   - agent_type: "ai" (AI executes: research, analysis, drafting) | "self" (user decides: strategy, budget, priorities) | "human" (ask someone else: tech validation, customer feedback, internal approval)
+   - ai_scope: what AI does (required for ai/self types; for human, AI prepares the question + context)
+   - self_scope: what the user judges/validates (required for ai/self types; empty for human)
+   - decision: if self_scope involves a choice, write "질문: Option A vs Option B vs Option C" so UI renders selectable chips. Empty string if no explicit choice.
+   - For "human" steps: add question_to_human (the question to send) and human_contact_hint (role like "CTO" or "고객")
+   Rule: EVERY "ai" step must have self_scope — explain what the user should review about the AI result.
+   Rule: EVERY "self" step should have ai_scope — how AI can help (generate options, comparison, data).${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
 
 QUESTION RULES (critical — this determines the quality of the entire session):
 - The answer they just gave should VISIBLY change the analysis. If nothing changes, the question was pointless.
@@ -190,7 +197,7 @@ Current analysis (v${currentSnapshot.version}):
 - Real question: ${sanitize(currentSnapshot.real_question)}
 - Hidden assumptions: ${currentSnapshot.hidden_assumptions.map(a => sanitize(a)).join(' / ')}
 - Skeleton: ${currentSnapshot.skeleton.map(s => sanitize(s)).join(' / ')}
-${currentSnapshot.execution_plan ? `- Execution plan: ${currentSnapshot.execution_plan.steps.map(s => `${sanitize(s.task)}(${s.who})`).join(' \u2192 ')}` : ''}
+${currentSnapshot.execution_plan ? `- Execution plan: ${currentSnapshot.execution_plan.steps.map(s => `${sanitize(s.task)}(${(s as Record<string, unknown>).agent_type || s.who})`).join(' \u2192 ')}` : ''}
 
 Q&A:
 ${qaHistory}
@@ -204,7 +211,7 @@ JSON:
   "hidden_assumptions": ["Realistic only, 2-3 items"],
   "skeleton": ["Only change items affected by the latest answer. Use natural sequence words. 5 items max."],
   ${round >= 1 ? `"execution_plan": {
-    "steps": [{"task": "What to do", "who": "ai|human|both", "output": "Deliverable", "agent_hint": "Team member name (if applicable)"}]
+    "steps": [{"task": "What to do", "agent_type": "ai|self|human", "output": "Deliverable", "ai_scope": "What AI does", "self_scope": "What user judges", "decision": "질문: A vs B vs C (or empty)", "agent_hint": "Team member name (if applicable)", "question_to_human": "Question for external person (human type only)", "human_contact_hint": "Role like CTO (human type only)"}]
   },` : ''}
   "next_question": ${isLastRound ? 'null' : '{"text": "Situation-shaping question (reference their latest answer)", "subtext": "Why this changes the strategy", "options": ["Leads to strategy A", "Strategy B", "Strategy C"], "type": "select|short"}'},
   "ready_for_mix": ${isLastRound ? 'true' : 'false'}

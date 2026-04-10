@@ -733,7 +733,18 @@ export interface AnalysisSnapshot {
   hidden_assumptions: string[];
   skeleton: string[];
   execution_plan?: {
-    steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[];
+    steps: {
+      task: string;
+      who?: 'ai' | 'human' | 'both';                 // legacy — agent_type 우선
+      agent_type?: AgentTaskType;                      // 'ai' | 'self' | 'human'
+      output: string;
+      ai_scope?: string;
+      self_scope?: string;
+      decision?: string;
+      agent_hint?: string;
+      question_to_human?: string;
+      human_contact_hint?: string;
+    }[];
     key_assumptions: string[];
   };
   insight?: string;              // 이번 업데이트의 핵심 인사이트
@@ -760,7 +771,15 @@ export interface WorkerPersona {
   color: string;          // UI 액센트 hex
 }
 
-export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input' | 'validation_failed';
+export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input' | 'ai_preparing' | 'sent' | 'waiting_response' | 'validation_failed';
+
+export type AgentTaskType = 'ai' | 'self' | 'human';
+
+export interface HumanContact {
+  name: string;
+  channel: 'email' | 'slack';
+  address: string;
+}
 
 export type AgentLevel = 'junior' | 'senior' | 'guru';
 
@@ -768,6 +787,7 @@ export interface WorkerTask {
   id: string;
   step_index: number;
   task: string;
+  /** @deprecated Use agent_type instead. Kept for backward compatibility with persisted sessions. */
   who: 'ai' | 'human' | 'both';
   expected_output: string;
   status: WorkerStatus;
@@ -782,6 +802,18 @@ export interface WorkerTask {
   completion_note: string | null; // 페르소나 음성의 완료 멘트
   started_at: string | null;
   completed_at: string | null;
+
+  // ─── Agent Type + Scope (Unified Agent System v2) ───
+  agent_type?: AgentTaskType;       // 'ai' | 'self' | 'human' — undefined면 who에서 역산
+  ai_scope?: string;                // AI가 하는 것
+  self_scope?: string;              // 사용자가 판단하는 것
+  decision?: string;                // "질문: A vs B vs C" — UI가 선택지로 변환
+  ai_preliminary?: string | null;   // self/human task에서 AI 보조 분석 결과
+  contact?: HumanContact;           // human agent 연락처
+  question_to_human?: string;       // 외부 사람에게 보낼 질문
+  sent_at?: string;                 // human에게 발송된 시각
+  response_at?: string;             // human 응답 수신 시각
+  snapshot_version?: number;        // 어떤 snapshot에서 생성됐는지
 
   // Orchestrator-assigned (Phase 0-3)
   framework?: string;               // 배정된 프레임워크 이름 (null이면 전체 스킬셋)
@@ -802,6 +834,14 @@ export interface WorkerTask {
   delegation_depth?: number;        // 0=원본, 1=위임받은 task (재위임 불가)
   delegated_to?: { agent_id: string; agent_name: string };
   delegated_from?: { agent_id: string; agent_name: string };
+}
+
+/** Resolve agent_type from legacy who field for backward compat */
+export function resolveAgentType(w: Pick<WorkerTask, 'agent_type' | 'who'>): AgentTaskType {
+  if (w.agent_type) return w.agent_type;
+  if (w.who === 'both') return 'ai';   // old 'both' → ai with self_scope
+  if (w.who === 'human') return 'self'; // old 'human' was "사용자 본인"
+  return 'ai';
 }
 
 // ─── Agent Autonomous Planning ───

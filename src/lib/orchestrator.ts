@@ -21,6 +21,12 @@ export interface PlannedWorker {
   focus: string;
   expectedOutput: string;
   who: string;
+  agentType: 'ai' | 'self' | 'human';  // v2 agent type
+  aiScope: string;
+  selfScope: string;
+  decision: string;
+  questionToHuman: string;
+  humanContactHint: string;
   stepIndex: number;
   stageId: string;
   taskType: string | null;     // task-classifier의 TaskType (context 전략 결정)
@@ -91,7 +97,7 @@ function buildStages(
 /* ─── Main ─── */
 
 export function planWorkers(
-  steps: { task: string; who: string; output: string; agent_hint?: string }[],
+  steps: { task: string; who?: string; agent_type?: string; output: string; agent_hint?: string; ai_scope?: string; self_scope?: string; decision?: string; question_to_human?: string; human_contact_hint?: string }[],
   signals: InterviewSignals | undefined,
   unlockedAgents: Agent[],
   observations: AgentObservation[],
@@ -100,8 +106,34 @@ export function planWorkers(
   const problemText = steps.map(s => s.task).join(' ');
   const classification = classifyInput(problemText, steps, signals);
 
-  // 2. 에이전트 선택 (3-layer: task classification → capability scoring → experience)
-  const agentMap = selectAgents(steps, classification, unlockedAgents, observations, problemText);
+  // Resolve agent_type for each step (v2 > legacy fallback)
+  const resolvedSteps = steps.map(s => {
+    const agentType = (s.agent_type as 'ai' | 'self' | 'human')
+      || (s.who === 'both' ? 'ai' : s.who === 'human' ? 'self' : 'ai');
+    return { ...s, agentType };
+  });
+
+  // 2. 에이전트 선택 — ai 타입만 배정, self/human은 skip
+  const aiSteps = resolvedSteps
+    .map((s, i) => ({ ...s, originalIndex: i }))
+    .filter(s => s.agentType === 'ai');
+
+  const agentMap = aiSteps.length > 0
+    ? selectAgents(
+        aiSteps.map(s => ({ task: s.task, output: s.output, agent_hint: s.agent_hint })),
+        classification,
+        unlockedAgents,
+        observations,
+        problemText,
+      )
+    : new Map<number, Agent>();
+
+  // Remap agent selections back to original step indices
+  const originalAgentMap = new Map<number, Agent>();
+  aiSteps.forEach((s, mappedIdx) => {
+    const agent = agentMap.get(mappedIdx);
+    if (agent) originalAgentMap.set(s.originalIndex, agent);
+  });
 
   // 3. Task 분류 (context 전략 결정용)
   const taskClassifications = classifySteps(
@@ -110,8 +142,8 @@ export function planWorkers(
   );
 
   // 4. 프레임워크 배정 + task type 설정
-  const rawWorkers: PlannedWorker[] = steps.map((step, i) => {
-    const agent = agentMap.get(i);
+  const rawWorkers: PlannedWorker[] = resolvedSteps.map((step, i) => {
+    const agent = originalAgentMap.get(i);
     const agentId = agent?.id || '';
     const framework = agent ? assignFramework(agentId, step.task, classification) : null;
     const tc = taskClassifications[i];
@@ -121,7 +153,13 @@ export function planWorkers(
       framework,
       focus: step.task,
       expectedOutput: step.output,
-      who: step.who,
+      who: step.who || (step.agentType === 'self' ? 'human' : step.agentType === 'human' ? 'human' : 'ai'),
+      agentType: step.agentType,
+      aiScope: step.ai_scope || '',
+      selfScope: step.self_scope || '',
+      decision: step.decision || '',
+      questionToHuman: step.question_to_human || '',
+      humanContactHint: step.human_contact_hint || '',
       stepIndex: i,
       stageId: 'stage_1',
       taskType: tc?.taskType || null,

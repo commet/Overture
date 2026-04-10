@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, AlertTriangle, ChevronDown, RotateCw, Loader2, ExternalLink, X } from 'lucide-react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import type { WorkerTask } from '@/stores/types';
+import { resolveAgentType } from '@/stores/types';
 import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { useLocale } from '@/hooks/useLocale';
 import { recordHitReaction } from '@/lib/hit-rate';
 import { recordStrategyOutcome } from '@/lib/context-strategy';
 import { selectContextStrategy } from '@/lib/context-strategy';
+import { extractOptions } from '@/lib/extract-options';
 import { EASE } from './shared/constants';
 
 /* ═══ Hit Reaction Bar — 자기개선 데이터 수집 ═══ */
@@ -154,17 +156,24 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const store = useProgressiveStore();
   const [showModal, setShowModal] = useState(false);
-  const [inputVal, setInputVal] = useState(worker.who === 'both' && worker.result ? worker.result : '');
+  const aTypeInit = resolveAgentType(worker);
+  const [inputVal, setInputVal] = useState(
+    // AI task with draft (legacy both or new ai+self_scope): pre-fill with draft
+    (worker.who === 'both' || (aTypeInit === 'ai' && worker.self_scope)) && worker.result ? worker.result : ''
+  );
   const persona = worker.persona;
 
-  const statusLabel = {
+  const statusLabel: string = ({
     pending: L('대기 중', 'Pending'),
     running: L('작업 중...', 'Working...'),
     done: L('완료', 'Done'),
     error: L('오류', 'Error'),
     waiting_input: L('입력 필요', 'Input needed'),
+    ai_preparing: L('AI 준비 중...', 'AI preparing...'),
+    sent: L('발송됨', 'Sent'),
+    waiting_response: L('응답 대기', 'Awaiting response'),
     validation_failed: L('품질 확인 필요', 'Quality check needed'),
-  }[worker.status];
+  } as Record<string, string>)[worker.status] || worker.status;
 
   useEffect(() => {
     if (worker.who === 'both' && worker.result && !inputVal) {
@@ -172,18 +181,34 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
     }
   }, [worker.result]);
 
-  // Running state — subtle inline indicator
-  if (worker.status === 'running') {
+  // Running / AI preparing — subtle inline indicator
+  if (worker.status === 'running' || worker.status === 'ai_preparing') {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
         className="flex items-center gap-3 pl-1">
         <div className="w-px h-8 bg-[var(--border-subtle)]" />
         <WorkerAvatar persona={persona} size="sm" pulse />
         <span className="text-[12px] text-[var(--text-secondary)]">
-          {persona?.name || 'AI'}
-          <span className="text-[var(--text-tertiary)]"> · {worker.task}</span>
+          {persona?.name || (worker.agent_type === 'self' ? L('내 판단', 'My decision') : worker.agent_type === 'human' ? L('외부 확인', 'External') : 'AI')}
+          <span className="text-[var(--text-tertiary)]"> · {worker.status === 'ai_preparing' ? L('AI 참고자료 준비 중', 'AI preparing reference') : worker.task}</span>
         </span>
         <Loader2 size={12} className="animate-spin text-[var(--text-tertiary)]" />
+      </motion.div>
+    );
+  }
+
+  // Sent / Waiting response — human agent status
+  if (worker.status === 'sent' || worker.status === 'waiting_response') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+        className="flex items-center gap-3 pl-1">
+        <div className="w-px h-8" style={{ backgroundColor: '#6B7280' }} />
+        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[12px] shrink-0">👤</div>
+        <span className="text-[12px] text-[var(--text-secondary)]">
+          {worker.contact?.name || L('외부', 'External')}
+          <span className="text-[var(--text-tertiary)]"> · {statusLabel}</span>
+        </span>
+        <span className="text-[10px] text-amber-500">⏳</span>
       </motion.div>
     );
   }
@@ -250,34 +275,119 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
     );
   }
 
-  // Waiting input (human / both)
+  // Waiting input (self / both / human Phase 1)
   if (worker.status === 'waiting_input' && onSubmitInput) {
+    const aType = resolveAgentType(worker);
+    const decisionOptions = extractOptions(worker.decision);
+    const isHumanAgent = aType === 'human';
+    const hasPreliminary = !!worker.ai_preliminary;
+    const hasDraft = (worker.who === 'both' || (aType === 'ai' && worker.self_scope)) && !!worker.result;
+
     return (
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
         <div className="flex items-start gap-3">
-          <div className="w-px self-stretch mt-1" style={{ backgroundColor: persona?.color || 'var(--accent)' }} />
-          <WorkerAvatar persona={persona} size="md" />
+          <div className="w-px self-stretch mt-1" style={{ backgroundColor: isHumanAgent ? '#6B7280' : (persona?.color || 'var(--accent)') }} />
+          {isHumanAgent
+            ? <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[14px] shrink-0">👤</div>
+            : aType === 'self'
+            ? <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-[14px] shrink-0">🧠</div>
+            : <WorkerAvatar persona={persona} size="md" />
+          }
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-[var(--text-primary)]">
-              {persona?.name || 'AI'}
-              <span className="text-[var(--text-tertiary)] font-normal ml-1.5 text-[11px]">{persona?.role}</span>
+              {isHumanAgent ? (worker.contact?.name || worker.question_to_human?.slice(0, 20) || L('외부 확인', 'External'))
+                : aType === 'self' ? L('내 판단', 'My decision')
+                : (persona?.name || 'AI')}
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                isHumanAgent ? 'bg-gray-100 text-gray-600'
+                : aType === 'self' ? 'bg-amber-50 text-amber-700'
+                : 'bg-blue-50 text-blue-600'
+              }`}>
+                {isHumanAgent ? 'HUMAN' : aType === 'self' ? 'SELF' : 'AI'}
+              </span>
+              {!isHumanAgent && aType !== 'self' && (
+                <span className="text-[var(--text-tertiary)] font-normal ml-1.5 text-[11px]">{persona?.role}</span>
+              )}
             </p>
 
-            {worker.who === 'both' && worker.result && (
+            {/* Scope display — AI/사람 역할 분담 */}
+            {(worker.ai_scope || worker.self_scope) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
+                {worker.ai_scope && (
+                  <div className="text-[11px] px-2.5 py-1.5 rounded-lg bg-blue-50/80">
+                    <span className="font-bold text-blue-600">AI:</span>
+                    <span className="text-[var(--text-secondary)] ml-1">{worker.ai_scope}</span>
+                  </div>
+                )}
+                {worker.self_scope && (
+                  <div className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-50/80">
+                    <span className="font-bold text-amber-600">{L('나', 'Me')}:</span>
+                    <span className="text-[var(--text-secondary)] ml-1">{worker.self_scope}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Human agent — 질문 표시 */}
+            {isHumanAgent && worker.question_to_human && (
+              <div className="mt-2 text-[12px] bg-gray-50 rounded-xl p-3">
+                <p className="text-[10px] font-medium text-gray-500 mb-1">Q:</p>
+                <p className="text-[var(--text-primary)]">{worker.question_to_human}</p>
+              </div>
+            )}
+
+            {/* AI 보조 분석 결과 (self/human task) */}
+            {hasPreliminary && (
+              <div className="mt-2 text-[12px] text-[var(--text-secondary)] bg-blue-50/40 rounded-xl p-3 leading-[1.7]">
+                <p className="text-[10px] font-medium text-blue-500 mb-1">{L('참고 (AI 정리)', 'Reference (AI)')}</p>
+                <p className="whitespace-pre-wrap line-clamp-6">{worker.ai_preliminary}</p>
+              </div>
+            )}
+
+            {/* AI 초안 (기존 both 워커) */}
+            {hasDraft && (
               <div className="mt-2 text-[12px] text-[var(--text-secondary)] bg-[var(--bg)]/60 rounded-xl p-3 leading-[1.7]">
                 <p className="text-[10px] font-medium text-[var(--text-tertiary)] mb-1">{L('초안 작성함', 'Draft written')}</p>
                 <p className="whitespace-pre-wrap line-clamp-4">{worker.result}</p>
               </div>
             )}
 
+            {/* Decision chips */}
+            {decisionOptions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {decisionOptions.map((opt, j) => (
+                  <button key={j}
+                    onClick={() => setInputVal(opt)}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-all ${
+                      inputVal === opt
+                        ? 'border-amber-500 bg-amber-500 text-white'
+                        : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-amber-400 hover:text-amber-700'
+                    }`}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="mt-2">
               <textarea value={inputVal} onChange={(e) => setInputVal(e.target.value)}
-                placeholder={worker.who === 'both' ? L('수정하거나 그대로 확인...', 'Edit or confirm as-is...') : L('내용을 입력해주세요...', 'Enter your input...')}
+                placeholder={
+                  isHumanAgent ? L('이 사람의 답변을 입력하세요...', 'Enter their response...')
+                  : hasDraft ? L('수정하거나 그대로 확인...', 'Edit or confirm as-is...')
+                  : decisionOptions.length > 0 ? L('또는 직접 입력...', 'Or type your own...')
+                  : L('내용을 입력해주세요...', 'Enter your input...')
+                }
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 resize-none min-h-[70px] max-h-[150px]"
                 rows={3} maxLength={5000}
                 aria-label={`${persona?.name || 'AI'} ${L('작업 입력', 'task input')}`} />
               <div className="flex justify-end gap-2 mt-2">
-                {worker.who === 'both' && worker.result && (
+                {isHumanAgent && (
+                  <button onClick={() => onSubmitInput(worker.id, '[skip]')}
+                    className="px-3.5 py-2.5 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-xl border border-[var(--border-subtle)] cursor-pointer min-h-[44px]">
+                    {L('이 사람 없이 진행', 'Skip this person')}
+                  </button>
+                )}
+                {hasDraft && (
                   <button onClick={() => onSubmitInput(worker.id, worker.result!)}
                     className="px-3.5 py-2.5 text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl border border-[var(--border-subtle)] cursor-pointer min-h-[44px]">
                     {L('초안 그대로', 'Keep draft')}

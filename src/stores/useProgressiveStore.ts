@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { generateId } from '@/lib/uuid';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
+import { upsertToSupabase, loadAndMerge } from '@/lib/db';
 import { track } from '@/lib/analytics';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { agentToWorkerPersona } from '@/lib/agent-adapters';
@@ -65,7 +66,7 @@ interface ProgressiveState {
   linkToRecast: (recastItemId: string) => void;
 
   // Workers
-  initWorkers: (steps: { task: string; who: 'ai' | 'human' | 'both'; output: string; agent_hint?: string }[], signals?: InterviewSignals) => WorkerTask[];
+  initWorkers: (steps: { task: string; who?: string; agent_type?: string; output: string; agent_hint?: string; ai_scope?: string; self_scope?: string; decision?: string; question_to_human?: string; human_contact_hint?: string }[], signals?: InterviewSignals) => WorkerTask[];
   deployWorkers: () => void;
   updateWorker: (workerId: string, partial: Partial<WorkerTask>) => void;
   setWorkerStreamText: (workerId: string, text: string) => void;
@@ -73,7 +74,9 @@ interface ProgressiveState {
   approveWorker: (workerId: string) => void;
   rejectWorker: (workerId: string) => void;
   allWorkersDone: () => boolean;
-  approvedWorkerResults: () => Array<{ task: string; result: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
+  /** @deprecated Use mixableWorkerResults instead */
+  approvedWorkerResults: () => Array<{ task: string; result: string; type?: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
+  mixableWorkerResults: () => Array<{ task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null }>;
 
   // Lead Agent
   setLeadAgent: (agentId: string, agentName: string, domain: string) => void;
@@ -83,8 +86,58 @@ interface ProgressiveState {
   deleteSession: (id: string) => void;
 }
 
+/**
+ * Persist to localStorage + async Supabase sync for mutated sessions.
+ * Supabase sync is debounced per session ID to avoid flooding.
+ */
+const _pendingSyncs = new Set<string>();
 function persist(sessions: ProgressiveSession[]) {
   setStorage(STORAGE_KEYS.PROGRESSIVE_SESSIONS, sessions);
+
+  // Supabase async sync — find sessions that changed (heuristic: any with workers or non-input phase)
+  for (const s of sessions) {
+    if (s.phase === 'input' && (!s.workers || s.workers.length === 0)) continue; // Skip empty sessions
+    if (_pendingSyncs.has(s.id)) continue; // Already queued
+
+    _pendingSyncs.add(s.id);
+    // Debounce: wait 2s to batch rapid mutations (e.g., streaming token updates)
+    setTimeout(() => {
+      _pendingSyncs.delete(s.id);
+      const latest = getStorage<ProgressiveSession[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []).find(ss => ss.id === s.id);
+      if (!latest) return;
+      upsertToSupabase('progressive_sessions', {
+        id: latest.id,
+        project_id: latest.project_id,
+        data: latest,
+        phase: latest.phase,
+        has_pending_humans: (latest.workers || []).some(
+          w => w.agent_type === 'human' && (w.status === 'sent' || w.status === 'waiting_response')
+        ),
+        updated_at: latest.updated_at || new Date().toISOString(),
+      }).catch(() => { /* fire-and-forget — localStorage is primary */ });
+    }, 2000);
+  }
+}
+
+/** Migrate worker statuses and add v2 fields for backward compat */
+function migrateWorkers(sessions: ProgressiveSession[]): ProgressiveSession[] {
+  return sessions.map(s => ({
+    ...s,
+    phase: (s.phase === 'lead_synthesizing' && !s.lead_synthesis) ? 'mixing' as const
+      : (s.phase === 'analyzing' || s.phase === 'mixing') ? 'conversing' as const
+      : s.phase,
+    worker_deploy_phase: s.worker_deploy_phase ?? (s.workers?.length ? 'deployed' : 'none'),
+    workers: (s.workers || []).map(w => ({
+      ...w,
+      stream_text: '',
+      persona: w.persona ?? null,
+      level: w.level ?? 'junior',
+      approved: w.approved ?? null,
+      completion_note: w.completion_note ?? null,
+      status: (w.status === 'running' || w.status === 'ai_preparing') ? 'pending' as const : w.status,
+      agent_type: w.agent_type || (w.who === 'both' ? 'ai' : w.who === 'human' ? 'self' : 'ai') as 'ai' | 'self' | 'human',
+    })),
+  }));
 }
 
 function updateSession(
@@ -108,25 +161,52 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
   loadSessions: () => {
     const local = getStorage<ProgressiveSession[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []);
-    // Migration: reset running workers to pending (stream_text lost on reload)
-    const migrated = local.map(s => ({
-      ...s,
-      // Recover from abnormal termination: reset in-progress phases
-      phase: (s.phase === 'lead_synthesizing' && !s.lead_synthesis) ? 'mixing' as const
-        : (s.phase === 'analyzing' || s.phase === 'mixing') ? 'conversing' as const
-        : s.phase,
-      worker_deploy_phase: s.worker_deploy_phase ?? (s.workers?.length ? 'deployed' : 'none'),
-      workers: (s.workers || []).map(w => ({
-        ...w,
-        stream_text: '',
-        persona: w.persona ?? null,
-        level: w.level ?? 'junior',
-        approved: w.approved ?? null,
-        completion_note: w.completion_note ?? null,
-        status: w.status === 'running' ? 'pending' as const : w.status,
-      })),
-    }));
+    const migrated = migrateWorkers(local);
     set({ sessions: migrated });
+
+    // Async: merge with Supabase remote sessions (cross-device sync)
+    import('@/lib/supabase').then(({ supabase, getCurrentUserId }) =>
+      getCurrentUserId().then(userId => {
+        if (!userId) return;
+        supabase
+          .from('progressive_sessions')
+          .select('id, data, updated_at')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(20)
+          .then(({ data: remoteSessions }) => {
+            if (!remoteSessions || remoteSessions.length === 0) return;
+            const currentLocal = get().sessions;
+            const localMap = new Map(currentLocal.map(s => [s.id, s]));
+            let changed = false;
+
+            for (const remote of remoteSessions) {
+              const remoteSession = remote.data as ProgressiveSession;
+              if (!remoteSession?.id) continue;
+              const localSession = localMap.get(remoteSession.id);
+              if (!localSession) {
+                // Remote-only: add to local
+                localMap.set(remoteSession.id, remoteSession);
+                changed = true;
+              } else if (
+                remote.updated_at &&
+                localSession.updated_at &&
+                new Date(remote.updated_at) > new Date(localSession.updated_at)
+              ) {
+                // Remote is newer: replace local (e.g., human response arrived on another device)
+                localMap.set(remoteSession.id, remoteSession);
+                changed = true;
+              }
+            }
+
+            if (changed) {
+              const merged = migrateWorkers(Array.from(localMap.values()));
+              setStorage(STORAGE_KEYS.PROGRESSIVE_SESSIONS, merged);
+              set({ sessions: merged });
+            }
+          });
+      })
+    ).catch(() => { /* Supabase unavailable — local is fine */ });
   },
 
   createSession: (projectId, problemText, reviewerAgentId?) => {
@@ -350,20 +430,33 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       // (called at the end of initWorkers after session update)
     }
 
-    const workers: WorkerTask[] = planned.map((pw, i) => {
-      const agent = pw.agentId ? agentStore.getAgent(pw.agentId) : null;
-      const fallbackAgent = agent || agentStore.assignAgentToTask(steps[i].task, steps[i].output, new Set());
+    const latestSnapshot = get().currentSession()?.snapshots?.slice(-1)[0];
+    const snapshotVersion = latestSnapshot?.version ?? 0;
+
+    const workers: WorkerTask[] = planned.map((pw) => {
+      const si = pw.stepIndex; // Use stepIndex, not loop index — buildStages may reorder workers
+      // ai 타입만 에이전트 배정. self/human은 persona 없음
+      const needsAgent = pw.agentType === 'ai';
+      const agent = needsAgent && pw.agentId ? agentStore.getAgent(pw.agentId) : null;
+      const fallbackAgent = needsAgent
+        ? (agent || agentStore.assignAgentToTask(steps[si].task, steps[si].output, new Set()))
+        : null;
+
+      // legacy who 역산: agent_type → who (하위호환)
+      const who: 'ai' | 'human' | 'both' = pw.agentType === 'ai' && pw.selfScope ? 'both'
+        : pw.agentType === 'ai' ? 'ai'
+        : 'human'; // self/human → legacy 'human'
 
       return {
         id: generateId(),
-        step_index: i,
-        task: steps[i].task,
-        who: steps[i].who as 'ai' | 'human' | 'both',
-        expected_output: steps[i].output,
+        step_index: si,
+        task: steps[si].task,
+        who,
+        expected_output: steps[si].output,
         status: 'pending' as const,
-        persona: agentToWorkerPersona(fallbackAgent),
-        agent_id: fallbackAgent.id,
-        level: numericLevelToAgentLevel(fallbackAgent.level),
+        persona: fallbackAgent ? agentToWorkerPersona(fallbackAgent) : null,
+        agent_id: fallbackAgent?.id,
+        level: fallbackAgent ? numericLevelToAgentLevel(fallbackAgent.level) : 'junior' as const,
         framework: pw.framework || undefined,
         stage_id: pw.stageId || undefined,
         task_type: pw.taskType || undefined,
@@ -375,6 +468,14 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         completion_note: null,
         started_at: null,
         completed_at: null,
+        // v2 Unified Agent System fields
+        agent_type: pw.agentType,
+        ai_scope: pw.aiScope || undefined,
+        self_scope: pw.selfScope || undefined,
+        decision: pw.decision || undefined,
+        ai_preliminary: null,
+        question_to_human: pw.questionToHuman || undefined,
+        snapshot_version: snapshotVersion,
       };
     });
 
@@ -407,12 +508,20 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     if (!currentSessionId) return;
     const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
       worker_deploy_phase: 'deployed' as WorkerDeployPhase,
-      // Human workers transition to waiting_input now that deploy is confirmed
-      workers: s.workers.map(w =>
-        w.who === 'human' && w.status === 'pending'
-          ? { ...w, status: 'waiting_input' as const }
-          : w
-      ),
+      workers: s.workers.map(w => {
+        if (w.status !== 'pending') return w;
+        const aType = w.agent_type || (w.who === 'both' ? 'ai' : w.who === 'human' ? 'self' : 'ai');
+        // self/human with ai_scope → ai_preparing (AI 보조 먼저 실행)
+        if ((aType === 'self' || aType === 'human') && w.ai_scope) {
+          return { ...w, status: 'ai_preparing' as const };
+        }
+        // self/human without ai_scope → waiting_input (즉시 사용자 입력 대기)
+        if (aType === 'self' || aType === 'human') {
+          return { ...w, status: 'waiting_input' as const };
+        }
+        // ai → pending (runAllAIWorkers에서 실행)
+        return w;
+      }),
     }));
     persist(sessions);
     set({ sessions });
@@ -504,27 +613,51 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
   allWorkersDone: () => {
     const session = get().currentSession();
     if (!session || session.workers.length === 0) return true;
-    return session.workers.every(w => w.status === 'done');
+    // v2: Mix 가능 조건 — AI 완료 + self/human은 입력 대기 허용
+    return session.workers.every(w =>
+      w.status === 'done' ||
+      w.status === 'waiting_response' ||      // human 응답 대기는 block 안 함
+      w.status === 'sent' ||                  // human 발송됨도 block 안 함
+      (w.agent_type === 'self' && w.status === 'waiting_input') ||  // self 입력 대기 (ai_scope 유무 무관)
+      (w.agent_type === 'human' && w.status === 'waiting_input')    // human Phase 1 수동 입력 대기
+    );
   },
 
+  /** @deprecated Use mixableWorkerResults instead */
   approvedWorkerResults: () => {
+    return get().mixableWorkerResults();
+  },
+
+  mixableWorkerResults: () => {
     const session = get().currentSession();
     if (!session) return [];
-    // 정책: approved=true(명시 승인) + approved=null(미확인, 자동 포함) → mix에 포함
-    // approved=false(명시 제외) → mix에서 빠짐
-    // 미확인 자동 포함은 의도된 동작: Mix 전 요약에서 "⏳ 미확인" 표시로 사용자에게 알림
+    // v2 정책:
+    // - done + result + approved!==false → final (기존과 동일)
+    // - ai_preliminary + waiting_input → preliminary (AI 보조 결과 참고용 포함)
+    // - human waiting_response → pending_human (질문만 포함)
+    // - approved=false → 제외
     return session.workers
-      .filter(w => w.status === 'done' && w.result && w.approved !== false)
+      .filter(w => w.approved !== false)
       .map(w => {
         const agent = w.agent_id ? useAgentStore.getState().getAgent(w.agent_id) : undefined;
-        return {
-          task: w.task,
-          result: w.result!,
+        const base = {
           persona: w.persona?.name ?? null,
           agentName: agent?.name ?? w.persona?.name ?? null,
           agentRole: agent?.role ?? w.persona?.role ?? null,
         };
-      });
+
+        if (w.status === 'done' && w.result) {
+          return { task: w.task, result: w.result, type: 'final' as const, ...base };
+        }
+        if (w.ai_preliminary && (w.status === 'waiting_input' || w.status === 'ai_preparing')) {
+          return { task: w.task, result: w.ai_preliminary, type: 'preliminary' as const, ...base };
+        }
+        if (w.agent_type === 'human' && (w.status === 'waiting_response' || w.status === 'sent')) {
+          return { task: w.task, result: `[응답 대기 중] ${w.question_to_human || w.task}`, type: 'pending_human' as const, ...base };
+        }
+        return null;
+      })
+      .filter((w): w is NonNullable<typeof w> => w !== null);
   },
 
   // ─── Lead Agent ───

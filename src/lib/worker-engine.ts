@@ -209,7 +209,18 @@ export async function runAllAIWorkers(
   },
   signal?: AbortSignal,
 ): Promise<void> {
-  const aiWorkers = workers.filter(w => w.who === 'ai' || w.who === 'both');
+  // v2: Include workers that need AI execution:
+  // 1. AI agents (agent_type='ai' or legacy who='ai'/'both')
+  // 2. Self/Human agents with ai_scope that are in ai_preparing state (AI 보조 분석)
+  const aiWorkers = workers.filter(w => {
+    const aType = w.agent_type || (w.who === 'both' ? 'ai' : w.who === 'human' ? 'self' : 'ai');
+    if (aType === 'ai') return true;
+    // Legacy support
+    if (!w.agent_type && (w.who === 'ai' || w.who === 'both')) return true;
+    // Self/Human workers with ai_scope need AI preliminary execution
+    if ((aType === 'self' || aType === 'human') && w.ai_scope && w.status === 'ai_preparing') return true;
+    return false;
+  });
   if (aiWorkers.length === 0) return;
 
   const queue = [...aiWorkers];

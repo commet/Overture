@@ -47,13 +47,26 @@ interface InitialAnalysisResponse {
   detected_decision_maker: string | null;
 }
 
+interface ExecutionPlanStep {
+  task: string;
+  who?: 'ai' | 'human' | 'both';                 // legacy
+  agent_type?: 'ai' | 'self' | 'human';           // v2
+  output: string;
+  ai_scope?: string;
+  self_scope?: string;
+  decision?: string;
+  agent_hint?: string;
+  question_to_human?: string;
+  human_contact_hint?: string;
+}
+
 interface DeepeningResponse {
   insight: string;
   real_question: string;
   hidden_assumptions: string[];
   skeleton: string[];
   execution_plan?: {
-    steps: { task: string; who: 'ai' | 'human' | 'both'; output: string }[];
+    steps: ExecutionPlanStep[];
     key_assumptions: string[];
   };
   next_question: {

@@ -642,9 +642,34 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   /* Deploy workers — user confirmed the team */
   const onDeployWorkers = () => {
     if (deployPhase === 'deployed') return; // Guard: prevent double-click
-    const ws = store.currentSession()?.workers ?? [];
-    if (ws.length === 0) return;
+    const preDeployWorkers = store.currentSession()?.workers ?? [];
+    if (preDeployWorkers.length === 0) return;
     store.deployWorkers();
+    // CRITICAL: re-read workers AFTER deployWorkers to get updated statuses (ai_preparing, waiting_input)
+    const ws = store.currentSession()?.workers ?? [];
+
+    // Phase 2: Auto-send human agent questions (fire-and-forget)
+    const humanWorkers = ws.filter(w => w.agent_type === 'human' && w.contact?.address);
+    if (humanWorkers.length > 0) {
+      import('@/lib/supabase').then(({ supabase }) => {
+        supabase.auth.getSession().then(({ data: { session: authSession } }) => {
+          if (!authSession?.access_token) return;
+          const headers = { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' };
+          for (const hw of humanWorkers) {
+            const endpoint = hw.contact?.channel === 'slack' ? '/api/slack/send' : '/api/email/send-question';
+            const body = hw.contact?.channel === 'slack'
+              ? { userId: hw.contact.address, title: `질문: ${hw.task}`, content: `${hw.question_to_human || hw.task}\n\n${hw.ai_preliminary ? `참고:\n${hw.ai_preliminary}` : ''}`, sessionId: session.id, workerId: hw.id }
+              : { to: hw.contact!.address, subject: `질문: ${hw.task}`, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
+            fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
+              .then(r => r.json())
+              .then(r => {
+                if (r.ok) store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
+              })
+              .catch(() => { /* fail silently — user can still input manually */ });
+          }
+        });
+      });
+    }
     const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
     const ctx: WorkerContext = {
       problemText: session.problem_text,
@@ -668,9 +693,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         const validationFields = validation
           ? { validation_score: validation.score, validation_passed: validation.passed, validation_feedback: validation.issues.join('; ') }
           : {};
-        if (w?.who === 'both') {
+        // v2: Use agent_type + ai_scope to determine completion behavior (not status, which gets overwritten by onStart)
+        const aType = w?.agent_type;
+        const isAiPreparing = (aType === 'self' || aType === 'human') && w?.ai_scope;
+        if (isAiPreparing) {
+          // AI 보조 분석 완료 → ai_preliminary에 저장 → waiting_input으로 전환
+          store.updateWorker(id, { status: 'waiting_input', ai_preliminary: result, stream_text: '', ...validationFields });
+        } else if (w?.who === 'both' || (aType === 'ai' && w?.self_scope)) {
+          // AI task with self_scope (collaboration) → waiting_input
           store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completion_note: note, ...validationFields });
         } else {
+          // Pure AI task → done
           store.updateWorker(id, { status: 'done', result, stream_text: '', completion_note: note, completed_at: new Date().toISOString(), ...validationFields });
         }
         scroll();
@@ -743,9 +776,12 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         workersRef.current = null;
       }
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
-      // Collect approved worker results with attribution (approved=true or null=unreviewed; excluded=false)
-      const enrichedResults = store.approvedWorkerResults();
-      const workerResults = enrichedResults.map(w => ({ task: w.task, result: w.result }));
+      // Collect mixable worker results — final + preliminary + pending_human
+      const enrichedResults = store.mixableWorkerResults();
+      const workerResults = enrichedResults.map(w => ({
+        task: w.type === 'preliminary' ? `[${L('참고', 'Ref')}] ${w.task}` : w.type === 'pending_human' ? `[${L('대기', 'Pending')}] ${w.task}` : w.task,
+        result: w.result,
+      }));
 
       // 악장 메타 리뷰 + debate (해금 시만, 비차단)
       if (workerResults.length > 0) {

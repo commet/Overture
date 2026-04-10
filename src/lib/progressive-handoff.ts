@@ -14,6 +14,7 @@ import type {
   RecastItem,
   RecastAnalysis,
   RecastStep,
+  ActorRelationship,
 } from '@/stores/types';
 import { generateId } from '@/lib/uuid';
 
@@ -75,15 +76,25 @@ export function exportProgressiveAsRecast(session: ProgressiveSession): RecastIt
     throw new Error('No snapshots in session');
   }
 
-  const steps: RecastStep[] = (latestSnapshot.execution_plan?.steps || []).map((step, i) => ({
-    task: step.task,
-    actor: step.who === 'both' ? 'human→ai' : step.who,
-    actor_reasoning: 'Progressive 분석에서 도출',
-    expected_output: step.output,
-    checkpoint: i === 0,
-    checkpoint_reason: i === 0 ? '첫 단계는 항상 검증 필요' : '',
-    estimated_time: '미정',
-  }));
+  const steps: RecastStep[] = (latestSnapshot.execution_plan?.steps || []).map((step, i) => {
+    // v2 agent_type → actor 변환
+    const agentType = step.agent_type || (step.who === 'both' ? 'ai' : step.who === 'human' ? 'self' : 'ai');
+    const actor: ActorRelationship = agentType === 'self' ? 'human'
+      : agentType === 'human' ? 'human'
+      : step.self_scope ? 'human→ai'
+      : 'ai';
+    return {
+      task: step.task,
+      actor,
+      actor_reasoning: 'Progressive 분석에서 도출',
+      expected_output: step.output,
+      checkpoint: i === 0,
+      checkpoint_reason: i === 0 ? '첫 단계는 항상 검증 필요' : '',
+      estimated_time: '미정',
+      ai_scope: step.ai_scope || '',
+      human_scope: step.self_scope || '',
+    };
+  });
 
   const analysis: RecastAnalysis = {
     governing_idea: latestSnapshot.real_question,
