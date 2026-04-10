@@ -640,6 +640,16 @@ button, a, input, textarea {
   background: color-mix(in srgb, var(--accent) 6%, var(--bg));
 }
 
+.bs-persona-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 /* ── Type Toggle (redesigned pills) ── */
 
 .bt-row {
@@ -1064,15 +1074,6 @@ button, a, input, textarea {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-/* Short boss message — no bubble, casual feel */
-.bm-text-short {
-  font-size: 15px;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 6px 0;
-  font-weight: 500;
 }
 
 .bm-cursor {

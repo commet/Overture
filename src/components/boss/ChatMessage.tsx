@@ -12,7 +12,6 @@ interface ChatMessageProps {
 
 export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessageProps) {
   const isUser = role === 'user';
-  const isShortBoss = !isUser && !isStreaming && content.length < 25;
 
   return (
     <motion.div
@@ -26,27 +25,20 @@ export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessag
           <span className="bm-avatar-emoji">{bossType?.emoji || '👔'}</span>
         </div>
       )}
-      {isShortBoss ? (
-        /* Short boss message — no bubble, just text. Feels more casual. */
-        <p className="bm-text bm-text-short">
+      <div className={`bm-bubble ${isUser ? 'bm-bubble-user' : 'bm-bubble-boss'}`}>
+        <p className="bm-text">
           {content}
+          {isStreaming && (
+            <motion.span
+              className="bm-cursor"
+              animate={{ opacity: [1, 0.2] }}
+              transition={{ repeat: Infinity, duration: 0.6, ease: 'easeInOut' }}
+            >
+              &thinsp;|
+            </motion.span>
+          )}
         </p>
-      ) : (
-        <div className={`bm-bubble ${isUser ? 'bm-bubble-user' : 'bm-bubble-boss'}`}>
-          <p className="bm-text">
-            {content}
-            {isStreaming && (
-              <motion.span
-                className="bm-cursor"
-                animate={{ opacity: [1, 0.2] }}
-                transition={{ repeat: Infinity, duration: 0.6, ease: 'easeInOut' }}
-              >
-                &thinsp;|
-              </motion.span>
-            )}
-          </p>
-        </div>
-      )}
+      </div>
       {isUser && (
         <div className="bm-tail-user" />
       )}

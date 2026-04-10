@@ -105,35 +105,26 @@ export function BossSetup() {
                 <span className="bs-persona-trait">{typeData.shortDesc}</span>
                 <span className="bs-persona-trait bs-persona-trait--accent">🎯 {typeData.triggers.split(',')[0].trim()}</span>
               </div>
+
+              {/* Gender + Birth — inside the persona card */}
+              <div className="bs-persona-meta">
+                <div className="bs-gender">
+                  {(['남', '여'] as const).map((g) => (
+                    <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
+                      {g === '남' ? '남' : '여'}
+                    </button>
+                  ))}
+                </div>
+                <div className="bs-birth">
+                  <input type="number" placeholder="연도" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
+                  <span className="bs-dot">·</span>
+                  <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
+                </div>
+                <SajuPreview year={birthYear} month={birthMonth} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
-
-      {/* ── Gender + Birth (always visible) ── */}
-      <motion.div className="bs-profile-section" variants={fadeUp}>
-        <div className="bs-profile-bar">
-          <div className="bs-profile-field">
-            <label className="bs-profile-label">성별</label>
-            <div className="bs-gender">
-              {(['남', '여'] as const).map((g) => (
-                <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
-                  {g === '남' ? '남성' : '여성'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="bs-profile-divider" />
-          <div className="bs-profile-field">
-            <label className="bs-profile-label">생년월 <span className="bs-optional">선택</span></label>
-            <div className="bs-birth">
-              <input type="number" placeholder="예: 1975" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
-              <span className="bs-dot">·</span>
-              <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
-            </div>
-          </div>
-        </div>
-        <SajuPreview year={birthYear} month={birthMonth} />
       </motion.div>
 
       {/* ── Input + CTA (one block, always visible) ── */}
