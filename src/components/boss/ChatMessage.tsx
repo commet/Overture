@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Copy, Check } from 'lucide-react';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 
 interface ChatMessageProps {
@@ -12,6 +14,24 @@ interface ChatMessageProps {
 
 export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessageProps) {
   const isUser = role === 'user';
+  const [showCopy, setShowCopy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyQuote = async () => {
+    const text = `${bossType?.emoji || '👔'} ${bossType?.code || ''} 팀장:\n"${content}"\n\n▸ overture.so/boss`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => { setCopied(false); setShowCopy(false); }, 1500);
+  };
 
   return (
     <motion.div
@@ -25,7 +45,11 @@ export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessag
           <span className="bm-avatar-emoji">{bossType?.emoji || '👔'}</span>
         </div>
       )}
-      <div className={`bm-bubble ${isUser ? 'bm-bubble-user' : 'bm-bubble-boss'}`}>
+      <div
+        className={`bm-bubble ${isUser ? 'bm-bubble-user' : 'bm-bubble-boss'}`}
+        onClick={!isUser && !isStreaming ? () => setShowCopy(!showCopy) : undefined}
+        style={!isUser && !isStreaming ? { cursor: 'pointer', position: 'relative' } : { position: 'relative' }}
+      >
         <p className="bm-text">
           {content}
           {isStreaming && (
@@ -38,6 +62,28 @@ export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessag
             </motion.span>
           )}
         </p>
+
+        {/* Tap-to-copy — boss messages only */}
+        {showCopy && !isUser && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => { e.stopPropagation(); handleCopyQuote(); }}
+            style={{
+              position: 'absolute', top: -8, right: -4,
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '4px 10px', borderRadius: 20,
+              background: copied ? 'var(--success)' : 'var(--text-primary)',
+              color: 'var(--bg)',
+              border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 700,
+              boxShadow: 'var(--shadow-md)',
+              zIndex: 10,
+            }}
+          >
+            {copied ? <><Check size={10} /> 복사됨</> : <><Copy size={10} /> 이 대사 공유</>}
+          </motion.button>
+        )}
       </div>
       {isUser && (
         <div className="bm-tail-user" />

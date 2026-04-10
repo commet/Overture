@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 import { getPersonalityType } from '@/lib/boss/personality-types';
-import { getCollection } from './CollectionProgress';
+import { useBossStore } from '@/stores/useBossStore';
 
 interface VerdictShareCardProps {
   verdict: { verdict: string; reason: string; tip?: string };
@@ -25,43 +25,51 @@ const VERDICT_EMOJI: Record<string, string> = {
   rejected: '❌',
 };
 
-const VERDICT_COLORS: Record<string, string> = {
-  approved: '#2d8a4e',
-  conditional: '#b8963e',
-  rejected: '#dc3545',
-};
+/**
+ * 보스의 가장 인상적인 대사를 찾음.
+ * 가장 긴 assistant 메시지 (= 가장 캐릭터가 드러나는 답변)
+ */
+function findBestQuote(messages: Array<{ role: string; content: string }>): string {
+  const bossMessages = messages.filter(m => m.role === 'assistant' && m.content.length > 10);
+  if (bossMessages.length === 0) return '';
+  // 첫 번째 답변이 보통 가장 캐릭터성이 강함
+  const first = bossMessages[0];
+  // 너무 길면 첫 2문장만
+  const sentences = first.content.split(/[.!?]\s|[.!?]$/).filter(Boolean);
+  return sentences.slice(0, 2).join('. ').trim();
+}
 
 export function VerdictShareCard({ verdict, typeCode, situation, onClose }: VerdictShareCardProps) {
   const [copied, setCopied] = useState(false);
   const type = getPersonalityType(typeCode);
-  const collection = getCollection();
-  const count = new Set(collection.map(c => c.typeCode)).size;
+  const messages = useBossStore(s => s.messages);
 
-  const situationShort = situation.length > 30 ? situation.slice(0, 30) + '...' : situation;
+  const bestQuote = findBestQuote(messages);
+  const situationShort = situation.length > 25 ? situation.slice(0, 25) + '...' : situation;
 
-  const shareText = `${type?.emoji || '👔'} ${typeCode} ${type?.name || ''} 팀장한테 "${situationShort}" 해봤는데...
+  // 대화체 공유 텍스트 — 카카오톡에 붙여넣으면 자연스러운 형태
+  const shareText = `${type?.emoji || '👔'} ${typeCode} 팀장한테 "${situationShort}" 해봤는데
 
-📋 결과: ${VERDICT_LABELS[verdict.verdict] || verdict.verdict}
-💬 "${verdict.reason}"${verdict.tip ? `\n💡 ${verdict.tip}` : ''}
+"${bestQuote || verdict.reason}"
 
-▸ 나도 해보기: overture.so/boss`;
+${VERDICT_EMOJI[verdict.verdict]} 결과: ${VERDICT_LABELS[verdict.verdict] || verdict.verdict}
+
+너네 팀장은 뭐 유형이야? ㅋㅋ
+▸ overture.so/boss`;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
       const ta = document.createElement('textarea');
       ta.value = shareText;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
@@ -78,66 +86,54 @@ export function VerdictShareCard({ verdict, typeCode, situation, onClose }: Verd
         background: 'var(--surface)',
       }}
     >
-      {/* Card content — screenshot-friendly */}
-      <div style={{ padding: 20, textAlign: 'center' }}>
-        <span style={{ fontSize: 36 }}>{type?.emoji || '👔'}</span>
-        <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 2px' }}>{type?.name || typeCode}</p>
-        <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{typeCode} 팀장</p>
-
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '12px 0 16px', lineHeight: 1.4 }}>
-          &ldquo;{situationShort}&rdquo;
-        </p>
-
-        {/* Verdict banner */}
-        <div style={{
-          padding: '10px 16px', borderRadius: 10,
-          background: VERDICT_COLORS[verdict.verdict] || 'var(--accent)',
-          color: 'white',
-          display: 'inline-block',
-        }}>
-          <span style={{ fontSize: 16, marginRight: 6 }}>{VERDICT_EMOJI[verdict.verdict]}</span>
-          <span style={{ fontSize: 15, fontWeight: 700 }}>{VERDICT_LABELS[verdict.verdict] || verdict.verdict}</span>
+      {/* Quote-first card */}
+      <div style={{ padding: '20px 20px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 28 }}>{type?.emoji || '👔'}</span>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{type?.name || typeCode} 팀장</p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>&ldquo;{situationShort}&rdquo;에 대한 반응</p>
+          </div>
         </div>
 
-        <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: '12px 0 4px', lineHeight: 1.5 }}>
-          &ldquo;{verdict.reason}&rdquo;
-        </p>
-        {verdict.tip && (
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0' }}>💡 {verdict.tip}</p>
+        {/* The quote — the star of the card */}
+        {bestQuote && (
+          <div style={{
+            padding: '14px 16px',
+            borderRadius: '14px 14px 14px 4px',
+            background: 'var(--bg)',
+            border: '1px solid var(--border-subtle)',
+            marginBottom: 12,
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.55, margin: 0 }}>
+              &ldquo;{bestQuote}&rdquo;
+            </p>
+          </div>
         )}
 
-        {count > 0 && (
-          <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 12 }}>16유형 중 {count}개 완료</p>
-        )}
+        {/* Verdict — secondary, not primary */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 14 }}>{VERDICT_EMOJI[verdict.verdict]}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{VERDICT_LABELS[verdict.verdict]}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>— {verdict.reason.length > 30 ? verdict.reason.slice(0, 30) + '...' : verdict.reason}</span>
+        </div>
       </div>
 
-      {/* Actions */}
-      <div style={{
-        display: 'flex', gap: 0,
-        borderTop: '1px solid var(--border-subtle)',
-      }}>
-        <button
-          onClick={handleCopy}
-          style={{
-            flex: 1, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, fontWeight: 600,
-            color: copied ? 'var(--success)' : 'var(--accent)',
-          }}
-        >
-          {copied ? <><Check size={14} /> 복사됨!</> : <><Copy size={14} /> 텍스트 복사</>}
-        </button>
-        <button
-          onClick={onClose}
-          style={{
-            padding: '12px 16px', background: 'none', border: 'none',
-            borderLeft: '1px solid var(--border-subtle)',
-            cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)',
-          }}
-        >
-          닫기
-        </button>
-      </div>
+      {/* Copy button — prominent */}
+      <button
+        onClick={handleCopy}
+        style={{
+          width: '100%', padding: '14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: copied ? 'var(--success)' : 'var(--text-primary)',
+          color: 'var(--bg)',
+          border: 'none', cursor: 'pointer',
+          fontSize: 14, fontWeight: 700,
+          transition: 'background 0.2s',
+        }}
+      >
+        {copied ? <><Check size={16} /> 복사 완료! 카톡에 붙여넣기</> : <><Copy size={16} /> 카톡에 공유하기</>}
+      </button>
     </motion.div>
   );
 }
