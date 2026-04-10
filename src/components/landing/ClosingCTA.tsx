@@ -25,22 +25,21 @@ export function ClosingCTA() {
           ref={ref}
           className={`text-center ${isVisible ? 'scroll-visible' : 'scroll-hidden'}`}
         >
-          <blockquote className="text-display-md !text-white/95">
-            {L('막막한 사람들에게 말로만 조언해주다가,', 'I used to just give advice to people who felt stuck.')}
+          <blockquote className="text-display-md !text-white/90">
+            {L(
+              '어려운 건 문서를 쓰는 게 아니라,',
+              'The hard part was never the writing —'
+            )}
             <br />
-            <span className="!text-white/60">
-              {L('아예 도구로 만들었습니다.', 'So I built the tool instead.')}
+            <span className="text-gold-gradient">
+              {L('뭘 써야 하는지 아는 것이었습니다.', 'it was knowing what to write.')}
             </span>
           </blockquote>
 
-          <p className="mt-4 text-[14px] md:text-[15px] text-white/50 leading-relaxed max-w-md mx-auto">
-            {L('이제 나한테 물어보지 말고, Overture에게 물어보세요.', "Don't ask me anymore. Ask Overture.")}
-          </p>
-
-          <p className="mt-5 text-[12px] text-white/30 italic max-w-sm mx-auto leading-relaxed">
+          <p className="mt-5 text-[14px] md:text-[15px] text-white/50 leading-relaxed max-w-md mx-auto">
             {L(
-              '\u201c어려운 건 문서를 쓰는 게 아니라, 뭘 써야 하는지 아는 것이었다.\u201d',
-              '\u201cThe hard part was never the writing \u2014 it was knowing what to write.\u201d'
+              '그래서 조언 대신 도구를 만들었습니다.',
+              'So instead of giving advice, we built the tool.'
             )}
           </p>
 

@@ -69,7 +69,7 @@ function getExamples(locale: Locale): ExampleData[] {
   return locale === 'ko' ? EXAMPLES_KO : EXAMPLES_EN;
 }
 
-/* ─── Voice Quotes (pain → solution 순환) ─── */
+/* ─── Voice Quotes (synced with auto-type via currentIdx) ─── */
 interface VoiceQuote { pain: string; solve: string }
 
 const VOICES_KO: VoiceQuote[] = [
@@ -136,16 +136,6 @@ function useAutoType(examples: ExampleData[], speed = 45, pause = 3500) {
   return { display, currentIdx, stop, userStopped };
 }
 
-/* ─── Voice auto-rotate hook ─── */
-function useVoiceRotate(voices: VoiceQuote[], interval = 3800) {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setIdx(i => (i + 1) % voices.length), interval);
-    return () => clearInterval(timer);
-  }, [voices.length, interval]);
-  return idx;
-}
-
 /* ─── Motion constants ─── */
 const EASE = [0.32, 0.72, 0, 1] as [number, number, number, number];
 
@@ -155,8 +145,9 @@ const cardVariants = {
   exit: { opacity: 0, y: -10, scale: 0.98 },
 };
 
-/* ─── Real Question Card (simplified from AnalysisCard) ─── */
-function RealQuestionCard({ data }: { data: ExampleData }) {
+/* ─── Real Question Card (with payoff hint) ─── */
+function RealQuestionCard({ data, locale }: { data: ExampleData; locale: Locale }) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <motion.div
       variants={cardVariants}
@@ -194,8 +185,39 @@ function RealQuestionCard({ data }: { data: ExampleData }) {
         >
           {data.realQuestion.text}
         </motion.p>
+
+        {/* Payoff: what happens next */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.4, ease: EASE }}
+          className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center gap-2 text-[12px]"
+        >
+          <span className="text-[var(--accent)] font-medium">{L('초안 생성', 'Draft')}</span>
+          <span className="text-[var(--text-tertiary)]">&rarr;</span>
+          <span className="text-[var(--accent)] font-medium">{L('사전 검증', 'Pre-validation')}</span>
+          <span className="text-[var(--text-tertiary)]">&rarr;</span>
+          <span className="text-[var(--accent)] font-medium">{L('제출 가능한 문서', 'Ready to submit')}</span>
+        </motion.div>
       </div>
     </motion.div>
+  );
+}
+
+/* ─── Card section (reusable for mobile + desktop) ─── */
+function CardSection({ example, locale }: { example: ExampleData; locale: Locale }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={example.id}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25, ease: EASE }}
+      >
+        <RealQuestionCard data={example} locale={locale} />
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -208,7 +230,6 @@ export function Hero() {
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
   const { display: autoText, currentIdx, stop: stopAutoType, userStopped } = useAutoType(examples);
-  const voiceIdx = useVoiceRotate(voices);
 
   const handleSubmit = () => {
     const text = inputValue.trim() || (userStopped ? '' : autoText) || examples[currentIdx].input;
@@ -228,6 +249,7 @@ export function Hero() {
   };
 
   const currentExample = examples[currentIdx];
+  const currentVoice = voices[currentIdx];
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
   return (
@@ -254,11 +276,11 @@ export function Hero() {
               {L('채울수록 날카로워집니다.', 'The more you add, the sharper it gets.')}
             </p>
 
-            {/* ─── Rotating Voice: pain → solution ─── */}
+            {/* ─── Rotating Voice: synced with auto-type currentIdx ─── */}
             <div className="mt-6 h-[56px] flex items-center max-w-md">
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={voiceIdx}
+                  key={currentIdx}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -266,10 +288,10 @@ export function Hero() {
                   className="flex flex-col gap-1"
                 >
                   <p className="text-[15px] text-[var(--text-secondary)] italic leading-snug">
-                    &ldquo;{voices[voiceIdx].pain}&rdquo;
+                    &ldquo;{currentVoice.pain}&rdquo;
                   </p>
                   <p className="text-[15px] text-[var(--accent)] font-semibold leading-snug">
-                    → {voices[voiceIdx].solve}
+                    &rarr; {currentVoice.solve}
                   </p>
                 </motion.div>
               </AnimatePresence>
@@ -320,23 +342,35 @@ export function Hero() {
                 )}
               </div>
 
-              {/* ─── Scenario Buttons (3개 데모 시나리오) ─── */}
+              {/* ─── Mobile-only card: right after input for immediate context ─── */}
+              <div className="mt-6 lg:hidden">
+                <CardSection example={currentExample} locale={locale} />
+              </div>
+
+              {/* ─── Scenario Buttons with active indicator ─── */}
               <div className="flex flex-wrap items-center gap-2 mt-5">
-                {examples.map((ex) => (
-                  <button
-                    key={ex.id}
-                    onClick={() => handleScenarioClick(ex)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.04] cursor-pointer"
-                    style={{
-                      transitionProperty: 'color, background-color, border-color',
-                      transitionDuration: '250ms',
-                      transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
-                    }}
-                  >
-                    <span>{ex.icon}</span>
-                    <span>{ex.scenarioLabel}</span>
-                  </button>
-                ))}
+                {examples.map((ex, i) => {
+                  const isActive = i === currentIdx && !userStopped;
+                  return (
+                    <button
+                      key={ex.id}
+                      onClick={() => handleScenarioClick(ex)}
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium border cursor-pointer ${
+                        isActive
+                          ? 'border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/[0.06]'
+                          : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.04]'
+                      }`}
+                      style={{
+                        transitionProperty: 'all',
+                        transitionDuration: '350ms',
+                        transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                      }}
+                    >
+                      <span>{ex.icon}</span>
+                      <span>{ex.scenarioLabel}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5 mt-3 px-1">
@@ -348,20 +382,10 @@ export function Hero() {
             </div>
           </div>
 
-          {/* ─── Right: Real Question Card (single, clean) ─── */}
-          <div className="mt-12 lg:mt-0 phrase-entrance" style={{ animationDelay: '200ms' }}>
+          {/* ─── Right: Desktop-only Real Question Card ─── */}
+          <div className="hidden lg:block phrase-entrance" style={{ animationDelay: '200ms' }}>
             <div className="relative min-h-[220px]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentIdx}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25, ease: EASE }}
-                >
-                  <RealQuestionCard data={currentExample} />
-                </motion.div>
-              </AnimatePresence>
+              <CardSection example={currentExample} locale={locale} />
             </div>
 
             {/* Treble clef watermark */}
