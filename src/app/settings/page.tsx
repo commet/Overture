@@ -166,10 +166,10 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">{L('설정', 'Settings')}</h1>
-        <p className="text-[13px] text-[var(--text-secondary)] mt-1">{L('LLM 연결 방식과 데이터 관리', 'LLM connection and data management')}</p>
+        <p className="text-[13px] text-[var(--text-secondary)] mt-1">{L('프로필, AI 엔진, 환경 설정', 'Profile, AI engine, preferences')}</p>
       </div>
 
-      {/* ── My Profile ── */}
+      {/* ── 1. My Profile ── */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <User size={16} className="text-[var(--accent)]" />
@@ -246,12 +246,14 @@ export default function SettingsPage() {
         <ObservationsBlock locale={locale} />
       </Card>
 
-      {/* LLM Provider */}
+      {/* ── 2. AI Engine (provider + mode + key merged) ── */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <Server size={16} className="text-[var(--accent)]" />
-          <h3 className="text-[15px] font-bold">{L('LLM 프로바이더', 'LLM Provider')}</h3>
+          <h3 className="text-[15px] font-bold">{L('AI 엔진', 'AI Engine')}</h3>
         </div>
+
+        {/* Provider selection */}
         <div className="space-y-2">
           {llmProviders.map((provider) => (
             <button
@@ -276,184 +278,280 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        {/* Anthropic connection mode */}
+        {(settings.llm_provider || 'anthropic') === 'anthropic' && (
+          <div className="animate-fade-in">
+            <div className="border-t border-[var(--border-subtle)] my-4" />
+            <h4 className="text-[13px] font-semibold text-[var(--text-secondary)] mb-2">{L('연결 방식', 'Connection Mode')}</h4>
+            <div className="space-y-2">
+              {llmModes.map((mode) => (
+                <button
+                  key={mode.value}
+                  onClick={() => handleModeChange(mode.value)}
+                  disabled={!mode.available}
+                  className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
+                    settings.llm_mode === mode.value
+                      ? 'border-[var(--accent)] bg-[var(--ai)]'
+                      : mode.available
+                      ? 'border-[var(--border)] hover:border-[var(--accent)]'
+                      : 'border-[var(--border)] opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className={`mt-0.5 ${settings.llm_mode === mode.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                    {mode.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] font-semibold text-[var(--text-primary)]">{mode.label}</span>
+                      {settings.llm_mode === mode.value && <Check size={14} className="text-[var(--accent)]" />}
+                      {!mode.available && <Badge variant="default">Coming soon</Badge>}
+                    </div>
+                    <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{mode.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Anthropic API Key */}
+        {(settings.llm_provider || 'anthropic') === 'anthropic' && settings.llm_mode === 'direct' && (
+          <div className="animate-fade-in">
+            <div className="border-t border-[var(--border-subtle)] my-4" />
+            <div className="flex items-center gap-2 mb-2">
+              <Key size={14} className="text-[var(--text-secondary)]" />
+              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">Anthropic API Key</h4>
+            </div>
+            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
+              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
+            </p>
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={settings.anthropic_api_key}
+                onChange={(e) => updateSettings({ anthropic_api_key: e.target.value })}
+                placeholder="sk-ant-..."
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
+              >
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* OpenAI API Key + Model */}
+        {(settings.llm_provider || 'anthropic') === 'openai' && (
+          <div className="animate-fade-in">
+            <div className="border-t border-[var(--border-subtle)] my-4" />
+            <div className="flex items-center gap-2 mb-2">
+              <Key size={14} className="text-[var(--text-secondary)]" />
+              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">OpenAI API Key</h4>
+            </div>
+            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
+              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
+            </p>
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={settings.openai_api_key || ''}
+                onChange={(e) => updateSettings({ openai_api_key: e.target.value })}
+                placeholder="sk-..."
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
+              >
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="mt-3">
+              <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
+              <select
+                value={settings.openai_model || 'gpt-4o'}
+                onChange={(e) => updateSettings({ openai_model: e.target.value })}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+              >
+                <option value="gpt-4o">GPT-4o — {L('균형 (추천)', 'Balanced (recommended)')}</option>
+                <option value="gpt-4o-mini">GPT-4o Mini — {L('빠르고 저렴', 'Fast & cheap')}</option>
+                <option value="gpt-4.1-mini">GPT-4.1 Mini — {L('최신 경량', 'Latest lightweight')}</option>
+                <option value="gpt-4.1-nano">GPT-4.1 Nano — {L('초경량', 'Ultra lightweight')}</option>
+                <option value="o3-mini">o3-mini — {L('추론 특화', 'Reasoning')}</option>
+                <option value="o4-mini">o4-mini — {L('최신 추론', 'Latest reasoning')}</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Gemini API Key + Model */}
+        {(settings.llm_provider || 'anthropic') === 'gemini' && (
+          <div className="animate-fade-in">
+            <div className="border-t border-[var(--border-subtle)] my-4" />
+            <div className="flex items-center gap-2 mb-2">
+              <Key size={14} className="text-[var(--text-secondary)]" />
+              <h4 className="text-[13px] font-semibold text-[var(--text-secondary)]">Google AI API Key</h4>
+            </div>
+            <p className="text-[11px] text-[var(--warning)] font-medium mb-2">
+              {L('⚠ 키는 localStorage에 저장됩니다. 공용 컴퓨터에서는 사용 후 삭제하세요.', '⚠ Key is stored in localStorage. Delete after use on shared computers.')}
+            </p>
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={settings.gemini_api_key || ''}
+                onChange={(e) => updateSettings({ gemini_api_key: e.target.value })}
+                placeholder="AIza..."
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
+              >
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="mt-3">
+              <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
+              <select
+                value={settings.gemini_model || 'gemini-2.5-flash'}
+                onChange={(e) => updateSettings({ gemini_model: e.target.value })}
+                className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+              >
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash — {L('빠르고 저렴 (추천)', 'Fast & cheap (recommended)')}</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro — {L('고품질', 'High quality')}</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash — {L('초경량', 'Ultra lightweight')}</option>
+              </select>
+            </div>
+          </div>
+        )}
       </Card>
 
-      {/* Anthropic Connection Mode (shown when anthropic provider) */}
-      {(settings.llm_provider || 'anthropic') === 'anthropic' && (
-        <Card className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-4">
-            <Globe size={16} className="text-[var(--accent)]" />
-            <h3 className="text-[15px] font-bold">{L('Anthropic 연결 방식', 'Anthropic Connection Mode')}</h3>
+      {/* ── 3. Preferences (Language + Sound) ── */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[15px] font-bold">{L('환경 설정', 'Preferences')}</h3>
+        </div>
+
+        {/* Language */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[13px] font-medium text-[var(--text-primary)]">{L('언어', 'Language')}</span>
+        </div>
+        <div className="flex gap-2">
+          {[
+            { value: 'ko' as const, label: '한국어' },
+            { value: 'en' as const, label: 'English' },
+          ].map((lang) => (
+            <button
+              key={lang.value}
+              onClick={() => { updateSettings({ language: lang.value }); window.location.reload(); }}
+              className={`flex-1 py-2 rounded-lg text-[13px] font-medium border text-center transition-colors cursor-pointer ${
+                settings.language === lang.value
+                  ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
+              }`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
+          {settings.language === 'en' ? 'Partial English support. Some UI text may still appear in Korean.' : '일부 UI 텍스트는 아직 한국어로만 제공됩니다.'}
+        </p>
+
+        {/* Sound */}
+        <div className="border-t border-[var(--border-subtle)] my-4" />
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-medium">{L('전환음', 'Transition Sound')}</p>
+            <p className="text-[11px] text-[var(--text-secondary)]">{L('단계 전환 시 클래식 서곡 톤', 'Classical overture tone on step transitions')}</p>
           </div>
-          <div className="space-y-2">
-            {llmModes.map((mode) => (
+          <button
+            role="switch"
+            aria-checked={settings.audio_enabled}
+            onClick={() => {
+              const next = !settings.audio_enabled;
+              updateSettings({ audio_enabled: next });
+              if (next) {
+                resumeAudioContext();
+                playTransitionTone(settings.audio_volume);
+              }
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+              settings.audio_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+            }`}
+          >
+            <span className={`block w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform ${
+              settings.audio_enabled ? 'translate-x-[22px]' : 'translate-x-[2px]'
+            } mt-[2px]`} />
+          </button>
+        </div>
+        {settings.audio_enabled && (
+          <div className="space-y-3 mt-3 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <span className="text-[12px] text-[var(--text-secondary)] w-10 shrink-0">{L('볼륨', 'Vol.')}</span>
+              <input
+                type="range"
+                min="0"
+                max="0.5"
+                step="0.05"
+                value={settings.audio_volume}
+                onChange={(e) => updateSettings({ audio_volume: parseFloat(e.target.value) })}
+                className="flex-1 accent-[var(--accent)]"
+              />
+              <span className="text-[12px] text-[var(--text-secondary)] w-10 text-right">{Math.round(settings.audio_volume * 200)}%</span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+              <div>
+                <p className="text-[13px] font-medium">{L('앰비언트 드론', 'Ambient Drone')}</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">{L('공연 전 콘서트홀의 따뜻한 울림', 'The warm resonance of a concert hall before the performance')}</p>
+              </div>
               <button
-                key={mode.value}
-                onClick={() => handleModeChange(mode.value)}
-                disabled={!mode.available}
-                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer ${
-                  settings.llm_mode === mode.value
-                    ? 'border-[var(--accent)] bg-[var(--ai)]'
-                    : mode.available
-                    ? 'border-[var(--border)] hover:border-[var(--accent)]'
-                    : 'border-[var(--border)] opacity-50 cursor-not-allowed'
+                onClick={() => {
+                  resumeAudioContext();
+                  if (isAmbientPlaying()) {
+                    stopAmbient();
+                  } else {
+                    startAmbient(settings.audio_volume);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-colors ${
+                  isAmbientPlaying()
+                    ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
                 }`}
               >
-                <div className={`mt-0.5 ${settings.llm_mode === mode.value ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                  {mode.icon}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[14px] font-semibold text-[var(--text-primary)]">{mode.label}</span>
-                    {settings.llm_mode === mode.value && <Check size={14} className="text-[var(--accent)]" />}
-                    {!mode.available && <Badge variant="default">Coming soon</Badge>}
-                  </div>
-                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{mode.description}</p>
-                </div>
+                {isAmbientPlaying() ? L('정지', 'Stop') : L('재생', 'Play')}
               </button>
-            ))}
+            </div>
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
-      {/* Anthropic API Key (shown when anthropic + direct mode) */}
-      {(settings.llm_provider || 'anthropic') === 'anthropic' && settings.llm_mode === 'direct' && (
-        <Card className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <Key size={16} className="text-[var(--accent)]" />
-            <h3 className="text-[15px] font-bold">Anthropic API Key</h3>
-          </div>
-          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
-            <p>{L('키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.', 'The key is stored in browser localStorage and sent through our server for LLM calls.')}</p>
-            <p className="text-[var(--warning)] font-medium">
-              {L('⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.', '⚠ On shared computers, always delete your key after use. Browser extensions can access localStorage.')}
-            </p>
-          </div>
-          <div className="relative">
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={settings.anthropic_api_key}
-              onChange={(e) => updateSettings({ anthropic_api_key: e.target.value })}
-              placeholder="sk-ant-..."
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              spellCheck={false}
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </Card>
-      )}
-
-      {/* OpenAI settings (shown when openai provider) */}
-      {(settings.llm_provider || 'anthropic') === 'openai' && (
-        <Card className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <Key size={16} className="text-[var(--accent)]" />
-            <h3 className="text-[15px] font-bold">OpenAI API Key</h3>
-          </div>
-          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
-            <p>{L('키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.', 'The key is stored in browser localStorage and sent through our server for LLM calls.')}</p>
-            <p className="text-[var(--warning)] font-medium">
-              {L('⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.', '⚠ On shared computers, always delete your key after use. Browser extensions can access localStorage.')}
-            </p>
-          </div>
-          <div className="relative">
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={settings.openai_api_key || ''}
-              onChange={(e) => updateSettings({ openai_api_key: e.target.value })}
-              placeholder="sk-..."
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              spellCheck={false}
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <div className="mt-3">
-            <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
-            <select
-              value={settings.openai_model || 'gpt-4o'}
-              onChange={(e) => updateSettings({ openai_model: e.target.value })}
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-            >
-              <option value="gpt-4o">GPT-4o — {L('균형 (추천)', 'Balanced (recommended)')}</option>
-              <option value="gpt-4o-mini">GPT-4o Mini — {L('빠르고 저렴', 'Fast & cheap')}</option>
-              <option value="gpt-4.1-mini">GPT-4.1 Mini — {L('최신 경량', 'Latest lightweight')}</option>
-              <option value="gpt-4.1-nano">GPT-4.1 Nano — {L('초경량', 'Ultra lightweight')}</option>
-              <option value="o3-mini">o3-mini — {L('추론 특화', 'Reasoning')}</option>
-              <option value="o4-mini">o4-mini — {L('최신 추론', 'Latest reasoning')}</option>
-            </select>
-          </div>
-        </Card>
-      )}
-
-      {/* Gemini settings (shown when gemini provider) */}
-      {(settings.llm_provider || 'anthropic') === 'gemini' && (
-        <Card className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <Key size={16} className="text-[var(--accent)]" />
-            <h3 className="text-[15px] font-bold">Google AI API Key</h3>
-          </div>
-          <div className="text-[12px] text-[var(--text-secondary)] mb-3 space-y-1">
-            <p>{L('키는 브라우저 localStorage에 저장되며, LLM 호출 시 같은 서버를 통해 전송됩니다.', 'The key is stored in browser localStorage and sent through our server for LLM calls.')}</p>
-            <p className="text-[var(--warning)] font-medium">
-              {L('⚠ 공용 컴퓨터에서는 사용 후 반드시 키를 삭제하세요. 브라우저 확장프로그램이 localStorage에 접근할 수 있습니다.', '⚠ On shared computers, always delete your key after use. Browser extensions can access localStorage.')}
-            </p>
-          </div>
-          <div className="relative">
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={settings.gemini_api_key || ''}
-              onChange={(e) => updateSettings({ gemini_api_key: e.target.value })}
-              placeholder="AIza..."
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              spellCheck={false}
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] font-mono focus:outline-none focus:border-[var(--accent)] pr-10"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] cursor-pointer"
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <div className="mt-3">
-            <label className="text-[12px] text-[var(--text-secondary)] mb-1 block">{L('모델', 'Model')}</label>
-            <select
-              value={settings.gemini_model || 'gemini-2.5-flash'}
-              onChange={(e) => updateSettings({ gemini_model: e.target.value })}
-              className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-            >
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash — {L('빠르고 저렴 (추천)', 'Fast & cheap (recommended)')}</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro — {L('고품질', 'High quality')}</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash — {L('초경량', 'Ultra lightweight')}</option>
-            </select>
-          </div>
-        </Card>
-      )}
-
-      {/* Slack Integration */}
+      {/* ── 4. Integrations & Data ── */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <MessageSquare size={16} className="text-[var(--accent)]" />
-          <h3 className="text-[15px] font-bold">{L('Slack 연동', 'Slack Integration')}</h3>
+          <h3 className="text-[15px] font-bold">{L('연동 & 데이터', 'Integrations & Data')}</h3>
         </div>
+
+        {/* Slack */}
         {slackStatus === 'connected' && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--collab)] border border-[var(--success)]/20">
             <p className="text-[13px] text-[var(--success)] font-medium flex items-center gap-1.5"><Check size={14} /> {L('Slack에 연결되었습니다!', 'Connected to Slack!')}</p>
@@ -499,16 +597,14 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
-      </Card>
 
-      {/* Data Management */}
-      <Card>
-        <h3 className="text-[15px] font-bold mb-4">{L('데이터 관리', 'Data Management')}</h3>
-        <div className="space-y-3">
+        {/* Data management */}
+        <div className="border-t border-[var(--border-subtle)] my-4" />
+        <div className="space-y-2">
           <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
             <div>
-              <p className="text-[14px] font-medium">{L('데이터 내보내기', 'Export Data')}</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">{L('모든 도구 데이터와 페르소나를 JSON으로 다운로드', 'Download all tool data and personas as JSON')}</p>
+              <p className="text-[13px] font-medium">{L('데이터 내보내기', 'Export Data')}</p>
+              <p className="text-[11px] text-[var(--text-secondary)]">{L('모든 데이터를 JSON으로 다운로드', 'Download all data as JSON')}</p>
             </div>
             <Button variant="secondary" size="sm" onClick={handleExport}>
               <Download size={14} /> {L('내보내기', 'Export')}
@@ -516,8 +612,8 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
             <div>
-              <p className="text-[14px] font-medium">{L('데이터 가져오기', 'Import Data')}</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">{L('JSON 파일에서 데이터 복원', 'Restore data from a JSON file')}</p>
+              <p className="text-[13px] font-medium">{L('데이터 가져오기', 'Import Data')}</p>
+              <p className="text-[11px] text-[var(--text-secondary)]">{L('JSON 파일에서 복원', 'Restore from JSON file')}</p>
             </div>
             <label className="cursor-pointer">
               <span className="inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-all duration-150 active:scale-[0.98] bg-transparent border-[1.5px] border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg)] px-3 py-1.5 text-[13px]">
@@ -528,8 +624,8 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center justify-between p-3 bg-[var(--danger)]/10 rounded-lg">
             <div>
-              <p className="text-[14px] font-medium text-red-700">{L('데이터 초기화', 'Reset Data')}</p>
-              <p className="text-[12px] text-red-400">{L('모든 저장된 데이터를 삭제합니다', 'Deletes all saved data')}</p>
+              <p className="text-[13px] font-medium text-red-700">{L('데이터 초기화', 'Reset Data')}</p>
+              <p className="text-[11px] text-red-400">{L('모든 저장된 데이터를 삭제', 'Deletes all saved data')}</p>
             </div>
             <Button variant="danger" size="sm" onClick={() => setResetModal(true)}>
               <Trash2 size={14} /> {L('초기화', 'Reset')}
@@ -538,112 +634,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* Language */}
-      <Card>
-        <div className="flex items-center gap-2 mb-4">
-          <Globe size={16} className="text-[var(--accent)]" />
-          <h3 className="text-[15px] font-bold">{L('언어 / Language', 'Language')}</h3>
-        </div>
-        <div className="flex gap-2">
-          {[
-            { value: 'ko' as const, label: '한국어' },
-            { value: 'en' as const, label: 'English' },
-          ].map((lang) => (
-            <button
-              key={lang.value}
-              onClick={() => { updateSettings({ language: lang.value }); window.location.reload(); }}
-              className={`flex-1 py-2.5 rounded-lg text-[13px] font-medium border text-center transition-colors cursor-pointer ${
-                settings.language === lang.value
-                  ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
-                  : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
-              }`}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-[var(--text-tertiary)] mt-2">
-          {settings.language === 'en' ? 'Partial English support. Some UI text may still appear in Korean.' : '일부 UI 텍스트는 아직 한국어로만 제공됩니다.'}
-        </p>
-      </Card>
-
-      {/* Learning Health */}
+      {/* ── 5. Learning Health (conditional) ── */}
       <LearningHealthCard />
-
-      {/* Audio Settings */}
-      <Card>
-        <div className="flex items-center gap-2 mb-4">
-          <Volume2 size={16} className="text-[var(--accent)]" />
-          <h3 className="text-[15px] font-bold">{L('사운드', 'Sound')}</h3>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[14px] font-medium">{L('전환음', 'Transition Sound')}</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">{L('단계 전환 시 클래식 서곡 톤을 재생합니다', 'Plays a classical overture tone on step transitions')}</p>
-            </div>
-            <button
-              role="switch"
-              aria-checked={settings.audio_enabled}
-              onClick={() => {
-                const next = !settings.audio_enabled;
-                updateSettings({ audio_enabled: next });
-                if (next) {
-                  resumeAudioContext();
-                  playTransitionTone(settings.audio_volume);
-                }
-              }}
-              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                settings.audio_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-              }`}
-            >
-              <span className={`block w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform ${
-                settings.audio_enabled ? 'translate-x-[22px]' : 'translate-x-[2px]'
-              } mt-[2px]`} />
-            </button>
-          </div>
-          {settings.audio_enabled && (
-            <div className="space-y-3 animate-fade-in">
-              <div className="flex items-center gap-3">
-                <span className="text-[12px] text-[var(--text-secondary)] w-10 shrink-0">{L('볼륨', 'Vol.')}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="0.5"
-                  step="0.05"
-                  value={settings.audio_volume}
-                  onChange={(e) => updateSettings({ audio_volume: parseFloat(e.target.value) })}
-                  className="flex-1 accent-[var(--accent)]"
-                />
-                <span className="text-[12px] text-[var(--text-secondary)] w-10 text-right">{Math.round(settings.audio_volume * 200)}%</span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
-                <div>
-                  <p className="text-[13px] font-medium">{L('앰비언트 드론', 'Ambient Drone')}</p>
-                  <p className="text-[11px] text-[var(--text-secondary)]">{L('공연 전 콘서트홀의 따뜻한 울림', 'The warm resonance of a concert hall before the performance')}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    resumeAudioContext();
-                    if (isAmbientPlaying()) {
-                      stopAmbient();
-                    } else {
-                      startAmbient(settings.audio_volume);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border cursor-pointer transition-colors ${
-                    isAmbientPlaying()
-                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
-                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
-                  }`}
-                >
-                  {isAmbientPlaying() ? L('정지', 'Stop') : L('재생', 'Play')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
 
       <Modal open={resetModal} onClose={() => setResetModal(false)} title={L('데이터 초기화', 'Reset Data')}>
         <p className="text-[14px] text-[var(--text-primary)] mb-4">
