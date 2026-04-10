@@ -235,16 +235,10 @@ const COMPLETION_NOTES: Record<string, string[]> = {
   concertmaster: ['전체적으로 한번 봤습니다.', '팀 결과물 검토 완료.'],
 };
 
-// agent ID → skill ID 매핑 (agent-skills.ts와 동기화)
-const AGENT_ID_TO_NOTE: Record<string, string> = {
-  hayoon: 'intern', sujin: 'researcher', research_director: 'research_director',
-  strategy_jr: 'strategy_jr', hyunwoo: 'strategist', chief_strategist: 'chief_strategist',
-  seoyeon: 'copywriter', minjae: 'numbers', junseo: 'engineer', yerin: 'pm',
-  donghyuk: 'critic', jieun: 'ux', taejun: 'legal', concertmaster: 'concertmaster',
-};
+import { agentIdToPersonaId } from './agent-registry';
 
 export function getCompletionNote(personaId: string): string {
-  const noteId = AGENT_ID_TO_NOTE[personaId] || personaId;
+  const noteId = agentIdToPersonaId(personaId);
   const notes = COMPLETION_NOTES[noteId];
   if (!notes || notes.length === 0) return '작업 완료했습니다.';
   return notes[Math.floor(Math.random() * notes.length)];

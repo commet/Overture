@@ -212,7 +212,10 @@ export async function runAllAIWorkers(
   // v2: Include workers that need AI execution:
   // 1. AI agents (agent_type='ai' or legacy who='ai'/'both')
   // 2. Self/Human agents with ai_scope that are in ai_preparing state (AI 보조 분석)
+  // 3. Skip already-completed workers (crash resume)
   const aiWorkers = workers.filter(w => {
+    // Crash resume: skip workers that already completed
+    if (w.status === 'done' && w.result) return false;
     const aType = w.agent_type || (w.who === 'both' ? 'ai' : w.who === 'human' ? 'self' : 'ai');
     if (aType === 'ai') return true;
     // Legacy support
@@ -334,6 +337,14 @@ export async function runPipeline(
   });
 
   const stageResults = new Map<string, Map<string, string>>(); // stageId → (workerId → result text)
+
+  // Crash resume: seed stageResults with already-completed workers
+  for (const w of workers) {
+    if (w.status === 'done' && w.result && w.stage_id) {
+      if (!stageResults.has(w.stage_id)) stageResults.set(w.stage_id, new Map());
+      stageResults.get(w.stage_id)!.set(w.id, w.result);
+    }
+  }
 
   for (const stage of sortedStages) {
     if (signal?.aborted) return;

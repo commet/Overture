@@ -85,37 +85,12 @@ import { AGENT_SKILLS } from './agent-skills-data';
 export { AGENT_SKILLS };
 
 
-// ─── Agent ID → Skill ID Mapping ───
+// ─── Lookup (uses agent-registry.ts as single source of truth) ───
 
-const AGENT_ID_TO_SKILL: Record<string, string> = {
-  // Research chain
-  hayoon: 'intern',
-  sujin: 'researcher',
-  research_director: 'research_director',
-  // Strategy chain
-  strategy_jr: 'strategy_jr',
-  hyunwoo: 'strategist',
-  chief_strategist: 'chief_strategist',
-  // Execution
-  seoyeon: 'copywriter',
-  minjae: 'numbers',
-  hyeyeon: 'finance',
-  minseo: 'marketing',
-  sujin_hr: 'people_culture',
-  junseo: 'engineer',
-  yerin: 'pm',
-  // Verification
-  donghyuk: 'critic',
-  jieun: 'ux',
-  taejun: 'legal',
-  // Special
-  concertmaster: 'concertmaster',
-};
-
-// ─── Lookup ───
+import { agentIdToPersonaId } from './agent-registry';
 
 export function getSkillSet(idOrPersonaId: string): AgentSkillSet | undefined {
-  const skillId = AGENT_ID_TO_SKILL[idOrPersonaId] || idOrPersonaId;
+  const skillId = agentIdToPersonaId(idOrPersonaId);
   return AGENT_SKILLS.find(s => s.personaId === skillId);
 }
 

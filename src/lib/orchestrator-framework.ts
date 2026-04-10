@@ -7,6 +7,7 @@
 
 import type { InputClassification, Domain } from './orchestrator-classify';
 import { getSkillSet } from './agent-skills';
+import { agentIdToFrameworkKey } from './agent-registry';
 
 /* ─── 에이전트 persona ID → 선호 프레임워크 매핑 ─── */
 
@@ -112,27 +113,6 @@ const FRAMEWORK_PRIORITY: Record<string, string[]> = {
   'concertmaster:*':              ['Dialectical Synthesis', '6-Point Cognitive Bias', 'Assumption Audit'],
 };
 
-/* ─── personaId 추론 (agentId → personaId) ─── */
-
-// agent-skills.ts의 AGENT_ID_TO_SKILL 매핑과 동일한 역할
-// agent-skills.ts의 AGENT_ID_TO_SKILL과 동일한 agent ID 사용
-const AGENT_ID_TO_PERSONA: Record<string, string> = {
-  sujin: 'researcher',
-  hyunwoo: 'strategist',
-  minjae: 'numbers',
-  seoyeon: 'copywriter',
-  donghyuk: 'critic',
-  jieun: 'ux',
-  taejun: 'legal',
-  hayoon: 'intern',
-  junseo: 'engineer',
-  yerin: 'pm',
-  research_director: 'research_director',
-  strategy_jr: 'strategy_jr',
-  chief_strategist: 'chief_strategist',
-  concertmaster: 'concertmaster',
-};
-
 /* ─── Main ─── */
 
 export function assignFramework(
@@ -140,7 +120,7 @@ export function assignFramework(
   stepTask: string,
   classification: InputClassification,
 ): string | null {
-  const personaId = AGENT_ID_TO_PERSONA[agentId] || agentId;
+  const personaId = agentIdToFrameworkKey(agentId);
   const skillSet = getSkillSet(personaId);
   if (!skillSet || skillSet.frameworks.length === 0) return null;
 

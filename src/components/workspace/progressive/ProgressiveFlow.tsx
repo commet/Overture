@@ -639,37 +639,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
   if (!session) return null;
 
-  /* Deploy workers — user confirmed the team */
-  const onDeployWorkers = () => {
-    if (deployPhase === 'deployed') return; // Guard: prevent double-click
-    const preDeployWorkers = store.currentSession()?.workers ?? [];
-    if (preDeployWorkers.length === 0) return;
-    store.deployWorkers();
-    // CRITICAL: re-read workers AFTER deployWorkers to get updated statuses (ai_preparing, waiting_input)
-    const ws = store.currentSession()?.workers ?? [];
-
-    // Phase 2: Auto-send human agent questions (fire-and-forget)
-    const humanWorkers = ws.filter(w => w.agent_type === 'human' && w.contact?.address);
-    if (humanWorkers.length > 0) {
-      import('@/lib/supabase').then(({ supabase }) => {
-        supabase.auth.getSession().then(({ data: { session: authSession } }) => {
-          if (!authSession?.access_token) return;
-          const headers = { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' };
-          for (const hw of humanWorkers) {
-            const endpoint = hw.contact?.channel === 'slack' ? '/api/slack/send' : '/api/email/send-question';
-            const body = hw.contact?.channel === 'slack'
-              ? { userId: hw.contact.address, title: `질문: ${hw.task}`, content: `${hw.question_to_human || hw.task}\n\n${hw.ai_preliminary ? `참고:\n${hw.ai_preliminary}` : ''}`, sessionId: session.id, workerId: hw.id }
-              : { to: hw.contact!.address, subject: `질문: ${hw.task}`, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
-            fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
-              .then(r => r.json())
-              .then(r => {
-                if (r.ok) store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
-              })
-              .catch(() => { /* fail silently — user can still input manually */ });
-          }
-        });
-      });
-    }
+  /* Shared worker execution — used by both deploy and resume */
+  const startWorkerExecution = (ws: WorkerTask[]) => {
     const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
     const ctx: WorkerContext = {
       problemText: session.problem_text,
@@ -678,7 +649,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       hiddenAssumptions: latest?.hidden_assumptions ?? [],
       qaHistory: qa.map(q => ({ q: q.question.text, a: q.answer.value })),
     };
-    // Clean up any previous controller before creating new one
     workerAbortRef.current?.abort();
     workerAbortRef.current = new AbortController();
     const workerCallbacks = {
@@ -697,13 +667,10 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         const aType = w?.agent_type;
         const isAiPreparing = (aType === 'self' || aType === 'human') && w?.ai_scope;
         if (isAiPreparing) {
-          // AI 보조 분석 완료 → ai_preliminary에 저장 → waiting_input으로 전환
           store.updateWorker(id, { status: 'waiting_input', ai_preliminary: result, stream_text: '', ...validationFields });
         } else if (w?.who === 'both' || (aType === 'ai' && w?.self_scope)) {
-          // AI task with self_scope (collaboration) → waiting_input
           store.updateWorker(id, { status: 'waiting_input', result, stream_text: '', completion_note: note, ...validationFields });
         } else {
-          // Pure AI task → done
           store.updateWorker(id, { status: 'done', result, stream_text: '', completion_note: note, completed_at: new Date().toISOString(), ...validationFields });
         }
         scroll();
@@ -711,7 +678,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       onError: (id: string, error: string) => store.updateWorker(id, { status: 'error', error, stream_text: '' }),
     };
 
-    // stages가 있으면 스테이지 파이프라인, 없으면 기존 병렬 실행
     const stages = store.currentSession()?.stages;
     const hasMultipleStages = stages && stages.length > 1;
 
@@ -724,6 +690,48 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         setError(err instanceof Error ? err.message : L('에이전트 작업 중 오류가 발생했습니다.', 'Agent task error occurred.'));
       }
     });
+  };
+
+  /* Deploy workers — user confirmed the team */
+  const onDeployWorkers = () => {
+    if (deployPhase === 'deployed') return;
+    const preDeployWorkers = store.currentSession()?.workers ?? [];
+    if (preDeployWorkers.length === 0) return;
+    store.deployWorkers();
+    const ws = store.currentSession()?.workers ?? [];
+
+    // Auto-send human agent questions (fire-and-forget)
+    const humanWorkers = ws.filter(w => w.agent_type === 'human' && w.contact?.address);
+    if (humanWorkers.length > 0) {
+      import('@/lib/supabase').then(({ supabase }) => {
+        supabase.auth.getSession().then(({ data: { session: authSession } }) => {
+          if (!authSession?.access_token) return;
+          const headers = { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' };
+          for (const hw of humanWorkers) {
+            const endpoint = hw.contact?.channel === 'slack' ? '/api/slack/send' : '/api/email/send-question';
+            const body = hw.contact?.channel === 'slack'
+              ? { userId: hw.contact.address, title: `질문: ${hw.task}`, content: `${hw.question_to_human || hw.task}\n\n${hw.ai_preliminary ? `참고:\n${hw.ai_preliminary}` : ''}`, sessionId: session.id, workerId: hw.id }
+              : { to: hw.contact!.address, subject: `질문: ${hw.task}`, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
+            fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
+              .then(r => r.json())
+              .then(r => {
+                if (r.ok) store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
+              })
+              .catch(() => { /* fail silently */ });
+          }
+        });
+      });
+    }
+    startWorkerExecution(ws);
+  };
+
+  /* Resume workers — after crash/reload, continue from where we left off */
+  const isResumable = deployPhase === 'deployed' && !final_
+    && workers.some(w => w.status === 'pending')
+    && workers.some(w => w.status === 'done' && w.result);
+  const onResumeWorkers = () => {
+    const ws = store.currentSession()?.workers ?? [];
+    startWorkerExecution(ws);
   };
 
   /* Handlers */
@@ -982,6 +990,25 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
           {deployPhase === 'ready' && workers.length > 0 && (
             <TeamDeployBanner workers={workers} onDeploy={onDeployWorkers} />
+          )}
+
+          {/* Resume banner — 크래시/새로고침 후 미완료 작업 재개 */}
+          {isResumable && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mx-4 mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[13px] text-amber-600 dark:text-amber-400">
+                  <span>⟳</span>
+                  <span>{L('중단된 작업이 있습니다', 'Interrupted tasks found')}</span>
+                  <span className="text-[var(--text-tertiary)]">
+                    ({workers.filter(w => w.status === 'done').length}/{workers.length} {L('완료', 'done')})
+                  </span>
+                </div>
+                <button onClick={onResumeWorkers}
+                  className="px-3 py-1.5 text-[13px] font-medium rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors">
+                  {L('이어서 실행', 'Resume')}
+                </button>
+              </div>
+            </motion.div>
           )}
 
           {/* Question FIRST — user action at the top, not buried below */}
