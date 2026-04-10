@@ -39,7 +39,7 @@ Your job: In ONE pass, give them:
    Must be a QUESTION (ends with ?). Specific to their situation. Written as a natural sentence, NOT a category label.
    Example good: "Can this be built with the current team in the timeline the CEO expects?"
    Example bad: "New business feasibility assessment — determining Go/No-Go criteria" (this is a project title, not a question)
-   Example bad: "What the CEO really wants is not a document but proof of your capability" (don't claim to know what others want)
+   Example bad: "Your boss is secretly testing your leadership potential" (groundless psychology with no situational evidence)
 
    FRAMING CONFIDENCE: Rate your own certainty (0-100):
    - 90-100: Crystal clear.
@@ -48,13 +48,15 @@ Your job: In ONE pass, give them:
    - <50: Too vague. → Question should be "Can you tell me more about...?" style.
 
 2. Hidden Assumptions — Things they might be assuming wrong. 2-3 items.
-   Must be REALISTIC and COMMON. No speculation about other people's hidden motives.
+   Must be REALISTIC, COMMON, and grounded in their context. Reasonable inference about others' intent is OK if evidence-based.
    Example good: "Two weeks usually means first draft + feedback, not a polished final document"
-   Example bad: "Your CEO might be testing you" (speculation — forbidden)
+   Example good: "If the directive came right after competitor news, the real deadline pressure is about speed, not perfection"
+   Example bad: "Your CEO might be testing you" (groundless psychology — no evidence)
 
 3. Skeleton — A step-by-step action plan, NOT a document outline.
    Use natural sequence words to connect steps (${locale === 'ko' ? '먼저, 그다음, 그리고, 여기서 중요한 건, 마지막으로 — vary them, don\'t repeat the same set every time' : 'First, Then, Next, The key here is, Finally — vary them naturally'}).
    Each line = one concrete action + why it matters. 5 lines.
+   KEY: At least one skeleton step should VALIDATE or TEST a hidden assumption from above. If you assumed "the team can handle both tasks," one step should check that assumption.
    The reader should think "I know exactly what to do tomorrow morning."
    ${locale === 'ko' ? 'Example good: "먼저 — 고객사 담당자에게 전화하세요. \'PT 전에 여쭤볼 게 있는데\' 한마디면 돼요"\nExample bad: "시장 분석: 타겟 시장에 대한 종합적인 분석 수행" (학술 목차, 행동이 아님)' : 'Example good: "First — call the client contact. \'I have a few questions before the pitch\' is all you need to say"\nExample bad: "Market Analysis: Conduct a comprehensive analysis of the target market" (academic outline, not actionable)'}
 
@@ -79,10 +81,9 @@ Your job: In ONE pass, give them:
    The subtext should create ANTICIPATION — make the user feel "my answer to this will actually change the plan."
    ${locale === 'ko' ? 'Example subtext good: "이 하나가 기획안의 구조를 완전히 바꿔요"\nExample subtext bad: "이 정보가 필요해요" (사무적)' : 'Example subtext good: "This single answer completely changes the plan\'s structure"\nExample subtext bad: "We need this information" (administrative)'}
 
-5. Insight — ONE sharp sentence the user will remember. NOT generic advice — connect to their EXISTING EXPERIENCE.
-   If they mention their role (developer, PM, designer, marketer), reference what they do daily.
-   ${locale === 'ko' ? '개발자 → "기능 스펙 잡는 것과 비슷해요"\n디자이너 → "디자인 시스템 만들 때처럼 원칙부터 잡는 거예요"\nPM → "PRD 쓸 때랑 같아요 — 왜, 뭘, 언제"' : 'Developer → "It\'s like scoping a feature — why, what, how much"\nDesigner → "Like building a design system — principles first, then components"\nPM → "Same as writing a PRD — why, what, when"'}
-   If no role is mentioned, connect to a universal work experience instead of giving abstract advice.
+5. Insight — ONE sharp sentence the user will remember. PRIORITIZE strategic reframing of their situation over analogies.
+   BEST: Reframe their situation — reveal what's really at stake or flip a weakness into a strength.
+   ${locale === 'ko' ? 'Best: "경쟁사가 시장 교육비를 내준 셈이에요 — 타이밍이 오히려 좋아요" (상황 역전)\nBest: "추천으로 반은 이겼어요. 남은 반만 증명하면 돼요" (핵심 축소)\nGood: "기능 스펙 잡는 것과 비슷해요" (경험 연결)\nBad: "잘 계획하면 충분히 가능해요" (무의미한 격려)' : 'Best: "The competitor just paid your market education costs — your timing is actually perfect" (situation flip)\nBest: "The referral already won you half the battle. You just need to prove the other half" (scope reduction)\nGood: "It\'s like scoping a feature — why, what, how much" (experience analogy)\nBad: "With good planning, this is definitely doable" (meaningless encouragement)'}
 
 Respond in JSON. Concise — quality over volume.`,
 
@@ -129,6 +130,7 @@ export function buildDeepeningPrompt(
   availableAgents?: Array<{ name: string; role: string; specialty: string }>,
   locale: Locale = 'en',
   leadContext?: string,
+  registeredPersonas?: Array<{ name: string; role: string; hasContact: boolean }>,
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
   // Context compression: summarize older Q&A when it gets long (preserve more in later rounds)
@@ -166,7 +168,7 @@ CRITICAL: The user's latest answer is the MOST IMPORTANT new information. Everyt
 - The user should look at the updated analysis and think "Yes, my answer actually mattered."
 
 Your job each round:
-1. Insight — ONE sharp sentence from the latest answer. The user should think "that's exactly right."
+1. Insight — ONE sharp sentence about what their answer MEANS for the strategy. Not "you said X" but "X means Y." The user should think "I didn't see it that way — that's exactly right."
 2. Update real_question — must stay a QUESTION (ends with ?). Should feel NOTICEABLY more specific than before because of the answer.
 3. Update hidden assumptions — only change what the answer resolved or revealed. Don't shuffle items for novelty.
 4. Update skeleton — only modify items DIRECTLY AFFECTED by the new answer. Keep stable items unchanged. Never exceed 5-6 items.
@@ -178,7 +180,11 @@ ${round >= 1 ? `5. Build execution_plan — assign tasks to your team. 3-5 steps
    - decision: if self_scope involves a choice, write "질문: Option A vs Option B vs Option C" so UI renders selectable chips. Empty string if no explicit choice.
    - For "human" steps: add question_to_human (the question to send) and human_contact_hint (role like "CTO" or "고객")
    Rule: EVERY "ai" step must have self_scope — explain what the user should review about the AI result.
-   Rule: EVERY "self" step should have ai_scope — how AI can help (generate options, comparison, data).${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
+   Rule: EVERY "self" step should have ai_scope — how AI can help (generate options, comparison, data).${
+  registeredPersonas && registeredPersonas.length > 0
+    ? `\n   Known stakeholders (use for "human" steps if relevant):\n${registeredPersonas.map(p => `   - ${p.name} (${p.role})${p.hasContact ? ' ✓ contactable' : ''}`).join('\n')}\n   When creating a "human" step, match to a known stakeholder if their role fits. Use their exact name in human_contact_hint.`
+    : ''
+}${leadContext ? '\n' + leadContext : ''}${teamBlock}` : ''}
 
 QUESTION RULES (critical — this determines the quality of the entire session):
 - The answer they just gave should VISIBLY change the analysis. If nothing changes, the question was pointless.
@@ -391,6 +397,7 @@ ${locale === 'ko' ? 'Tone: 해요체 (polite but warm). Not a formal report — 
 This document will be presented to ${sanitize(dmLabel)}.
 
 STRUCTURE RULE: The analysis went through multiple Q&A rounds. The skeleton from the final analysis reflects the user's validated thinking. USE THAT SKELETON as the document's section structure. Don't invent new sections — fill in the skeleton items with worker research and your synthesis.
+IMPORTANT: The skeleton contains ACTION ITEMS (e.g., "먼저 — 경쟁사 제품 직접 써보기"). Transform these into proper DOCUMENT HEADINGS (e.g., "시장 기회 — 경쟁사가 열어준 시장"). The skeleton guides your structure; your headings should be topic-based, not task-based.
 
 Rules:
 - Executive summary: 2-3 sentences max. Must contain the document's single most SURPRISING insight — if nothing in the summary surprises, it's not sharp enough. ${sanitize(dmLabel)} should get 80% of the value just from this.

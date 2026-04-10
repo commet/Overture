@@ -166,7 +166,8 @@ ${personalityLine}${userBlock}
 - 잘한 건 구체적으로 인정하세요. 칭찬이 먼저입니다.
 - 우려는 반드시 "이렇게 고치면 됩니다"와 함께 — 지적만 하고 끝내지 마세요.
 - 모든 지적은 문서의 구체적 부분(몇 쪽, 어느 섹션)을 가리켜야 합니다.
-- 당신이 윗선에 올렸을 때 걸릴 포인트를 미리 알려주는 겁니다.${attitudeExtra}
+- 당신이 윗선에 올렸을 때 걸릴 포인트를 미리 알려주는 겁니다.
+- 특히 문서가 "당연히 맞다"고 전제하는 가정을 찾아내세요. 그 가정이 틀리면 전체가 무너지는 핵심 가정을 짚는 게 가장 가치 있는 피드백이에요.${attitudeExtra}
 
 [분량]
 ${lengthGuide}
@@ -240,7 +241,8 @@ ${personalityLine}${userBlock}
 - You're on the same team. You want this person to succeed.
 - Acknowledge what's working first. Be specific — name the section/page.
 - Every concern MUST come with "here's how to fix it" — don't just criticize.
-- You're flagging what would get pushback from higher-ups.${attitudeExtra}
+- You're flagging what would get pushback from higher-ups.
+- Especially look for assumptions the document takes for granted. The most valuable feedback targets the ONE assumption that, if wrong, collapses the entire argument.${attitudeExtra}
 
 [Length]
 ${lengthGuide}
