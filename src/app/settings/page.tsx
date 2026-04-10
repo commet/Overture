@@ -668,7 +668,7 @@ function ObservationsBlock({ locale }: { locale: string }) {
     <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
       <div className="flex items-center gap-1.5 mb-2.5">
         <BarChart3 size={12} className="text-[var(--text-tertiary)]" />
-        <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">{L('AI가 관찰한 패턴', 'AI-Observed Patterns')}</span>
+        <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">{L('나의 사용 현황', 'My Usage')}</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {items.map((item, i) => (
@@ -678,7 +678,7 @@ function ObservationsBlock({ locale }: { locale: string }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-[var(--text-tertiary)] mt-2">{L('이 정보는 AI가 피드백 깊이를 조절하는 데 자동 사용됩니다.', 'This data is automatically used to adjust AI feedback depth.')}</p>
+      <p className="text-[10px] text-[var(--text-tertiary)] mt-2">{L('사용할수록 AI가 나에게 맞는 피드백을 줍니다.', 'The more you use it, the better AI adapts to you.')}</p>
     </div>
   );
 }

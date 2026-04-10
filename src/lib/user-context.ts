@@ -53,9 +53,13 @@ export function getUserProfile(): UserProfile {
   }
 }
 
+/**
+ * UI 전용 — 설정 페이지에서 "AI가 관찰한 패턴" 표시용.
+ * 프롬프트에는 사용하지 않음 (시뮬레이션 리뷰어가 시스템 메트릭을 아는 건 부자연스러움).
+ */
 export function getUserObservations(): UserObservations {
   try {
-    // Dynamic import to avoid circular deps — concertmaster imports heavy modules
+    // Dynamic require: concertmaster chain이 무겁고 SSR에서 문제될 수 있어서 lazy load
     const { buildConcertmasterProfile } = require('./concertmaster') as { buildConcertmasterProfile: () => ConcertmasterProfile };
     const { analyzeDQTrend } = require('./decision-quality') as { analyzeDQTrend: () => { trend: string } };
 
@@ -112,17 +116,15 @@ const STRATEGY_KO: Record<string, string> = {
 };
 
 /**
- * 리뷰 프롬프트용: 명시적 프로필 + 관찰된 패턴 (리뷰어가 사용자 수준을 알게)
+ * 리뷰 프롬프트용: 명시적 프로필만.
+ * 관찰 데이터는 넣지 않음 — 시뮬레이션 리뷰어가 시스템 메트릭을 아는 건 부자연스러움.
  */
 export function buildUserContextForReview(locale: 'ko' | 'en'): string {
-  const { profile, observations } = getFullUserContext();
+  const profile = getUserProfile();
   const s = sanitizeForPrompt;
   const seniorityMap = locale === 'ko' ? SENIORITY_KO : SENIORITY_EN;
 
-  const hasProfile = profile.name || profile.role || profile.seniority || profile.context;
-  const hasObservations = observations.sessionCount >= 2;
-
-  if (!hasProfile && !hasObservations) return '';
+  if (!profile.name && !profile.role && !profile.seniority && !profile.context) return '';
 
   const lines: string[] = [];
 
@@ -132,16 +134,6 @@ export function buildUserContextForReview(locale: 'ko' | 'en'): string {
     if (profile.role) lines.push(`- 역할: ${s(profile.role)}`);
     if (profile.seniority) lines.push(`- 경력: ${seniorityMap[profile.seniority] || profile.seniority}`);
     if (profile.context) lines.push(`- 본인 소개: ${s(profile.context)}`);
-
-    if (hasObservations) {
-      if (observations.overrideRate > 0.3) {
-        lines.push(`- 특성: AI 제안을 자주 수정하는 편 — 구체적 대안을 함께 제시하세요`);
-      }
-      if (observations.dqTrend === 'improving') {
-        lines.push(`- 추세: 판단 품질이 상승 중 — 한 단계 높은 관점의 피드백도 괜찮습니다`);
-      }
-    }
-
     lines.push('→ 이 사람의 수준과 역할에 맞게 피드백의 깊이와 용어를 조절하세요.');
   } else {
     lines.push('[About the person who wrote this document]');
@@ -149,16 +141,6 @@ export function buildUserContextForReview(locale: 'ko' | 'en'): string {
     if (profile.role) lines.push(`- Role: ${s(profile.role)}`);
     if (profile.seniority) lines.push(`- Experience: ${seniorityMap[profile.seniority] || profile.seniority}`);
     if (profile.context) lines.push(`- About: ${s(profile.context)}`);
-
-    if (hasObservations) {
-      if (observations.overrideRate > 0.3) {
-        lines.push(`- Note: This person often modifies AI suggestions — provide specific alternatives`);
-      }
-      if (observations.dqTrend === 'improving') {
-        lines.push(`- Trend: Decision quality improving — feel free to push with deeper perspectives`);
-      }
-    }
-
     lines.push('→ Adjust feedback depth and terminology to match this person.');
   }
 
@@ -182,7 +164,8 @@ export function buildUserContextForBoss(): string {
 }
 
 /**
- * 설정 페이지 UI용: 관찰 데이터 요약 (읽기 전용 표시)
+ * 설정 페이지 UI용: 관찰 데이터를 사용자가 이해할 수 있는 언어로 요약.
+ * 내부 용어(DQ, override rate, tier) 대신 자연어 사용.
  */
 export function getObservationsSummary(locale: 'ko' | 'en' = 'ko'): {
   items: Array<{ label: string; value: string }>;
@@ -191,30 +174,31 @@ export function getObservationsSummary(locale: 'ko' | 'en' = 'ko'): {
   const obs = getUserObservations();
   if (obs.sessionCount < 2) return { items: [], hasData: false };
 
-  const strategyMap = locale === 'ko' ? STRATEGY_KO : {};
-  const trendMap = locale === 'ko'
-    ? { improving: '↗ 상승', stable: '→ 안정', declining: '↘ 하락', not_enough_data: '— 수집 중' }
-    : { improving: '↗ Improving', stable: '→ Stable', declining: '↘ Declining', not_enough_data: '— Collecting' };
-  const tierMap = locale === 'ko'
-    ? { 1: '시작', 2: '학습 중', 3: '최적화' }
-    : { 1: 'Start', 2: 'Learning', 3: 'Optimized' };
+  const ko = locale === 'ko';
+  const items: Array<{ label: string; value: string }> = [];
 
-  const items = [
-    { label: locale === 'ko' ? '세션' : 'Sessions', value: `${obs.sessionCount}회 · Tier ${obs.tier} (${tierMap[obs.tier]})` },
-    { label: locale === 'ko' ? 'DQ 추세' : 'DQ Trend', value: trendMap[obs.dqTrend] || obs.dqTrend },
-  ];
+  // 사용 횟수 — 단순 숫자
+  items.push({
+    label: ko ? '사용 횟수' : 'Sessions',
+    value: ko ? `${obs.sessionCount}회` : `${obs.sessionCount}`,
+  });
 
-  if (obs.dominantStrategy) {
+  // 판단 추세 — "잘하고 있다" vs "꾸준하다" (DQ 용어 제거)
+  const trendText = ko
+    ? { improving: '점점 나아지고 있어요', stable: '꾸준히 잘 하고 있어요', declining: '최근 좀 러프했어요', not_enough_data: '아직 데이터를 모으는 중이에요' }
+    : { improving: 'Getting better', stable: 'Consistently good', declining: 'Been rough lately', not_enough_data: 'Still collecting data' };
+  items.push({
+    label: ko ? '최근 추세' : 'Recent trend',
+    value: trendText[obs.dqTrend] || trendText.not_enough_data,
+  });
+
+  // AI 제안 수정 빈도 — 높을 때만 표시, 자연어로
+  if (obs.overrideRate > 0.2) {
     items.push({
-      label: locale === 'ko' ? '선호 전략' : 'Preferred Strategy',
-      value: strategyMap[obs.dominantStrategy] || obs.dominantStrategy,
-    });
-  }
-
-  if (obs.overrideRate > 0) {
-    items.push({
-      label: locale === 'ko' ? 'AI 수정률' : 'Override Rate',
-      value: `${Math.round(obs.overrideRate * 100)}%`,
+      label: ko ? 'AI 제안 반영' : 'AI suggestion usage',
+      value: obs.overrideRate > 0.5
+        ? (ko ? '자주 직접 수정하는 편' : 'Often edits AI suggestions')
+        : (ko ? '가끔 직접 수정함' : 'Sometimes edits AI suggestions'),
     });
   }
 
