@@ -5,6 +5,31 @@ import { Sparkles } from 'lucide-react';
 import type { AnalysisSnapshot } from '@/stores/types';
 import { EASE } from './constants';
 import { diffItems } from './diffItems';
+import type { ReactNode } from 'react';
+
+// ─── Inline formatting helpers ───
+
+/** Parse **bold** syntax in text */
+function renderText(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} className="font-semibold text-[var(--text-primary)]">{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>,
+  );
+}
+
+/** Bold the action prefix before " — " in skeleton items */
+function renderSkeletonText(text: string): ReactNode {
+  const sep = text.indexOf(' — ');
+  if (sep > 0 && sep < 25) {
+    const prefix = text.slice(0, sep);
+    const rest = text.slice(sep);
+    return <><strong className="font-semibold">{prefix}</strong><span className="text-[var(--text-secondary)] font-normal">{rest}</span></>;
+  }
+  return renderText(text);
+}
 
 interface AnalysisCardProps {
   snapshot: AnalysisSnapshot;
@@ -98,20 +123,20 @@ export function AnalysisCard({
             <AnimatePresence>
               {snapshot.insight && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-5">
-                  <div className="px-4 py-3 rounded-xl bg-[var(--accent)]/[0.06] border border-[var(--accent)]/12">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Sparkles size={11} className="text-[var(--accent)]" />
+                  transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden mb-6">
+                  <div className="pl-4 py-3 border-l-[3px] border-[var(--accent)]/40">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Sparkles size={12} className="text-[var(--accent)]" />
                       <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">{L('핵심', 'Key Insight')}</span>
                     </div>
-                    <p className="text-[13px] text-[var(--text-primary)] leading-relaxed font-medium">{snapshot.insight}</p>
+                    <p className="text-[15px] md:text-[16px] text-[var(--text-primary)] leading-[1.6] font-medium">{renderText(snapshot.insight)}</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Two-column: Assumptions | Skeleton */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
               {assumptionDiff.filter(d => d.status !== 'removed').length > 0 && (
                 <div className="rounded-xl bg-[var(--bg)]/60 p-4">
                   <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
@@ -134,10 +159,10 @@ export function AnalysisCard({
                         className={`flex items-start gap-2 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
                           d.status === 'new' ? 'bg-emerald-50/60 dark:bg-emerald-900/10 text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                         }`}>
-                        <span className={`text-[9px] font-bold shrink-0 mt-1 ${
+                        <span className={`text-[9px] font-bold shrink-0 mt-1.5 ${
                           d.status === 'new' ? 'text-emerald-500' : 'text-red-400/50'
                         }`}>{d.status === 'new' ? '+' : '?'}</span>
-                        <span>{d.text}</span>
+                        <span className="text-[var(--text-secondary)]">{renderText(d.text)}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -147,7 +172,7 @@ export function AnalysisCard({
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] mb-2.5 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60" />{L('뼈대', 'Structure')}
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <AnimatePresence>
                     {skeletonDiff.filter(d => d.status === 'removed').map((d, i) => (
                       <motion.div key={`removed-s-${i}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0, height: 0 }}
@@ -161,13 +186,13 @@ export function AnalysisCard({
                   {skeletonDiff.filter(d => d.status !== 'removed').map((d, i) => (
                     <motion.div key={`${snapshot.version}-s${i}`} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05, duration: 0.35, ease: EASE }}
-                      className={`flex items-start gap-2.5 text-[12px] leading-[1.7] rounded-lg px-2 py-0.5 -mx-2 transition-colors duration-1000 ${
+                      className={`flex items-start gap-2.5 text-[13px] leading-[1.7] rounded-lg px-2 py-1 -mx-2 transition-colors duration-1000 ${
                         d.status === 'new' ? 'bg-emerald-50/60 dark:bg-emerald-900/10 text-[var(--text-primary)] font-medium' : 'text-[var(--text-primary)]'
                       }`}>
-                      <span className={`font-mono text-[10px] w-3.5 text-right shrink-0 mt-0.5 ${
+                      <span className={`font-mono text-[10px] w-4 text-right shrink-0 mt-1 ${
                         d.status === 'new' ? 'text-emerald-500 font-bold' : 'text-[var(--accent)]/40'
                       }`}>{d.status === 'new' ? '+' : `${i + 1}`}</span>
-                      <span>{d.text}</span>
+                      <span>{renderSkeletonText(d.text)}</span>
                     </motion.div>
                   ))}
                 </div>
