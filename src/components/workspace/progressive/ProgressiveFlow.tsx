@@ -394,50 +394,107 @@ function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
 }
 
 /* ═══ Team Deploy Banner — 팀 구성 확인 ═══ */
-function TeamDeployBanner({ workers, onDeploy }: { workers: WorkerTask[]; onDeploy: () => void }) {
+function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
+  workers: WorkerTask[];
+  onDeploy: () => void;
+  onUpdateWorker?: (id: string, partial: Partial<WorkerTask>) => void;
+}) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const staggerDelay = 0.3;
-  const teamDoneDelay = 0.2 + workers.length * staggerDelay;
+
+  const aiWorkers = workers.filter(w => (w.agent_type || 'ai') === 'ai');
+  const selfWorkers = workers.filter(w => w.agent_type === 'self');
+  const humanWorkers = workers.filter(w => w.agent_type === 'human');
+  const total = workers.length;
+  const staggerDelay = 0.25;
+
+  const renderRow = (w: WorkerTask, i: number, offset: number) => (
+    <motion.div key={w.id}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.15 + (offset + i) * staggerDelay, duration: 0.35, ease: EASE }}
+      className="flex items-start gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
+      {w.agent_type === 'human'
+        ? <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[14px] shrink-0 mt-0.5">👤</div>
+        : w.agent_type === 'self'
+        ? <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-[14px] shrink-0 mt-0.5">🧠</div>
+        : <WorkerAvatar persona={w.persona} size="md" />
+      }
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[14px] font-medium text-[var(--text-primary)]">
+            {w.agent_type === 'human' ? (w.contact?.name || w.question_to_human?.slice(0, 15) || L('외부 확인', 'External'))
+              : w.agent_type === 'self' ? L('내 판단', 'My decision')
+              : (w.persona?.name || 'AI')}
+          </span>
+          {w.persona?.role && w.agent_type !== 'self' && w.agent_type !== 'human' && (
+            <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona.role}</span>
+          )}
+        </div>
+        <p className="text-[12px] text-[var(--text-secondary)] line-clamp-1 mt-0.5">{w.task}</p>
+        {/* Scope preview */}
+        {(w.ai_scope || w.self_scope) && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {w.ai_scope && <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-600">AI: {w.ai_scope.slice(0, 40)}{w.ai_scope.length > 40 ? '…' : ''}</span>}
+            {w.self_scope && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-600">{L('나', 'Me')}: {w.self_scope.slice(0, 40)}{w.self_scope.length > 40 ? '…' : ''}</span>}
+          </div>
+        )}
+        {/* Human worker: contact input */}
+        {w.agent_type === 'human' && onUpdateWorker && (
+          <div className="flex items-center gap-2 mt-2">
+            <select
+              value={w.contact?.channel || 'email'}
+              onChange={(e) => onUpdateWorker(w.id, { contact: { channel: e.target.value as 'email' | 'slack', name: w.contact?.name || '', address: w.contact?.address || '' } })}
+              className="text-[11px] px-2 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] cursor-pointer"
+              onClick={(e) => e.stopPropagation()}>
+              <option value="email">📧 Email</option>
+              <option value="slack">💬 Slack</option>
+            </select>
+            <input
+              type="text"
+              value={w.contact?.address || ''}
+              onChange={(e) => onUpdateWorker(w.id, { contact: { channel: w.contact?.channel || 'email', name: w.contact?.name || '', address: e.target.value } })}
+              placeholder={w.contact?.channel === 'slack' ? 'Slack User ID' : 'email@example.com'}
+              className="flex-1 text-[11px] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+
+  const teamDoneDelay = 0.15 + total * staggerDelay;
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-3">
+      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-4">
 
-      {/* Staggered team entrance */}
-      <div className="space-y-2">
-        {workers.map((w, i) => (
-          <motion.div key={w.id}
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + i * staggerDelay, duration: 0.4, ease: EASE }}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
-            <WorkerAvatar persona={w.persona} size="md" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[14px] font-medium text-[var(--text-primary)]">{w.persona?.name || 'AI'}</span>
-                <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona?.role}</span>
-              </div>
-              <p className="text-[12px] text-[var(--text-secondary)] line-clamp-1 mt-0.5" title={w.task}>{w.task}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {aiWorkers.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-blue-600 mb-1.5 flex items-center gap-1">🤖 {L('AI 에이전트', 'AI Agents')} <span className="text-[var(--text-tertiary)] font-normal">({L('자동 실행', 'auto')})</span></p>
+          <div className="space-y-1.5">{aiWorkers.map((w, i) => renderRow(w, i, 0))}</div>
+        </div>
+      )}
 
-      {/* "Team assembled" message */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: teamDoneDelay, duration: 0.4 }}
-        className="text-[12px] text-[var(--text-tertiary)] text-center">
-        {L('팀이 구성되었습니다. 시작하시겠어요?', 'Team assembled. Ready to start?')}
-      </motion.p>
+      {selfWorkers.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-amber-600 mb-1.5 flex items-center gap-1">🧠 {L('내가 판단', 'My Decisions')} <span className="text-[var(--text-tertiary)] font-normal">({L('세션 중', 'in-session')})</span></p>
+          <div className="space-y-1.5">{selfWorkers.map((w, i) => renderRow(w, i, aiWorkers.length))}</div>
+        </div>
+      )}
 
-      {/* Start button — appears after team entrance completes */}
+      {humanWorkers.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-gray-600 mb-1.5 flex items-center gap-1">👤 {L('확인 요청', 'External')} <span className="text-[var(--text-tertiary)] font-normal">({L('이메일/슬랙', 'email/slack')})</span></p>
+          <div className="space-y-1.5">{humanWorkers.map((w, i) => renderRow(w, i, aiWorkers.length + selfWorkers.length))}</div>
+        </div>
+      )}
+
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: teamDoneDelay + 0.3, duration: 0.5, ease: EASE }}
+        transition={{ delay: teamDoneDelay + 0.2, duration: 0.5, ease: EASE }}
         className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
         {L('시작', 'Start')} <ChevronRight size={14} />
@@ -611,6 +668,40 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     };
   }, []);
 
+  // Supabase Realtime: subscribe to session updates (human agent responses)
+  useEffect(() => {
+    if (!session?.id) return;
+    const hasPendingHumans = (session.workers || []).some(
+      w => w.agent_type === 'human' && (w.status === 'sent' || w.status === 'waiting_response')
+    );
+    if (!hasPendingHumans) return;
+
+    let channel: ReturnType<typeof import('@supabase/supabase-js').SupabaseClient.prototype.channel> | null = null;
+    import('@/lib/supabase').then(({ supabase }) => {
+      channel = supabase.channel(`session:${session.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'progressive_sessions',
+          filter: `id=eq.${session.id}`,
+        }, (payload) => {
+          // Remote update detected — reload sessions to get fresh data
+          if (payload.new && mountedRef.current) {
+            store.loadSessions();
+          }
+        })
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) {
+        import('@/lib/supabase').then(({ supabase }) => {
+          supabase.removeChannel(channel!);
+        });
+      }
+    };
+  }, [session?.id, session?.workers?.filter(w => w.agent_type === 'human' && (w.status === 'sent' || w.status === 'waiting_response')).length]);
+
   const phase = session?.phase ?? 'input';
   const snapshots = session?.snapshots ?? [];
   const questions = session?.questions ?? [];
@@ -648,6 +739,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       skeleton: latest?.skeleton ?? [],
       hiddenAssumptions: latest?.hidden_assumptions ?? [],
       qaHistory: qa.map(q => ({ q: q.question.text, a: q.answer.value })),
+      sessionId: session.id,
     };
     workerAbortRef.current?.abort();
     workerAbortRef.current = new AbortController();
@@ -701,7 +793,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     const ws = store.currentSession()?.workers ?? [];
 
     // Auto-send human agent questions (fire-and-forget)
-    const humanWorkers = ws.filter(w => w.agent_type === 'human' && w.contact?.address);
+    const humanWorkers = ws.filter(w => w.agent_type === 'human' && w.contact?.address && !w.sent_at);
     if (humanWorkers.length > 0) {
       import('@/lib/supabase').then(({ supabase }) => {
         supabase.auth.getSession().then(({ data: { session: authSession } }) => {
@@ -762,13 +854,23 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal, leadCtx);
       setStreamingText(null);
       store.addSnapshot(r.snapshot); store.advanceRound();
-      // Prepare workers when execution_plan first appears (user must confirm to deploy)
+      // Prepare workers when execution_plan appears
       const existingWorkers = store.currentSession()?.workers ?? [];
-      if (r.snapshot.execution_plan && r.snapshot.execution_plan.steps.length > 0 && existingWorkers.length === 0) {
-        store.initWorkers(r.snapshot.execution_plan.steps);
-        // Workers are now in 'ready' phase — TeamDeployBanner will show
-        // Actual execution happens when user clicks "팀 시작하기"
-        // Quality validation handled via WorkerTaskResult in worker-engine
+      const currentDeployPhase = store.currentSession()?.worker_deploy_phase ?? 'none';
+      if (r.snapshot.execution_plan && r.snapshot.execution_plan.steps.length > 0) {
+        if (existingWorkers.length === 0) {
+          // First time — init workers
+          store.initWorkers(r.snapshot.execution_plan.steps);
+        } else if (currentDeployPhase === 'ready') {
+          // Plan changed before deploy — check if tasks differ
+          const oldTasks = existingWorkers.map(w => w.task).sort().join('|');
+          const newTasks = r.snapshot.execution_plan.steps.map(s => s.task).sort().join('|');
+          if (oldTasks !== newTasks) {
+            // Re-init with updated plan (workers haven't been deployed yet, safe to replace)
+            store.initWorkers(r.snapshot.execution_plan.steps);
+          }
+        }
+        // After deployed — don't touch running workers
       }
       r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
     } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); }
@@ -989,7 +1091,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
           {deployPhase === 'ready' && workers.length > 0 && (
-            <TeamDeployBanner workers={workers} onDeploy={onDeployWorkers} />
+            <TeamDeployBanner workers={workers} onDeploy={onDeployWorkers} onUpdateWorker={(id, partial) => store.updateWorker(id, partial)} />
           )}
 
           {/* Resume banner — 크래시/새로고침 후 미완료 작업 재개 */}

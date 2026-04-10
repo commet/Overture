@@ -30,6 +30,7 @@ export interface PlannedWorker {
   stepIndex: number;
   stageId: string;
   taskType: string | null;     // task-classifier의 TaskType (context 전략 결정)
+  dependsOn?: number[];        // 의존하는 워커의 stepIndex[] (runPipeline에서 선택적 peerResults 주입)
 }
 
 export interface OrchestratorResult {
@@ -65,15 +66,18 @@ function buildStages(
   // Critical: Critic을 Stage 2로 분리
   const criticIdx = workers.findIndex(w => {
     // validation group의 리스크 관련 에이전트
-    const kws = ['리스크', '위험', '실패', '비판'];
-    return kws.some(kw => w.focus.includes(kw)) || w.framework?.includes('Pre-mortem') || w.framework?.includes('Red Team');
+    const kws = ['리스크', '위험', '실패', '비판', 'risk', 'danger', 'failure', 'critique', 'review', 'validate'];
+    const focusLower = w.focus.toLowerCase();
+    return kws.some(kw => focusLower.includes(kw)) || w.framework?.includes('Pre-mortem') || w.framework?.includes('Red Team');
   });
 
   // Critic이 명확하지 않으면 마지막 워커를 Stage 2로
   const stage2Idx = criticIdx >= 0 ? criticIdx : workers.length - 1;
 
   const stage1Workers = workers.filter((_, i) => i !== stage2Idx).map(w => ({ ...w, stageId: 'stage_1' }));
-  const stage2Workers = [{ ...workers[stage2Idx], stageId: 'stage_2' }];
+  // Stage 2 critic depends on all Stage 1 workers
+  const stage1Indices = stage1Workers.map(w => w.stepIndex);
+  const stage2Workers = [{ ...workers[stage2Idx], stageId: 'stage_2', dependsOn: stage1Indices }];
 
   const stages: PipelineStage[] = [
     {

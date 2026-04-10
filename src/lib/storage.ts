@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   AGENTS: 'sot_agents',
   AGENT_CHAINS: 'sot_agent_chains',
   AGENT_ACTIVITIES: 'sot_agent_activities',
+  EXECUTION_TRANSCRIPTS: 'sot_execution_transcripts',
 } as const;
 
 export function getStorage<T>(key: string, fallback: T): T {

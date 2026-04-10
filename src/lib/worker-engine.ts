@@ -20,6 +20,7 @@ import { buildSearchContext, type SearchResult } from '@/lib/agent-prompt-builde
 import { gatherToolContext } from '@/lib/agent-tools';
 import { shouldPlan, planTask, executePlan } from '@/lib/agent-planner';
 import { getAvailableCapabilities } from '@/lib/agent-delegator';
+import { withTranscript, appendToTranscript } from '@/lib/execution-transcript';
 
 // ─── Context ───
 
@@ -209,6 +210,9 @@ export async function runAllAIWorkers(
   },
   signal?: AbortSignal,
 ): Promise<void> {
+  // Wrap callbacks with transcript recording (no-op if no sessionId)
+  const tracked = withTranscript(context.sessionId, callbacks);
+
   // v2: Include workers that need AI execution:
   // 1. AI agents (agent_type='ai' or legacy who='ai'/'both')
   // 2. Self/Human agents with ai_scope that are in ai_preparing state (AI 보조 분석)
@@ -234,7 +238,7 @@ export async function runAllAIWorkers(
       const worker = queue.shift();
       if (!worker) return;
 
-      callbacks.onStart(worker.id);
+      tracked.onStart(worker.id);
 
       let attempt = 0;
       let finalResult: WorkerTaskResult | null = null;
@@ -244,7 +248,7 @@ export async function runAllAIWorkers(
           const result = await runWorkerTask(
             worker,
             context,
-            (text) => callbacks.onStream(worker.id, text),
+            (text) => tracked.onStream(worker.id, text),
             signal,
           );
 
@@ -262,9 +266,9 @@ export async function runAllAIWorkers(
           }
 
           // 최대 재시도 도달 → 콜백으로 사용자 선택 요청 (30초 타임아웃)
-          if (callbacks.onValidationFailed) {
+          if (tracked.onValidationFailed) {
             const action = await Promise.race([
-              callbacks.onValidationFailed(worker.id, result.validation),
+              tracked.onValidationFailed(worker.id, result.validation),
               new Promise<'accept'>(r => setTimeout(() => r('accept'), 30_000)),
             ]);
             if (action === 'retry') {
@@ -284,13 +288,13 @@ export async function runAllAIWorkers(
           }
         } catch (err) {
           if (signal?.aborted) return;
-          callbacks.onError(worker.id, err instanceof Error ? err.message : String(err));
+          tracked.onError(worker.id, err instanceof Error ? err.message : String(err));
           break;
         }
       }
 
       if (finalResult) {
-        callbacks.onComplete(worker.id, finalResult.text, finalResult.validation);
+        tracked.onComplete(worker.id, finalResult.text, finalResult.validation);
       }
     }
   };
@@ -353,11 +357,30 @@ export async function runPipeline(
     if (stageWorkers.length === 0) continue;
 
     // 이전 스테이지 결과를 context에 주입
+    // depends_on이 있으면 해당 워커 결과만 선택적 주입, 없으면 이전 스테이지 전체
     let enrichedContext = context;
     if (stage.dependsOnStageId) {
-      const priorResults = stageResults.get(stage.dependsOnStageId);
-      if (priorResults) {
-        const priorText = Array.from(priorResults.entries())
+      // 모든 이전 결과를 flat map으로 수집
+      const allPriorResults = new Map<string, string>();
+      for (const [, resultMap] of stageResults) {
+        for (const [wId, text] of resultMap) allPriorResults.set(wId, text);
+      }
+
+      // 이 스테이지 워커들의 depends_on을 합산해서 필요한 결과만 추출
+      const neededIds = new Set<string>();
+      for (const sw of stageWorkers) {
+        if (sw.depends_on && sw.depends_on.length > 0) {
+          sw.depends_on.forEach(id => neededIds.add(id));
+        }
+      }
+
+      // depends_on이 명시되면 해당 워커만, 아니면 이전 스테이지 전체 (하위 호환)
+      const sourceResults = neededIds.size > 0
+        ? new Map(Array.from(allPriorResults).filter(([wId]) => neededIds.has(wId)))
+        : stageResults.get(stage.dependsOnStageId) ?? new Map<string, string>();
+
+      if (sourceResults.size > 0) {
+        const priorText = Array.from(sourceResults.entries())
           .map(([wId, text]) => {
             const w = workers.find(w2 => w2.id === wId);
             return `[${w?.persona?.name || '팀원'}의 분석]\n${text}`;
@@ -366,7 +389,7 @@ export async function runPipeline(
 
         enrichedContext = {
           ...context,
-          peerResults: priorText,  // context-strategy 'focused' 모드에서 사용
+          peerResults: priorText,
           qaHistory: [
             ...context.qaHistory,
             { q: '이전 팀원들의 분석 결과', a: priorText },
@@ -388,6 +411,12 @@ export async function runPipeline(
     }, signal);
 
     stageResults.set(stage.id, currentStageResults);
+    if (context.sessionId) {
+      appendToTranscript(context.sessionId, 'stage_completed', {
+        stageId: stage.id,
+        workerCount: currentStageResults.size,
+      });
+    }
     callbacks.onStageComplete?.(stage.id, currentStageResults);
   }
 }

@@ -819,6 +819,7 @@ export interface WorkerTask {
   framework?: string;               // 배정된 프레임워크 이름 (null이면 전체 스킬셋)
   stage_id?: string;                // 소속 스테이지 ID
   task_type?: string;               // task-classifier의 TaskType (context 전략 결정)
+  depends_on?: string[];            // 의존하는 WorkerTask.id[] (선택적 peerResults 주입)
 
   // Quality gate (Weakness E fix)
   validation_score?: number;        // 0-100: 결과물 품질

@@ -173,7 +173,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
           .select('id, data, updated_at')
           .eq('user_id', userId)
           .order('updated_at', { ascending: false })
-          .limit(20)
+          .limit(100)
           .then(({ data: remoteSessions }) => {
             if (!remoteSessions || remoteSessions.length === 0) return;
             const currentLocal = get().sessions;
@@ -478,6 +478,17 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         snapshot_version: snapshotVersion,
       };
     });
+
+    // dependsOn: stepIndex[] → depends_on: workerId[] 변환
+    const stepToWorkerId = new Map(workers.map(w => [w.step_index, w.id]));
+    for (let i = 0; i < workers.length; i++) {
+      const pw = planned[i];
+      if (pw.dependsOn && pw.dependsOn.length > 0) {
+        workers[i].depends_on = pw.dependsOn
+          .map(si => stepToWorkerId.get(si))
+          .filter((id): id is string => !!id);
+      }
+    }
 
     // 스테이지의 workerIds를 실제 생성된 ID로 매핑
     const stages = plannedStages.map(stage => ({
