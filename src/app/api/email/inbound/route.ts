@@ -31,14 +31,17 @@ function extractReplyToken(toAddress: string): string | null {
 
 /** Strip quoted replies — keep only the new content */
 function stripQuotedReply(text: string): string {
-  // Common patterns: "On ... wrote:", "------", "> quoted"
   const lines = text.split('\n');
-  const cutoff = lines.findIndex(line =>
-    /^On .+ wrote:$/i.test(line.trim()) ||
-    /^-{3,}/.test(line.trim()) ||
-    /^>{2,}/.test(line.trim()) ||
-    /^From:/.test(line.trim())
-  );
+  // Find where the quoted reply starts
+  const cutoff = lines.findIndex(line => {
+    const t = line.trim();
+    return /^On .+ wrote:$/i.test(t)       // "On Mon, ... wrote:"
+      || /^-{3,}/.test(t)                  // "------"
+      || /^>/.test(t)                      // "> quoted text" (single chevron)
+      || /^From:\s/.test(t)               // "From: sender"
+      || /^_{3,}/.test(t)                 // "___" (Outlook separator)
+      || /^Sent from my/.test(t);         // "Sent from my iPhone"
+  });
   return cutoff > 0 ? lines.slice(0, cutoff).join('\n').trim() : text.trim();
 }
 
@@ -69,15 +72,21 @@ export async function POST(req: NextRequest) {
 
   const admin = getAdmin();
 
-  // Look up tracked message
+  // Look up tracked message (not expired)
   const { data: tracked } = await admin
     .from('human_agent_messages')
-    .select('session_id, worker_id')
+    .select('session_id, worker_id, expires_at')
     .eq('reply_token', replyToken)
     .eq('channel', 'email')
     .eq('status', 'sent')
     .limit(1)
     .single();
+
+  // Check TTL
+  if (tracked?.expires_at && new Date(tracked.expires_at) < new Date()) {
+    await admin.from('human_agent_messages').update({ status: 'expired' }).eq('reply_token', replyToken);
+    return NextResponse.json({ error: 'Reply token expired' }, { status: 410 });
+  }
 
   if (!tracked) {
     return NextResponse.json({ error: 'Unknown or expired reply token' }, { status: 404 });
