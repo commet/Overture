@@ -363,12 +363,6 @@ function FinalCard({ content }: { content: string }) {
                 }`}>
                 {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
               </button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
-                Slack
-              </button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
-                Email
-              </button>
             </div>
           </div>
           <div className="p-5 md:p-8 space-y-1">{renderMd(content)}</div>
@@ -1165,17 +1159,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 </motion.div>
               ))}
               {/* Revealed workers — polished report blocks with fade+slide entrance */}
-              {revealedWorkers.map(w => (
-                <motion.div key={w.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
-                  <WorkerReportBlock
-                    worker={w}
-                    onSubmitInput={w.status === 'waiting_input' ? workerActions.handleSubmit : undefined}
-                    onRetry={w.status === 'error' ? workerActions.handleRetry : undefined}
-                    onApprove={w.status === 'done' ? workerActions.handleApprove : undefined}
-                    onReject={w.status === 'done' ? workerActions.handleReject : undefined}
-                  />
-                </motion.div>
-              ))}
+              {(() => {
+                const firstWaitingId = revealedWorkers.find(w => w.status === 'waiting_input')?.id;
+                return revealedWorkers.map(w => (
+                  <motion.div key={w.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+                    <WorkerReportBlock
+                      worker={w}
+                      onSubmitInput={w.status === 'waiting_input' ? workerActions.handleSubmit : undefined}
+                      onRetry={w.status === 'error' ? workerActions.handleRetry : undefined}
+                      onApprove={w.status === 'done' ? workerActions.handleApprove : undefined}
+                      onReject={w.status === 'done' ? workerActions.handleReject : undefined}
+                      isFirstWaiting={w.id === firstWaitingId}
+                    />
+                  </motion.div>
+                ));
+              })()}
             </div>
           )}
 
@@ -1312,14 +1310,17 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {final_ && <>
             {/* Completion moment */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
-              className="flex items-center justify-center gap-2 py-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
-                <Check size={14} className="text-white" />
+              className="flex flex-col items-center justify-center gap-2 py-6">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
+                <Check size={16} className="text-white" />
               </div>
-              <p className="text-[14px] font-medium text-[var(--text-primary)]">
+              <p className="text-[16px] font-semibold text-[var(--text-primary)]">
                 {dmFb && dmFb.concerns.filter((c: DMConcern) => c.applied).length > 0
-                  ? locale === 'ko' ? `피드백 ${dmFb.concerns.filter((c: DMConcern) => c.applied).length}건 반영 완료` : `${dmFb.concerns.filter((c: DMConcern) => c.applied).length} feedback item(s) applied`
-                  : L('최종 문서 완성', 'Final document complete')}
+                  ? locale === 'ko' ? `피드백 ${dmFb.concerns.filter((c: DMConcern) => c.applied).length}건이 반영된 최종 문서입니다` : `Final document with ${dmFb.concerns.filter((c: DMConcern) => c.applied).length} feedback item(s) applied`
+                  : L('최종 문서가 완성되었습니다', 'Your document is complete')}
+              </p>
+              <p className="text-[13px] text-[var(--text-tertiary)]">
+                {L('아래에서 복사하거나, 새 프로젝트를 시작할 수 있어요', 'Copy below or start a new project')}
               </p>
             </motion.div>
             <FinalCard content={final_} />

@@ -146,12 +146,14 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
   onRetry,
   onApprove,
   onReject,
+  isFirstWaiting,
 }: {
   worker: WorkerTask;
   onSubmitInput?: (id: string, input: string) => void;
   onRetry?: (id: string) => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  isFirstWaiting?: boolean;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
@@ -286,6 +288,12 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
 
     return (
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+        {isFirstWaiting && (
+          <div className="flex items-center gap-1.5 mb-2 ml-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+            <span className="text-[11px] font-medium text-[var(--accent)]">{L('여기부터 작성해주세요', 'Start here')}</span>
+          </div>
+        )}
         <div className="flex items-start gap-3">
           <div className="w-px self-stretch mt-1" style={{ backgroundColor: isHumanAgent ? '#6B7280' : (persona?.color || 'var(--accent)') }} />
           {isHumanAgent
@@ -498,26 +506,38 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
 
             {/* Approve / Reject actions */}
             {(onApprove || onReject) && (
-              <div className="flex items-center gap-2.5 mt-3">
-                {onApprove && !isApproved && (
-                  <button onClick={() => onApprove(worker.id)}
-                    className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-white rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
-                    style={{ background: 'var(--gradient-gold)' }}>
-                    <Check size={12} /> {L('반영', 'Apply')}
-                  </button>
+              <div className="mt-3">
+                {!isApproved && !isRejected && (
+                  <p className="text-[11px] text-[var(--text-tertiary)] mb-2">
+                    {L('이 분석을 최종 문서에 포함할지 선택하세요', 'Choose whether to include this in the final document')}
+                  </p>
                 )}
-                {onReject && !isRejected && (
-                  <button onClick={() => onReject(worker.id)}
-                    className="flex items-center gap-1.5 px-4 py-2 text-[12px] text-red-600 hover:bg-red-50 rounded-xl border border-red-200 hover:border-red-400 cursor-pointer transition-colors">
-                    {L('제외', 'Exclude')}
-                  </button>
-                )}
-                {(isApproved || isRejected) && (
-                  <button onClick={() => isApproved ? onReject?.(worker.id) : onApprove?.(worker.id)}
-                    className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
-                    {L('변경', 'Change')}
-                  </button>
-                )}
+                <div className="flex items-center gap-2.5">
+                  {onApprove && !isApproved && (
+                    <button onClick={() => onApprove(worker.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-white rounded-xl cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
+                      style={{ background: 'var(--gradient-gold)' }}>
+                      <Check size={12} /> {L('반영', 'Apply')}
+                    </button>
+                  )}
+                  {onReject && !isRejected && (
+                    <button onClick={() => onReject(worker.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 text-[12px] text-red-600 hover:bg-red-50 rounded-xl border border-red-200 hover:border-red-400 cursor-pointer transition-colors">
+                      {L('제외', 'Exclude')}
+                    </button>
+                  )}
+                  {(isApproved || isRejected) && (
+                    <>
+                      <button onClick={() => isApproved ? onReject?.(worker.id) : onApprove?.(worker.id)}
+                        className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                        {L('변경', 'Change')}
+                      </button>
+                      <span className="text-[10px] text-[var(--text-tertiary)]">
+                        {isApproved ? L('최종 문서에 포함됩니다', 'Included in final document') : L('최종 문서에서 제외됩니다', 'Excluded from final document')}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 

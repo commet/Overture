@@ -256,7 +256,7 @@ export default function ProjectPage() {
                       {step.summary ? (
                         <p className="text-[13px] text-[var(--text-secondary)] mt-1 truncate">{step.summary}</p>
                       ) : step.status === 'not-started' ? (
-                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">아직 연주 전</p>
+                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">아직 시작 전</p>
                       ) : null}
                     </div>
 

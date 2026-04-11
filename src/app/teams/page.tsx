@@ -220,7 +220,7 @@ export default function TeamsPage() {
                     </div>
                     <div>
                       <p className="text-[13px] font-medium text-[var(--text-primary)]">
-                        {member.email || member.user_id.slice(0, 8)}
+                        {member.email || '멤버 (초대됨)'}
                       </p>
                       <p className="text-[11px] text-[var(--text-tertiary)]">{roleLabel(member.role)}</p>
                     </div>

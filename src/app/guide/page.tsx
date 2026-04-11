@@ -167,7 +167,7 @@ export default function GuidePage() {
         <div className="flex items-start gap-2.5 bg-[var(--ai)] rounded-xl px-4 py-3 text-[13px] text-[#2d4a7c] mb-6">
           <Link2 size={14} className="shrink-0 mt-0.5" />
           <p>
-            <strong>맥락 체인:</strong> 악보 해석 → 편곡 → 리허설 → 합주 → 종합으로 맥락이 이어집니다.
+            <strong>맥락 체인:</strong> 악보 해석(문제 분석) → 편곡(실행 설계) → 리허설(사전 검증) → 합주(피드백 반영) → 종합(관점 통합)으로 맥락이 이어집니다.
           </p>
         </div>
       </div>

@@ -244,17 +244,14 @@ export default function SettingsPage() {
           <div className="animate-fade-in mt-4">
             <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">{L('연결 방식', 'Connection Mode')}</label>
             <div className="flex gap-1.5">
-              {llmModes.map((mode) => (
+              {llmModes.filter((mode) => mode.available).map((mode) => (
                 <button
                   key={mode.value}
                   onClick={() => handleModeChange(mode.value)}
-                  disabled={!mode.available}
-                  className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors ${
+                  className={`flex-1 py-2 rounded-lg text-[12px] font-medium border text-center transition-colors cursor-pointer ${
                     settings.llm_mode === mode.value
-                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)] cursor-pointer'
-                      : mode.available
-                      ? 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer'
-                      : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-50 cursor-not-allowed'
+                      ? 'border-[var(--accent)] bg-[var(--ai)] text-[var(--accent)]'
+                      : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
                   }`}
                 >
                   {mode.label}

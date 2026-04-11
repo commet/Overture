@@ -88,52 +88,23 @@ function getVoices(locale: Locale): VoiceQuote[] {
   return locale === 'ko' ? VOICES_KO : VOICES_EN;
 }
 
-/* ─── Auto-typing hook ─── */
-function useAutoType(examples: ExampleData[], speed = 45, pause = 3500) {
-  const [display, setDisplay] = useState('');
+/* ─── Rotating placeholder hook (no overlay — uses native placeholder) ─── */
+function useRotatingPlaceholder(examples: ExampleData[], interval = 4000) {
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [userStopped, setUserStopped] = useState(false);
-  const phaseRef = useRef<'typing' | 'pausing' | 'clearing'>('typing');
-  const charRef = useRef(0);
-  const idxRef = useRef(0);
+  const [stopped, setStopped] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    if (userStopped) return;
+    if (stopped) return;
+    timerRef.current = setInterval(() => {
+      setCurrentIdx(prev => (prev + 1) % examples.length);
+    }, interval);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [examples, interval, stopped]);
 
-    const tick = () => {
-      const current = examples[idxRef.current].input;
+  const stop = useCallback(() => { setStopped(true); if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-      if (phaseRef.current === 'typing') {
-        if (charRef.current <= current.length) {
-          setDisplay(current.slice(0, charRef.current));
-          charRef.current++;
-          timerRef.current = setTimeout(tick, speed);
-        } else {
-          phaseRef.current = 'pausing';
-          timerRef.current = setTimeout(tick, pause);
-        }
-      } else if (phaseRef.current === 'pausing') {
-        phaseRef.current = 'clearing';
-        timerRef.current = setTimeout(tick, 400);
-      } else {
-        const nextIdx = (idxRef.current + 1) % examples.length;
-        idxRef.current = nextIdx;
-        charRef.current = 0;
-        phaseRef.current = 'typing';
-        setCurrentIdx(nextIdx);
-        setDisplay('');
-        timerRef.current = setTimeout(tick, 300);
-      }
-    };
-
-    timerRef.current = setTimeout(tick, speed);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [examples, speed, pause, userStopped]);
-
-  const stop = useCallback(() => { setUserStopped(true); if (timerRef.current) clearTimeout(timerRef.current); }, []);
-
-  return { display, currentIdx, stop, userStopped };
+  return { currentIdx, stop };
 }
 
 /* ─── Motion constants ─── */
@@ -229,18 +200,18 @@ export function Hero() {
   const voices = getVoices(locale);
   const [inputValue, setInputValue] = useState('');
   const [focused, setFocused] = useState(false);
-  const { display: autoText, currentIdx, stop: stopAutoType, userStopped } = useAutoType(examples);
+  const { currentIdx, stop: stopRotation } = useRotatingPlaceholder(examples);
 
   const handleSubmit = () => {
-    const text = inputValue.trim() || (userStopped ? '' : autoText) || examples[currentIdx].input;
+    const text = inputValue.trim();
     if (!text) return;
-    track('landing_hero_submit', { text_length: text.length, used_example: !inputValue.trim() });
+    track('landing_hero_submit', { text_length: text.length, used_example: false });
     router.push(`/workspace?q=${encodeURIComponent(text)}`);
   };
 
   const handleFocus = () => {
     setFocused(true);
-    stopAutoType();
+    stopRotation();
   };
 
   const handleScenarioClick = (example: ExampleData) => {
@@ -297,8 +268,17 @@ export function Hero() {
               </AnimatePresence>
             </div>
 
+            {/* ─── Value flow — always visible (mobile included) ─── */}
+            <div className="flex items-center gap-2 mt-8 text-[13px] lg:hidden">
+              <span className="text-[var(--accent)] font-medium">{L('고민 입력', 'Drop a question')}</span>
+              <span className="text-[var(--text-tertiary)]">&rarr;</span>
+              <span className="text-[var(--accent)] font-medium">{L('뼈대 생성', 'Get a draft')}</span>
+              <span className="text-[var(--text-tertiary)]">&rarr;</span>
+              <span className="text-[var(--accent)] font-medium">{L('사전 검증', 'Pre-validate')}</span>
+            </div>
+
             {/* ─── Inline Input ─── */}
-            <div className="mt-8">
+            <div className="mt-5 lg:mt-8">
               <div
                 className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
                 style={{
@@ -314,32 +294,26 @@ export function Hero() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onFocus={handleFocus}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
-                    placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : undefined}
+                    placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : examples[currentIdx].input}
                     maxLength={200}
                     className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
                   />
                   <button
                     onClick={handleSubmit}
-                    className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.95] cursor-pointer"
+                    disabled={!inputValue.trim()}
+                    className="shrink-0 h-10 px-5 rounded-full flex items-center gap-1.5 text-[14px] font-semibold text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.97] cursor-pointer disabled:opacity-40 disabled:cursor-default"
                     style={{
                       background: 'var(--gradient-gold)',
-                      transitionProperty: 'box-shadow, transform',
+                      transitionProperty: 'box-shadow, transform, opacity',
                       transitionDuration: '300ms',
                       transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
                     }}
                   >
-                    <ArrowRight size={16} />
+                    {L('시작', 'Start')}
+                    <ArrowRight size={14} />
                   </button>
                 </div>
 
-                {/* Auto-typing text (shows when not focused and no user input) */}
-                {!focused && !inputValue && (
-                  <div className="absolute inset-0 flex items-center px-5 pointer-events-none">
-                    <span className="text-[15px] text-[var(--text-tertiary)]">
-                      {autoText}<span className="animate-pulse">|</span>
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* ─── Mobile-only card: right after input for immediate context ─── */}
@@ -350,7 +324,7 @@ export function Hero() {
               {/* ─── Scenario Buttons with active indicator ─── */}
               <div className="flex flex-wrap items-center gap-2 mt-5">
                 {examples.map((ex, i) => {
-                  const isActive = i === currentIdx && !userStopped;
+                  const isActive = i === currentIdx && !focused;
                   return (
                     <button
                       key={ex.id}

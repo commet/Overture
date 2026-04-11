@@ -57,6 +57,7 @@ function LockedAgentCard({ agent, isConcertmaster }: { agent: Agent; isConcertma
     <div className={`agent-card agent-card-locked ${isConcertmaster ? 'agent-card-concertmaster' : ''}`}>
       <div className="agent-lock">
         <div className="agent-lock-icon">🔒</div>
+        <div className="agent-card-name" style={{ opacity: 0.4 }}>{agent.name}</div>
         <div className="agent-card-role" style={{ opacity: 0.5 }}>{agent.role}</div>
         <div className="agent-lock-text">{conditionText}</div>
       </div>

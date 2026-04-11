@@ -84,6 +84,7 @@ export function BossSetup() {
 
       {/* ── MBTI selector ── */}
       <motion.div className="bs-type-section" variants={fadeUp}>
+        <p className="text-[12px] text-[var(--text-tertiary)] mb-2">팀장 성격 설정 · 모르면 그대로 두셔도 됩니다</p>
         <TypeToggle />
 
         {/* Personality — always visible card */}
@@ -112,6 +113,7 @@ export function BossSetup() {
 
               {/* Gender + Birth — inside the persona card */}
               <div className="bs-persona-meta">
+                <p className="text-[11px] text-[var(--text-tertiary)] mb-1.5" style={{ gridColumn: '1 / -1' }}>성격 정확도를 높여줍니다 (선택)</p>
                 <div className="bs-gender">
                   {(['남', '여'] as const).map((g) => (
                     <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
@@ -150,6 +152,9 @@ export function BossSetup() {
           />
         </div>
         <div className="bs-cta-row">
+          {!isReady && situation.length === 0 && (
+            <p className="text-[12px] text-amber-600 mb-1">위에 상황을 입력해주세요</p>
+          )}
           <p className="bs-fine">AI 시뮬레이션 · 실제와 다를 수 있음</p>
           <motion.button
             type="button"
