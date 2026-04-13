@@ -1,6 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 
 // Rotating live activity per persona id — gives "alive" feel while working
 export const ACTIVITY_TICKERS: Record<string, string[]> = {
@@ -67,5 +69,76 @@ export function ShimmerBar({ color }: { color: string }) {
         transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
       />
     </div>
+  );
+}
+
+/**
+ * useAttentionPulse — returns true for ~900ms after any `ping()` is fired.
+ *
+ * `enabled` lets callers opt out (e.g., idle agents shouldn't flash on chat pings).
+ * - On first mount, records the current ping value and skips — a freshly-inserted
+ *   row never auto-flashes.
+ * - Only flashes when lastPingAt strictly changes. Effect re-runs triggered by
+ *   `enabled` flipping (e.g., pending → running) do NOT re-trigger a flash.
+ * - If a ping happens while `enabled` is false, we still advance the seen ref
+ *   so a later enable doesn't retroactively flash.
+ *
+ * State updates are scheduled via setTimeout (not called synchronously in the
+ * effect body) to avoid the react-hooks/set-state-in-effect lint rule.
+ */
+export function useAttentionPulse(enabled: boolean = true): boolean {
+  const lastPingAt = useAgentAttentionStore(s => s.lastPingAt);
+  const [pulsing, setPulsing] = useState(false);
+  const lastSeenRef = useRef(lastPingAt);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    // First effect run — record & skip so fresh rows don't auto-flash
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      lastSeenRef.current = lastPingAt;
+      return;
+    }
+    // Effect triggered by `enabled` change (no new ping) — ignore
+    if (lastPingAt === lastSeenRef.current) return;
+    // Advance seen marker regardless so past pings don't retroactively fire
+    lastSeenRef.current = lastPingAt;
+    if (!enabled) return;
+
+    const start = setTimeout(() => setPulsing(true), 0);
+    const stop = setTimeout(() => setPulsing(false), 900);
+    return () => {
+      clearTimeout(start);
+      clearTimeout(stop);
+    };
+  }, [lastPingAt, enabled]);
+
+  return pulsing;
+}
+
+/**
+ * AttentionFlash — fullsize overlay that flashes the row gold for ~900ms when
+ * an input ping arrives. Non-interactive. Designed to sit as a sibling inside
+ * the row's `relative` container.
+ */
+export function AttentionFlash({ active, color }: { active: boolean; color?: string }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0.4, 0] }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.9, ease: 'easeOut', times: [0, 0.15, 0.4, 1] }}
+          className="absolute inset-0 rounded-xl pointer-events-none"
+          style={{
+            background: color
+              ? `radial-gradient(circle at 20% 50%, ${color}38, transparent 70%)`
+              : 'radial-gradient(circle at 20% 50%, var(--accent), transparent 70%)',
+            mixBlendMode: 'plus-lighter',
+          }}
+        />
+      )}
+    </AnimatePresence>
   );
 }

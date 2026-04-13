@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2, ChevronDown, Sparkles, ArrowRight } from 'lucide-react';
-import { useWorkers } from './WorkerPanel';
+import { Check, Loader2, ChevronDown, Sparkles, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { useWorkers, useWorkerContext } from './WorkerPanel';
 import { WorkerAvatar } from './WorkerAvatar';
-import type { WorkerTask } from '@/stores/types';
+import type { WorkerTask, PipelineStage } from '@/stores/types';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useLocale } from '@/hooks/useLocale';
 import { EASE } from './shared/constants';
 import { renderMd } from './shared/renderMd';
-import { TypingDots, AvatarRipple, ShimmerBar, tickersFor } from './shared/AgentVisuals';
+import { TypingDots, AvatarRipple, ShimmerBar, tickersFor, useAttentionPulse, AttentionFlash } from './shared/AgentVisuals';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
+import { useWorkerActions } from '@/hooks/useWorkerActions';
 
 // ─── Status helpers ───
 
@@ -57,13 +60,26 @@ function StatusBadge({ worker, locale }: { worker: WorkerTask; locale: string })
 
 // ─── Agent Row — DemoAgentSidebar style with real data ───
 
-function AgentRow({ worker, expanded, onToggle, enterIndex }: {
+// Word-boundary safe truncation — returns last ~80 chars, starting after a word break
+function tailSnippet(text: string, max: number = 80): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  const tail = trimmed.slice(-max);
+  // If we cut mid-word, skip to the next word boundary
+  const firstSpace = tail.indexOf(' ');
+  const sliced = firstSpace > 0 && firstSpace < max - 20 ? tail.slice(firstSpace + 1) : tail;
+  return '…' + sliced;
+}
+
+function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
   worker: WorkerTask;
   expanded: boolean;
   onToggle: () => void;
   enterIndex: number;
+  onRetry?: (id: string) => void;
 }) {
   const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const isDone = worker.status === 'done';
   const isWorking = isWorkingStatus(worker.status);
   const isError = worker.status === 'error';
@@ -71,7 +87,18 @@ function AgentRow({ worker, expanded, onToggle, enterIndex }: {
   const personaColor = worker.persona?.color || 'var(--accent)';
   const lv = worker.agent_id ? useAgentStore.getState().getAgent(worker.agent_id)?.level : undefined;
 
-  // Live activity ticker — rotates while working, used as fallback when no stream_text
+  // ── Attention ping — brief gold flash when user submits input
+  const pulsing = useAttentionPulse(isWorking);
+
+  // ── Hover attribution (draft ↔ agent)
+  const hovered = useAgentAttentionStore(s => s.hovered);
+  const setHovered = useAgentAttentionStore(s => s.setHovered);
+  const isHighlighted =
+    (hovered?.kind === 'agent' && hovered.workerId === worker.id) ||
+    (hovered?.kind === 'section' && hovered.contributorIds.includes(worker.id));
+  const isDimmed = hovered != null && !isHighlighted;
+
+  // ── Live activity ticker (fallback when no stream_text)
   const tickers = tickersFor(worker.persona?.id, worker.task);
   const [tickerIdx, setTickerIdx] = useState(0);
   useEffect(() => {
@@ -82,25 +109,60 @@ function AgentRow({ worker, expanded, onToggle, enterIndex }: {
     return () => clearInterval(id);
   }, [isWorking, tickers.length]);
 
-  // Use real streaming text when available; otherwise rotating ticker
-  const streamSnippet = worker.stream_text?.trim().slice(-80);
+  // ── Word-boundary-safe stream snippet
+  const streamSnippet = worker.stream_text ? tailSnippet(worker.stream_text, 80) : '';
   const liveLine = streamSnippet || tickers[tickerIdx];
+
+  // ── Completion reveal — auto-expand the result for ~2.8s when status flips to done
+  const [autoRevealed, setAutoRevealed] = useState(false);
+  const prevStatusRef = useRef(worker.status);
+  useEffect(() => {
+    const wasDone = prevStatusRef.current === 'done';
+    prevStatusRef.current = worker.status;
+    if (!wasDone && worker.status === 'done' && worker.result) {
+      setAutoRevealed(true);
+      const t = setTimeout(() => setAutoRevealed(false), 2800);
+      return () => clearTimeout(t);
+    }
+  }, [worker.status, worker.result]);
+
+  const showResult = (expanded || autoRevealed) && isDone && worker.result;
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, x: 16, scale: 0.96 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
+      animate={{
+        opacity: isDimmed ? 0.4 : 1,
+        x: 0,
+        scale: isHighlighted ? 1.015 : 1,
+      }}
       exit={{ opacity: 0, x: -8, transition: { duration: 0.2 } }}
       transition={{ duration: 0.45, ease: EASE, delay: Math.min(enterIndex, 2) * 0.18 }}
+      onHoverStart={() => { if (isDone) setHovered({ kind: 'agent', workerId: worker.id }); }}
+      onHoverEnd={() => setHovered(null)}
       className={`rounded-xl border transition-all duration-300 relative overflow-hidden ${
+        isHighlighted ? 'ring-2 ring-[var(--accent)]/60 border-[var(--accent)]/50 shadow-[0_0_22px_-4px_rgba(180,160,100,0.35)]' :
         isDone ? 'border-emerald-300/50 dark:border-emerald-700/30 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm' :
         isWorking ? 'border-[var(--accent)]/40 bg-[var(--accent)]/[0.07] shadow-[0_0_18px_-4px_rgba(180,160,100,0.25)]' :
         isError ? 'border-red-300/40 bg-red-50/20 dark:bg-red-950/10' :
         'border-[var(--border-subtle)] bg-[var(--surface)]'
       }`}
     >
+      <AttentionFlash active={pulsing} color={personaColor} />
       {isWorking && <ShimmerBar color={personaColor} />}
+
+      {/* Completion celebration sweep — a single golden bar sliding across the row when auto-revealed */}
+      {autoRevealed && (
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 2.2, ease: 'easeOut' }}
+          className="absolute bottom-0 left-0 right-0 h-[2px] origin-left pointer-events-none z-10"
+          style={{ background: 'var(--gradient-gold)' }}
+        />
+      )}
+
       <button
         onClick={isDone ? onToggle : undefined}
         className={`w-full flex items-center gap-3 p-3 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
@@ -143,27 +205,53 @@ function AgentRow({ worker, expanded, onToggle, enterIndex }: {
               &ldquo;{worker.completion_note}&rdquo;
             </p>
           )}
-          {!isWorking && !isDone && worker.task && (
+          {isError && worker.error && (
+            <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5 truncate flex items-center gap-1">
+              <AlertCircle size={10} className="shrink-0" />
+              <span className="truncate">{worker.error}</span>
+            </p>
+          )}
+          {!isWorking && !isDone && !isError && worker.task && (
             <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">{worker.task}</p>
           )}
         </div>
         <StatusBadge worker={worker} locale={locale} />
+        {isError && onRetry && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRetry(worker.id); }}
+            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/8 hover:bg-[var(--accent)]/15 border border-[var(--accent)]/20 cursor-pointer transition-colors"
+            title={L('다시 시도', 'Retry')}
+          >
+            <RefreshCw size={9} />
+            {L('재시도', 'Retry')}
+          </button>
+        )}
         {isDone && expanded && <ChevronDown size={12} className="text-[var(--text-tertiary)] rotate-180 transition-transform duration-200 shrink-0" />}
       </button>
 
-      {/* Expandable result */}
+      {/* Expandable result — manual expand OR auto-reveal on completion */}
       <AnimatePresence>
-        {expanded && isDone && worker.result && (
+        {showResult && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE }}
+            transition={{ duration: 0.3, ease: EASE }}
             className="overflow-hidden"
           >
             <div className="px-3.5 pb-3.5 border-t border-[var(--border-subtle)] mt-0">
+              {autoRevealed && !expanded && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="pt-2.5 flex items-center gap-1.5 text-[10px] text-[var(--accent)] font-semibold uppercase tracking-wider"
+                >
+                  <Sparkles size={9} />
+                  <span>{L('방금 끝낸 분석', 'Just finished')}</span>
+                </motion.div>
+              )}
               <div className="pt-3 text-[12px] leading-[1.75] max-h-[300px] overflow-y-auto text-[var(--text-primary)] space-y-0.5">
-                {renderMd(worker.result)}
+                {renderMd(worker.result || '')}
               </div>
               {worker.validation_score != null && (
                 <div className="mt-2 flex items-center gap-1.5">
@@ -181,12 +269,56 @@ function AgentRow({ worker, expanded, onToggle, enterIndex }: {
   );
 }
 
+// ─── Stage divider — shown between stage groups in multi-stage pipelines ───
+
+function StageDivider({ stage, index, isFirst, allStageDone, locale }: {
+  stage: PipelineStage;
+  index: number;
+  isFirst: boolean;
+  allStageDone: boolean;
+  locale: string;
+}) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const romanIdx = ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ'][index] || `${index + 1}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className={`flex items-center gap-2.5 ${isFirst ? 'pt-1' : 'pt-4'} pb-1`}
+    >
+      <span className={`text-[9px] font-bold tracking-[0.12em] uppercase shrink-0 ${
+        allStageDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--accent)]'
+      }`}>
+        Stage {romanIdx} — {stage.label}
+      </span>
+      <div className="flex-1 h-px bg-gradient-to-r from-[var(--accent)]/25 to-transparent" />
+      {allStageDone && (
+        <Check size={9} className="text-emerald-500 shrink-0" />
+      )}
+      {!allStageDone && (
+        <span className="text-[9px] text-[var(--accent)] shrink-0 flex items-center gap-1">
+          <span className="w-1 h-1 rounded-full bg-[var(--accent)] animate-pulse" />
+          {L('진행 중', 'live')}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
 // ─── Main sidebar ───
 
 export function AgentSidebar({ className }: { className?: string }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const workers = useWorkers();
+  const context = useWorkerContext();
+  const { handleRetry } = useWorkerActions(context);
+  const stages = useProgressiveStore(s => {
+    const session = s.sessions.find(ss => ss.id === s.currentSessionId);
+    return session?.stages;
+  });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (workers.length === 0) return null;
@@ -199,6 +331,17 @@ export function AgentSidebar({ className }: { className?: string }) {
   const progressPct = workers.length > 0 ? Math.round((doneCount / workers.length) * 100) : 0;
   // Sequential reveal: hide pending workers from the sidebar — they slide in once active
   const visibleWorkers = workers.filter(w => !isPending(w));
+
+  // Group workers by stage for multi-stage pipelines (Critical mode: Stage 1 분석 → Stage 2 검증)
+  const hasStages = !!stages && stages.length > 1;
+  const groupedByStage: Array<{ stage: PipelineStage | null; workers: WorkerTask[] }> = hasStages
+    ? (stages!
+        .map(stage => ({
+          stage,
+          workers: visibleWorkers.filter(w => w.stage_id === stage.id),
+        }))
+        .filter(g => g.workers.length > 0))
+    : [{ stage: null, workers: visibleWorkers }];
 
   return (
     <div className={`p-4 space-y-3.5 ${className ?? ''}`}>
@@ -238,19 +381,53 @@ export function AgentSidebar({ className }: { className?: string }) {
         />
       </div>
 
-      {/* Agent rows — sequential reveal: pending workers stay hidden until activated */}
+      {/* Empty "preparing" state — visible when all workers are still pending (before first activation) */}
+      {visibleWorkers.length === 0 && pendingCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          className="flex flex-col items-center gap-2 py-6 text-center"
+        >
+          <div className="relative">
+            <Loader2 size={18} className="animate-spin text-[var(--accent)]" />
+          </div>
+          <p className="text-[11px] text-[var(--text-secondary)] font-medium">
+            {L(`${pendingCount}명의 팀원 배정 중`, `Assembling ${pendingCount} team members`)}
+          </p>
+          <p className="text-[10px] text-[var(--text-tertiary)]">
+            {L('잠시만요', 'One moment')}<TypingDots />
+          </p>
+        </motion.div>
+      )}
+
+      {/* Agent rows — sequential reveal, grouped by stage when pipeline has multiple stages */}
       <div className="space-y-2">
-        <AnimatePresence initial={false}>
-          {visibleWorkers.map((w, i) => (
-            <AgentRow
-              key={w.id}
-              worker={w}
-              expanded={expandedId === w.id}
-              onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
-              enterIndex={i}
-            />
-          ))}
-        </AnimatePresence>
+        {groupedByStage.map((group, groupIdx) => (
+          <div key={group.stage?.id || 'all'} className="space-y-2">
+            {hasStages && group.stage && (
+              <StageDivider
+                stage={group.stage}
+                index={groupIdx}
+                isFirst={groupIdx === 0}
+                allStageDone={group.workers.every(w => w.status === 'done')}
+                locale={locale}
+              />
+            )}
+            <AnimatePresence initial={false}>
+              {group.workers.map((w, i) => (
+                <AgentRow
+                  key={w.id}
+                  worker={w}
+                  expanded={expandedId === w.id}
+                  onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
+                  enterIndex={i}
+                  onRetry={handleRetry}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        ))}
 
         {pendingCount > 0 && !allDone && (
           <motion.div

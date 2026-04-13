@@ -81,7 +81,11 @@ interface DeepeningResponse {
 interface MixResponse {
   title: string;
   executive_summary: string;
-  sections: { heading: string; content: string }[];
+  sections: {
+    heading: string;
+    content: string;
+    contributors?: string[]; // worker names that backed this section (traceability)
+  }[];
   key_assumptions: string[];
   next_steps: string[];
 }
@@ -378,13 +382,17 @@ export async function runLeadSynthesis(
 
 /**
  * Step Mix: 최종 초안 조합
+ *
+ * When `workerResults` carry `workerId` + `name`, the LLM is asked to cite
+ * contributors per section, and we resolve names → IDs so the UI can draw
+ * bidirectional hover attribution (section ↔ agent).
  */
 export async function runMix(
   problemText: string,
   snapshots: AnalysisSnapshot[],
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
-  workerResults?: Array<{ task: string; result: string }>,
+  workerResults?: Array<{ task: string; result: string; name?: string; workerId?: string }>,
   signal?: AbortSignal,
   leadSynthesis?: LeadSynthesisResult | null,
 ): Promise<MixResult> {
@@ -398,10 +406,43 @@ export async function runMix(
     { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array', key_assumptions: 'array', next_steps: 'array' } },
   );
 
+  // Build name → workerId lookup for attribution resolution.
+  const nameToId = new Map<string, string>();
+  if (workerResults) {
+    for (const w of workerResults) {
+      if (w.name && w.workerId) nameToId.set(w.name.toLowerCase().trim(), w.workerId);
+    }
+  }
+
+  const resolveContributors = (names: string[] | undefined): { names: string[]; ids: string[] } => {
+    if (!names || names.length === 0) return { names: [], ids: [] };
+    const cleanNames: string[] = [];
+    const ids: string[] = [];
+    for (const raw of names) {
+      if (typeof raw !== 'string' || !raw.trim()) continue;
+      const id = nameToId.get(raw.toLowerCase().trim());
+      if (id) {
+        cleanNames.push(raw.trim());
+        ids.push(id);
+      }
+    }
+    return { names: cleanNames, ids };
+  };
+
+  const sections = (result.sections || []).map(s => {
+    const { names, ids } = resolveContributors(s.contributors);
+    return {
+      heading: s.heading || '',
+      content: s.content || '',
+      contributor_names: names,
+      contributor_worker_ids: ids,
+    };
+  });
+
   return {
     title: result.title || (locale === 'ko' ? '기획안' : 'Proposal'),
     executive_summary: result.executive_summary || '',
-    sections: result.sections || [],
+    sections,
     key_assumptions: result.key_assumptions || [],
     next_steps: result.next_steps || [],
   };

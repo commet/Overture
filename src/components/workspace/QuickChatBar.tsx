@@ -5,6 +5,7 @@ import { Send, Loader2, MessageSquare, X, Check } from 'lucide-react';
 import { callLLMJson } from '@/lib/llm';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import type { StepId } from '@/stores/useWorkspaceStore';
 
 interface QuickChatBarProps {
@@ -129,6 +130,7 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
     }
 
     setLoading(true);
+    useAgentAttentionStore.getState().ping('chat');
     try {
       const systemPrompt = SYSTEM_PROMPT.replace('{step}', activeStep);
       const result = await callLLMJson<ChatAction>(
@@ -204,13 +206,15 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
         <button
           onClick={handleSubmit}
           disabled={!input.trim() || loading}
-          className="p-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] disabled:opacity-40 cursor-pointer hover:bg-[var(--accent-light)] transition-colors shrink-0"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--bg)] disabled:opacity-40 cursor-pointer hover:bg-[var(--accent-light)] transition-colors shrink-0"
+          aria-label="Send"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         </button>
         <button
           onClick={() => setIsOpen(false)}
-          className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer transition-colors shrink-0"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer transition-colors shrink-0"
+          aria-label="Close"
         >
           <X size={14} />
         </button>

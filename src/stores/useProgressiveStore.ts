@@ -76,7 +76,7 @@ interface ProgressiveState {
   allWorkersDone: () => boolean;
   /** @deprecated Use mixableWorkerResults instead */
   approvedWorkerResults: () => Array<{ task: string; result: string; type?: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
-  mixableWorkerResults: () => Array<{ task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null }>;
+  mixableWorkerResults: () => Array<{ workerId: string; task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null }>;
 
   // Lead Agent
   setLeadAgent: (agentId: string, agentName: string, domain: string) => void;
@@ -677,13 +677,13 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
         };
 
         if (w.status === 'done' && w.result) {
-          return { task: w.task, result: w.result, type: 'final' as const, ...base };
+          return { workerId: w.id, task: w.task, result: w.result, type: 'final' as const, ...base };
         }
         if (w.ai_preliminary && (w.status === 'waiting_input' || w.status === 'ai_preparing')) {
-          return { task: w.task, result: w.ai_preliminary, type: 'preliminary' as const, ...base };
+          return { workerId: w.id, task: w.task, result: w.ai_preliminary, type: 'preliminary' as const, ...base };
         }
         if (w.agent_type === 'human' && (w.status === 'waiting_response' || w.status === 'sent')) {
-          return { task: w.task, result: `[응답 대기 중] ${w.question_to_human || w.task}`, type: 'pending_human' as const, ...base };
+          return { workerId: w.id, task: w.task, result: `[응답 대기 중] ${w.question_to_human || w.task}`, type: 'pending_human' as const, ...base };
         }
         return null;
       })

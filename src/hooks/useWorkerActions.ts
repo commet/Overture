@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import { runWorkerTask, type WorkerContext, type WorkerTaskResult } from '@/lib/worker-engine';
 
 /**
@@ -20,6 +21,7 @@ export function useWorkerActions(context: WorkerContext | null) {
     if (!worker || !context) return;
 
     store.updateWorker(id, { status: 'running', error: null, started_at: new Date().toISOString() });
+    useAgentAttentionStore.getState().ping('retry');
 
     try {
       const { text, validation } = await runWorkerTask(

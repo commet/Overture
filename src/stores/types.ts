@@ -923,7 +923,22 @@ export interface DMFeedbackResult {
 export interface MixResult {
   title: string;
   executive_summary: string;
-  sections: { heading: string; content: string }[];
+  sections: {
+    heading: string;
+    content: string;
+    /**
+     * Names of worker personas whose research backed this section — as returned
+     * by the LLM synthesis. Used to map back to `contributor_worker_ids` via a
+     * name lookup at runMix time.
+     */
+    contributor_names?: string[];
+    /**
+     * Resolved worker IDs that contributed to this section. Post-processed by
+     * runMix from contributor_names + the worker list. Used by the UI to draw
+     * attribution avatars + the hover-traceability highlight.
+     */
+    contributor_worker_ids?: string[];
+  }[];
   key_assumptions: string[];
   next_steps: string[];
 }

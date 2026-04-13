@@ -24,6 +24,7 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-engine';
 import { withTranscript } from '@/lib/execution-transcript';
 import { getCompletionNote } from '@/lib/worker-personas';
@@ -32,7 +33,7 @@ import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, 
 import { WorkerReportBlock } from './WorkerCard';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
-import { useWorkerContext } from './WorkerPanel';
+import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
@@ -106,8 +107,8 @@ function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; a
         <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05, ...SPRING }}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
           <Check size={10} className="text-[var(--accent)]" />
-          <span className="text-[var(--text-tertiary)] max-w-[80px] truncate">{qa.question.text.split(' ').slice(0, 3).join(' ')}</span>
-          <span className="text-[var(--text-primary)] font-medium max-w-[100px] truncate">{qa.answer!.value}</span>
+          <span className="text-[var(--text-tertiary)] max-w-[100px] sm:max-w-[80px] truncate">{qa.question.text.split(' ').slice(0, 3).join(' ')}</span>
+          <span className="text-[var(--text-primary)] font-medium max-w-[140px] sm:max-w-[100px] truncate">{qa.answer!.value}</span>
         </motion.div>
       ))}
       <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
@@ -119,6 +120,72 @@ function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; a
 }
 
 /* QuestionCard → imported from shared/ */
+
+/* ═══ Attributed Section — draft paragraph with contributor avatars + bidirectional hover ═══ */
+function AttributedSection({ section, index }: {
+  section: MixResult['sections'][number];
+  index: number;
+}) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const workers = useWorkers();
+  const hovered = useAgentAttentionStore(s => s.hovered);
+  const setHovered = useAgentAttentionStore(s => s.setHovered);
+
+  const contributorIds = section.contributor_worker_ids || [];
+  const contributors = contributorIds
+    .map(id => workers.find(w => w.id === id))
+    .filter((w): w is NonNullable<typeof w> => !!w && !!w.persona);
+
+  // Highlight when an agent in this section's contributors is hovered from the sidebar,
+  // OR when this very section is hovered. Dim when some OTHER section/agent is hovered.
+  const isHighlighted =
+    (hovered?.kind === 'section' && hovered.sectionIndex === index) ||
+    (hovered?.kind === 'agent' && contributorIds.includes(hovered.workerId));
+  const isDimmed = hovered != null && !isHighlighted;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: isDimmed ? 0.35 : 1, y: 0 }}
+      transition={{ delay: 0.1 + index * 0.08, duration: 0.5, ease: EASE }}
+      onHoverStart={() => contributorIds.length > 0 && setHovered({ kind: 'section', sectionIndex: index, contributorIds })}
+      onHoverEnd={() => setHovered(null)}
+      className={`relative rounded-lg transition-all duration-300 ${
+        isHighlighted && contributorIds.length > 0
+          ? '-mx-3 px-3 py-2 bg-[var(--accent)]/[0.05] ring-1 ring-[var(--accent)]/25'
+          : ''
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <h3 className="text-[14px] font-bold text-[var(--text-primary)] flex-1">{section.heading}</h3>
+        {contributors.length > 0 && (
+          <div className="flex -space-x-1.5 shrink-0">
+            {contributors.map(w => (
+              <div
+                key={w.id}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 border-[var(--surface)]"
+                style={{ backgroundColor: (w.persona?.color || 'var(--accent)') + '25', color: w.persona?.color }}
+                title={w.persona?.name}
+              >
+                {w.persona?.emoji}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(section.content)}</p>
+      {contributors.length > 0 && (
+        <p className="mt-2 text-[10px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+          <span className="opacity-60">{L('기여', 'By')}</span>
+          <span className="truncate">
+            {contributors.map(w => w.persona?.name).filter(Boolean).join(' · ')}
+          </span>
+        </p>
+      )}
+    </motion.div>
+  );
+}
 
 /* ═══ Mix Preview ═══ */
 function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { mix: MixResult; dm: string | null; onDM: () => void; onSkip: () => void; busy: boolean; cmReview?: ConcertmasterReview | null; debateResult?: DebateResult | null }) {
@@ -136,10 +203,7 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
 
             <div className="space-y-5">
               {mix.sections.map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08, duration: 0.5, ease: EASE }}>
-                  <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-1.5">{s.heading}</h3>
-                  <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(s.content)}</p>
-                </motion.div>
+                <AttributedSection key={i} section={s} index={i} />
               ))}
             </div>
 
@@ -812,6 +876,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     const preDeployWorkers = store.currentSession()?.workers ?? [];
     if (preDeployWorkers.length === 0) return;
     store.deployWorkers();
+    useAgentAttentionStore.getState().ping('deploy');
     const ws = store.currentSession()?.workers ?? [];
 
     // Auto-send human agent questions (fire-and-forget)
@@ -859,6 +924,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     if (!curQ || busy || !latest) return;
     const ans: FlowAnswer = { question_id: curQ.id, value };
     store.addAnswer(ans); store.setPhase('analyzing'); track('flow_answer', { round }); setBusy(true); setError(null); scroll();
+    // Tell the sidebar agents "new input just landed" — triggers flash
+    useAgentAttentionStore.getState().ping('answer');
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: curQ, answer: ans });
@@ -918,6 +985,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       // Collect mixable worker results — final + preliminary + pending_human
       const enrichedResults = store.mixableWorkerResults();
       const workerResults = enrichedResults.map(w => ({
+        workerId: w.workerId,
+        name: w.agentName || w.persona || undefined,
         task: w.type === 'preliminary' ? `[${L('참고', 'Ref')}] ${w.task}` : w.type === 'pending_human' ? `[${L('대기', 'Pending')}] ${w.task}` : w.task,
         result: w.result,
       }));
@@ -941,6 +1010,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               setDebateResult(debateRes);
               // debate 결과를 workerResults에 추가하여 mix에 반영
               workerResults.push({
+                workerId: '',
+                name: undefined,
                 task: locale === 'ko' ? `[팀 내 반론] ${debateRes.targetAgent}의 분석에 대한 비판` : `[Team Dissent] Critique of ${debateRes.targetAgent}'s analysis`,
                 result: locale === 'ko' ? `${debateRes.challenge}\n\n약점: ${debateRes.weakestClaim}\n\n대안: ${debateRes.alternativeView}` : `${debateRes.challenge}\n\nWeakness: ${debateRes.weakestClaim}\n\nAlternative: ${debateRes.alternativeView}`,
               });

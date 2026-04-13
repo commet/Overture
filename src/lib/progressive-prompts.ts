@@ -356,7 +356,7 @@ export function buildMixPrompt(
   snapshots: AnalysisSnapshot[],
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
-  workerResults?: Array<{ task: string; result: string }>,
+  workerResults?: Array<{ task: string; result: string; name?: string; workerId?: string }>,
   locale: Locale = 'en',
   leadSynthesis?: LeadSynthesisResult | null,
 ): { system: string; user: string } {
@@ -413,7 +413,13 @@ NARRATIVE FLOW — this separates a good draft from a great one:
 - Each section's FIRST sentence must connect to the PREVIOUS section's conclusion. If Section 1 ends with a gap in the market, Section 2 should start by addressing that gap. The reader should feel one continuous argument, not separate blocks.
 - When citing worker findings, NAME the source naturally: "시장 분석 결과..." / "전략 검토에 따르면..." — this creates a sense of team rigor, not a faceless report.
 - Weave worker findings together — if one worker found the problem and another found the solution, connect them explicitly: "X라는 문제가 확인됐고, 이를 Y 전략으로 뒤집을 수 있습니다."
-- The document should read as ONE STORY: Context (why now) → Opportunity (what we found) → Strategy (how we solve it) → Evidence (proof it works) → Risks (what could go wrong) → Action (what to do next).`;
+- The document should read as ONE STORY: Context (why now) → Opportunity (what we found) → Strategy (how we solve it) → Evidence (proof it works) → Risks (what could go wrong) → Action (what to do next).
+
+ATTRIBUTION (required when worker results are provided):
+- For EACH section, populate the "contributors" field with the EXACT names of the workers whose research directly backed that section's claims.
+- Use ONLY names from the provided worker list — do not invent names. Never cite a worker that wasn't in the input.
+- A section usually has 1-3 contributors. A cross-cutting section may have more. Don't pad — only cite real contributors.
+- Examples: "contributors": ["다은"] for a market section, ["현우", "규민"] for a strategy-and-numbers section, [] only if no worker result applies.`;
 
   // Lead synthesis block for user prompt
   const leadBlock = leadSynthesis
@@ -428,6 +434,26 @@ Recommendation: ${leadSynthesis.recommendation_direction}
 ${leadSynthesis.unresolved_tensions.length > 0 ? `\nUnresolved tensions:\n${leadSynthesis.unresolved_tensions.map(t => `- ${t}`).join('\n')}` : ''}`
     : '';
 
+  const workerBlock = workerResults?.length
+    ? `
+Worker research results (supporting evidence):
+${workerResults.map(w => {
+  const label = w.name ? `[${sanitize(w.name)} — ${sanitize(w.task)}]` : `[${sanitize(w.task)}]`;
+  return `${label}\n${sanitize(w.result)}`;
+}).join('\n\n')}
+
+${leadSynthesis
+  ? 'Use these as supporting evidence for the lead\'s synthesis.'
+  : 'Make sure to incorporate specific numbers/facts from the worker results into the document.'}
+
+AVAILABLE CONTRIBUTOR NAMES (cite these EXACTLY in "contributors" per section):
+${workerResults.filter(w => w.name).map(w => `- ${sanitize(w.name!)}`).join('\n') || '(none)'}`
+    : '';
+
+  const contributorsSchemaLine = workerResults?.length
+    ? ', "contributors": ["Worker name exactly as listed"]'
+    : '';
+
   return {
     system: systemPrompt,
 
@@ -438,12 +464,7 @@ ${snapshotSummary}
 
 Full Q&A:
 ${qaHistory}
-${leadBlock}
-${workerResults?.length ? `
-Worker research results (supporting evidence):
-${workerResults.map(w => `[${sanitize(w.task)}]\n${sanitize(w.result)}`).join('\n\n')}
-
-${leadSynthesis ? 'Use these as supporting evidence for the lead\'s synthesis.' : 'Make sure to incorporate specific numbers/facts from the worker results into the document.'}` : ''}
+${leadBlock}${workerBlock}
 
 ${leadSynthesis ? 'Format the lead expert\'s synthesis into a polished professional document.' : 'Combine all of this into a single document.'}
 
@@ -452,7 +473,7 @@ JSON format:
   "title": "Document title (specific, reflects the situation)",
   "executive_summary": "Executive summary in 2-3 sentences",
   "sections": [
-    {"heading": "Section heading", "content": "Section content (3-5 sentences, specific)"}
+    {"heading": "Section heading", "content": "Section content (3-5 sentences, specific)"${contributorsSchemaLine}}
   ],
   "key_assumptions": ["Assumptions this document is based on"],
   "next_steps": ["Specific next actions (who, by when, what)"]

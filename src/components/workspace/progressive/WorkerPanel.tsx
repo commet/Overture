@@ -7,6 +7,7 @@ import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useShallow } from 'zustand/react/shallow';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { TypingDots } from './shared/AgentVisuals';
+import { AgentSidebar } from './AgentSidebar';
 import {
   getBuiltinPersonas,
   loadCustomization,
@@ -357,8 +358,6 @@ export function WorkerDrawer({ className }: { className?: string }) {
 
   if (workers.length === 0) return null;
 
-  const sorted = sortedWorkers(workers);
-
   return (
     <div className={className}>
       {/* Sticky bottom bar — height: ~56px (py-3.5 × 2 + content) */}
@@ -414,20 +413,9 @@ export function WorkerDrawer({ className }: { className?: string }) {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                {sorted.map(w => (
-                  <div key={w.id} className="flex items-center gap-2.5 px-3 py-3 rounded-xl">
-                    <WorkerAvatar persona={w.persona} size="sm" pulse={w.status === 'running'} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[var(--text-primary)] truncate">{w.persona?.name || 'AI'}</p>
-                      <p className="text-[11px] text-[var(--text-secondary)] truncate" title={w.task}>{w.task}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <StatusIndicator worker={w} />
-                      <span className="text-[11px] text-[var(--text-secondary)]">{statusText(w, locale)}</span>
-                    </div>
-                  </div>
-                ))}
+              {/* Full-richness content — reuse desktop sidebar exactly so mobile has parity */}
+              <div className="flex-1 overflow-y-auto">
+                <AgentSidebar />
               </div>
             </motion.div>
           </>
