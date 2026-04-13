@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2, ChevronDown, Sparkles, ArrowRight, Settings } from 'lucide-react';
+import { Check, Loader2, ChevronDown, Sparkles, ArrowRight } from 'lucide-react';
 import { useWorkers } from './WorkerPanel';
 import { WorkerAvatar } from './WorkerAvatar';
 import type { WorkerTask } from '@/stores/types';
@@ -10,16 +10,27 @@ import { useAgentStore } from '@/stores/useAgentStore';
 import { useLocale } from '@/hooks/useLocale';
 import { EASE } from './shared/constants';
 import { renderMd } from './shared/renderMd';
+import { TypingDots, AvatarRipple, ShimmerBar, tickersFor } from './shared/AgentVisuals';
 
 // ─── Status helpers ───
 
+const PENDING_STATUSES = new Set<WorkerTask['status']>(['pending', 'ai_preparing']);
+
+function isPending(w: WorkerTask) {
+  return PENDING_STATUSES.has(w.status);
+}
+
+function isWorkingStatus(s: WorkerTask['status']) {
+  return s === 'running' || s === 'sent' || s === 'waiting_response';
+}
+
 function StatusBadge({ worker, locale }: { worker: WorkerTask; locale: string }) {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  if (worker.status === 'running') {
+  if (isWorkingStatus(worker.status)) {
     return (
-      <span className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
-        <Loader2 size={11} className="animate-spin" />
-        <span className="text-[10px] font-medium">{L('분석 중', 'Analyzing')}</span>
+      <span className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)]">
+        <Loader2 size={10} className="animate-spin" />
+        <span className="text-[10px] font-semibold">live</span>
       </span>
     );
   }
@@ -46,40 +57,56 @@ function StatusBadge({ worker, locale }: { worker: WorkerTask; locale: string })
 
 // ─── Agent Row — DemoAgentSidebar style with real data ───
 
-function AgentRow({ worker, expanded, onToggle, index }: {
+function AgentRow({ worker, expanded, onToggle, enterIndex }: {
   worker: WorkerTask;
   expanded: boolean;
   onToggle: () => void;
-  index: number;
+  enterIndex: number;
 }) {
   const locale = useLocale();
   const isDone = worker.status === 'done';
-  const isWorking = worker.status === 'running';
-  const isWaiting = worker.status === 'pending';
+  const isWorking = isWorkingStatus(worker.status);
+  const isError = worker.status === 'error';
 
+  const personaColor = worker.persona?.color || 'var(--accent)';
   const lv = worker.agent_id ? useAgentStore.getState().getAgent(worker.agent_id)?.level : undefined;
+
+  // Live activity ticker — rotates while working, used as fallback when no stream_text
+  const tickers = tickersFor(worker.persona?.id, worker.task);
+  const [tickerIdx, setTickerIdx] = useState(0);
+  useEffect(() => {
+    if (!isWorking) return;
+    const id = setInterval(() => {
+      setTickerIdx(i => (i + 1) % tickers.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [isWorking, tickers.length]);
+
+  // Use real streaming text when available; otherwise rotating ticker
+  const streamSnippet = worker.stream_text?.trim().slice(-80);
+  const liveLine = streamSnippet || tickers[tickerIdx];
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.15, duration: 0.4, ease: EASE }}
-      className={`rounded-xl border transition-all duration-300 ${
+      layout
+      initial={{ opacity: 0, x: 16, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -8, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.45, ease: EASE, delay: Math.min(enterIndex, 2) * 0.18 }}
+      className={`rounded-xl border transition-all duration-300 relative overflow-hidden ${
         isDone ? 'border-emerald-300/50 dark:border-emerald-700/30 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm' :
-        isWorking ? 'border-[var(--accent)]/35 bg-[var(--accent)]/[0.06] shadow-[0_0_12px_-2px_rgba(180,160,100,0.12)]' :
-        isWaiting ? 'border-transparent bg-transparent opacity-25' :
+        isWorking ? 'border-[var(--accent)]/40 bg-[var(--accent)]/[0.07] shadow-[0_0_18px_-4px_rgba(180,160,100,0.25)]' :
+        isError ? 'border-red-300/40 bg-red-50/20 dark:bg-red-950/10' :
         'border-[var(--border-subtle)] bg-[var(--surface)]'
       }`}
     >
+      {isWorking && <ShimmerBar color={personaColor} />}
       <button
         onClick={isDone ? onToggle : undefined}
         className={`w-full flex items-center gap-3 p-3 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <div className="relative shrink-0">
-          {isWorking && (
-            <div className="absolute inset-[-3px] rounded-full animate-pulse opacity-30 border-2 border-current"
-              style={{ color: worker.persona?.color || 'var(--accent)' }} />
-          )}
+          {isWorking && <AvatarRipple color={personaColor} />}
           <WorkerAvatar persona={worker.persona} size="sm" pulse={isWorking} />
         </div>
         <div className="flex-1 text-left min-w-0">
@@ -94,12 +121,22 @@ function AgentRow({ worker, expanded, onToggle, index }: {
             )}
           </div>
           {isWorking && (
-            <p className="text-[11px] text-[var(--accent)] mt-0.5 truncate">{worker.task}</p>
-          )}
-          {isWorking && worker.stream_text && (
-            <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 line-clamp-2 leading-snug">
-              {worker.stream_text.slice(0, 120)}
-            </p>
+            <div className="mt-0.5 h-[15px] relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={streamSnippet ? 'stream' : `tick-${tickerIdx}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.35, ease: EASE }}
+                  className="text-[11px] truncate flex items-center gap-1.5 absolute inset-0"
+                  style={{ color: personaColor }}
+                >
+                  <span className="truncate">{liveLine}</span>
+                  <TypingDots color={personaColor} />
+                </motion.p>
+              </AnimatePresence>
+            </div>
           )}
           {isDone && worker.completion_note && (
             <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 italic truncate">
@@ -155,10 +192,13 @@ export function AgentSidebar({ className }: { className?: string }) {
   if (workers.length === 0) return null;
 
   const doneCount = workers.filter(w => w.status === 'done').length;
-  const runningCount = workers.filter(w => w.status === 'running').length;
-  const waitingCount = workers.filter(w => w.status === 'waiting_input').length;
+  const runningCount = workers.filter(w => isWorkingStatus(w.status)).length;
+  const waitingInputCount = workers.filter(w => w.status === 'waiting_input').length;
+  const pendingCount = workers.filter(isPending).length;
   const allDone = doneCount === workers.length;
   const progressPct = workers.length > 0 ? Math.round((doneCount / workers.length) * 100) : 0;
+  // Sequential reveal: hide pending workers from the sidebar — they slide in once active
+  const visibleWorkers = workers.filter(w => !isPending(w));
 
   return (
     <div className={`p-4 space-y-3.5 ${className ?? ''}`}>
@@ -171,11 +211,12 @@ export function AgentSidebar({ className }: { className?: string }) {
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[10px] text-[var(--accent)] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
             {runningCount} {L('분석 중', 'analyzing')}
+            <TypingDots />
           </span>
         )}
-        {waitingCount > 0 && runningCount === 0 && (
+        {waitingInputCount > 0 && runningCount === 0 && (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[10px] text-[var(--accent)] font-medium">
-            {L('입력 대기', 'Awaiting input')} {waitingCount}
+            {L('입력 대기', 'Awaiting input')} {waitingInputCount}
           </span>
         )}
         {allDone && (
@@ -197,17 +238,32 @@ export function AgentSidebar({ className }: { className?: string }) {
         />
       </div>
 
-      {/* Agent rows */}
+      {/* Agent rows — sequential reveal: pending workers stay hidden until activated */}
       <div className="space-y-2">
-        {workers.map((w, i) => (
-          <AgentRow
-            key={w.id}
-            worker={w}
-            expanded={expandedId === w.id}
-            onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
-            index={i}
-          />
-        ))}
+        <AnimatePresence initial={false}>
+          {visibleWorkers.map((w, i) => (
+            <AgentRow
+              key={w.id}
+              worker={w}
+              expanded={expandedId === w.id}
+              onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
+              enterIndex={i}
+            />
+          ))}
+        </AnimatePresence>
+
+        {pendingCount > 0 && !allDone && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2 px-3 pt-1 text-[10px] text-[var(--text-tertiary)]"
+          >
+            <span className="w-1 h-1 rounded-full bg-[var(--text-tertiary)]/40" />
+            <span>{L(`${pendingCount}명 더 합류 예정`, `${pendingCount} more joining`)}</span>
+          </motion.div>
+        )}
       </div>
 
       {/* Summary section — appears when all done */}

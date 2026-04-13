@@ -6,6 +6,7 @@ import { Users, ChevronUp, X, Settings, Plus, Trash2, Loader2 } from 'lucide-rea
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useShallow } from 'zustand/react/shallow';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
+import { TypingDots } from './shared/AgentVisuals';
 import {
   getBuiltinPersonas,
   loadCustomization,
@@ -380,8 +381,9 @@ export function WorkerDrawer({ className }: { className?: string }) {
             </span>
           )}
           {runningCount > 0 && waitingCount === 0 && (
-            <span className="text-[10px] text-[var(--accent)] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-[var(--accent)] bg-[var(--accent)]/8 px-2 py-0.5 rounded-full shrink-0">
               {L('진행', 'Active')} {runningCount}
+              <TypingDots />
             </span>
           )}
         </div>
