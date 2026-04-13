@@ -29,6 +29,7 @@ import type {
   LeadSynthesisResult,
 } from '@/stores/types';
 import { buildLeadSynthesisPrompt, type LeadAgentConfig } from '@/lib/lead-agent';
+import { resolveContributorsHeuristic, type WorkerSource } from '@/lib/attribution-heuristic';
 
 // ─── Response shapes from LLM ───
 
@@ -84,7 +85,11 @@ interface MixResponse {
   sections: {
     heading: string;
     content: string;
-    contributors?: string[]; // worker names that backed this section (traceability)
+    contributors?: string[]; // worker names that backed this section (section-level fallback)
+    sentences?: Array<{      // sentence-level attribution (preferred when workers present)
+      text: string;
+      contributors?: string[];
+    }>;
   }[];
   key_assumptions: string[];
   next_steps: string[];
@@ -414,6 +419,11 @@ export async function runMix(
     }
   }
 
+  // Heuristic fallback pool — only workers with real identity can be attributed.
+  const heuristicPool: WorkerSource[] = (workerResults || [])
+    .filter((w): w is Required<Pick<typeof w, 'workerId' | 'name'>> & typeof w => !!w.workerId && !!w.name)
+    .map(w => ({ workerId: w.workerId, name: w.name, result: w.result }));
+
   const resolveContributors = (names: string[] | undefined): { names: string[]; ids: string[] } => {
     if (!names || names.length === 0) return { names: [], ids: [] };
     const cleanNames: string[] = [];
@@ -429,13 +439,68 @@ export async function runMix(
     return { names: cleanNames, ids };
   };
 
+  // Merge LLM attribution with heuristic fallback — only fills when LLM yields nothing.
+  const resolveWithFallback = (names: string[] | undefined, fallbackContent: string) => {
+    const fromLLM = resolveContributors(names);
+    if (fromLLM.ids.length > 0 || heuristicPool.length === 0) return fromLLM;
+    const heuristic = resolveContributorsHeuristic(fallbackContent, heuristicPool);
+    if (heuristic.length === 0) return fromLLM;
+    return {
+      names: heuristic.map(h => h.name),
+      ids: heuristic.map(h => h.workerId),
+    };
+  };
+
   const sections = (result.sections || []).map(s => {
-    const { names, ids } = resolveContributors(s.contributors);
+    // Sentence-level first: resolve each sentence's contributors individually.
+    const sentences = Array.isArray(s.sentences) && s.sentences.length > 0
+      ? s.sentences
+          .filter((sent): sent is NonNullable<typeof sent> => !!sent && typeof sent.text === 'string')
+          .map(sent => {
+            const { names, ids } = resolveWithFallback(sent.contributors, sent.text);
+            return {
+              text: sent.text,
+              contributor_names: names,
+              contributor_worker_ids: ids,
+            };
+          })
+      : undefined;
+
+    // If sentences exist, section content = concatenation (for legacy renderers + fallback).
+    const content = sentences && sentences.length > 0
+      ? sentences.map(sent => sent.text).join(' ')
+      : (s.content || '');
+
+    // Section-level attribution: union of sentence IDs when sentences exist; otherwise fallback to LLM-section / heuristic.
+    let sectionNames: string[];
+    let sectionIds: string[];
+    if (sentences && sentences.length > 0) {
+      const idSet = new Set<string>();
+      const nameSet = new Set<string>();
+      for (const sent of sentences) {
+        (sent.contributor_worker_ids || []).forEach(id => idSet.add(id));
+        (sent.contributor_names || []).forEach(n => nameSet.add(n));
+      }
+      sectionIds = Array.from(idSet);
+      sectionNames = Array.from(nameSet);
+      // If sentence-level attribution also came up empty, try heuristic on the whole section.
+      if (sectionIds.length === 0) {
+        const fallback = resolveWithFallback(undefined, content);
+        sectionIds = fallback.ids;
+        sectionNames = fallback.names;
+      }
+    } else {
+      const fallback = resolveWithFallback(s.contributors, s.content || '');
+      sectionIds = fallback.ids;
+      sectionNames = fallback.names;
+    }
+
     return {
       heading: s.heading || '',
-      content: s.content || '',
-      contributor_names: names,
-      contributor_worker_ids: ids,
+      content,
+      contributor_names: sectionNames,
+      contributor_worker_ids: sectionIds,
+      sentences,
     };
   });
 
@@ -540,19 +605,33 @@ function dmResponseToResult(
 
 /**
  * Step Final: 피드백 반영 후 최종 문서
+ *
+ * Returns both a rendered markdown string (for copy/export) AND a structured
+ * `finalMix` whose sections carry the original mix's attribution forward.
+ *
+ * Attribution preservation strategy:
+ * 1. If no DM concerns were applied, finalMix = original mix (no change).
+ * 2. If the LLM rewrote sections to apply fixes, we MATCH each new section to
+ *    an original one by heading similarity and transplant `contributor_*`.
+ * 3. Sections that don't match anything (new or heavily rewritten) fall through
+ *    the normal heuristic pool — same workerResults used at mix time.
  */
 export async function runFinalDeliverable(
   mix: MixResult,
   dmFeedback: DMFeedbackResult,
   signal?: AbortSignal,
-): Promise<string> {
+  workerSources?: WorkerSource[],
+): Promise<{ markdown: string; finalMix: MixResult }> {
   const appliedFixes = dmFeedback.concerns
     .filter(c => c.applied)
     .map(c => ({ concern: c.text, fix: c.fix_suggestion }));
 
   const locale = getCurrentLanguage();
   if (appliedFixes.length === 0) {
-    return formatMixAsMarkdown(mix, undefined, locale);
+    return {
+      markdown: formatMixAsMarkdown(mix, undefined, locale),
+      finalMix: mix, // No change — keep attribution as-is.
+    };
   }
 
   const { system, user } = buildFinalDeliverablePrompt(mix, appliedFixes, locale);
@@ -562,15 +641,65 @@ export async function runFinalDeliverable(
     { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array' } },
   );
 
+  // Build heading → original section lookup for attribution transplant.
+  const originalByHeading = new Map<string, MixResult['sections'][number]>();
+  for (const s of mix.sections) {
+    originalByHeading.set(normalizeHeading(s.heading), s);
+  }
+
+  const rewrittenSections = (result.sections || mix.sections).map(newSec => {
+    const key = normalizeHeading(newSec.heading || '');
+    const orig = originalByHeading.get(key);
+    if (orig) {
+      // Heading matched — transplant the original attribution onto the new content.
+      return {
+        heading: newSec.heading || orig.heading,
+        content: newSec.content || orig.content,
+        contributor_names: orig.contributor_names,
+        contributor_worker_ids: orig.contributor_worker_ids,
+        // Sentence-level attribution doesn't transplant cleanly when text changed — drop it.
+        sentences: undefined,
+      };
+    }
+    // No match — fall back to heuristic on the fresh content using the original worker pool.
+    const content = newSec.content || '';
+    if (workerSources && workerSources.length > 0 && content.length > 0) {
+      const heuristic = resolveContributorsHeuristic(content, workerSources);
+      return {
+        heading: newSec.heading || '',
+        content,
+        contributor_names: heuristic.map(h => h.name),
+        contributor_worker_ids: heuristic.map(h => h.workerId),
+      };
+    }
+    return {
+      heading: newSec.heading || '',
+      content,
+      contributor_names: [],
+      contributor_worker_ids: [],
+    };
+  });
+
   const finalMix: MixResult = {
     title: result.title || mix.title,
     executive_summary: result.executive_summary || mix.executive_summary,
-    sections: result.sections || mix.sections,
+    sections: rewrittenSections,
     key_assumptions: result.key_assumptions || mix.key_assumptions,
     next_steps: result.next_steps || mix.next_steps,
   };
 
-  return formatMixAsMarkdown(finalMix, result.changes_applied, locale);
+  return {
+    markdown: formatMixAsMarkdown(finalMix, result.changes_applied, locale),
+    finalMix,
+  };
+}
+
+// Normalize heading for fuzzy match — strips punctuation, lowercases, collapses whitespace.
+function normalizeHeading(h: string): string {
+  return h
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .trim();
 }
 
 // ─── Helpers ───

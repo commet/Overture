@@ -416,10 +416,13 @@ NARRATIVE FLOW — this separates a good draft from a great one:
 - The document should read as ONE STORY: Context (why now) → Opportunity (what we found) → Strategy (how we solve it) → Evidence (proof it works) → Risks (what could go wrong) → Action (what to do next).
 
 ATTRIBUTION (required when worker results are provided):
-- For EACH section, populate the "contributors" field with the EXACT names of the workers whose research directly backed that section's claims.
-- Use ONLY names from the provided worker list — do not invent names. Never cite a worker that wasn't in the input.
-- A section usually has 1-3 contributors. A cross-cutting section may have more. Don't pad — only cite real contributors.
-- Examples: "contributors": ["다은"] for a market section, ["현우", "규민"] for a strategy-and-numbers section, [] only if no worker result applies.`;
+- Use ONLY names from the provided worker list. Never invent or mis-spell names.
+- Two levels of attribution — prefer sentence-level when possible:
+  1. SENTENCE LEVEL (preferred): For each section, return a "sentences" array. Each sentence object has "text" (the exact sentence) and "contributors" (the 1-2 worker names whose findings directly support THIS sentence). Split the section into 3-6 natural sentences.
+  2. SECTION LEVEL (fallback): If you can't do sentence-level for a section, omit "sentences" and use the section-level "contributors" array instead.
+- A sentence usually has 1-2 contributors. A cross-cutting sentence may list more but avoid padding.
+- Example sentence entry: {"text": "경쟁사 세팅 2주가 우리 기회입니다.", "contributors": ["다은"]}
+- When you use "sentences", you can still include "content" (the flat version) for readability.`;
 
   // Lead synthesis block for user prompt
   const leadBlock = leadSynthesis
@@ -450,9 +453,16 @@ AVAILABLE CONTRIBUTOR NAMES (cite these EXACTLY in "contributors" per section):
 ${workerResults.filter(w => w.name).map(w => `- ${sanitize(w.name!)}`).join('\n') || '(none)'}`
     : '';
 
-  const contributorsSchemaLine = workerResults?.length
-    ? ', "contributors": ["Worker name exactly as listed"]'
-    : '';
+  const sectionSchema = workerResults?.length
+    ? `{
+      "heading": "Section heading",
+      "content": "Flat section content (3-5 sentences) — still required for fallback",
+      "sentences": [
+        {"text": "First sentence verbatim.", "contributors": ["Exact worker name"]},
+        {"text": "Second sentence verbatim.", "contributors": ["Exact worker name"]}
+      ]
+    }`
+    : `{"heading": "Section heading", "content": "Section content (3-5 sentences, specific)"}`;
 
   return {
     system: systemPrompt,
@@ -473,7 +483,7 @@ JSON format:
   "title": "Document title (specific, reflects the situation)",
   "executive_summary": "Executive summary in 2-3 sentences",
   "sections": [
-    {"heading": "Section heading", "content": "Section content (3-5 sentences, specific)"${contributorsSchemaLine}}
+    ${sectionSchema}
   ],
   "key_assumptions": ["Assumptions this document is based on"],
   "next_steps": ["Specific next actions (who, by when, what)"]

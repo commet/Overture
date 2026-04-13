@@ -24,7 +24,8 @@ import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
+import { useAgentAttentionStore, useAttributionClickOutside } from '@/stores/useAgentAttentionStore';
+import { PingToast } from './PingToast';
 import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-engine';
 import { withTranscript } from '@/lib/execution-transcript';
 import { getCompletionNote } from '@/lib/worker-personas';
@@ -42,6 +43,45 @@ import { diffItems } from './shared/diffItems';
 import { renderInline, renderMd } from './shared/renderMd';
 import { AnalysisCard } from './shared/AnalysisCard';
 import { QuestionCard } from './shared/QuestionCard';
+
+/* Reviewer 배지 — 저장된 팀장이 있으면 세션 내내 노출 */
+function ReviewerBadge({ reviewerId }: { reviewerId: string | null }) {
+  const agent = useAgentStore(s => reviewerId ? s.agents.find(a => a.id === reviewerId) : undefined);
+  if (!agent) return null;
+  const code = agent.personality_code;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.4, ease: EASE }}
+      className="flex items-center gap-2 px-4 py-2 rounded-full max-w-full"
+      style={{
+        background: 'linear-gradient(135deg, rgba(91,33,182,0.06) 0%, rgba(30,58,138,0.06) 100%)',
+        border: '1px dashed rgba(91,33,182,0.25)',
+      }}
+      title={agent.personality_profile?.bossVibe || '저장된 팀장이 이 기획을 리뷰합니다'}
+    >
+      <motion.span
+        className="text-[14px] leading-none"
+        animate={{ scale: [1, 1.08, 1] }}
+        transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut' }}
+      >
+        {agent.emoji}
+      </motion.span>
+      <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate max-w-[140px]">
+        {agent.name}
+      </span>
+      {code && (
+        <span className="text-[10px] font-bold tracking-wider text-[var(--text-tertiary)]">
+          {code}
+        </span>
+      )}
+      <span className="text-[10px] text-[var(--text-tertiary)] hidden sm:inline">
+        · 이 기획을 봅니다
+      </span>
+    </motion.div>
+  );
+}
 
 /* Phase-aware ambient glow — the page itself tells you where you are */
 function PhaseAmbient({ phase }: { phase: string }) {
@@ -121,7 +161,7 @@ function AnsweredPills({ qaPairs }: { qaPairs: Array<{ question: FlowQuestion; a
 
 /* QuestionCard → imported from shared/ */
 
-/* ═══ Attributed Section — draft paragraph with contributor avatars + bidirectional hover ═══ */
+/* ═══ Attributed Section — draft paragraph with bidirectional hover + sentence-level attribution ═══ */
 function AttributedSection({ section, index }: {
   section: MixResult['sections'][number];
   index: number;
@@ -131,26 +171,52 @@ function AttributedSection({ section, index }: {
   const workers = useWorkers();
   const hovered = useAgentAttentionStore(s => s.hovered);
   const setHovered = useAgentAttentionStore(s => s.setHovered);
+  const clearHovered = useAgentAttentionStore(s => s.clearHovered);
 
   const contributorIds = section.contributor_worker_ids || [];
   const contributors = contributorIds
     .map(id => workers.find(w => w.id === id))
     .filter((w): w is NonNullable<typeof w> => !!w && !!w.persona);
 
-  // Highlight when an agent in this section's contributors is hovered from the sidebar,
-  // OR when this very section is hovered. Dim when some OTHER section/agent is hovered.
+  const hasSentences = Array.isArray(section.sentences) && section.sentences.length > 0;
+
+  // Section-level highlight/dim — matches any hover kind that touches this section.
   const isHighlighted =
     (hovered?.kind === 'section' && hovered.sectionIndex === index) ||
+    (hovered?.kind === 'sentence' && hovered.sectionIndex === index) ||
     (hovered?.kind === 'agent' && contributorIds.includes(hovered.workerId));
   const isDimmed = hovered != null && !isHighlighted;
 
+  // Section-level hover handlers only fire in fallback mode (no sentences).
+  // In sentence mode, each sentence publishes its own hover state.
+  const onSectionHoverStart = hasSentences
+    ? undefined
+    : () => { if (contributorIds.length > 0) setHovered({ kind: 'section', sectionIndex: index, contributorIds }); };
+  const onSectionHoverEnd = hasSentences
+    ? undefined
+    : () => setHovered(null);
+
+  // Click to lock/toggle (touch-friendly; Round 2B).
+  const onSectionTap = hasSentences
+    ? undefined
+    : () => {
+        if (contributorIds.length === 0) return;
+        if (hovered?.kind === 'section' && hovered.sectionIndex === index) {
+          clearHovered();
+        } else {
+          setHovered({ kind: 'section', sectionIndex: index, contributorIds }, true);
+        }
+      };
+
   return (
     <motion.div
+      data-attribution-source="section"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: isDimmed ? 0.35 : 1, y: 0 }}
       transition={{ delay: 0.1 + index * 0.08, duration: 0.5, ease: EASE }}
-      onHoverStart={() => contributorIds.length > 0 && setHovered({ kind: 'section', sectionIndex: index, contributorIds })}
-      onHoverEnd={() => setHovered(null)}
+      onHoverStart={onSectionHoverStart}
+      onHoverEnd={onSectionHoverEnd}
+      onTap={onSectionTap}
       className={`relative rounded-lg transition-all duration-300 ${
         isHighlighted && contributorIds.length > 0
           ? '-mx-3 px-3 py-2 bg-[var(--accent)]/[0.05] ring-1 ring-[var(--accent)]/25'
@@ -174,7 +240,13 @@ function AttributedSection({ section, index }: {
           </div>
         )}
       </div>
-      <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(section.content)}</p>
+
+      {hasSentences ? (
+        <SentenceStream section={section} sectionIndex={index} workers={workers} />
+      ) : (
+        <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(section.content)}</p>
+      )}
+
       {contributors.length > 0 && (
         <p className="mt-2 text-[10px] text-[var(--text-tertiary)] flex items-center gap-1.5">
           <span className="opacity-60">{L('기여', 'By')}</span>
@@ -184,6 +256,73 @@ function AttributedSection({ section, index }: {
         </p>
       )}
     </motion.div>
+  );
+}
+
+/* ═══ SentenceStream — renders section sentences inline with per-sentence hover + trailing contributor dots ═══ */
+function SentenceStream({ section, sectionIndex, workers }: {
+  section: MixResult['sections'][number];
+  sectionIndex: number;
+  workers: ReturnType<typeof useWorkers>;
+}) {
+  const hovered = useAgentAttentionStore(s => s.hovered);
+  const setHovered = useAgentAttentionStore(s => s.setHovered);
+  const clearHovered = useAgentAttentionStore(s => s.clearHovered);
+  const sentences = section.sentences || [];
+
+  return (
+    <p className="text-[13px] text-[var(--text-primary)] leading-[1.9]">
+      {sentences.map((sent, sIdx) => {
+        const ids = sent.contributor_worker_ids || [];
+        const dots = ids
+          .map(id => workers.find(w => w.id === id))
+          .filter((w): w is NonNullable<typeof w> => !!w && !!w.persona);
+        const isThisHovered = hovered?.kind === 'sentence'
+          && hovered.sectionIndex === sectionIndex
+          && hovered.sentenceIndex === sIdx;
+
+        return (
+          <motion.span
+            key={sIdx}
+            data-attribution-source="sentence"
+            onHoverStart={() => ids.length > 0 && setHovered({ kind: 'sentence', sectionIndex, sentenceIndex: sIdx, contributorIds: ids })}
+            onHoverEnd={() => setHovered(null)}
+            onTap={() => {
+              if (ids.length === 0) return;
+              if (isThisHovered) {
+                clearHovered();
+              } else {
+                setHovered({ kind: 'sentence', sectionIndex, sentenceIndex: sIdx, contributorIds: ids }, true);
+              }
+            }}
+            className={`inline transition-all duration-200 ${
+              isThisHovered ? 'bg-[var(--accent)]/[0.08] rounded px-0.5' : ''
+            }`}
+            style={{ cursor: ids.length > 0 ? 'pointer' : 'default' }}
+          >
+            {renderInline(sent.text)}
+            {dots.length > 0 && (
+              <span className="inline-flex items-center gap-[2px] ml-1 align-middle">
+                {dots.map(d => (
+                  <motion.span
+                    key={d.id}
+                    animate={{
+                      scale: isThisHovered ? 1.4 : 1,
+                      opacity: isThisHovered ? 1 : 0.55,
+                    }}
+                    transition={{ duration: 0.2, ease: EASE }}
+                    className="inline-block w-[4px] h-[4px] rounded-full"
+                    style={{ backgroundColor: d.persona?.color || 'var(--accent)' }}
+                    title={d.persona?.name}
+                  />
+                ))}
+              </span>
+            )}
+            {' '}
+          </motion.span>
+        );
+      })}
+    </p>
   );
 }
 
@@ -400,11 +539,15 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
 }
 
 /* ═══ Final deliverable — triumphant, widest ═══ */
-function FinalCard({ content }: { content: string }) {
+function FinalCard({ content, mix }: { content: string; mix?: MixResult | null }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [copied, setCopied] = useState(false);
   const copy = async () => { await navigator.clipboard.writeText(content); setCopied(true); track('flow_copy', {}); setTimeout(() => setCopied(false), 2000); };
+
+  // When we have the structured mix, render it with attribution; fall back to flat markdown otherwise.
+  const hasStructured = !!mix && mix.sections.length > 0;
+
   return (
     <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
       <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
@@ -429,7 +572,32 @@ function FinalCard({ content }: { content: string }) {
               </button>
             </div>
           </div>
-          <div className="p-5 md:p-8 space-y-1">{renderMd(content)}</div>
+          {hasStructured ? (
+            <div className="p-5 md:p-8 space-y-5">
+              <h2 className="text-[22px] md:text-[26px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{mix!.title}</h2>
+              <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[14px] text-[var(--text-secondary)] italic leading-relaxed">
+                {renderInline(mix!.executive_summary)}
+              </blockquote>
+              <div className="space-y-5">
+                {mix!.sections.map((s, i) => (
+                  <AttributedSection key={i} section={s} index={i} />
+                ))}
+              </div>
+              {mix!.next_steps.length > 0 && (
+                <div className="pt-5 border-t border-[var(--border-subtle)]">
+                  <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-3">{L('다음 단계', 'Next Steps')}</p>
+                  {mix!.next_steps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-[13px] text-[var(--text-primary)] mb-2 leading-relaxed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-2 shrink-0" />
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-5 md:p-8 space-y-1">{renderMd(content)}</div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -704,6 +872,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const store = useProgressiveStore();
   const session = store.currentSession();
+  // Global click-outside: clears sticky attribution hover state when user taps blank space
+  useAttributionClickOutside();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
@@ -792,6 +962,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const mix = session?.mix ?? null;
   const dmFb = session?.dm_feedback ?? null;
   const final_ = session?.final_deliverable ?? null;
+  const finalMix = session?.final_mix ?? null;
   const round = session?.round ?? 0;
   const maxR = session?.max_rounds ?? 3;
   const dm = session?.decision_maker ?? null;
@@ -1162,12 +1333,23 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     const md = [`# ${mix.title}`, '', `> ${mix.executive_summary}`, '', ...mix.sections.flatMap(s => [`## ${s.heading}`, '', s.content, '']),
       ...(mix.key_assumptions.length ? [`## ${L('전제 조건', 'Assumptions')}`, '', ...mix.key_assumptions.map(a => `- ${a}`), ''] : []),
       ...(mix.next_steps.length ? [`## ${L('다음 단계', 'Next Steps')}`, '', ...mix.next_steps.map(s => `- ${s}`), ''] : [])].join('\n');
-    store.setFinalDeliverable(md); setError(null);
+    // Skip keeps the original mix intact → attribution survives for FinalCard.
+    store.setFinalDeliverable(md, mix);
+    setError(null);
   };
 
   const onFinalize = async () => {
     if (!mix || !dmFb) return; setBusy(true); setError(null); scroll();
-    try { const t = await runFinalDeliverable(mix, dmFb); store.setFinalDeliverable(t); track('flow_done', { project_id: projectId, rounds: round }); }
+    try {
+      // Carry the original mixableWorkerResults forward so unmatched sections can still resolve via heuristic.
+      const enrichedResults = store.mixableWorkerResults();
+      const workerSources = enrichedResults
+        .filter(w => !!w.workerId && !!(w.agentName || w.persona))
+        .map(w => ({ workerId: w.workerId, name: (w.agentName || w.persona)!, result: w.result }));
+      const { markdown, finalMix } = await runFinalDeliverable(mix, dmFb, undefined, workerSources);
+      store.setFinalDeliverable(markdown, finalMix);
+      track('flow_done', { project_id: projectId, rounds: round });
+    }
     catch (e) { setError(e instanceof Error ? e.message : L('최종본 실패', 'Finalization failed')); }
     finally { setBusy(false); scroll(); }
   };
@@ -1179,16 +1361,20 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         animate={{ maxWidth: phase === 'complete' ? '56rem' : (phase === 'mixing' || phase === 'lead_synthesizing' || phase === 'dm_feedback' || phase === 'refining') ? '48rem' : '42rem' }}
         transition={{ duration: 0.8, ease: EASE }}>
 
+        <PingToast />
         <ProgressLine phase={phase} round={round} hasMix={!!mix} />
 
         <div className="space-y-8">
-          {/* User input — compact pill */}
-          <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] w-fit max-w-full">
-            <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
-              <span className="text-[var(--bg)] text-[9px] font-bold">{L('나', 'Me')}</span>
-            </div>
-            <p className="text-[13px] text-[var(--text-secondary)] truncate">{session.problem_text}</p>
-          </motion.div>
+          {/* User input + reviewer — stacked pills */}
+          <div className="flex flex-col gap-2 items-start">
+            <motion.div layout className="flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] max-w-full">
+              <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
+                <span className="text-[var(--bg)] text-[9px] font-bold">{L('나', 'Me')}</span>
+              </div>
+              <p className="text-[13px] text-[var(--text-secondary)] truncate">{session.problem_text}</p>
+            </motion.div>
+            <ReviewerBadge reviewerId={session.reviewer_agent_id || null} />
+          </div>
 
           {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
           {deployPhase === 'ready' && workers.length > 0 && (
@@ -1394,7 +1580,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 {L('아래에서 복사하거나, 새 프로젝트를 시작할 수 있어요', 'Copy below or start a new project')}
               </p>
             </motion.div>
-            <FinalCard content={final_} />
+            <FinalCard content={final_} mix={finalMix} />
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
               <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">{L('복사해서 바로 사용하세요.', 'Copy and use it right away.')}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">

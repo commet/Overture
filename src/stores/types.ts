@@ -936,8 +936,20 @@ export interface MixResult {
      * Resolved worker IDs that contributed to this section. Post-processed by
      * runMix from contributor_names + the worker list. Used by the UI to draw
      * attribution avatars + the hover-traceability highlight.
+     *
+     * Always a union of sentence-level contributors when `sentences` exists.
      */
     contributor_worker_ids?: string[];
+    /**
+     * Fine-grained sentence-level attribution. When present, the UI renders
+     * each sentence as an individually hoverable span with its own contributor
+     * badges, falling back to section-level rendering otherwise.
+     */
+    sentences?: Array<{
+      text: string;
+      contributor_names?: string[];
+      contributor_worker_ids?: string[];
+    }>;
   }[];
   key_assumptions: string[];
   next_steps: string[];
@@ -977,6 +989,13 @@ export interface ProgressiveSession {
 
   // Final
   final_deliverable: string | null;
+  /**
+   * Structured form of the final deliverable — kept in parallel with
+   * `final_deliverable` (markdown string). Used by the renderer to preserve
+   * sentence-level traceability through DM-feedback application. Null when the
+   * final pass wasn't structured (e.g., legacy sessions).
+   */
+  final_mix?: MixResult | null;
 
   // Boss/Reviewer 연결
   reviewer_agent_id?: string;   // Boss agent가 DM 리뷰어로 연결

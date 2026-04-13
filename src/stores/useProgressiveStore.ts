@@ -55,7 +55,7 @@ interface ProgressiveState {
   toggleFix: (concernIndex: number) => void;
 
   // Final
-  setFinalDeliverable: (text: string) => void;
+  setFinalDeliverable: (text: string, finalMix?: MixResult | null) => void;
 
   // Framing (Weakness A)
   replaceInitialSnapshot: (snapshot: AnalysisSnapshot) => void;
@@ -229,6 +229,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       mix: null,
       dm_feedback: null,
       final_deliverable: null,
+      final_mix: null,
       created_at: now,
       updated_at: now,
     };
@@ -395,11 +396,12 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     set({ sessions });
   },
 
-  setFinalDeliverable: (text) => {
+  setFinalDeliverable: (text, finalMix) => {
     const { currentSessionId } = get();
     if (!currentSessionId) return;
     const sessions = updateSession(get().sessions, currentSessionId, () => ({
       final_deliverable: text,
+      final_mix: finalMix ?? null,
       phase: 'complete' as ProgressivePhase,
     }));
     persist(sessions);

@@ -90,12 +90,14 @@ function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
   // ── Attention ping — brief gold flash when user submits input
   const pulsing = useAttentionPulse(isWorking);
 
-  // ── Hover attribution (draft ↔ agent)
+  // ── Hover attribution (draft ↔ agent) — matches section, sentence, or agent kinds
   const hovered = useAgentAttentionStore(s => s.hovered);
   const setHovered = useAgentAttentionStore(s => s.setHovered);
+  const clearHovered = useAgentAttentionStore(s => s.clearHovered);
   const isHighlighted =
     (hovered?.kind === 'agent' && hovered.workerId === worker.id) ||
-    (hovered?.kind === 'section' && hovered.contributorIds.includes(worker.id));
+    (hovered?.kind === 'section' && hovered.contributorIds.includes(worker.id)) ||
+    (hovered?.kind === 'sentence' && hovered.contributorIds.includes(worker.id));
   const isDimmed = hovered != null && !isHighlighted;
 
   // ── Live activity ticker (fallback when no stream_text)
@@ -131,6 +133,7 @@ function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
   return (
     <motion.div
       layout
+      data-attribution-source="agent"
       initial={{ opacity: 0, x: 16, scale: 0.96 }}
       animate={{
         opacity: isDimmed ? 0.4 : 1,
@@ -141,6 +144,17 @@ function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
       transition={{ duration: 0.45, ease: EASE, delay: Math.min(enterIndex, 2) * 0.18 }}
       onHoverStart={() => { if (isDone) setHovered({ kind: 'agent', workerId: worker.id }); }}
       onHoverEnd={() => setHovered(null)}
+      onTap={() => {
+        // Tap-to-lock: touch users can pin the hover state by tapping the row avatar area.
+        // Only done rows expose attribution — pending/running rows are no-op.
+        if (!isDone) return;
+        const alreadyLocked = hovered?.kind === 'agent' && hovered.workerId === worker.id;
+        if (alreadyLocked) {
+          clearHovered();
+        } else {
+          setHovered({ kind: 'agent', workerId: worker.id }, true);
+        }
+      }}
       className={`rounded-xl border transition-all duration-300 relative overflow-hidden ${
         isHighlighted ? 'ring-2 ring-[var(--accent)]/60 border-[var(--accent)]/50 shadow-[0_0_22px_-4px_rgba(180,160,100,0.35)]' :
         isDone ? 'border-emerald-300/50 dark:border-emerald-700/30 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm' :
@@ -269,6 +283,56 @@ function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
   );
 }
 
+// ─── Stage transition celebration banner — 4s auto-hide ───
+
+function StageTransitionBanner({ nextStageLabel, previousStageLabel, locale }: {
+  nextStageLabel: string;
+  previousStageLabel: string;
+  locale: string;
+}) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.5, ease: EASE }}
+      className="relative rounded-xl p-[1px] bg-gradient-to-r from-emerald-400/30 via-[var(--accent)]/40 to-[var(--accent)]/20 overflow-hidden"
+    >
+      {/* Sliding highlight sweep */}
+      <motion.div
+        initial={{ x: '-100%' }}
+        animate={{ x: '200%' }}
+        transition={{ duration: 2, ease: 'easeOut', delay: 0.2 }}
+        className="absolute inset-0 w-1/2 pointer-events-none"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)' }}
+      />
+      <div className="rounded-[calc(0.75rem-1px)] bg-[var(--surface)] px-3 py-2.5 flex items-center gap-2.5 relative">
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+          className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'var(--gradient-gold)' }}
+        >
+          <Sparkles size={11} className="text-white" />
+        </motion.div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">
+            {previousStageLabel
+              ? L(`${previousStageLabel} 완료`, `${previousStageLabel} complete`)
+              : L('첫 단계 완료', 'First stage complete')}
+          </p>
+          <p className="text-[10px] text-[var(--accent)] mt-0.5 flex items-center gap-1">
+            <ArrowRight size={9} />
+            {L(`이제 ${nextStageLabel} 시작`, `Now starting ${nextStageLabel}`)}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Stage divider — shown between stage groups in multi-stage pipelines ───
 
 function StageDivider({ stage, index, isFirst, allStageDone, locale }: {
@@ -320,6 +384,37 @@ export function AgentSidebar({ className }: { className?: string }) {
     return session?.stages;
   });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Stage transition celebration: when a stage finishes, briefly celebrate on the NEXT stage's banner.
+  // Tracks previously-completed stage IDs via a ref; on re-render we diff to detect a new completion.
+  const completedStagesRef = useRef<Set<string>>(new Set());
+  const [celebratingNextStageId, setCelebratingNextStageId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!stages || stages.length < 2) return;
+    // Compute currently-completed stages (all workers in stage done)
+    const newlyCompleted: string[] = [];
+    for (const stage of stages) {
+      if (completedStagesRef.current.has(stage.id)) continue;
+      const stageWorkers = workers.filter(w => w.stage_id === stage.id);
+      if (stageWorkers.length === 0) continue;
+      if (stageWorkers.every(w => w.status === 'done')) {
+        newlyCompleted.push(stage.id);
+        completedStagesRef.current.add(stage.id);
+      }
+    }
+    if (newlyCompleted.length === 0) return;
+    // Find the "next" stage after the most recently completed one
+    const lastCompletedIdx = stages.findIndex(s => s.id === newlyCompleted[newlyCompleted.length - 1]);
+    const nextStage = stages[lastCompletedIdx + 1];
+    if (!nextStage) return;
+    // Defer to next microtask to avoid react-hooks/set-state-in-effect
+    const show = setTimeout(() => setCelebratingNextStageId(nextStage.id), 0);
+    const hide = setTimeout(() => setCelebratingNextStageId(null), 4000);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(hide);
+    };
+  }, [stages, workers]);
 
   if (workers.length === 0) return null;
 
@@ -405,6 +500,13 @@ export function AgentSidebar({ className }: { className?: string }) {
       <div className="space-y-2">
         {groupedByStage.map((group, groupIdx) => (
           <div key={group.stage?.id || 'all'} className="space-y-2">
+            {hasStages && group.stage && celebratingNextStageId === group.stage.id && (
+              <StageTransitionBanner
+                nextStageLabel={group.stage.label}
+                previousStageLabel={groupedByStage[groupIdx - 1]?.stage?.label || ''}
+                locale={locale}
+              />
+            )}
             {hasStages && group.stage && (
               <StageDivider
                 stage={group.stage}
