@@ -29,7 +29,8 @@ type DemoPhase =
   | 'dm'
   | 'final';
 
-const PHASE_ORDER: DemoPhase[] = ['typing', 'team', 'analysis', 'q1', 'update1', 'q2', 'update2', 'workers', 'draft', 'matching', 'dm', 'final'];
+// v2: Q1 → update1 (세 번째 워커 합류) → workers → Q2 (워커 결과 본 후 검증 선택) → update2 → draft
+const PHASE_ORDER: DemoPhase[] = ['typing', 'team', 'analysis', 'q1', 'update1', 'workers', 'q2', 'update2', 'draft', 'matching', 'dm', 'final'];
 const phaseGte = (current: DemoPhase, target: DemoPhase) => PHASE_ORDER.indexOf(current) >= PHASE_ORDER.indexOf(target);
 
 /* diffItems, renderInline, renderMd — imported from shared/ */
@@ -200,12 +201,24 @@ type AgentStatus = 'waiting' | 'working' | 'done';
 
 function getAgentStatuses(phase: DemoPhase, visibleWorkers: number, total: number): AgentStatus[] {
   if (!phaseGte(phase, 'analysis')) return Array(total).fill('waiting');
-  if (phase === 'analysis') return ['working', 'waiting', 'waiting'].slice(0, total) as AgentStatus[];
-  if (phase === 'q1') return ['working', 'working', 'waiting'].slice(0, total) as AgentStatus[];
-  if (phase === 'update1') return ['working', 'working', 'waiting'].slice(0, total) as AgentStatus[];
-  if (phase === 'q2' || phase === 'update2') return Array(total).fill('working') as AgentStatus[];
-  // workers phase onward: done based on visibleWorkers
-  return Array.from({ length: total }, (_, i) => i < visibleWorkers ? 'done' : 'working') as AgentStatus[];
+  // analysis: 첫 번째(다은)만 working
+  if (phase === 'analysis') {
+    return Array.from({ length: total }, (_, i) => i === 0 ? 'working' : 'waiting') as AgentStatus[];
+  }
+  // q1: 다은 + 현우 working, 세 번째는 아직 합류 전 (total=2인 시점)
+  if (phase === 'q1') {
+    return Array.from({ length: total }, (_, i) => i < 2 ? 'working' : 'waiting') as AgentStatus[];
+  }
+  // update1: 세 번째 워커 합류 — 셋 다 working
+  if (phase === 'update1') {
+    return Array(total).fill('working') as AgentStatus[];
+  }
+  // workers: stagger done
+  if (phase === 'workers') {
+    return Array.from({ length: total }, (_, i) => i < visibleWorkers ? 'done' : 'working') as AgentStatus[];
+  }
+  // q2, update2, draft onward — all done
+  return Array(total).fill('done') as AgentStatus[];
 }
 
 function AgentRow({ worker, status, expanded, onToggle }: {
@@ -325,13 +338,14 @@ function AgentRow({ worker, status, expanded, onToggle }: {
   );
 }
 
-function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
+function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
   scenario: DemoScenario;
+  workers: DemoScenario['workers'];
   phase: DemoPhase;
   visibleWorkers: number;
 }) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
-  const total = scenario.workers.length;
+  const total = workers.length;
   const statuses = getAgentStatuses(phase, visibleWorkers, total);
   const doneCount = statuses.filter(s => s === 'done').length;
   const workingCount = statuses.filter(s => s === 'working').length;
@@ -379,7 +393,7 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
       {/* Agent rows — sequentially revealed: only render once active (working/done) */}
       <div className="space-y-2">
         <AnimatePresence initial={false}>
-          {scenario.workers.map((w, i) => {
+          {workers.map((w, i) => {
             if (statuses[i] === 'waiting') return null;
             return (
               <AgentRow
@@ -393,8 +407,30 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
           })}
         </AnimatePresence>
 
-        {/* Pending hint — shows how many more will join */}
+        {/* Dynamic slot — Q1 답 전에 "? — 당신의 답이 결정" 플레이스홀더 (scenario1 v2 전용) */}
+        {scenario.draftV2 && !phaseGte(phase, 'update1') && phaseGte(phase, 'analysis') && (
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3 } }}
+            transition={{ delay: 0.4, duration: 0.45, ease: EASE }}
+            className="rounded-xl border border-dashed border-[var(--accent)]/40 bg-[var(--accent)]/[0.03] p-3 flex items-center gap-3"
+          >
+            <div className="w-8 h-8 rounded-full border-2 border-dashed border-[var(--accent)]/40 flex items-center justify-center text-[14px] text-[var(--accent)]/60 shrink-0">
+              ?
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-semibold text-[var(--text-primary)]">? — 세 번째 동료</div>
+              <p className="text-[10px] text-[var(--accent)] leading-snug mt-0.5">
+                당신의 Q1 답에 따라 누가 합류할지 정해져요
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Pending hint — shows how many more will join (기존 시나리오 2/3용) */}
         {(() => {
+          if (scenario.draftV2) return null; // v2는 위 dynamic slot이 대체
           const pending = statuses.filter(s => s === 'waiting').length;
           if (pending === 0 || phaseGte(phase, 'workers')) return null;
           return (
@@ -427,7 +463,7 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
                 <Sparkles size={11} className="text-[var(--accent)]" />
                 <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">Summary</span>
               </div>
-              {scenario.workers.map((w) => (
+              {workers.map((w) => (
                 <div key={w.persona.id} className="flex items-start gap-2">
                   <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] shrink-0 mt-0.5"
                     style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
@@ -454,15 +490,15 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
    MOBILE AGENT COMPACT BAR — shown below analysis on mobile
    ═══════════════════════════════════════════════════════════ */
 
-function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
-  scenario: DemoScenario;
+function DemoAgentCompactBar({ workers, phase, visibleWorkers }: {
+  workers: DemoScenario['workers'];
   phase: DemoPhase;
   visibleWorkers: number;
 }) {
   if (!phaseGte(phase, 'analysis')) return null;
-  const total = scenario.workers.length;
+  const total = workers.length;
   const statuses = getAgentStatuses(phase, visibleWorkers, total);
-  const activeWorkers = scenario.workers.filter((_, i) => statuses[i] !== 'waiting');
+  const activeWorkers = workers.filter((_, i) => statuses[i] !== 'waiting');
   const workingCount = statuses.filter(s => s === 'working').length;
   const allDone = statuses.every(s => s === 'done');
 
@@ -476,7 +512,7 @@ function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
       <div className="flex -space-x-1.5">
         <AnimatePresence initial={false}>
           {activeWorkers.map((w) => {
-            const idx = scenario.workers.indexOf(w);
+            const idx = workers.indexOf(w);
             const isWorking = statuses[idx] === 'working';
             return (
               <motion.div
@@ -532,6 +568,202 @@ function DemoDraftCard({ draft }: { draft: DemoScenario['draft'] }) {
                 <p className="text-[13px] text-[var(--text-primary)] leading-[1.8]">{renderInline(s.content)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAFT CARD V2 — 응축 카드 (scenario 1 전용)
+   Q1 답 → 세 번째 워커 + 결재 한 줄
+   Q2 답 → 약한 가정 + 다음 3일
+   ═══════════════════════════════════════════════════════════ */
+
+type DemoThirdWorker = NonNullable<DemoScenario['q1']['effects'][string]['thirdWorker']>;
+type DemoWeakestAssumption = NonNullable<DemoScenario['q2']['effects'][string]['weakestAssumption']>;
+
+function DemoDraftCardV2({
+  draft,
+  q1Answer,
+  q2Answer,
+  workers,
+  thirdWorker,
+  decisionLine,
+  weakestAssumption,
+  nextThreeDays,
+  locale = 'ko',
+}: {
+  draft: NonNullable<DemoScenario['draftV2']>;
+  q1Answer: string | null;
+  q2Answer: string | null;
+  workers: DemoScenario['workers'];
+  thirdWorker: DemoThirdWorker | null;
+  decisionLine: string | null;
+  weakestAssumption: DemoWeakestAssumption | null;
+  nextThreeDays: string[] | null;
+  locale?: 'ko' | 'en';
+}) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+
+  // Runtime values (Q1/Q2가 default를 덮어씀)
+  const finalDecisionLine = decisionLine ?? draft.decisionLineDefault;
+  const finalWeakest = weakestAssumption ?? draft.weakestAssumptionDefault;
+  const finalNextThreeDays = nextThreeDays ?? draft.nextThreeDaysDefault;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
+      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)]">
+          <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
+          <div className="p-5 md:p-8 space-y-6">
+            {/* Header — 사용자 답 출처 표시 */}
+            {(q1Answer || q2Answer) && (
+              <div className="pb-3 border-b border-[var(--border-subtle)] space-y-1.5">
+                {q1Answer && (
+                  <div className="flex items-start gap-2">
+                    <Sparkles size={12} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed flex-1">
+                      <span className="font-semibold text-[var(--accent)] mr-1.5">Q1</span>
+                      <span className="font-medium text-[var(--text-primary)]">{q1Answer}</span>
+                      {thirdWorker && (
+                        <span className="block mt-0.5 pl-[18px]">
+                          → <span className="inline-flex items-center gap-1" style={{ color: thirdWorker.persona.color }}>
+                            <span>{thirdWorker.persona.emoji}</span>
+                            <span className="font-semibold">{thirdWorker.persona.name}</span>
+                          </span>
+                          <span className="text-[var(--text-tertiary)] ml-1">
+                            {L('합류', 'joined')}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {q2Answer && (
+                  <div className="flex items-start gap-2">
+                    <Sparkles size={12} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed flex-1">
+                      <span className="font-semibold text-[var(--accent)] mr-1.5">Q2</span>
+                      <span className="font-medium text-[var(--text-primary)]">{q2Answer}</span>
+                      <span className="text-[var(--text-tertiary)] ml-1">
+                        → {L('다음 3일과 약한 가정이 정해졌어요', 'shaped next 3 days + weakest assumption')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] bg-[var(--accent)]/8 px-3 py-1 rounded-full inline-block mb-3">Draft</span>
+              <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-tight">{draft.title}</h2>
+            </div>
+
+            {/* 💡 결재 한 줄 */}
+            <div className="rounded-xl bg-[var(--accent)]/[0.05] border border-[var(--accent)]/15 p-4">
+              <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider mb-1.5">
+                💡 {L('결재 한 줄', 'Decision line')}
+              </p>
+              <p className="text-[15px] md:text-[16px] text-[var(--text-primary)] leading-[1.55] font-medium">
+                &ldquo;{finalDecisionLine}&rdquo;
+              </p>
+            </div>
+
+            {/* 팀이 만든 한 줄들 */}
+            <div>
+              <h3 className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-3.5">
+                {L('팀이 만든 한 줄들', 'What the team built')}
+              </h3>
+              <div className="space-y-4">
+                {draft.workerSummariesDefault.map((summary) => {
+                  const worker = workers.find(w => w.persona.id === summary.personaId);
+                  if (!worker) return null;
+                  return (
+                    <div key={summary.personaId} className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] shrink-0"
+                        style={{ backgroundColor: worker.persona.color + '22', color: worker.persona.color }}>
+                        {worker.persona.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                          {worker.persona.name}
+                          <span className="text-[var(--text-tertiary)] font-normal ml-1.5">— {summary.headline}</span>
+                        </div>
+                        <ul className="mt-1 space-y-1">
+                          {summary.lines.map((line, j) => (
+                            <li key={j} className="text-[12px] md:text-[13px] text-[var(--text-secondary)] leading-[1.6] flex gap-2">
+                              <span className="text-[var(--accent)]/50 shrink-0">└</span>
+                              <span>{renderInline(line)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })}
+                {thirdWorker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5, ease: EASE }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] shrink-0 ring-2"
+                      style={{
+                        backgroundColor: thirdWorker.persona.color + '22',
+                        color: thirdWorker.persona.color,
+                        ['--tw-ring-color' as string]: thirdWorker.persona.color + '40',
+                      }}>
+                      {thirdWorker.persona.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+                          {thirdWorker.persona.name}
+                        </span>
+                        <span className="text-[11px] text-[var(--text-tertiary)]">— {thirdWorker.task}</span>
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
+                          {L('당신의 답으로 합류', 'joined by your choice')}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[12px] md:text-[13px] text-[var(--text-secondary)] leading-[1.6] italic">
+                        &ldquo;{thirdWorker.completionNote}&rdquo;
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* ⚠ 가장 약한 가정 */}
+            <div className="rounded-xl border border-amber-400/30 bg-amber-50/30 dark:bg-amber-950/10 p-4">
+              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">
+                ⚠ {L('가장 약한 가정', 'Weakest assumption')} <span className="font-normal text-[var(--text-tertiary)] normal-case">({L('대표님이 먼저 물을 거예요', 'CEO will ask first')})</span>
+              </p>
+              <p className="text-[14px] md:text-[15px] text-[var(--text-primary)] leading-[1.55] font-medium">
+                &ldquo;{finalWeakest.assumption}&rdquo;
+              </p>
+              <p className="text-[12px] text-[var(--text-secondary)] leading-[1.6] mt-1.5">
+                → {finalWeakest.explanation}
+              </p>
+            </div>
+
+            {/* 📌 다음 3일 */}
+            <div>
+              <p className="text-[10px] font-bold text-[var(--accent)]/80 uppercase tracking-wider mb-2.5">
+                📌 {L('다음 3일', 'Next 3 days')}
+              </p>
+              <ol className="space-y-2">
+                {finalNextThreeDays.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-[13px] md:text-[14px] text-[var(--text-primary)] leading-[1.55]">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--accent)]/12 text-[10px] font-bold text-[var(--accent)] shrink-0 mt-0.5">{i + 1}</span>
+                    <span>{renderInline(step)}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </div>
       </div>
@@ -663,40 +895,27 @@ function DemoFinalCard({ content, locale = 'ko' }: { content: string; locale?: '
 
   return (
     <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
-      <div className="rounded-2xl md:rounded-[2rem] p-[2px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-xl)]">
-        <div className="rounded-[calc(1rem-2px)] md:rounded-[calc(2rem-2px)] bg-[var(--surface)] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]">
-          <div className="h-[3px]" style={{ background: 'var(--gradient-gold)' }} />
-
-          {/* Header with share actions */}
-          <div className="px-5 md:px-7 py-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-gold)' }}>
-                <Check size={13} className="text-white" />
-              </div>
-              <div>
-                <span className="text-[14px] font-semibold text-[var(--text-primary)]">{L('완성된 기획안', 'Final Document')}</span>
-                <span className="text-[11px] text-[var(--text-tertiary)] ml-2">{L('바로 보낼 수 있어요', 'Ready to send')}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button onClick={handleCopy}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
-                  copied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
-                }`}>
-                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
-              </button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
-                Slack
-              </button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[var(--bg)] text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-default opacity-60">
-                Email
-              </button>
-            </div>
+      <div className="rounded-2xl md:rounded-[2rem] bg-[var(--surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-xl)] overflow-hidden">
+        {/* Header — minimal, paper-like */}
+        <div className="px-6 md:px-10 py-3.5 flex items-center justify-between border-b border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)' }} />
+            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
+              {L('완성된 기획안', 'Final Document')}
+            </span>
           </div>
-
-          {/* Document content — compact, readable */}
-          <div className="p-5 md:p-8 space-y-1 text-[14px] leading-[1.8]">{renderMd(content)}</div>
+          <button onClick={handleCopy}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
+              copied
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.05]'
+            }`}>
+            {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
+          </button>
         </div>
+
+        {/* Document — paper-like generous padding */}
+        <div className="px-6 md:px-12 py-8 md:py-12 space-y-0 text-[14px] leading-[1.8]">{renderMd(content)}</div>
       </div>
     </motion.div>
   );
@@ -833,6 +1052,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
   const bottomRef = useRef<HTMLDivElement>(null);
   const dmRef = useRef<HTMLDivElement>(null);
   const matchingRef = useRef<HTMLDivElement>(null);
+  const analysisRef = useRef<HTMLDivElement>(null);
 
   // Snapshot history
   const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
@@ -841,6 +1061,21 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
   const [dmKey, setDmKey] = useState<string>('ceo');
   const [concerns, setConcerns] = useState<DMConcern[]>([]);
   const [visibleWorkers, setVisibleWorkers] = useState(0);
+
+  // v2: Q1 답이 결정하는 것들 (scenario1 전용, 다른 시나리오는 null로 남음)
+  type ThirdWorker = NonNullable<DemoScenario['q1']['effects'][string]['thirdWorker']>;
+  type WeakestAssumption = NonNullable<DemoScenario['q2']['effects'][string]['weakestAssumption']>;
+  const [thirdWorker, setThirdWorker] = useState<ThirdWorker | null>(null);
+  const [decisionLine, setDecisionLine] = useState<string | null>(null);
+  // v2: Q2 답이 결정하는 것들
+  const [weakestAssumption, setWeakestAssumption] = useState<WeakestAssumption | null>(null);
+  const [nextThreeDays, setNextThreeDays] = useState<string[] | null>(null);
+  const [dmFirstReactionOverride, setDmFirstReactionOverride] = useState<string | null>(null);
+
+  // Runtime workers = default workers + thirdWorker (Q1 답 후)
+  const runtimeWorkers = thirdWorker
+    ? [...scenario.workers, thirdWorker]
+    : scenario.workers;
 
   // Track for analytics
   const entryRef = useRef(Date.now());
@@ -860,8 +1095,12 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
     const key = `${phase}-${visibleWorkers}`;
     if (key === lastScrollPhase.current) return;
     lastScrollPhase.current = key;
-    // DM page transition: scroll to DM section top instead of bottom
-    if (phase === 'dm') {
+    // Snapshot updated (Q1/Q2 answered): scroll to AnalysisCard top so user starts reading from real_question
+    if (phase === 'update1' || phase === 'update2') {
+      setTimeout(() => {
+        analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    } else if (phase === 'dm') {
       setTimeout(() => {
         dmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
@@ -888,7 +1127,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
     }
   }, [phase, scenario.analysis, advance]);
 
-  // Phase: update1 → apply Q1 patch, show diff, then pause at q2
+  // Phase: update1 → apply Q1 patch + 세 번째 워커 합류 + 결재 한 줄 세팅 → workers로 진행
   useEffect(() => {
     if (phase !== 'update1' || !q1Answer) return;
     const effect = scenario.q1.effects[q1Answer];
@@ -898,12 +1137,30 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
         return [...s, applyPatch(prev, effect.snapshotPatch)];
       });
       setDmKey(effect.dmKey);
+      // v2: Q1 답으로 세 번째 워커 합류 + 결재 한 줄
+      if (effect.thirdWorker) setThirdWorker(effect.thirdWorker);
+      if (effect.decisionLine) setDecisionLine(effect.decisionLine);
     }
-    return advance('q2', 1500);
+    return advance('workers', 1500);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, q1Answer]);
 
-  // Phase: update2 → apply Q2 patch, show diff, then move to workers
+  // Phase: workers → stagger reveal, then Q2 (워커 결과를 본 후 검증 선택)
+  useEffect(() => {
+    if (phase !== 'workers') return;
+    setVisibleWorkers(0);
+    const total = runtimeWorkers.length;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const delays = [800, 1600, 2400]; // stagger (세 번째 워커는 합류 뉘앙스를 주려고 조금 길게)
+    for (let i = 0; i < total; i++) {
+      timers.push(setTimeout(() => setVisibleWorkers(i + 1), delays[i]));
+    }
+    // 마지막 워커 등장 후 1.8초 여유 → Q2로
+    timers.push(setTimeout(() => setPhase('q2'), delays[total - 1] + 1800));
+    return () => timers.forEach(clearTimeout);
+  }, [phase, runtimeWorkers.length]);
+
+  // Phase: update2 → apply Q2 patch + 약한 가정 / 다음 3일 / DM 첫 반응 세팅 → draft로 진행
   useEffect(() => {
     if (phase !== 'update2' || !q2Answer) return;
     const effect = scenario.q2.effects[q2Answer];
@@ -912,24 +1169,14 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
         const prev = s[s.length - 1];
         return [...s, applyPatch(prev, effect.snapshotPatch)];
       });
+      // v2: Q2 답으로 약한 가정 / 다음 3일 / DM 첫 반응 덮어쓰기
+      if (effect.weakestAssumption) setWeakestAssumption(effect.weakestAssumption);
+      if (effect.nextThreeDays) setNextThreeDays(effect.nextThreeDays);
+      if (effect.dmFirstReaction) setDmFirstReactionOverride(effect.dmFirstReaction);
     }
-    return advance('workers', 1500);
+    return advance('draft', 1500);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, q2Answer]);
-
-  // Phase: workers → stagger reveal
-  useEffect(() => {
-    if (phase !== 'workers') return;
-    setVisibleWorkers(0);
-    const total = scenario.workers.length;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const delays = [800, 1400, 2000]; // stagger
-    for (let i = 0; i < total; i++) {
-      timers.push(setTimeout(() => setVisibleWorkers(i + 1), delays[i]));
-    }
-    timers.push(setTimeout(() => setPhase('draft'), delays[total - 1] + 800));
-    return () => timers.forEach(clearTimeout);
-  }, [phase, scenario.workers.length]);
 
   // Phase: draft → initialize concerns (DM is triggered by CTA button, not auto-advance)
   useEffect(() => {
@@ -1012,13 +1259,15 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 3. Analysis card (v0) */}
             {phaseGte(phase, 'analysis') && currentSnapshot && (
-              <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} team={scenario.team} />
+              <div ref={analysisRef} className="scroll-mt-4">
+                <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} team={scenario.team} />
+              </div>
             )}
 
             {/* Mobile: compact agent bar — hide after draft since sidebar summary / connector takes over */}
             <div className="lg:hidden">
               {!phaseGte(phase, 'draft') && (
-                <DemoAgentCompactBar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+                <DemoAgentCompactBar workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} />
               )}
             </div>
 
@@ -1047,34 +1296,9 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               </div>
             )}
 
-            {/* 5. Q2 */}
-            {phase === 'q2' && (
-              <QuestionCard
-                question={scenario.q2.question}
-                onAnswer={handleQ2}
-                allowFreeText={false}
-                locale={locale}
-              />
-            )}
-
-            {/* Q2 answer pill + team flow indicator */}
-            {q2Answer && phaseGte(phase, 'update2') && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
-                  <Check size={10} className="text-[var(--accent)]" />
-                  <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
-                </motion.div>
-                <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
-                  className="text-[10px] text-[var(--accent)]/60 flex items-center gap-1">
-                  <ArrowRight size={9} /> {L('팀 분석에 반영', 'sent to team')}
-                </motion.span>
-              </div>
-            )}
-
-          {/* 6. Team status bar — smooth transition between states */}
+          {/* 5. Team status bar — workers working / done */}
           <AnimatePresence mode="wait">
-            {phaseGte(phase, 'workers') && !phaseGte(phase, 'draft') && (
+            {phase === 'workers' && (
               <motion.div key="team-working"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1086,10 +1310,10 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                 <span className="text-[13px] text-[var(--text-primary)] font-medium">
                   {L('당신의 답변을 바탕으로 팀이 분석 중이에요', 'Team is analyzing based on your answers')}
                 </span>
-                <span className="text-[11px] text-[var(--accent)] font-semibold shrink-0">{visibleWorkers}/{scenario.workers.length}</span>
+                <span className="text-[11px] text-[var(--accent)] font-semibold shrink-0">{visibleWorkers}/{runtimeWorkers.length}</span>
               </motion.div>
             )}
-            {phase === 'draft' && (
+            {phaseGte(phase, 'q2') && !phaseGte(phase, 'draft') && (
               <motion.div key="team-done"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1098,23 +1322,43 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                 className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)]"
               >
                 <div className="flex -space-x-1.5">
-                  {scenario.workers.map(w => (
+                  {runtimeWorkers.map(w => (
                     <div key={w.persona.id} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] border-2 border-[var(--surface)]"
                       style={{ backgroundColor: w.persona.color + '20' }}>{w.persona.emoji}</div>
                   ))}
                 </div>
                 <span className="text-[12px] text-[var(--text-secondary)] flex-1">
-                  {L('팀 분석 완료', 'Team analysis complete')}
+                  {L('팀 분석 완료 — 다음 단계를 골라주세요', 'Analysis complete — pick next step')}
                 </span>
-                <span className="hidden lg:flex text-[10px] text-[var(--accent)] font-medium items-center gap-1">
-                  {L('우측 패널에서 확인', 'See right panel')} <ArrowRight size={9} />
-                </span>
-                <span className="lg:hidden">
-                  <Check size={12} className="text-emerald-500" />
-                </span>
+                <Check size={12} className="text-emerald-500" />
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* 6. Q2 — workers 결과를 본 후 검증 방법 선택 */}
+          {phase === 'q2' && (
+            <QuestionCard
+              question={scenario.q2.question}
+              onAnswer={handleQ2}
+              allowFreeText={false}
+              locale={locale}
+            />
+          )}
+
+          {/* Q2 answer pill */}
+          {q2Answer && phaseGte(phase, 'update2') && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)] text-[11px]">
+                <Check size={10} className="text-[var(--accent)]" />
+                <span className="text-[var(--text-primary)] font-medium">{q2Answer}</span>
+              </motion.div>
+              <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+                className="text-[10px] text-[var(--accent)]/60 flex items-center gap-1">
+                <ArrowRight size={9} /> {L('기획안에 반영', 'added to draft')}
+              </motion.span>
+            </div>
+          )}
 
           {/* 7-8. Draft → DM page transition (single AnimatePresence for sync) */}
           <AnimatePresence mode="wait">
@@ -1125,7 +1369,21 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                 exit={{ opacity: 0, y: -16, transition: { duration: 0.35, ease: EASE } }}
                 transition={{ duration: 0.7, ease: EASE }}
               >
-                <DemoDraftCard draft={scenario.draft} />
+                {scenario.draftV2 ? (
+                  <DemoDraftCardV2
+                    draft={scenario.draftV2}
+                    q1Answer={q1Answer}
+                    q2Answer={q2Answer}
+                    workers={runtimeWorkers}
+                    thirdWorker={thirdWorker}
+                    decisionLine={decisionLine}
+                    weakestAssumption={weakestAssumption}
+                    nextThreeDays={nextThreeDays}
+                    locale={locale}
+                  />
+                ) : (
+                  <DemoDraftCard draft={scenario.draft} />
+                )}
 
                 {/* CTA to enter DM feedback */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
@@ -1188,7 +1446,11 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                   </p>
                 </motion.div>
                 <DemoDMFeedback
-                  fb={{ ...dm, concerns }}
+                  fb={{
+                    ...dm,
+                    concerns,
+                    first_reaction: dmFirstReactionOverride ?? dm.first_reaction,
+                  }}
                   onToggle={handleToggle}
                   onDone={handleDMDone}
                   showDoneButton={phase !== 'final'}
@@ -1231,7 +1493,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
             className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full"
           >
             <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
-              <DemoAgentSidebar scenario={scenario} phase={phase} visibleWorkers={visibleWorkers} />
+              <DemoAgentSidebar scenario={scenario} workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} />
             </div>
           </motion.div>
         )}
@@ -1243,8 +1505,8 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
       }`}>
         {/* Phase progress dots */}
         <div className="max-w-2xl mx-auto px-5 pt-3 flex items-center justify-center gap-1.5">
-          {(locale === 'ko' ? ['상황 파악', '질문', '팀 작업', '피드백', '완성'] : ['Analysis', 'Questions', 'Team Work', 'Feedback', 'Done']).map((label, i) => {
-            const milestones: DemoPhase[] = ['analysis', 'q2', 'workers', 'dm', 'final'];
+          {(locale === 'ko' ? ['상황 파악', '팀 작업', '검증 선택', '피드백', '완성'] : ['Analysis', 'Team Work', 'Validation', 'Feedback', 'Done']).map((label, i) => {
+            const milestones: DemoPhase[] = ['analysis', 'workers', 'q2', 'dm', 'final'];
             const reached = phaseGte(phase, milestones[i]);
             const current = i === milestones.findIndex(m => !phaseGte(phase, m)) || (isDone && i === milestones.length - 1);
             return (
