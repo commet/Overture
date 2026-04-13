@@ -196,6 +196,31 @@ function DemoWorkerReport({ worker }: { worker: DemoScenario['workers'][number] 
 
 type AgentStatus = 'waiting' | 'working' | 'done';
 
+// Rotating live activity per persona role — gives "alive" feel while working
+const ACTIVITY_TICKERS: Record<string, string[]> = {
+  researcher: ['데이터 수집 중', '경쟁사 사례 분석', '리뷰 78건 정리', '시장 신호 추출'],
+  strategist: ['옵션 탐색 중', '구조 설계 중', '인력 배치 검토', '리스크 점검'],
+  numbers: ['수치 검산 중', '비용 모델링', 'ROI 계산 중', '손익분기 추정'],
+  critic: ['약점 탐색 중', '반론 정리', '실패 시나리오 검토', '가정 깨보는 중'],
+  copywriter: ['핵심 문장 추출', '논리 흐름 구조화', '독자 관점 검토', '문장 다듬는 중'],
+};
+
+function TypingDots({ color }: { color?: string }) {
+  return (
+    <span className="inline-flex items-center gap-[2px]">
+      {[0, 1, 2].map(i => (
+        <motion.span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full"
+          style={{ backgroundColor: color || 'currentColor' }}
+          animate={{ opacity: [0.25, 1, 0.25] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function getAgentStatuses(phase: DemoPhase, visibleWorkers: number, total: number): AgentStatus[] {
   if (!phaseGte(phase, 'analysis')) return Array(total).fill('waiting');
   if (phase === 'analysis') return ['working', 'waiting', 'waiting'].slice(0, total) as AgentStatus[];
@@ -216,28 +241,69 @@ function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
   const isDone = status === 'done';
   const isWorking = status === 'working';
 
+  // Live activity ticker — rotates while working
+  const tickers = ACTIVITY_TICKERS[worker.persona.id] || [worker.task];
+  const [tickerIdx, setTickerIdx] = useState(0);
+  useEffect(() => {
+    if (!isWorking) return;
+    setTickerIdx(0);
+    const id = setInterval(() => {
+      setTickerIdx(i => (i + 1) % tickers.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [isWorking, tickers.length]);
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.15, duration: 0.4, ease: EASE }}
-      className={`rounded-xl border transition-all duration-300 ${
+      layout
+      initial={{ opacity: 0, x: 16, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -8, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.45, ease: EASE }}
+      className={`rounded-xl border transition-all duration-300 relative overflow-hidden ${
         isDone ? 'border-emerald-300/50 dark:border-emerald-700/30 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm' :
-        isWorking ? 'border-[var(--accent)]/35 bg-[var(--accent)]/[0.06] shadow-[0_0_12px_-2px_rgba(180,160,100,0.12)]' :
+        isWorking ? 'border-[var(--accent)]/40 bg-[var(--accent)]/[0.07] shadow-[0_0_18px_-4px_rgba(180,160,100,0.25)]' :
         'border-transparent bg-transparent opacity-25'
       }`}
     >
+      {/* Working: animated shimmer line at top */}
+      {isWorking && (
+        <motion.div
+          className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden"
+          style={{ backgroundColor: worker.persona.color + '15' }}
+        >
+          <motion.div
+            className="h-full w-1/3"
+            style={{ backgroundColor: worker.persona.color }}
+            animate={{ x: ['-100%', '300%'] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        </motion.div>
+      )}
       <button
         onClick={isDone ? onToggle : undefined}
         className={`w-full flex items-center gap-3 p-3 ${isDone ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <div className="relative shrink-0">
           {isWorking && (
-            <div className="absolute inset-[-3px] rounded-full animate-pulse opacity-30 border-2 border-current" style={{ color: worker.persona.color }} />
+            <>
+              <motion.div
+                className="absolute inset-[-4px] rounded-full border-2"
+                style={{ borderColor: worker.persona.color }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+              />
+              <motion.div
+                className="absolute inset-[-4px] rounded-full border-2"
+                style={{ borderColor: worker.persona.color }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut', delay: 0.9 }}
+              />
+            </>
           )}
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] relative ${
-              isWorking ? 'ring-2 ring-[var(--accent)]/20' : ''
+              isWorking ? 'ring-2 ring-[var(--accent)]/25' : ''
             }`}
             style={{ backgroundColor: worker.persona.color + (isWorking ? '30' : '20'), color: worker.persona.color }}
           >
@@ -250,7 +316,22 @@ function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
             <span className="text-[11px] text-[var(--text-tertiary)] truncate">{worker.persona.role}</span>
           </div>
           {isWorking && (
-            <p className="text-[11px] text-[var(--accent)] mt-0.5 truncate">{worker.task}</p>
+            <div className="mt-0.5 h-[15px] relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={tickerIdx}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.35, ease: EASE }}
+                  className="text-[11px] truncate flex items-center gap-1.5 absolute inset-0"
+                  style={{ color: worker.persona.color }}
+                >
+                  <span className="truncate">{tickers[tickerIdx]}</span>
+                  <TypingDots color={worker.persona.color} />
+                </motion.p>
+              </AnimatePresence>
+            </div>
           )}
           {isDone && worker.completionNote && (
             <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 italic truncate">
@@ -260,9 +341,9 @@ function AgentRow({ worker, status, expanded, onToggle, index = 0 }: {
         </div>
         {status === 'waiting' && <span className="text-[9px] text-[var(--text-tertiary)]/50 shrink-0 uppercase tracking-wider">standby</span>}
         {isWorking && (
-          <span className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
-            <Loader2 size={11} className="animate-spin" />
-            <span className="text-[10px] font-medium">분석 중</span>
+          <span className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)]">
+            <Loader2 size={10} className="animate-spin" />
+            <span className="text-[10px] font-semibold">live</span>
           </span>
         )}
         {isDone && (
@@ -348,18 +429,41 @@ function DemoAgentSidebar({ scenario, phase, visibleWorkers }: {
         />
       </div>
 
-      {/* Agent rows */}
+      {/* Agent rows — sequentially revealed: only render once active (working/done) */}
       <div className="space-y-2">
-        {scenario.workers.map((w, i) => (
-          <AgentRow
-            key={w.persona.id}
-            worker={w}
-            status={statuses[i]}
-            expanded={expandedIdx === i}
-            onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
-            index={i}
-          />
-        ))}
+        <AnimatePresence initial={false}>
+          {scenario.workers.map((w, i) => {
+            if (statuses[i] === 'waiting') return null;
+            return (
+              <AgentRow
+                key={w.persona.id}
+                worker={w}
+                status={statuses[i]}
+                expanded={expandedIdx === i}
+                onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                index={i}
+              />
+            );
+          })}
+        </AnimatePresence>
+
+        {/* Pending hint — shows how many more will join */}
+        {(() => {
+          const pending = statuses.filter(s => s === 'waiting').length;
+          if (pending === 0 || phaseGte(phase, 'workers')) return null;
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex items-center gap-2 px-3 pt-1 text-[10px] text-[var(--text-tertiary)]"
+            >
+              <span className="w-1 h-1 rounded-full bg-[var(--text-tertiary)]/40" />
+              <span>{pending}명 더 합류 예정</span>
+            </motion.div>
+          );
+        })()}
       </div>
 
       {/* Summary section — appears when all done */}
@@ -409,9 +513,12 @@ function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
   phase: DemoPhase;
   visibleWorkers: number;
 }) {
-  if (!phaseGte(phase, 'q1')) return null;
+  if (!phaseGte(phase, 'analysis')) return null;
   const total = scenario.workers.length;
   const statuses = getAgentStatuses(phase, visibleWorkers, total);
+  const activeWorkers = scenario.workers.filter((_, i) => statuses[i] !== 'waiting');
+  const workingCount = statuses.filter(s => s === 'working').length;
+  const allDone = statuses.every(s => s === 'done');
 
   return (
     <motion.div
@@ -421,26 +528,36 @@ function DemoAgentCompactBar({ scenario, phase, visibleWorkers }: {
       className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)]"
     >
       <div className="flex -space-x-1.5">
-        {scenario.workers.map((w, i) => (
-          <div
-            key={w.persona.id}
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] border-2 border-[var(--surface)] ${
-              statuses[i] === 'working' ? 'animate-pulse' : statuses[i] === 'waiting' ? 'opacity-30' : ''
-            }`}
-            style={{ backgroundColor: w.persona.color + '20' }}
-          >
-            {w.persona.emoji}
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {activeWorkers.map((w) => {
+            const idx = scenario.workers.indexOf(w);
+            const isWorking = statuses[idx] === 'working';
+            return (
+              <motion.div
+                key={w.persona.id}
+                layout
+                initial={{ opacity: 0, scale: 0.6, x: -8 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] border-2 border-[var(--surface)] ${
+                  isWorking ? 'animate-pulse ring-1 ring-[var(--accent)]/30' : ''
+                }`}
+                style={{ backgroundColor: w.persona.color + '20' }}
+              >
+                {w.persona.emoji}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
-      <span className="text-[10px] text-[var(--text-secondary)] flex-1">
-        {statuses.every(s => s === 'done') ? 'Analysis done' :
-         `${statuses.filter(s => s === 'working').length} analyzing...`}
+      <span className="text-[10px] text-[var(--text-secondary)] flex-1 inline-flex items-center gap-1.5">
+        {allDone ? 'Analysis done' : <>{workingCount}명 분석 중 <TypingDots /></>}
       </span>
-      {statuses.some(s => s === 'working') && (
+      {workingCount > 0 && !allDone && (
         <Loader2 size={11} className="animate-spin text-[var(--accent)]" />
       )}
-      {statuses.every(s => s === 'done') && (
+      {allDone && (
         <Check size={11} className="text-emerald-500" />
       )}
     </motion.div>
@@ -727,11 +844,11 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
     return () => clearTimeout(t);
   }, []);
 
-  // Phase: analysis → show v0 then pause at q1
+  // Phase: analysis → show v0, give 다은 visible solo time, then pause at q1
   useEffect(() => {
     if (phase === 'analysis') {
       setSnapshots([scenario.analysis]);
-      return advance('q1', 1200);
+      return advance('q1', 2200);
     }
   }, [phase, scenario.analysis, advance]);
 
