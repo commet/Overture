@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, MessageCircle, PenSquare, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import type { Agent } from '@/stores/agent-types';
 import { getLevelProgress, AGENT_LEVELS } from '@/stores/agent-types';
 
@@ -142,6 +143,51 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
                 {agent.personality_profile?.bossVibe && (
                   <InfoPill label="분위기" value={agent.personality_profile.bossVibe} />
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Boss CTAs — 대화 이어가기 + 기획안 리뷰받기 */}
+          {agent.origin === 'boss_sim' && (
+            <section>
+              <SectionLabel>이 팀장과 계속</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Link
+                  href={`/boss?agent=${agent.id}`}
+                  onClick={onClose}
+                  className="agent-boss-cta"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <MessageCircle size={14} style={{ color: agent.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      대화 이어가기
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+                      {agent.chat_history && agent.chat_history.length > 0
+                        ? `지난 대화 ${agent.chat_history.length}턴이 이어집니다`
+                        : '새 대화를 시작합니다'}
+                    </p>
+                  </div>
+                  <ArrowRight size={12} style={{ color: 'var(--text-tertiary)' }} />
+                </Link>
+                <Link
+                  href={`/workspace?reviewer=${agent.id}`}
+                  onClick={onClose}
+                  className="agent-boss-cta"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <PenSquare size={14} style={{ color: agent.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      기획안 리뷰받기
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+                      이 팀장이 워크스페이스에서 피드백을 줍니다
+                    </p>
+                  </div>
+                  <ArrowRight size={12} style={{ color: 'var(--text-tertiary)' }} />
+                </Link>
               </div>
             </section>
           )}

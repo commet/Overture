@@ -89,6 +89,9 @@ export interface Agent {
   birth_month?: number;
   saju_profile?: unknown;    // SajuProfile — import cycle 방지
 
+  // Boss 대화 연속성 — 최근 대화 스레드 (boss_sim 전용)
+  chat_history?: BossChatTurn[];
+
   // Growth
   xp: number;
   level: number;
@@ -103,6 +106,14 @@ export interface Agent {
   last_used_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ─── Boss 대화 턴 (chat_history 저장용) ───
+
+export interface BossChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
 }
 
 // ─── Observation: 에이전트가 사용자에 대해 축적하는 관찰 ───

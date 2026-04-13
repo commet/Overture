@@ -45,6 +45,8 @@ export function BossSetup() {
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getPersonalityType(typeCode);
+  const birthYearValid = birthYear >= 1940 && birthYear <= 2006;
+  const birthMonthValid = birthMonth >= 1 && birthMonth <= 12;
 
   const handleSubmit = useCallback(async () => {
     if (!situation.trim() || isLaunching) return;
@@ -111,21 +113,57 @@ export function BossSetup() {
                 <span className="bs-persona-trait bs-persona-trait--accent">🎯 {typeData.triggers.split(',')[0].trim()}</span>
               </div>
 
-              {/* Gender + Birth — inside the persona card */}
+              {/* Gender + Birth — 이면 공개 레이어 */}
               <div className="bs-persona-meta">
-                <p className="text-[11px] text-[var(--text-tertiary)] mb-1.5" style={{ gridColumn: '1 / -1' }}>성격 정확도를 높여줍니다 (선택)</p>
-                <div className="bs-gender">
-                  {(['남', '여'] as const).map((g) => (
-                    <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
-                      {g === '남' ? '남' : '여'}
-                    </button>
-                  ))}
+                <div className="bs-meta-header">
+                  <span className="bs-meta-title">
+                    <span className="bs-meta-sparkle">✨</span>
+                    <span>이면을 더 선명하게</span>
+                  </span>
+                  <span className="bs-meta-hint">
+                    {birthYearValid
+                      ? (birthMonthValid ? '타고난 결이 독백에 섞입니다' : '월까지 넣으면 결이 더 선명해져요')
+                      : '생년월을 넣으면 팀장의 타고난 결이 속마음에 섞입니다'}
+                  </span>
                 </div>
-                <div className="bs-birth">
-                  <input type="number" placeholder="연도" value={birthYear || ''} onChange={(e) => setBirth(Number(e.target.value), birthMonth)} className="bs-num bs-num-y" min={1940} max={2006} />
-                  <span className="bs-dot">·</span>
-                  <input type="number" placeholder="월" value={birthMonth || ''} onChange={(e) => setBirth(birthYear, Number(e.target.value))} className="bs-num bs-num-m" min={1} max={12} />
+                <div className="bs-meta-row">
+                  <div className="bs-gender">
+                    {(['남', '여'] as const).map((g) => (
+                      <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
+                        {g === '남' ? '남' : '여'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bs-birth" data-valid={birthYearValid}>
+                    <input
+                      type="number"
+                      placeholder="1990"
+                      value={birthYear || ''}
+                      onChange={(e) => setBirth(Number(e.target.value), birthMonth)}
+                      className="bs-num bs-num-y"
+                      min={1940}
+                      max={2006}
+                      aria-label="출생 연도"
+                    />
+                    <span className="bs-num-suffix">년</span>
+                    <span className="bs-dot">·</span>
+                    <input
+                      type="number"
+                      placeholder="6"
+                      value={birthMonth || ''}
+                      onChange={(e) => setBirth(birthYear, Number(e.target.value))}
+                      className="bs-num bs-num-m"
+                      min={1}
+                      max={12}
+                      disabled={!birthYearValid}
+                      aria-label="출생 월"
+                    />
+                    <span className="bs-num-suffix">월</span>
+                  </div>
                 </div>
+                {birthYear > 0 && !birthYearValid && (
+                  <p className="bs-meta-warn">1940~2006년 사이로 입력해주세요</p>
+                )}
                 <SajuPreview year={birthYear} month={birthMonth} />
               </div>
             </motion.div>
@@ -152,9 +190,6 @@ export function BossSetup() {
           />
         </div>
         <div className="bs-cta-row">
-          {!isReady && situation.length === 0 && (
-            <p className="text-[12px] text-amber-600 mb-1">위에 상황을 입력해주세요</p>
-          )}
           <p className="bs-fine">AI 시뮬레이션 · 실제와 다를 수 있음</p>
           <motion.button
             type="button"

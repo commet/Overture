@@ -305,17 +305,39 @@ export function BossChat() {
       {/* Header — boss identity card */}
       <div className="bc-header">
         <div className="bc-profile-strip">
-          <div className="bc-avatar-ring" style={{
-            borderColor: bossMood === 'warming' || bossMood === 'convinced' ? '#2d8a4e'
-              : bossMood === 'cooling' || bossMood === 'rejected' ? '#dc3545'
-              : elementInfo?.color || 'var(--border)',
-            boxShadow: bossMood === 'warming' ? '0 0 12px rgba(45,138,78,0.3)'
-              : bossMood === 'cooling' ? '0 0 12px rgba(220,53,69,0.2)'
-              : elementInfo ? `0 0 12px ${elementInfo.glow}` : 'none',
-            transition: 'border-color 0.6s, box-shadow 0.6s',
-          }}>
-            <span className="bc-avatar-em">{typeData?.emoji || '👔'}</span>
-          </div>
+          <motion.div
+            className="bc-avatar-ring"
+            style={{
+              borderColor: bossMood === 'warming' || bossMood === 'convinced' ? '#2d8a4e'
+                : bossMood === 'cooling' || bossMood === 'rejected' ? '#dc3545'
+                : elementInfo?.color || 'var(--border)',
+              transition: 'border-color 0.6s',
+            }}
+            animate={isStreaming ? {
+              boxShadow: [
+                bossMood === 'warming' ? '0 0 8px rgba(45,138,78,0.2)' : elementInfo ? `0 0 8px ${elementInfo.glow}` : '0 0 8px rgba(120,120,120,0.15)',
+                bossMood === 'warming' ? '0 0 18px rgba(45,138,78,0.55)' : elementInfo ? `0 0 22px ${elementInfo.color}` : '0 0 18px rgba(184,150,62,0.35)',
+                bossMood === 'warming' ? '0 0 8px rgba(45,138,78,0.2)' : elementInfo ? `0 0 8px ${elementInfo.glow}` : '0 0 8px rgba(120,120,120,0.15)',
+              ],
+              scale: [1, 1.035, 1],
+            } : {
+              boxShadow: bossMood === 'warming' ? '0 0 12px rgba(45,138,78,0.3)'
+                : bossMood === 'cooling' ? '0 0 12px rgba(220,53,69,0.2)'
+                : elementInfo ? `0 0 12px ${elementInfo.glow}` : 'none',
+              scale: 1,
+            }}
+            transition={isStreaming
+              ? { repeat: Infinity, duration: 1.8, ease: 'easeInOut' }
+              : { duration: 0.6 }}
+          >
+            <motion.span
+              className="bc-avatar-em"
+              animate={bossState === 'reading' ? { y: [0, -1.5, 0] } : { y: 0 }}
+              transition={bossState === 'reading' ? { repeat: Infinity, duration: 1.4, ease: 'easeInOut' } : {}}
+            >
+              {typeData?.emoji || '👔'}
+            </motion.span>
+          </motion.div>
           <div className="bc-identity">
             <div className="bc-name-row">
               <strong className="bc-name">{typeData?.name || typeCode}</strong>
@@ -404,14 +426,30 @@ export function BossChat() {
             </div>
             <div className="bm-bubble bm-bubble-boss">
               {bossState === 'reading' ? (
-                <motion.span
+                <motion.div
                   className="bm-reading"
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: [0.4, 0.8, 0.4] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
+                  animate={{ opacity: 1 }}
                 >
-                  읽는 중...
-                </motion.span>
+                  <motion.span
+                    className="bm-reading-eye"
+                    animate={{ y: [0, -2, 0], opacity: [0.6, 1, 0.6] }}
+                    transition={{ repeat: Infinity, duration: 1.3, ease: 'easeInOut' }}
+                  >
+                    👀
+                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [0.35, 0.9, 0.35] }}
+                    transition={{ repeat: Infinity, duration: 1.6 }}
+                  >
+                    읽는 중
+                  </motion.span>
+                  <span className="bm-reading-dots">
+                    <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}>.</motion.span>
+                    <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}>.</motion.span>
+                    <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}>.</motion.span>
+                  </span>
+                </motion.div>
               ) : (
                 <div className="bm-typing">
                   <span /><span /><span />

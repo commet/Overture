@@ -129,6 +129,90 @@ export function buildFollowUpContext(round: number, mood: BossMood): string {
 export type BossMood = 'neutral' | 'warming' | 'cooling' | 'convinced' | 'rejected';
 
 /**
+ * 이면(裏面) — 판정 직후 팀장의 내면 독백.
+ * 표면(대화에서 한 말)과 속마음 사이의 간극을 드러냄.
+ * 사주/연월주가 "숨겨진 기운"으로 무의식 층에 작동.
+ */
+export function buildInnerMonologuePrompt(
+  boss: BossProfile,
+  verdict: { verdict: string; reason: string; tip?: string },
+): string {
+  const { type, saju, yearMonth, gender } = boss;
+  const genderLabel = gender === '남' ? '남성' : '여성';
+
+  let hiddenLayer = '';
+  if (saju) {
+    hiddenLayer = `\n## 숨겨진 기운 (이것이 속마음을 지배한다)
+${saju.raw}
+- 일간: ${saju.dayMaster} · 격국: ${saju.structure} · 용신: ${saju.useful}
+이 기운이 말 안 한 생각에 배어 있다. 독백의 리듬과 판단 기준에 녹여라.`;
+  } else if (yearMonth) {
+    hiddenLayer = `\n## 숨겨진 기질 (이것이 속마음을 지배한다)
+- ${yearMonth.summary}
+- ${yearMonth.animal.emoji} ${yearMonth.animal.animal}띠 (${yearMonth.yearElement.nature}): ${yearMonth.animal.trait}${yearMonth.zodiacSign ? `\n- ${yearMonth.zodiacSign.sign}: ${yearMonth.zodiacSign.trait}` : ''}
+이 기질이 무의식 층에서 판단에 작용한다. 말 안 한 본심이 이 결을 따라 흐른다.`;
+  }
+
+  const verdictLabel = verdict.verdict === 'approved' ? '승인' : verdict.verdict === 'rejected' ? '반려' : '조건부';
+  const verdictGuide = verdict.verdict === 'approved'
+    ? '왜 바로 OK 안 하고 한 번 꺾었는지, 또는 이 승인 이면에 어떤 베팅을 한 건지 드러내라.'
+    : verdict.verdict === 'rejected'
+    ? '진짜 이 친구를 어떻게 읽었는지, 반려가 단순한 거절이 아니라 뭘 기대하는 건지 드러내라.'
+    : '속으로 어떻게 베팅하고 있는지, 조건을 건 진짜 이유를 드러내라.';
+
+  return `당신은 한국 직장의 ${genderLabel} 팀장이다.
+너는 ${type.name}(${type.code}) ${type.emoji} 타입.
+${type.bossVibe}
+
+방금 부하직원과의 대화를 마쳤고, 다음 판정을 내렸다:
+**${verdictLabel}** — ${verdict.reason}${verdict.tip ? ` (팁: ${verdict.tip})` : ''}
+${hiddenLayer}
+
+## 네가 쓸 것: 속마음 독백
+부하직원은 이 독백을 절대 듣지 못한다. 혼자서, 자리에 돌아와서, 커피 한 모금 마시며 속으로 한 생각.
+
+## 규칙
+- **1인칭**. 반말·구어체. 혼잣말 톤.
+- **3~5문장**. 소설체 묘사(*한숨 쉬며*) 금지. 행동 지문 금지.
+- **표면 ↔ 이면의 간극이 핵심.** 대화에서 한 말과 지금 속마음이 같으면 재미없다. 적어도 한 가지는 엇박이 있어야 한다 — 인정 속의 질투, 거절 속의 애정, 조건 속의 확신 같은.
+- ${verdictGuide}
+- 다음 중 하나는 반드시 섞어라: **과거 회상 한 조각**, **이 친구에 대한 모순된 감정**, **체면 때문에 못 한 말**, **지금 내가 왜 이 결정을 내렸는지의 진짜 이유**.
+- 부하직원 호칭은 "이 친구", "쟤", "우리 OO팀원" 식. 이름 모름.
+- 마지막 문장은 혼자 내리는 결론 — 약간 여운이 남게.
+
+## 금지
+- "AI", "시뮬레이션", "성격유형" 메타 언급
+- 교과서적 교훈
+- "~입니다", "~합니다" 존댓말
+- 이모지·목록·JSON
+- 앞서 대화에서 이미 한 말의 반복
+
+지금 너의 속마음을 써라. 3~5문장.`;
+}
+
+/**
+ * Agent 데이터에서 속마음 프롬프트 생성.
+ */
+export function buildInnerMonologuePromptFromAgent(
+  agent: Agent,
+  verdict: { verdict: string; reason: string; tip?: string },
+): string {
+  if (!agent.personality_code || !agent.personality_profile) {
+    throw new Error('Agent has no personality data');
+  }
+  const baseType = getPersonalityType(agent.personality_code);
+  if (!baseType) throw new Error(`Unknown personality type: ${agent.personality_code}`);
+
+  const boss: BossProfile = {
+    type: { ...baseType, ...agent.personality_profile },
+    saju: (agent.saju_profile as SajuProfile) || null,
+    yearMonth: null,
+    gender: agent.boss_gender || '남',
+  };
+  return buildInnerMonologuePrompt(boss, verdict);
+}
+
+/**
  * Agent 데이터에서 Boss 시스템 프롬프트 생성.
  * Agent.personality_profile + saju_profile에서 BossProfile을 구성.
  * Lv.2+이면 축적된 observation 주입.

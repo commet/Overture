@@ -5,7 +5,7 @@ import type { PersonalityType } from '@/lib/boss/personality-types';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { summarizeBossChatTopic, extractBossChatObservation, applyBossCalibration } from '@/lib/observation-engine';
-import type { Agent } from '@/stores/agent-types';
+import type { Agent, BossChatTurn } from '@/stores/agent-types';
 
 // ━━━ Types ━━━
 
@@ -43,6 +43,11 @@ interface BossState {
   // Phase: 'setup' → 'chat'
   phase: 'setup' | 'chat';
 
+  // 이면 (판정 후 팀장 속마음)
+  innerMonologue: string;        // 완성된 독백 (빈 문자열이면 아직 공개 안 됨)
+  innerStreamingText: string;    // 스트리밍 중 텍스트
+  innerLoading: boolean;         // LLM 호출 중
+
   // Agent 연동
   loadedAgentId: string | null;   // 저장된 boss agent를 불러왔을 때
 
@@ -58,6 +63,12 @@ interface BossState {
   commitAssistantMessage: () => void;
   getPersonalityType: () => PersonalityType | undefined;
   reset: () => void;
+
+  // 이면 actions
+  startInnerMonologue: () => void;
+  updateInnerStreamingText: (text: string) => void;
+  commitInnerMonologue: () => void;
+  resetInnerMonologue: () => void;
 
   // Retention — 리셋 + 컬렉션
   lastSituation: string;
@@ -81,6 +92,9 @@ const INITIAL_STATE = {
   isStreaming: false,
   streamingText: '',
   phase: 'setup' as const,
+  innerMonologue: '',
+  innerStreamingText: '',
+  innerLoading: false,
   loadedAgentId: null as string | null,
   lastSituation: '',
 };
@@ -164,10 +178,17 @@ export const useBossStore = create<BossState>((set, get) => ({
       isStreaming: false,
     }));
 
-    // Agent XP 기록
+    // Agent XP 기록 + 대화 스레드 저장
     const { loadedAgentId, messages: allMsgs } = get();
     if (loadedAgentId) {
-      useAgentStore.getState().recordActivity(loadedAgentId, 'boss_chat', '대화');
+      const agentStore = useAgentStore.getState();
+      agentStore.recordActivity(loadedAgentId, 'boss_chat', '대화');
+
+      // chat_history 저장 — 최근 20턴까지. 프롬프트 포함 목적이 아닌 UI 복원용.
+      const thread: BossChatTurn[] = allMsgs
+        .slice(-20)
+        .map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp }));
+      agentStore.updateAgent(loadedAgentId, { chat_history: thread });
 
       // 6번째 assistant 메시지마다 메타 관찰 추출 (비차단)
       const assistantCount = allMsgs.filter(m => m.role === 'assistant').length;
@@ -188,6 +209,15 @@ export const useBossStore = create<BossState>((set, get) => ({
     set({ ...INITIAL_STATE });
   },
 
+  // ─── 이면 ───
+  startInnerMonologue: () => set({ innerLoading: true, innerStreamingText: '', innerMonologue: '' }),
+  updateInnerStreamingText: (text) => set({ innerStreamingText: text }),
+  commitInnerMonologue: () => {
+    const { innerStreamingText } = get();
+    set({ innerMonologue: innerStreamingText.trim(), innerStreamingText: '', innerLoading: false });
+  },
+  resetInnerMonologue: () => set({ innerMonologue: '', innerStreamingText: '', innerLoading: false }),
+
   resetForNewType: (situation) => {
     const current = `${get().axes.ei}${get().axes.sn}${get().axes.tf}${get().axes.jp}`;
     // 현재 유형 제외 랜덤 선택
@@ -202,6 +232,9 @@ export const useBossStore = create<BossState>((set, get) => ({
       phase: 'chat',
       loadedAgentId: null,
       lastSituation: situation,
+      innerMonologue: '',
+      innerStreamingText: '',
+      innerLoading: false,
     });
   },
 
@@ -211,6 +244,9 @@ export const useBossStore = create<BossState>((set, get) => ({
       isStreaming: false,
       streamingText: '',
       loadedAgentId: null,
+      innerMonologue: '',
+      innerStreamingText: '',
+      innerLoading: false,
     });
   },
 
@@ -258,6 +294,16 @@ export const useBossStore = create<BossState>((set, get) => ({
     const code = agent.personality_code;
     const bYear = agent.birth_year || 0;
     const bMonth = agent.birth_month || 0;
+
+    // 저장된 대화 스레드 복원 — 이전 대화 연속성
+    const restored: ChatMessage[] = (agent.chat_history || []).map((t, i) => ({
+      id: `${t.role === 'user' ? 'u' : 'a'}-restore-${t.timestamp}-${i}`,
+      role: t.role,
+      content: t.content,
+      timestamp: t.timestamp,
+    }));
+    const lastUserTurn = [...restored].reverse().find(m => m.role === 'user');
+
     set({
       axes: {
         ei: (code[0] as 'E' | 'I') || 'E',
@@ -271,7 +317,8 @@ export const useBossStore = create<BossState>((set, get) => ({
       yearMonthProfile: bYear >= 1940 ? buildYearMonthProfile(bYear, bMonth >= 1 ? bMonth : undefined) : null,
       sajuProfile: agent.saju_profile as SajuProfile | null,
       phase: 'chat',
-      messages: [],
+      messages: restored,
+      lastSituation: lastUserTurn?.content || '',
       loadedAgentId: agentId,
     });
   },

@@ -397,6 +397,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       birth_year: data.birth_year,
       birth_month: data.birth_month,
       saju_profile: data.saju_profile,
+      chat_history: data.chat_history,
       xp: data.xp || 0,
       level: calculateLevel(data.xp || 0),
       observations: data.observations || [],
