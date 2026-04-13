@@ -279,6 +279,10 @@ export function Hero() {
 
             {/* ─── Inline Input ─── */}
             <div className="mt-5 lg:mt-8">
+              {/* Explicit input label — resolves "what should I click" confusion */}
+              <label htmlFor="hero-problem-input" className="block text-[12px] font-semibold text-[var(--text-secondary)] mb-2 px-1 tracking-tight">
+                {L('1. 내 상황을 직접 입력', '1. Type your situation')}
+              </label>
               <div
                 className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
                 style={{
@@ -289,6 +293,7 @@ export function Hero() {
               >
                 <div className="flex items-center gap-3 px-5 py-4">
                   <input
+                    id="hero-problem-input"
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
@@ -297,17 +302,19 @@ export function Hero() {
                     placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : examples[currentIdx].input}
                     maxLength={200}
                     className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
+                    aria-describedby="hero-input-hint"
                   />
                   <button
                     onClick={handleSubmit}
                     disabled={!inputValue.trim()}
-                    className="shrink-0 h-10 px-5 rounded-full flex items-center gap-1.5 text-[14px] font-semibold text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.97] cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                    className="shrink-0 h-11 px-5 rounded-full flex items-center gap-1.5 text-[14px] font-semibold text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.97] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
                     style={{
                       background: 'var(--gradient-gold)',
                       transitionProperty: 'box-shadow, transform, opacity',
                       transitionDuration: '300ms',
                       transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
                     }}
+                    aria-label={inputValue.trim() ? L('시작', 'Start') : L('입력 후 시작', 'Type first, then start')}
                   >
                     {L('시작', 'Start')}
                     <ArrowRight size={14} />
@@ -316,20 +323,36 @@ export function Hero() {
 
               </div>
 
+              {/* Helper hint below input — shown always, changes by state */}
+              <p id="hero-input-hint" className="text-[11px] text-[var(--text-tertiary)] mt-2 px-1">
+                {inputValue.trim()
+                  ? L('엔터 또는 [시작] 클릭', 'Press Enter or click [Start]')
+                  : L('문장으로 적으면 됩니다. 프롬프트 고민 필요 없음', 'Just write it naturally — no prompt engineering')}
+              </p>
+
               {/* ─── Mobile-only card: right after input for immediate context ─── */}
               <div className="mt-6 lg:hidden">
                 <CardSection example={currentExample} locale={locale} />
               </div>
 
+              {/* ─── OR divider ─── */}
+              <div className="flex items-center gap-3 mt-6 mb-3 px-1">
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
+                  {L('2. 또는 예시로 체험', '2. Or try a demo')}
+                </span>
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+              </div>
+
               {/* ─── Scenario Buttons with active indicator ─── */}
-              <div className="flex flex-wrap items-center gap-2 mt-5">
+              <div className="flex flex-wrap items-center gap-2">
                 {examples.map((ex, i) => {
                   const isActive = i === currentIdx && !focused;
                   return (
                     <button
                       key={ex.id}
                       onClick={() => handleScenarioClick(ex)}
-                      className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium border cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-full text-[13px] font-medium border cursor-pointer ${
                         isActive
                           ? 'border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/[0.06]'
                           : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.04]'
@@ -347,7 +370,7 @@ export function Hero() {
                 })}
               </div>
 
-              <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5 mt-3 px-1">
+              <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5 mt-4 px-1">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0">
                   <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.5 6.3-4 4a.7.7 0 0 1-1 0l-2-2a.7.7 0 1 1 1-1L7 8.8l3.5-3.5a.7.7 0 1 1 1 1z" />
                 </svg>

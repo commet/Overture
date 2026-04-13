@@ -74,7 +74,7 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
               {projectName}
             </span>
           </div>
-          <button onClick={onReset} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
+          <button onClick={onReset} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer min-h-[44px] px-2 -mr-2 flex items-center">
             {L('새 프로젝트', 'New Project')}
           </button>
         </div>
@@ -103,14 +103,70 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
 
 /* EASE — imported from shared/constants */
 
+/* ─── Partial JSON parser for streaming InitialAnalysisResponse ─── */
+type PartialStage = 'reading' | 'question' | 'assumptions' | 'skeleton';
+interface PartialAnalysis {
+  real_question: string;
+  real_question_complete: boolean;
+  hidden_assumptions: string[];
+  skeleton: string[];
+  stage: PartialStage;
+}
+
+function unescapeJsonString(s: string): string {
+  return s.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+}
+
+function extractCompleteStrings(text: string, key: string): string[] {
+  const m = text.match(new RegExp(`"${key}"\\s*:\\s*\\[`));
+  if (!m || m.index === undefined) return [];
+  const start = m.index + m[0].length;
+  const items: string[] = [];
+  let i = start;
+  while (i < text.length) {
+    while (i < text.length && /[\s,]/.test(text[i])) i++;
+    if (i >= text.length || text[i] === ']') break;
+    if (text[i] !== '"') break;
+    i++;
+    let s = '';
+    let completed = false;
+    while (i < text.length) {
+      const c = text[i];
+      if (c === '\\' && i + 1 < text.length) {
+        const nx = text[i + 1];
+        s += nx === 'n' ? '\n' : nx === 't' ? '\t' : nx === '"' ? '"' : nx === '\\' ? '\\' : nx;
+        i += 2;
+      } else if (c === '"') { completed = true; i++; break; }
+      else { s += c; i++; }
+    }
+    if (completed) items.push(s);
+    else break;
+  }
+  return items;
+}
+
+function parsePartialAnalysis(text: string): PartialAnalysis {
+  const rqMatch = text.match(/"real_question"\s*:\s*"((?:[^"\\]|\\.)*)("?)/);
+  const real_question = rqMatch ? unescapeJsonString(rqMatch[1]) : '';
+  const real_question_complete = rqMatch ? rqMatch[2] === '"' : false;
+  const hidden_assumptions = extractCompleteStrings(text, 'hidden_assumptions');
+  const skeleton = extractCompleteStrings(text, 'skeleton');
+  let stage: PartialStage = 'reading';
+  if (text.includes('"skeleton"')) stage = 'skeleton';
+  else if (text.includes('"hidden_assumptions"')) stage = 'assumptions';
+  else if (real_question) stage = 'question';
+  return { real_question, real_question_complete, hidden_assumptions, skeleton, stage };
+}
+
 /* ─── HeroFlow: idle → assembling → analyzing → ready ─── */
 type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
 
-function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
+function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: {
   onReady: (projectId: string) => void;
   projects: Array<{ id: string; name: string }>;
   user: unknown;
   reviewerAgentId?: string;
+  initialProblem?: string;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
@@ -125,6 +181,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
   const progressiveStore = useProgressiveStore();
   const phaseRef = React.useRef<HeroPhase>('idle');
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoStartedRef = React.useRef(false);
   const searchParams = useSearchParams();
 
   // Keep ref in sync for use inside async callback
@@ -143,6 +200,19 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
       if (matched) setDemoScenario(matched);
     }
   }, [searchParams, demoScenarios, demoScenario]);
+
+  // Auto-submit from ?q= param (landing Hero inline input) — routes through full streaming flow.
+  // Demo param takes priority if both are set.
+  React.useEffect(() => {
+    if (!initialProblem || autoStartedRef.current) return;
+    if (searchParams.get('demo')) return;
+    const text = initialProblem.trim();
+    if (!text) return;
+    autoStartedRef.current = true;
+    setProblemInput(text);
+    handleSubmit(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProblem]);
 
   const handleSubmit = async (directText?: string) => {
     const text = (directText || problemInput).trim();
@@ -374,32 +444,122 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId }: {
             </motion.div>
           )}
 
-          {/* ═══ ANALYZING: 스트리밍 분석 ═══ */}
-          {phase === 'analyzing' && (
-            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: EASE }} className="pt-8 md:pt-12">
+          {/* ═══ ANALYZING: 스트리밍 분석 — 구조화된 필드별 렌더링 ═══ */}
+          {phase === 'analyzing' && (() => {
+            const partial = parsePartialAnalysis(streamingText);
+            const stageLabel = (() => {
+              switch (partial.stage) {
+                case 'reading': return L('상황을 읽는 중', 'Reading the situation');
+                case 'question': return L('진짜 질문을 찾는 중', 'Finding the real question');
+                case 'assumptions': return L('숨은 가정을 분석하는 중', 'Analyzing hidden assumptions');
+                case 'skeleton': return L('뼈대를 작성하는 중', 'Drafting the skeleton');
+              }
+            })();
+            const hasQuestion = !!partial.real_question;
+            const hasAssumptions = partial.hidden_assumptions.length > 0;
+            const hasSkeleton = partial.skeleton.length > 0;
+            return (
+              <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE }} className="pt-6 md:pt-10">
 
-              {/* 상단: 팀 아바타 + 문제 */}
-              <div className="flex items-center gap-3 mb-6">
-                <AvatarRow personas={previewPersonas} />
-                <p className="text-[13px] text-[var(--text-secondary)] truncate flex-1">{problemInput}</p>
-              </div>
+                {/* 상단: 팀 아바타 + 문제 echo */}
+                <div className="flex items-center gap-3 mb-5">
+                  <AvatarRow personas={previewPersonas} />
+                  <p className="text-[13px] text-[var(--text-secondary)] truncate flex-1">{problemInput}</p>
+                </div>
 
-              {/* 스트리밍 분석 */}
-              <div className="rounded-2xl border border-[var(--accent)]/12 bg-[var(--surface)] p-5 md:p-7">
-                <div className="flex items-center gap-2 mb-4">
+                {/* 현재 단계 표시 */}
+                <div className="flex items-center gap-2 mb-4 px-1">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
                     <Sparkles size={14} className="text-[var(--accent)]" />
                   </motion.div>
-                  <span className="text-[12px] font-medium text-[var(--accent)]">{L('분석 중', 'Analyzing')}</span>
+                  <span className="text-[12px] font-medium text-[var(--accent)]">{stageLabel}</span>
                 </div>
-                <div className="text-[14px] md:text-[15px] leading-[1.85] text-[var(--text-primary)] whitespace-pre-wrap break-words min-h-[80px]">
-                  {streamingText || L('상황을 읽고 있습니다...', 'Reading the situation...')}
-                  <span className="inline-block w-[2px] h-[18px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
-                </div>
-              </div>
-            </motion.div>
-          )}
+
+                {/* ─── Field 1: 진짜 질문 ─── */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: hasQuestion ? 1 : 0.4, y: 0 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="rounded-2xl border border-[var(--accent)]/12 bg-[var(--surface)] p-4 md:p-5 mb-3"
+                >
+                  <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-2">
+                    {L('진짜 질문', 'Real question')}
+                  </div>
+                  <div className="text-[15px] md:text-[16px] leading-[1.6] text-[var(--text-primary)] whitespace-pre-wrap break-words min-h-[24px]">
+                    {hasQuestion ? partial.real_question : <span className="text-[var(--text-tertiary)] text-[13px]">{L('찾는 중...', 'Searching...')}</span>}
+                    {hasQuestion && !partial.real_question_complete && (
+                      <span className="inline-block w-[2px] h-[16px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* ─── Field 2: 숨은 가정 ─── */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: partial.stage === 'assumptions' || hasAssumptions ? 1 : 0.35, y: 0 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 md:p-5 mb-3"
+                >
+                  <div className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.15em] mb-2">
+                    {L('숨은 가정', 'Hidden assumptions')}
+                  </div>
+                  {hasAssumptions ? (
+                    <ul className="space-y-1.5">
+                      {partial.hidden_assumptions.map((a, i) => (
+                        <motion.li
+                          key={i}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, ease: EASE }}
+                          className="text-[13px] md:text-[14px] leading-[1.55] text-[var(--text-secondary)] flex gap-2"
+                        >
+                          <span className="text-[var(--accent)] shrink-0">·</span>
+                          <span className="flex-1">{a}</span>
+                        </motion.li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-[var(--text-tertiary)] text-[13px]">
+                      {partial.stage === 'assumptions' ? L('찾는 중...', 'Searching...') : L('대기 중', 'Waiting')}
+                    </span>
+                  )}
+                </motion.div>
+
+                {/* ─── Field 3: 뼈대 ─── */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: partial.stage === 'skeleton' || hasSkeleton ? 1 : 0.35, y: 0 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 md:p-5"
+                >
+                  <div className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.15em] mb-2">
+                    {L('뼈대', 'Skeleton')}
+                  </div>
+                  {hasSkeleton ? (
+                    <ol className="space-y-1.5">
+                      {partial.skeleton.map((s, i) => (
+                        <motion.li
+                          key={i}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, ease: EASE }}
+                          className="text-[13px] md:text-[14px] leading-[1.55] text-[var(--text-secondary)] flex gap-2"
+                        >
+                          <span className="text-[var(--accent)] shrink-0 tabular-nums">{i + 1}.</span>
+                          <span className="flex-1">{s}</span>
+                        </motion.li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <span className="text-[var(--text-tertiary)] text-[13px]">
+                      {partial.stage === 'skeleton' ? L('작성 중...', 'Drafting...') : L('대기 중', 'Waiting')}
+                    </span>
+                  )}
+                </motion.div>
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
       </div>
     </div>
@@ -420,15 +580,12 @@ function WorkspaceContent() {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const searchParams = useSearchParams();
   const { activeStep, setActiveStep } = useWorkspaceStore();
-  const { projects, currentProjectId, setCurrentProjectId, createProject, loadProjects } = useProjectStore();
+  const { projects, currentProjectId, setCurrentProjectId, loadProjects } = useProjectStore();
   const { settings, loadSettings } = useSettingsStore();
   const { user } = useAuth();
   const { setHandoff } = useHandoffStore();
   const progressiveStore = useProgressiveStore();
-  const [problemInput, setProblemInput] = useState('');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
 
   // Use legacy mode if ?step= is explicitly set
   const explicitStep = searchParams.get('step') as StepId | null;
@@ -450,38 +607,8 @@ function WorkspaceContent() {
     }
   }, [explicitStep, useLegacyMode, setActiveStep]);
 
-  // Auto-start from ?q= param (Hero inline input)
+  // Pick up ?q= param (from landing Hero inline input) — HeroFlow handles the streaming flow
   const queryProblem = searchParams.get('q');
-  const [autoStarted, setAutoStarted] = useState(false);
-
-  useEffect(() => {
-    if (queryProblem && !autoStarted && !currentProjectId && !isStarting) {
-      setAutoStarted(true);
-      setProblemInput(queryProblem);
-      // Auto-trigger after a tick to let stores load (no cleanup — one-shot timer)
-      setTimeout(() => {
-        const text = queryProblem.trim();
-        if (!text) return;
-        setIsStarting(true);
-        setStartError(null);
-        const pid = createProject(text.slice(0, 40));
-        setCurrentProjectId(pid);
-        track('project_created', { source: 'hero_inline' });
-        progressiveStore.createSession(pid, text, reviewerParam || undefined);
-        const capturedSid = progressiveStore.currentSessionId;
-        runInitialAnalysis(text).then(result => {
-          progressiveStore.addSnapshot(result.snapshot);
-          if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
-          progressiveStore.addQuestion(result.question);
-          progressiveStore.setPhase('conversing');
-        }).catch(err => {
-          if (capturedSid) progressiveStore.deleteSession(capturedSid);
-          setCurrentProjectId(null);
-          setStartError(err instanceof Error ? err.message : L('분석에 실패했습니다.', 'Analysis failed.'));
-        }).finally(() => setIsStarting(false));
-      }, 100);
-    }
-  }, [queryProblem, autoStarted, currentProjectId, isStarting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNavigate = (step: string) => {
     const stepId = step.replace('/tools/', '') as StepId;
@@ -490,54 +617,6 @@ function WorkspaceContent() {
     if (settings.audio_enabled) {
       resumeAudioContext();
       playTransitionTone(settings.audio_volume);
-    }
-  };
-
-  const handleStartWithProblem = async () => {
-    if (!problemInput.trim() || isStarting) return;
-    const text = problemInput.trim();
-    setIsStarting(true);
-    setStartError(null);
-
-    // Create project
-    const pid = createProject(text.slice(0, 40));
-    setCurrentProjectId(pid);
-    track('workspace_problem_submit', { text_length: text.length, source: 'workspace_progressive' });
-
-    // Create progressive session & kick off initial analysis
-    progressiveStore.createSession(pid, text, reviewerParam || undefined);
-    const capturedSid = progressiveStore.currentSessionId;
-
-    try {
-      const result = await runInitialAnalysis(text);
-
-      // Store initial snapshot
-      progressiveStore.addSnapshot(result.snapshot);
-
-      // Store detected DM
-      if (result.detectedDM) {
-        progressiveStore.setDecisionMaker(result.detectedDM);
-      }
-
-      // Add first question
-      progressiveStore.addQuestion(result.question);
-      progressiveStore.setPhase('conversing');
-    } catch (err) {
-      // On error: delete the session and project so user can retry
-      if (capturedSid) progressiveStore.deleteSession(capturedSid);
-      setCurrentProjectId(null);
-      const raw = err instanceof Error ? err.message : '';
-      const errMsg = raw.includes('fetch') || raw.includes('network') || raw.includes('Failed to fetch')
-        ? L('인터넷 연결을 확인해주세요.', 'Please check your internet connection.')
-        : raw.includes('rate') || raw.includes('limit') || raw.includes('429')
-        ? L('오늘의 분석 횟수를 모두 사용했습니다. 내일 다시 시도해주세요.', 'Daily analysis limit reached. Please try again tomorrow.')
-        : raw.includes('too long') || raw.includes('token')
-        ? L('입력이 너무 깁니다. 핵심만 간결하게 입력해주세요.', 'Input is too long. Please keep it concise.')
-        : raw || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.');
-      setStartError(errMsg);
-      track('workspace_start_error', { error: errMsg });
-    } finally {
-      setIsStarting(false);
     }
   };
 
@@ -553,22 +632,13 @@ function WorkspaceContent() {
   /* ─── Empty state: HeroFlow with morphing transition ─── */
   if (!currentProjectId) {
     return (
-      <>
-        {startError && (
-          <div className="max-w-2xl mx-auto px-4 pt-4">
-            <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 flex items-center justify-between" role="alert">
-              <span>{startError}</span>
-              <button onClick={() => setStartError(null)} className="text-red-400 hover:text-red-600 cursor-pointer ml-2">✕</button>
-            </div>
-          </div>
-        )}
-        <HeroFlow
-          onReady={(pid) => setCurrentProjectId(pid)}
-          projects={projects}
-          user={user}
-          reviewerAgentId={reviewerParam || undefined}
-        />
-      </>
+      <HeroFlow
+        onReady={(pid) => setCurrentProjectId(pid)}
+        projects={projects}
+        user={user}
+        reviewerAgentId={reviewerParam || undefined}
+        initialProblem={queryProblem || undefined}
+      />
     );
   }
 
