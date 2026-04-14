@@ -13,14 +13,10 @@ import {
 } from 'lucide-react';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
-import { useRefineStore } from '@/stores/useRefineStore';
-import { useRouter } from 'next/navigation';
-import { extractApprovalConditions } from '@/lib/convergence';
 
 interface FeedbackResultProps {
   record: FeedbackRecord;
   personas: Persona[];
-  onNavigate?: (step: string) => void;
   onStartDiscussion?: () => void;
   discussionLoading?: boolean;
   onStartDebate?: () => void;
@@ -28,14 +24,12 @@ interface FeedbackResultProps {
 
 type ViewMode = 'overview' | 'persona-detail' | 'discussion' | 'synthesis';
 
-export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion, discussionLoading, onStartDebate }: FeedbackResultProps) {
+export function FeedbackResult({ record, personas, onStartDiscussion, discussionLoading, onStartDebate }: FeedbackResultProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
 
   const { addRating } = useAccuracyStore();
   const { addJudgment } = useJudgmentStore();
-  const router = useRouter();
-  const { createLoop, setActiveLoopId } = useRefineStore();
   const [showDeepDetails, setShowDeepDetails] = useState(false);
   const [ratingState, setRatingState] = useState<Record<string, {
     score: number;
@@ -106,25 +100,6 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
     return text;
   };
 
-  // ── Start refine loop ──
-  const handleStartLoop = () => {
-    if (!record.project_id) return;
-
-    const approvalConditions = extractApprovalConditions(record, personas);
-
-    const loopId = createLoop({
-      projectId: record.project_id,
-      goal: record.document_title || '합주 연습',
-      originalPlan: record.document_text,
-      initialFeedbackRecordId: record.id,
-      initialApprovalConditions: approvalConditions,
-      personaIds: record.persona_ids,
-    });
-
-    setActiveLoopId(loopId);
-    if (onNavigate) onNavigate('refine');
-    else router.push('/tools/refine');
-  };
 
   // ── Risk counts ──
   const allRisks = record.results.flatMap(r => r.classified_risks || []);
@@ -491,20 +466,6 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             </Card>
           )}
 
-          {/* CTA after discussion */}
-          {record.project_id && record.discussion && (
-            <Card className="!bg-[var(--checkpoint)] !border-amber-200">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[13px] font-bold text-[var(--text-primary)]">토론을 마쳤습니다</p>
-                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">발견한 갈등과 우려를 제약조건으로 변환하여 반복 개선합니다.</p>
-                </div>
-                <Button size="sm" onClick={handleStartLoop}>
-                  <RefreshCw size={14} /> 합주 연습 시작
-                </Button>
-              </div>
-            </Card>
-          )}
         </div>
       )}
 
@@ -606,33 +567,19 @@ export function FeedbackResult({ record, personas, onNavigate, onStartDiscussion
             {(() => { const w = record.results.reduce((s, r) => s + (r.wants_more || []).length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">추가 요청 {w}</span> : null; })()}
           </div>
 
-          {/* Two paths: debate (filter issues) or direct start */}
-          <div className={`grid gap-3 ${onStartDebate ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-            {onStartDebate && (
-              <button onClick={onStartDebate}
-                className="flex items-center gap-3 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm transition-all cursor-pointer text-left group">
-                <div className="w-9 h-9 rounded-lg bg-[var(--ai)] flex items-center justify-center shrink-0">
-                  <MessageSquare size={16} className="text-[var(--accent)]" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[13px] font-bold text-[var(--text-primary)]">이슈 정리</p>
-                  <p className="text-[11px] text-[var(--text-secondary)]">반영할 이슈를 선별하고 추가합니다</p>
-                </div>
-                <ArrowRight size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
-              </button>
-            )}
-            <button onClick={handleStartLoop}
-              className="flex items-center gap-3 p-4 rounded-xl border border-[var(--accent)]/30 bg-[var(--checkpoint)] hover:border-[var(--accent)]/50 hover:shadow-sm transition-all cursor-pointer text-left group">
-              <div className="w-9 h-9 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0">
-                <RefreshCw size={16} className="text-white" />
+          {onStartDebate && (
+            <button onClick={onStartDebate}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--border)] hover:shadow-sm transition-all cursor-pointer text-left group">
+              <div className="w-9 h-9 rounded-lg bg-[var(--ai)] flex items-center justify-center shrink-0">
+                <MessageSquare size={16} className="text-[var(--accent)]" />
               </div>
               <div className="flex-1">
-                <p className="text-[13px] font-bold text-[var(--text-primary)]">합주 연습 시작</p>
-                <p className="text-[11px] text-[var(--text-secondary)]">전체 이슈를 반영하여 반복 개선</p>
+                <p className="text-[13px] font-bold text-[var(--text-primary)]">이슈 정리</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">반영할 이슈를 선별하고 추가합니다</p>
               </div>
               <ArrowRight size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
             </button>
-          </div>
+          )}
         </div>
       )}
     </div>

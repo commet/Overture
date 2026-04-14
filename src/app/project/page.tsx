@@ -6,7 +6,6 @@ import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useSynthesizeStore } from '@/stores/useSynthesizeStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useRefineStore } from '@/stores/useRefineStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -35,7 +34,6 @@ export default function ProjectPage() {
   const { items: recastItems, loadItems: loadRecast } = useRecastStore();
   const { items: synthesizeItems, loadItems: loadSynthesize } = useSynthesizeStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
-  const { loops, loadLoops } = useRefineStore();
   const { judgments, loadJudgments, getUserPatterns } = useJudgmentStore();
 
   useEffect(() => {
@@ -44,9 +42,8 @@ export default function ProjectPage() {
     loadRecast();
     loadSynthesize();
     loadPersona();
-    loadLoops();
     loadJudgments();
-  }, [loadProjects, loadReframe, loadRecast, loadSynthesize, loadPersona, loadLoops, loadJudgments]);
+  }, [loadProjects, loadReframe, loadRecast, loadSynthesize, loadPersona, loadJudgments]);
 
   const currentProject = currentProjectId ? projects.find((p) => p.id === currentProjectId) : null;
 
@@ -55,14 +52,11 @@ export default function ProjectPage() {
   const projectRecasts = recastItems.filter((o) => o.project_id === currentProjectId);
   const projectSyntheses = synthesizeItems.filter((s) => s.project_id === currentProjectId);
   const projectFeedbacks = feedbackHistory.filter((f) => f.project_id === currentProjectId);
-  const projectLoops = loops.filter((l) => l.project_id === currentProjectId);
 
   const getSteps = (): StepStatus[] => {
     const latestReframe = projectReframes[projectReframes.length - 1];
     const latestRecast = projectRecasts[projectRecasts.length - 1];
     const latestFeedback = projectFeedbacks[projectFeedbacks.length - 1];
-
-    const latestLoop = projectLoops[projectLoops.length - 1];
 
     return [
       {
@@ -94,16 +88,6 @@ export default function ProjectPage() {
         summary: latestFeedback ? `${latestFeedback.results.length}명 피드백 완료` : undefined,
         color: 'text-purple-700',
         bgColor: 'bg-purple-50',
-      },
-      {
-        tool: 'refine',
-        label: '수정 반영',
-        icon: <RefreshCw size={18} />,
-        href: '/workspace?step=refine',
-        status: latestLoop?.status === 'converged' ? 'done' : latestLoop?.status === 'active' ? 'in-progress' : 'not-started',
-        summary: latestLoop ? `${latestLoop.iterations.length}회 반복 · 위협 ${latestLoop.iterations[latestLoop.iterations.length - 1]?.convergence?.critical_risks ?? '?'}건` : undefined,
-        color: 'text-[#2d6b2d]',
-        bgColor: 'bg-[var(--collab)]',
       },
       {
         tool: 'synthesize',

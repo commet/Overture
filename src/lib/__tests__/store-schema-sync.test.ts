@@ -60,7 +60,6 @@ vi.mock('@/lib/auth', () => ({
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
-import { useRefineStore } from '@/stores/useRefineStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -201,38 +200,6 @@ describe('Store Schema Sync', () => {
       expect(item!.status).toBe('input');
       expect(item!.created_at).toBeTruthy();
       expect(item!.updated_at).toBeTruthy();
-    });
-  });
-
-  // ═══════════════════════════════════════
-  // Refine Store
-  // ═══════════════════════════════════════
-  describe('useRefineStore.createLoop', () => {
-    it('RefineLoop 필수 필드 존재', () => {
-      useRefineStore.getState().createLoop({
-        projectId: 'p1',
-        name: 'test loop',
-        goal: 'improve',
-        originalPlan: 'original',
-        initialFeedbackRecordId: 'fr-1',
-        initialApprovalConditions: [],
-        personaIds: ['p1'],
-      });
-      const loop = useRefineStore.getState().getActiveLoop();
-
-      expect(loop).toBeDefined();
-      expect(loop!.id).toBeTruthy();
-      expect(loop!.project_id).toBe('p1');
-      expect(loop!.name).toBe('test loop');
-      expect(loop!.goal).toBe('improve');
-      expect(loop!.original_plan).toBe('original');
-      expect(loop!.initial_feedback_record_id).toBe('fr-1');
-      expect(Array.isArray(loop!.iterations)).toBe(true);
-      expect(loop!.iterations).toHaveLength(0);
-      expect(loop!.status).toBe('active');
-      expect(loop!.max_iterations).toBe(3);
-      expect(loop!.created_at).toBeTruthy();
-      expect(loop!.updated_at).toBeTruthy();
     });
   });
 

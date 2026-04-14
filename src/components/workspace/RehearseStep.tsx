@@ -670,7 +670,6 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
           <FeedbackResult
             record={latestFeedback}
             personas={personas}
-            onNavigate={onNavigate}
             onStartDiscussion={handleStartDiscussion}
             discussionLoading={discussionLoading}
           />

@@ -8,7 +8,6 @@ import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { ReframeStep } from '@/components/workspace/ReframeStep';
 import { RecastStep } from '@/components/workspace/RecastStep';
 import { RehearseStep } from '@/components/workspace/RehearseStep';
-import { RefineStep } from '@/components/workspace/RefineStep';
 import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
 import { WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
@@ -769,7 +768,6 @@ function WorkspaceContent() {
             {activeStep === 'reframe' && <ReframeStep onNavigate={handleNavigate} />}
             {activeStep === 'recast' && <RecastStep onNavigate={handleNavigate} />}
             {activeStep === 'rehearse' && <RehearseStep onNavigate={handleNavigate} />}
-            {activeStep === 'refine' && <RefineStep onNavigate={handleNavigate} />}
             {activeStep === 'synthesize' && <SynthesizeStep onNavigate={handleNavigate} />}
           </ErrorBoundary>
         </div>

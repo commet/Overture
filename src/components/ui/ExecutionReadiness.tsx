@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useRefineStore } from '@/stores/useRefineStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Check, AlertTriangle, Circle, Shield } from 'lucide-react';
 
@@ -24,34 +23,28 @@ export function ExecutionReadiness({ projectId }: Props) {
   const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
   const { items: recastItems, loadItems: loadRecast } = useRecastStore();
   const { feedbackHistory, loadData: loadPersona } = usePersonaStore();
-  const { loops, loadLoops } = useRefineStore();
   const { judgments, loadJudgments } = useJudgmentStore();
 
   useEffect(() => {
     loadReframe();
     loadRecast();
     loadPersona();
-    loadLoops();
     loadJudgments();
-  }, [loadReframe, loadRecast, loadPersona, loadLoops, loadJudgments]);
+  }, [loadReframe, loadRecast, loadPersona, loadJudgments]);
 
-  const d = reframeItems.filter(i => i.project_id === projectId);
-  const o = recastItems.filter(i => i.project_id === projectId);
-  const fb = feedbackHistory.filter(i => i.project_id === projectId);
-  const lp = loops.filter(i => i.project_id === projectId);
+  const d = reframeItems.filter((i) => i.project_id === projectId);
+  const o = recastItems.filter((i) => i.project_id === projectId);
+  const fb = feedbackHistory.filter((i) => i.project_id === projectId);
 
   const latestD = d[d.length - 1];
   const latestO = o[o.length - 1];
   const latestFb = fb[fb.length - 1];
-  const latestLoop = lp[lp.length - 1];
 
   const assumptions = latestD?.analysis?.hidden_assumptions || [];
   const steps = latestO?.steps || [];
   const keyAssumptions = latestO?.analysis?.key_assumptions || [];
   const personaCount = latestFb?.results?.length || 0;
-  const criticalRisks = latestFb?.results?.flatMap(r => r.classified_risks?.filter(cr => cr.category === 'critical') || []) || [];
-  const lastIter = latestLoop?.iterations?.[latestLoop.iterations.length - 1];
-  const convergence = lastIter?.convergence ? (lastIter.convergence.critical_risks === 0 ? 1 : 0.5) : 0;
+  const criticalRisks = latestFb?.results?.flatMap((r) => r.classified_risks?.filter((cr) => cr.category === 'critical') || []) || [];
 
   const checks: ReadinessCheck[] = [
     {
@@ -83,18 +76,10 @@ export function ExecutionReadiness({ projectId }: Props) {
       action: personaCount === 0 ? '리허설에서 페르소나를 등록하고 피드백을 받으세요' : personaCount === 1 ? '이해관계자 1명 추가를 권장합니다' : undefined,
     },
     {
-      label: '리스크 식별 및 대응',
-      status: criticalRisks.length > 0 && latestLoop ? 'done' : criticalRisks.length > 0 ? 'partial' : personaCount > 0 ? 'partial' : 'missing',
-      detail: criticalRisks.length > 0 ? `핵심 ${criticalRisks.length}건${latestLoop ? ', 대응 진행' : ''}` : personaCount > 0 ? '위협 없음' : '—',
-      weight: 10,
-      action: criticalRisks.length > 0 && !latestLoop ? '합주 연습에서 핵심 위협에 대응하세요' : undefined,
-    },
-    {
-      label: '피드백 수렴',
-      status: convergence >= 0.8 ? 'done' : convergence > 0 ? 'partial' : 'missing',
-      detail: latestLoop ? `${Math.round(convergence * 100)}%` : '선택적',
-      weight: 10,
-      action: latestLoop && convergence < 0.8 ? '수렴률이 80% 미만입니다. 반복을 계속하세요' : undefined,
+      label: '리스크 식별',
+      status: criticalRisks.length > 0 ? 'done' : personaCount > 0 ? 'partial' : 'missing',
+      detail: criticalRisks.length > 0 ? `핵심 ${criticalRisks.length}건` : personaCount > 0 ? '위협 없음' : '—',
+      weight: 20,
     },
   ];
 
