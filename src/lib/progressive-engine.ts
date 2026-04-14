@@ -10,7 +10,19 @@ import {
   buildMixPrompt,
   buildFinalDeliverablePrompt,
   buildConcertmasterReviewPrompt,
+  buildStrategicForkPrompt,
+  buildWeaknessCheckPrompt,
+  type TypedQuestionContext,
 } from '@/lib/progressive-prompts';
+import {
+  buildFlowQuestion,
+  pickNextQuestionType,
+  type QuestionTypeTag,
+  type QuestionStateContext,
+  type TypedQuestionOption,
+  type StrategicForkEffect,
+  type WeaknessCheckEffect,
+} from '@/lib/question-types';
 import { buildReviewPrompt } from '@/lib/review-prompt';
 import type { Agent } from '@/stores/agent-types';
 import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
@@ -118,6 +130,160 @@ interface FinalResponse {
   changes_applied?: string[];
 }
 
+// ─── Typed question generation (Phase 1) ───
+
+interface StrategicForkLLMOption {
+  label: string;
+  decisionLine?: string;
+  rationale?: string;
+  addsWorkerRole?: string;
+  snapshotPatch?: {
+    real_question?: string;
+    hidden_assumptions?: string[];
+    skeleton?: string[];
+    insight?: string;
+  };
+}
+
+interface StrategicForkLLMResponse {
+  text: string;
+  subtext?: string;
+  options: StrategicForkLLMOption[];
+}
+
+interface WeaknessCheckLLMOption {
+  label: string;
+  weakestAssumption?: { assumption?: string; explanation?: string };
+  nextThreeDays?: string[];
+  dmFirstReaction?: string;
+  snapshotPatch?: {
+    insight?: string;
+    real_question?: string;
+    hidden_assumptions?: string[];
+    skeleton?: string[];
+  };
+}
+
+interface WeaknessCheckLLMResponse {
+  text: string;
+  subtext?: string;
+  options: WeaknessCheckLLMOption[];
+}
+
+/**
+ * Generate a typed question. Engine picks the TYPE (state machine);
+ * LLM fills in the CONTENT within that type's schema.
+ *
+ * Returns null on failure — caller should fall back to the legacy
+ * untyped next_question from runInitialAnalysis / runDeepening.
+ */
+export async function runTypedQuestion(
+  type: QuestionTypeTag,
+  ctx: TypedQuestionContext,
+  signal?: AbortSignal,
+): Promise<FlowQuestion | null> {
+  const locale = getCurrentLanguage();
+
+  try {
+    if (type === 'strategic_fork') {
+      const { system, user } = buildStrategicForkPrompt(ctx, locale);
+      const result = await callLLMJson<StrategicForkLLMResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2500, signal, shape: { text: 'string', options: 'array' } },
+      );
+      if (!result.options || result.options.length < 2) return null;
+      const options: TypedQuestionOption[] = result.options
+        .filter(o => !!o.label && !!o.decisionLine)
+        .map(o => {
+          const effect: StrategicForkEffect = {
+            decisionLine: o.decisionLine || o.label,
+            rationale: o.rationale,
+            addsWorkerRole: o.addsWorkerRole,
+            snapshotPatch: o.snapshotPatch
+              ? {
+                  real_question: o.snapshotPatch.real_question,
+                  hidden_assumptions: o.snapshotPatch.hidden_assumptions,
+                  skeleton: o.snapshotPatch.skeleton,
+                  insight: o.snapshotPatch.insight,
+                }
+              : undefined,
+          };
+          return { label: o.label, effect };
+        });
+      if (options.length < 2) return null;
+      return buildFlowQuestion(
+        generateId(),
+        'strategic_fork',
+        result.text,
+        result.subtext,
+        options,
+        'reframe',
+      );
+    }
+
+    if (type === 'weakness_check') {
+      const { system, user } = buildWeaknessCheckPrompt(ctx, locale);
+      const result = await callLLMJson<WeaknessCheckLLMResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2500, signal, shape: { text: 'string', options: 'array' } },
+      );
+      if (!result.options || result.options.length < 2) return null;
+      const options: TypedQuestionOption[] = result.options
+        .filter(o => !!o.label && !!o.weakestAssumption?.assumption && Array.isArray(o.nextThreeDays) && o.nextThreeDays.length > 0)
+        .map(o => {
+          const effect: WeaknessCheckEffect = {
+            weakestAssumption: {
+              assumption: o.weakestAssumption?.assumption || '',
+              explanation: o.weakestAssumption?.explanation || '',
+            },
+            nextThreeDays: o.nextThreeDays || [],
+            dmFirstReaction: o.dmFirstReaction,
+            snapshotPatch: o.snapshotPatch
+              ? {
+                  insight: o.snapshotPatch.insight,
+                  real_question: o.snapshotPatch.real_question,
+                  hidden_assumptions: o.snapshotPatch.hidden_assumptions,
+                  skeleton: o.snapshotPatch.skeleton,
+                }
+              : undefined,
+          };
+          return { label: o.label, effect };
+        });
+      if (options.length < 2) return null;
+      return buildFlowQuestion(
+        generateId(),
+        'weakness_check',
+        result.text,
+        result.subtext,
+        options,
+        'recast',
+      );
+    }
+
+    // frame_clarify / free_follow_up: not yet implemented — fall through to legacy.
+    return null;
+  } catch (err) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[typed-question] failed:', err instanceof Error ? err.message : err);
+    }
+    return null;
+  }
+}
+
+/**
+ * State machine wrapper — decides type, generates, returns null if nothing
+ * typed applies (caller should then use legacy question).
+ */
+export async function pickAndGenerateTypedQuestion(
+  stateCtx: QuestionStateContext,
+  promptCtx: TypedQuestionContext,
+  signal?: AbortSignal,
+): Promise<FlowQuestion | null> {
+  const type = pickNextQuestionType(stateCtx);
+  if (!type) return null;
+  return runTypedQuestion(type, promptCtx, signal);
+}
+
 // ─── Engine functions ───
 
 /**
@@ -159,7 +325,28 @@ export async function runInitialAnalysis(
     framing_locked: false,
   };
 
-  const question: FlowQuestion = {
+  // Phase 1 typed question: framing_confidence>=70이면 strategic_fork로 넘어간다.
+  // 실패 시 기존 next_question으로 fallback.
+  const typed = await pickAndGenerateTypedQuestion(
+    {
+      round: 0,
+      framingConfidence,
+      askedTypes: [],
+      workerOutputsReady: false,
+    },
+    {
+      problemText,
+      snapshot: {
+        real_question: snapshot.real_question,
+        hidden_assumptions: snapshot.hidden_assumptions,
+        skeleton: snapshot.skeleton,
+        insight: snapshot.insight,
+      },
+    },
+    signal,
+  );
+
+  const question: FlowQuestion = typed ?? {
     id: generateId(),
     text: result.next_question?.text || (locale === 'ko' ? '이 결과물을 누가 최종 판단해?' : 'Who will make the final decision on this?'),
     subtext: result.next_question?.subtext,
@@ -323,18 +510,55 @@ export async function runDeepening(
       engine_phase: 'reframe',
     };
   } else {
-    // 아직 진행 중
+    // 아직 진행 중 — Phase 1: typed question 먼저 시도.
     shouldProceedToMix = false;
-    question = result.next_question
-      ? {
-          id: generateId(),
-          text: result.next_question.text,
-          subtext: result.next_question.subtext,
-          options: result.next_question.options,
-          type: result.next_question.type || 'select',
-          engine_phase: round >= 1 ? 'recast' : 'reframe',
-        }
-      : null;
+
+    const askedTypes: QuestionTypeTag[] = [];
+    for (const qa of questionsAndAnswers) {
+      const tag = (qa.question as FlowQuestion & { typed?: { tag?: QuestionTypeTag } }).typed?.tag;
+      if (tag) askedTypes.push(tag);
+    }
+
+    const typed = await pickAndGenerateTypedQuestion(
+      {
+        round,
+        framingConfidence: snapshot.framing_confidence ?? 75,
+        askedTypes,
+        // round>=1 means the engine already asked a strategic_fork; we treat
+        // that as "enough context to fire weakness_check" even without full
+        // worker output. Real worker integration comes in a later phase.
+        workerOutputsReady: round >= 1,
+      },
+      {
+        problemText,
+        snapshot: {
+          real_question: snapshot.real_question,
+          hidden_assumptions: snapshot.hidden_assumptions,
+          skeleton: snapshot.skeleton,
+          insight: snapshot.insight,
+        },
+        previousQA: questionsAndAnswers.map(qa => ({
+          q: qa.question.text,
+          a: qa.answer.value,
+        })),
+      },
+      signal,
+    );
+
+    if (typed) {
+      question = typed;
+    } else {
+      question = result.next_question
+        ? {
+            id: generateId(),
+            text: result.next_question.text,
+            subtext: result.next_question.subtext,
+            options: result.next_question.options,
+            type: result.next_question.type || 'select',
+            engine_phase: round >= 1 ? 'recast' : 'reframe',
+          }
+        : null;
+    }
   }
 
   return {

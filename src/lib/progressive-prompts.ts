@@ -765,3 +765,233 @@ JSON:
 }`,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// TYPED QUESTION PROMPTS (Phase 1 — Q 타입 시스템)
+//
+// 기존 prompts는 모든 질문을 "generic follow-up"으로 생성해서 구조적 효과가
+// 없었다. 아래 builders는 질문 *타입*별로 완전히 다른 스키마를 요구한다 —
+// strategic_fork는 각 option이 decisionLine+rationale+addsWorkerRole을 가지고,
+// weakness_check는 weakestAssumption+nextThreeDays를 가진다.
+//
+// 호출 주체는 `runTypedQuestion` (progressive-engine.ts). LLM은 타입 안에서만
+// 내용을 생성한다 — 타입 선택 권한 없음.
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface TypedQuestionContext {
+  problemText: string;
+  snapshot: {
+    real_question: string;
+    hidden_assumptions: string[];
+    skeleton: string[];
+    insight?: string;
+  };
+  /** 이전에 물은 Q&A — 반복 방지용 */
+  previousQA?: Array<{ q: string; a: string }>;
+  /** weakness_check용: 워커가 산출한 결과 요약 */
+  workerSummary?: string;
+}
+
+/**
+ * strategic_fork — "방향을 정하는 질문".
+ *
+ * 각 옵션은 *상사가 사인할 수 있는 1줄 결정*이다. 카테고리 금지.
+ * 답이 선택되면 snapshot의 real_question/hidden_assumptions/skeleton이
+ * 그 결정에 맞춰 재편된다.
+ */
+export function buildStrategicForkPrompt(
+  ctx: TypedQuestionContext,
+  locale: Locale = 'en',
+): { system: string; user: string } {
+  const lang = locale === 'ko' ? 'Korean' : 'English';
+  const qaBlock = ctx.previousQA && ctx.previousQA.length > 0
+    ? `\nPrevious Q&A (do NOT repeat these themes):\n${ctx.previousQA.map((qa, i) => `Q${i + 1}: ${sanitize(qa.q)}\nA${i + 1}: ${sanitize(qa.a)}`).join('\n')}\n`
+    : '';
+
+  return {
+    system: `You are a sharp senior colleague helping someone figure out a decision. Always respond in ${lang}. ${locale === 'ko' ? '해요체 (warm but direct).' : 'Warm, direct tone.'}
+
+Your ONLY job right now: produce a STRATEGIC FORK question.
+
+A strategic fork is NOT a generic follow-up. It is the single question whose answer determines the SHAPE of the final deliverable. After they answer it, the real_question, the team composition, and the skeleton should all pivot.
+
+═══ THE HARDEST RULE ═══
+Each option MUST be a ONE-LINE DECISION a boss could literally sign off on.
+NOT a category. NOT a theme. NOT a priority label.
+
+${locale === 'ko' ? `BAD options (카테고리 — 절대 금지):
+  ✗ "속도 우선"
+  ✗ "품질 우선"
+  ✗ "리스크 최소화"
+  ✗ "경쟁사 분석 중심"
+
+GOOD options (상사가 사인할 1줄 결정):
+  ✓ "경쟁사가 못 하는 한 가지를, 4주 뒤에 증명하겠습니다."
+  ✓ "기존 사업 +12% vs 신사업 +35%. 6개월 후 신사업이 우위입니다."
+  ✓ "Week 1~4 마일스톤으로, '이게 진짜 되는가'를 4주 뒤에 증명합니다."
+  ✓ "방향 확정 3일 + 본격 기획 11일. 2주 뒤 한 장으로 가져오겠습니다."
+
+The pattern: VERB + 구체적 숫자/기간 + 결과. 막연한 전략 카테고리가 아니라, "이거 할게요"라고 약속하는 문장.` : `BAD options (categories — NEVER):
+  ✗ "Prioritize speed"
+  ✗ "Prioritize quality"
+  ✗ "Minimize risk"
+  ✗ "Focus on competitive analysis"
+
+GOOD options (1-line decisions a boss could sign):
+  ✓ "Prove one thing the competitor can't do, in 4 weeks."
+  ✓ "Current product +12% vs new bet +35%. New bet wins at 6 months."
+  ✓ "Week 1–4 milestones. Demo 'it actually works' in 4 weeks."
+  ✓ "3 days to lock direction + 11 days to plan. One-pager in 2 weeks."
+
+The pattern: VERB + concrete numbers/timeline + outcome. Not vague strategy categories — a specific promise.`}
+
+═══ QUESTION TEXT RULES ═══
+- Question must dig into the SITUATION, not admin details.
+- Reference the real context. "대표님이 이 사업을 왜 시키셨을까?" / "고객사가 왜 당신 팀을 PT에 불렀을까요?" — these kinds.
+- NEVER ask "what format do you want" / "who is the decision maker" / "what's the deadline".
+- subtext should create ANTICIPATION: "이 하나가 기획안의 구조를 완전히 바꿔요" level.
+
+═══ OPTION EFFECTS ═══
+For each option, also provide:
+1. **decisionLine**: the 1-line commitment (same as the option label, or a refined version).
+2. **rationale**: ONE sentence on why this direction makes sense given their situation.
+3. **addsWorkerRole**: ONE role keyword that should join the team if this path is chosen. Examples: ${locale === 'ko' ? '"숫자 분석가", "리스크 분석가", "실행 로드맵", "인터뷰 설계"' : '"number crunching", "risk analysis", "execution roadmap", "interviewer"'}
+4. **snapshotPatch**: updated real_question (1 sentence, ends with ?) + updated hidden_assumptions (2–3 items) + updated skeleton (5 items) — all rewritten to fit THIS chosen direction. The user must FEEL the plan pivoting.
+5. **insight**: one memorable sentence summarizing the shift this option creates.
+
+Offer 3–4 options. Each must lead to a genuinely different deliverable structure. If two options would produce the same skeleton, they're not different enough — replace one.
+
+Respond in JSON only.`,
+
+    user: `The user's situation:
+<user-data>${sanitize(ctx.problemText)}</user-data>
+
+Current analysis:
+- Real question: ${sanitize(ctx.snapshot.real_question)}
+- Hidden assumptions: ${ctx.snapshot.hidden_assumptions.map(a => sanitize(a)).join(' / ')}
+- Skeleton: ${ctx.snapshot.skeleton.map(s => sanitize(s)).join(' / ')}
+${qaBlock}
+Produce the STRATEGIC FORK question now.
+
+JSON:
+{
+  "text": "Situation-shaping question (ends with ?)",
+  "subtext": "One line creating anticipation — 'this one answer changes everything'",
+  "options": [
+    {
+      "label": "ONE-LINE DECISION (verb + numbers + outcome). NOT a category.",
+      "decisionLine": "same or refined 1-line commitment",
+      "rationale": "one sentence: why this direction",
+      "addsWorkerRole": "one role keyword",
+      "snapshotPatch": {
+        "real_question": "updated question (ends with ?)",
+        "hidden_assumptions": ["2-3 realistic assumptions under this path"],
+        "skeleton": ["5 action steps rewritten for this path, each with sequence word + action + why"],
+        "insight": "one memorable sentence about what this direction reveals"
+      }
+    }
+    // ... 3-4 total options
+  ]
+}`,
+  };
+}
+
+/**
+ * weakness_check — "약점을 찌르는 질문".
+ *
+ * 워커가 산출한 결과를 본 뒤, 그 안에서 가장 위험한 가정을 어느 경로로
+ * 검증할지 고르게 한다. 답이 선택되면 weakest_assumption + next_three_days가
+ * 결정된다. 이게 Phase 3의 응축 draft를 먹여 살린다.
+ */
+export function buildWeaknessCheckPrompt(
+  ctx: TypedQuestionContext,
+  locale: Locale = 'en',
+): { system: string; user: string } {
+  const lang = locale === 'ko' ? 'Korean' : 'English';
+  const workerBlock = ctx.workerSummary
+    ? `\nTeam output so far:\n${sanitize(ctx.workerSummary)}\n`
+    : '';
+  const qaBlock = ctx.previousQA && ctx.previousQA.length > 0
+    ? `\nPrevious Q&A (do NOT repeat):\n${ctx.previousQA.map((qa, i) => `Q${i + 1}: ${sanitize(qa.q)}\nA${i + 1}: ${sanitize(qa.a)}`).join('\n')}\n`
+    : '';
+
+  return {
+    system: `You are a sharp senior colleague doing a reality check. Always respond in ${lang}. ${locale === 'ko' ? '해요체 (warm but direct).' : 'Warm, direct tone.'}
+
+Your ONLY job right now: produce a WEAKNESS CHECK question.
+
+The team has produced an initial answer. Before committing, the user must pick WHICH validation path to take first. Each path surfaces a DIFFERENT weakest assumption and unlocks a DIFFERENT 3-day plan.
+
+═══ THE QUESTION ═══
+${locale === 'ko' ? `Example text: "팀이 답을 만들었어요. 이제, 먼저 무엇으로 검증할까요?"
+Example subtext: "어느 검증부터 시작하느냐가 다음 3일을 정해요."` : `Example text: "The team has an answer. What do you validate first?"
+Example subtext: "The path you pick determines your next 3 days."`}
+
+═══ OPTIONS (3–4) ═══
+Each option is a VALIDATION PATH. Concrete, doable in the next 3 days. NOT a category.
+
+${locale === 'ko' ? `GOOD options:
+  ✓ "셀러 5명한테 직접 통화해서 물어보기"
+  ✓ "작동하는 베타를 한 명한테 시연하기"
+  ✓ "경쟁사 후기를 더 깊게 분석하기"
+  ✓ "기존 우리 고객 중에 셀러 있는지 확인하기"
+
+BAD options (너무 추상적):
+  ✗ "시장 조사"
+  ✗ "기술 검증"
+  ✗ "고객 피드백 수집"` : `GOOD options:
+  ✓ "Cold-call 5 sellers directly"
+  ✓ "Demo a working beta to one customer"
+  ✓ "Analyze competitor reviews deeply"
+  ✓ "Check if any existing customers are sellers"
+
+BAD options (too abstract):
+  ✗ "Market research"
+  ✗ "Technical validation"
+  ✗ "Customer feedback"`}
+
+═══ PER-OPTION EFFECTS ═══
+For each validation path, answer:
+1. **weakestAssumption**: { assumption, explanation } — what assumption is MOST AT RISK if this path fails? Be specific. Not "we might be wrong about product-market fit" — say "cold-call response rate might be <25%, forcing 20+ attempts to reach 5 sellers."
+2. **nextThreeDays**: 2–4 concrete actions (not categories). Day 1 / Day 2 / Day 3 granularity. Each starts with a verb.
+3. **dmFirstReaction**: ONE line of what the decision-maker will say first when they see this path. Blunt, realistic, the way a boss actually talks.
+4. **insight**: one memorable sentence on what this path reveals.
+
+Respond in JSON only.`,
+
+    user: `The user's situation:
+<user-data>${sanitize(ctx.problemText)}</user-data>
+
+Current analysis:
+- Real question: ${sanitize(ctx.snapshot.real_question)}
+- Hidden assumptions: ${ctx.snapshot.hidden_assumptions.map(a => sanitize(a)).join(' / ')}
+${workerBlock}${qaBlock}
+Produce the WEAKNESS CHECK question now.
+
+JSON:
+{
+  "text": "Validation-path question",
+  "subtext": "One line — 'this picks your next 3 days'",
+  "options": [
+    {
+      "label": "Concrete validation action",
+      "weakestAssumption": {
+        "assumption": "the specific assumption at risk under this path",
+        "explanation": "one sentence on why"
+      },
+      "nextThreeDays": [
+        "Day 1 concrete action",
+        "Day 2 concrete action",
+        "Day 3 concrete action"
+      ],
+      "dmFirstReaction": "Blunt 1-line reaction a boss would actually say",
+      "snapshotPatch": {
+        "insight": "one memorable sentence about this path"
+      }
+    }
+    // ... 3-4 options
+  ]
+}`,
+  };
+}
+

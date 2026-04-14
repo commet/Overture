@@ -727,6 +727,13 @@ export interface FlowQuestion {
   options?: string[];           // 선택형일 때
   type: 'select' | 'short';    // 선택 or 짧은 입력
   engine_phase: 'reframe' | 'recast';  // 어떤 엔진을 위한 질문인지
+  /**
+   * Typed question metadata (Phase 1 — Q 타입 시스템).
+   * Present when the engine generated this via a typed prompt
+   * (strategic_fork / weakness_check / frame_clarify).
+   * See `src/lib/question-types.ts`. JSON-safe; persisted.
+   */
+  typed?: import('@/lib/question-types').TypedQuestionMeta;
 }
 
 export interface FlowAnswer {
@@ -764,6 +771,14 @@ export interface AnalysisSnapshot {
   // Convergence tracking (Weakness C fix)
   convergence_score?: number;       // 0-100: 질문 안정성 + 가정 감소 종합
   convergence_trend?: 'improving' | 'stable' | 'declining' | 'unclear';
+
+  // ── Typed-question effects captured into analysis (Phase 1) ──
+  /** 상사가 사인할 수 있는 1줄 결정문 — strategic_fork 답에서 흘러옴 */
+  decision_line?: string;
+  /** 가장 위험한 가정 — weakness_check 답에서 흘러옴 */
+  weakest_assumption?: { assumption: string; explanation: string };
+  /** 다음 3일 우선순위 작업 — weakness_check 답에서 흘러옴 */
+  next_three_days?: string[];
 }
 
 // ─── Agent Workers ───

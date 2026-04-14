@@ -17,7 +17,9 @@
       "Bash(git push:*)",
       "mcp__claude_ai_Supabase__list_tables",
       "Skill(blindspot)",
-      "Skill(blindspot:*)"
+      "Skill(blindspot:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

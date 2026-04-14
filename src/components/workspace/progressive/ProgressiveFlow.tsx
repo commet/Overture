@@ -31,6 +31,8 @@ import { withTranscript } from '@/lib/execution-transcript';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
 import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask, LeadSynthesisResult } from '@/stores/types';
+import { findEffectForAnswer, applySnapshotPatch } from '@/lib/question-types';
+import type { StrategicForkEffect, WeaknessCheckEffect } from '@/lib/question-types';
 import { WorkerReportBlock } from './WorkerCard';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
@@ -1097,6 +1099,19 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     store.addAnswer(ans); store.setPhase('analyzing'); track('flow_answer', { round }); setBusy(true); setError(null); scroll();
     // Tell the sidebar agents "new input just landed" — triggers flash
     useAgentAttentionStore.getState().ping('answer');
+
+    // ── Phase 1: capture typed question effect ──
+    // If the question had typed metadata, pull out the effect tied to the
+    // chosen option. We apply it onto the post-deepening snapshot below so
+    // the LLM cannot overwrite the user's explicit fork / weakness choice.
+    const typedEffect = findEffectForAnswer(curQ, value);
+    let forkEffect: StrategicForkEffect | null = null;
+    let weakEffect: WeaknessCheckEffect | null = null;
+    if (typedEffect) {
+      if ('decisionLine' in typedEffect) forkEffect = typedEffect as StrategicForkEffect;
+      else if ('weakestAssumption' in typedEffect && 'nextThreeDays' in typedEffect) weakEffect = typedEffect as WeaknessCheckEffect;
+    }
+
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: curQ, answer: ans });
@@ -1120,7 +1135,26 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const personas = usePersonaStore.getState().personas.filter(p => !p.is_example && !p.deleted_at).map(p => ({ name: p.name, role: p.role, hasContact: !!(p.contact?.email || p.contact?.slack_id) }));
       const r = await runDeepening(session.problem_text, latest, qa, round, maxR, snapshots, (text) => setStreamingText(text), abortRef.current.signal, leadCtx, personas.length > 0 ? personas : undefined);
       setStreamingText(null);
-      store.addSnapshot(r.snapshot); store.advanceRound();
+      // Phase 1: merge typed-question effects onto the fresh snapshot.
+      // Strategy: if the user picked a strategic_fork option, the fork's
+      // snapshotPatch (real_question/skeleton/hidden_assumptions) is what
+      // the user explicitly signed up for — it takes precedence over the
+      // LLM's own reinterpretation in runDeepening. decision_line is
+      // stickiest: it must survive every subsequent round.
+      let mergedSnapshot: AnalysisSnapshot = r.snapshot;
+      if (forkEffect?.snapshotPatch) {
+        mergedSnapshot = applySnapshotPatch(mergedSnapshot, forkEffect.snapshotPatch);
+      }
+      if (weakEffect?.snapshotPatch) {
+        mergedSnapshot = applySnapshotPatch(mergedSnapshot, weakEffect.snapshotPatch);
+      }
+      mergedSnapshot = {
+        ...mergedSnapshot,
+        decision_line: forkEffect?.decisionLine ?? latest.decision_line ?? r.snapshot.decision_line,
+        weakest_assumption: weakEffect?.weakestAssumption ?? latest.weakest_assumption ?? r.snapshot.weakest_assumption,
+        next_three_days: weakEffect?.nextThreeDays ?? latest.next_three_days ?? r.snapshot.next_three_days,
+      };
+      store.addSnapshot(mergedSnapshot); store.advanceRound();
       // Prepare workers when execution_plan appears
       const existingWorkers = store.currentSession()?.workers ?? [];
       const currentDeployPhase = store.currentSession()?.worker_deploy_phase ?? 'none';

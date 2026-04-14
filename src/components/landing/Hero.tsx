@@ -129,46 +129,63 @@ function RealQuestionCard({ data, locale }: { data: ExampleData; locale: Locale 
       className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
     >
       <div className="h-[2px] w-full" style={{ background: 'var(--gradient-gold)' }} />
-      {/* Input quote */}
-      <div className="px-5 pt-4 pb-3 bg-[var(--bg)]">
-        <p className="text-[13px] text-[var(--text-secondary)] leading-snug truncate">
+
+      {/* 1. Input — clearly labeled as user's situation */}
+      <div className="px-5 pt-4 pb-4 bg-[var(--bg)] border-b border-[var(--border-subtle)]">
+        <p className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.12em] mb-1.5">
+          {L('내 상황', 'Your situation')}
+        </p>
+        <p className="text-[14px] text-[var(--text-primary)] leading-snug">
           &ldquo;{data.input}&rdquo;
         </p>
       </div>
-      {/* Real question */}
+
+      {/* 2. Overture's first insight — the reframe */}
       <div className="px-5 pt-4 pb-5">
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4, ease: EASE }}
-          className="flex items-center gap-2 mb-3"
+          className="flex items-center gap-2 mb-2.5"
         >
           <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] bg-[var(--accent)]/8 px-2.5 py-1 rounded-full">
-            {data.realQuestion.tag}
+            {L('30초 후, 첫 통찰', 'First insight, 30s')}
           </span>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.45, ease: EASE }}
-          className="text-[18px] md:text-[20px] font-bold text-[var(--text-primary)] leading-snug tracking-tight whitespace-pre-line"
+          className="text-[17px] md:text-[19px] font-bold text-[var(--text-primary)] leading-snug tracking-tight whitespace-pre-line"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           {data.realQuestion.text}
         </motion.p>
 
-        {/* Payoff: what happens next */}
+        {/* 3. Concrete deliverables — what comes next */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.4, ease: EASE }}
-          className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center gap-2 text-[12px]"
+          className="mt-5 pt-4 border-t border-[var(--border-subtle)]"
         >
-          <span className="text-[var(--accent)] font-medium">{L('초안 생성', 'Draft')}</span>
-          <span className="text-[var(--text-tertiary)]">&rarr;</span>
-          <span className="text-[var(--accent)] font-medium">{L('사전 검증', 'Pre-validation')}</span>
-          <span className="text-[var(--text-tertiary)]">&rarr;</span>
-          <span className="text-[var(--accent)] font-medium">{L('제출 가능한 문서', 'Ready to submit')}</span>
+          <p className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.12em] mb-2.5">
+            {L('그다음 자동으로', 'Then automatically')}
+          </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-[12.5px]">
+              <span className="text-[var(--accent)] font-bold w-3">①</span>
+              <span className="text-[var(--text-secondary)]">{L('구조화된 초안 생성', 'Structured draft')}</span>
+            </div>
+            <div className="flex items-center gap-2 text-[12.5px]">
+              <span className="text-[var(--accent)] font-bold w-3">②</span>
+              <span className="text-[var(--text-secondary)]">{L('약한 곳 사전 검증', 'Weak spots flagged')}</span>
+            </div>
+            <div className="flex items-center gap-2 text-[12.5px]">
+              <span className="text-[var(--accent)] font-bold w-3">③</span>
+              <span className="text-[var(--text-secondary)]">{L('제출 가능한 문서 완성', 'Ready to submit')}</span>
+            </div>
+          </div>
         </motion.div>
       </div>
     </motion.div>
@@ -277,74 +294,13 @@ export function Hero() {
               <span className="text-[var(--accent)] font-medium">{L('사전 검증', 'Pre-validate')}</span>
             </div>
 
-            {/* ─── Inline Input ─── */}
+            {/* ─── Examples (Primary) → Input (Secondary) ─── */}
             <div className="mt-5 lg:mt-8">
-              {/* Explicit input label — resolves "what should I click" confusion */}
-              <label htmlFor="hero-problem-input" className="block text-[12px] font-semibold text-[var(--text-secondary)] mb-2 px-1 tracking-tight">
-                {L('1. 내 상황을 직접 입력', '1. Type your situation')}
-              </label>
-              <div
-                className="relative rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
-                style={{
-                  transitionProperty: 'border-color, box-shadow',
-                  transitionDuration: '400ms',
-                  transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
-                }}
-              >
-                <div className="flex items-center gap-3 px-5 py-4">
-                  <input
-                    id="hero-problem-input"
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onFocus={handleFocus}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
-                    placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : examples[currentIdx].input}
-                    maxLength={200}
-                    className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
-                    aria-describedby="hero-input-hint"
-                  />
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!inputValue.trim()}
-                    className="shrink-0 h-11 px-5 rounded-full flex items-center gap-1.5 text-[14px] font-semibold text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.97] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
-                    style={{
-                      background: 'var(--gradient-gold)',
-                      transitionProperty: 'box-shadow, transform, opacity',
-                      transitionDuration: '300ms',
-                      transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
-                    }}
-                    aria-label={inputValue.trim() ? L('시작', 'Start') : L('입력 후 시작', 'Type first, then start')}
-                  >
-                    {L('시작', 'Start')}
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
-
-              </div>
-
-              {/* Helper hint below input — shown always, changes by state */}
-              <p id="hero-input-hint" className="text-[11px] text-[var(--text-tertiary)] mt-2 px-1">
-                {inputValue.trim()
-                  ? L('엔터 또는 [시작] 클릭', 'Press Enter or click [Start]')
-                  : L('문장으로 적으면 됩니다. 프롬프트 고민 필요 없음', 'Just write it naturally — no prompt engineering')}
+              {/* 1. Examples — primary path */}
+              <p className="block text-[12px] font-semibold text-[var(--text-secondary)] mb-3 px-1 tracking-tight">
+                {L('1. 예시로 바로 체험', '1. Try an example')}
               </p>
 
-              {/* ─── Mobile-only card: right after input for immediate context ─── */}
-              <div className="mt-6 lg:hidden">
-                <CardSection example={currentExample} locale={locale} />
-              </div>
-
-              {/* ─── OR divider ─── */}
-              <div className="flex items-center gap-3 mt-6 mb-3 px-1">
-                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
-                  {L('2. 또는 예시로 체험', '2. Or try a demo')}
-                </span>
-                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-              </div>
-
-              {/* ─── Scenario Buttons with active indicator ─── */}
               <div className="flex flex-wrap items-center gap-2">
                 {examples.map((ex, i) => {
                   const isActive = i === currentIdx && !focused;
@@ -369,6 +325,65 @@ export function Hero() {
                   );
                 })}
               </div>
+
+              {/* Mobile-only card right after examples */}
+              <div className="mt-6 lg:hidden">
+                <CardSection example={currentExample} locale={locale} />
+              </div>
+
+              {/* 2. Direct input — secondary, compact */}
+              <div className="flex items-center gap-3 mt-7 mb-2.5 px-1">
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
+                  {L('2. 또는 직접 입력', '2. Or type your own')}
+                </span>
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+              </div>
+
+              <div
+                className="relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-sm)] overflow-hidden focus-within:border-[var(--accent)]/40 focus-within:shadow-[var(--glow-gold)]"
+                style={{
+                  transitionProperty: 'border-color, box-shadow',
+                  transitionDuration: '400ms',
+                  transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                }}
+              >
+                <div className="flex items-center gap-2 px-3.5 py-2">
+                  <input
+                    id="hero-problem-input"
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onFocus={handleFocus}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
+                    placeholder={focused ? L('고민을 입력하세요...', 'Describe your challenge...') : examples[currentIdx].input}
+                    maxLength={200}
+                    className="flex-1 bg-transparent text-[13.5px] text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-tertiary)]"
+                    aria-describedby="hero-input-hint"
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!inputValue.trim()}
+                    className="shrink-0 h-9 px-3.5 rounded-full flex items-center gap-1 text-[12.5px] font-semibold text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-gold-intense)] active:scale-[0.97] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
+                    style={{
+                      background: 'var(--gradient-gold)',
+                      transitionProperty: 'box-shadow, transform, opacity',
+                      transitionDuration: '300ms',
+                      transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
+                    }}
+                    aria-label={inputValue.trim() ? L('시작', 'Start') : L('입력 후 시작', 'Type first, then start')}
+                  >
+                    {L('시작', 'Start')}
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              </div>
+
+              <p id="hero-input-hint" className="text-[11px] text-[var(--text-tertiary)] mt-1.5 px-1">
+                {inputValue.trim()
+                  ? L('엔터 또는 [시작] 클릭', 'Press Enter or click [Start]')
+                  : L('문장으로 적으면 됩니다. 프롬프트 고민 필요 없음', 'Just write it naturally — no prompt engineering')}
+              </p>
 
               <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5 mt-4 px-1">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-40 shrink-0">
