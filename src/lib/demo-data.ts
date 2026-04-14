@@ -85,19 +85,58 @@ export function applyPatch(base: AnalysisSnapshot, patch: Partial<AnalysisSnapsh
   };
 }
 
-/** finalBase에 concern 반영 결과를 삽입 */
-export function buildFinal(scenario: DemoScenario, concerns: DMConcern[]): string {
+/** Q1/Q2 답에서 추출한 동적 데이터 — buildFinal에 주입해서 placeholder 치환 */
+export interface BuildFinalDynamicData {
+  decisionLine?: string | null;
+  thirdWorker?: {
+    persona: { emoji: string; name: string };
+    task: string;
+    completionNote: string;
+  } | null;
+  weakestAssumption?: { assumption: string; explanation: string } | null;
+  nextThreeDays?: string[] | null;
+}
+
+/** finalBase에 concern 반영 결과 + Q1/Q2 답 동적 substitution */
+export function buildFinal(
+  scenario: DemoScenario,
+  concerns: DMConcern[],
+  dynamic?: BuildFinalDynamicData,
+): string {
   let doc = scenario.finalBase;
-  if (concerns[0]?.applied) {
-    doc = doc.replace('<!-- PATCH_0 -->', scenario.finalPatches[0]);
-  } else {
-    doc = doc.replace('<!-- PATCH_0 -->', '');
-  }
-  if (concerns[1]?.applied) {
-    doc = doc.replace('<!-- PATCH_1 -->', scenario.finalPatches[1]);
-  } else {
-    doc = doc.replace('<!-- PATCH_1 -->', '');
-  }
+
+  // 기존: concern PATCH_0/1 substitution
+  doc = doc.replace('<!-- PATCH_0 -->', concerns[0]?.applied ? scenario.finalPatches[0] : '');
+  doc = doc.replace('<!-- PATCH_1 -->', concerns[1]?.applied ? scenario.finalPatches[1] : '');
+
+  // v2: Q1/Q2 답으로 placeholder 치환 (draftV2 default로 fallback)
+  const draftV2 = scenario.draftV2;
+
+  // {{decisionLine}}
+  const decisionLine = dynamic?.decisionLine ?? draftV2?.decisionLineDefault ?? '';
+  doc = doc.replace('{{decisionLine}}', decisionLine ? `"${decisionLine}"` : '');
+
+  // {{thirdWorkerBlock}} — Q1 답으로 합류한 동료의 한 단락
+  const tw = dynamic?.thirdWorker;
+  const thirdWorkerBlock = tw
+    ? `## ${tw.persona.emoji} ${tw.persona.name} — ${tw.task}\n\n> "${tw.completionNote}"`
+    : '';
+  doc = doc.replace('{{thirdWorkerBlock}}', thirdWorkerBlock);
+
+  // {{weakestAssumption}}
+  const wa = dynamic?.weakestAssumption ?? draftV2?.weakestAssumptionDefault;
+  const weakestBlock = wa
+    ? `> **"${wa.assumption}"**\n>\n> ${wa.explanation}`
+    : '';
+  doc = doc.replace('{{weakestAssumption}}', weakestBlock);
+
+  // {{nextSteps}}
+  const steps = dynamic?.nextThreeDays ?? draftV2?.nextThreeDaysDefault;
+  const nextStepsBlock = steps && steps.length > 0
+    ? steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+    : '';
+  doc = doc.replace('{{nextSteps}}', nextStepsBlock);
+
   return doc.trim();
 }
 
@@ -529,14 +568,14 @@ const scenario1: DemoScenario = {
     },
   },
 
-  // ─── Final Document ───
+  // ─── Final Document (placeholders: {{decisionLine}}, {{thirdWorkerBlock}}, {{weakestAssumption}}, {{nextSteps}}) ───
   finalBase: `# AI 고객 상담 — 이커머스 셀러 1차 진입
 
 > 경쟁사가 시장을 열었습니다. 그런데 이커머스 셀러 자리는 비어 있어요. **세팅 1일 · 가격 1/3**로 진입, 6개월 1,500만원, 25곳이면 흑자.
 
 ## 결재 한 줄
 
-> "4주 뒤, 이커머스 셀러 한 명 앞에서 작동하는 베타를 보여드리겠습니다."
+> {{decisionLine}}
 
 ## 한 장 요약
 
@@ -548,6 +587,8 @@ const scenario1: DemoScenario = {
 | 인력 | PM + 하청 | **시니어 + 주니어 2명 전담** |
 
 경쟁사 셀러 계정으로 한 시간 직접 써본 결과 — 가장 큰 약점은 **"우리 업종에 안 맞아 결국 사람이 답변함."** 업종 특화가 우리 기회예요.
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## 6개월 실행
@@ -560,15 +601,11 @@ const scenario1: DemoScenario = {
 
 ## 가장 약한 가정 (먼저 검증할 것)
 
-> **"이커머스 셀러가 정말 매달 29만 원을 낼까."**
->
-> 아직 셀러 한 명에게도 안 물어봤어요. 그게 첫 번째 위험이고, 다음 단계의 첫 줄이에요.
+{{weakestAssumption}}
 
 ## 다음 단계
 
-1. **이번 주** — 이커머스 셀러 5명에게 통화 ("월 29만원에 쓸 의향?")
-2. **2주차** — 대표 리뷰 (방향·인력·비용 승인)
-3. **6주차** — MVP 출시 + 첫 파일럿 가동`,
+{{nextSteps}}`,
 
   finalPatches: [
     // concern[0] 반영: 이커머스 CS 구체 사례
@@ -987,14 +1024,14 @@ const scenario2: DemoScenario = {
     },
   },
 
-  // ─── Final Document ───
+  // ─── Final Document (placeholders: {{decisionLine}}, {{thirdWorkerBlock}}, {{weakestAssumption}}, {{nextSteps}}) ───
   finalBase: `# 물류 자동화 — 경쟁 PT 전략서 (vs S사)
 
 > S사는 회사를 소개하러 오고, 우리는 *당신의* 문제를 풀러 갑니다.
 
 ## 핵심 한 줄
 
-> "PT에서 본 이 팀이 그대로 프로젝트를 합니다. S사의 영업팀이 아닙니다."
+> {{decisionLine}}
 
 ## 우리 vs S사
 
@@ -1016,18 +1053,18 @@ const scenario2: DemoScenario = {
 | 3. PT 직후 약속 | 10분 | 1주~2주 안에 보내드릴 산출물 |
 
 S사는 30분 중 15분을 회사 소개에 씁니다. **우리는 20분을 고객사 얘기에 씁니다.**
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## 정직한 한 줄 (가장 약한 가정)
 
-> "물류팀장님의 추천만으로 임원 결재가 날까."
->
-> 추천은 입구이고, 결재는 임원이에요. 임원을 설득할 추가 증거는 PT 자리에서 만들어야 합니다.
+{{weakestAssumption}}
 <!-- PATCH_1 -->
 
-## PT 후 1주 안 약속
+## 다음 3일 / PT 준비
 
-PT 자리에서 본 시니어 3명이 그대로 프로젝트를 진행합니다. PT 직후 일주일 안에 첫 산출물을 보내드리겠습니다.`,
+{{nextSteps}}`,
 
   finalPatches: [
     // concern[0]: 레퍼런스 + 전담 배치
@@ -1422,12 +1459,16 @@ const scenario3: DemoScenario = {
     },
   },
 
-  // ─── Final Document ───
+  // ─── Final Document (placeholders: {{decisionLine}}, {{thirdWorkerBlock}}, {{weakestAssumption}}, {{nextSteps}}) ───
   finalBase: `# T사 30% 인하 — 경영회의 대응 전략
 
 > T사 30% 인하는 시리즈B 250억 기반 단기 전략 (월 3~4억 소진 추정 → 약 12~18개월 체력). 80곳 중 실제 이탈 의사는 1곳, 매출 영향 1.1%.
 
-## 4가지 대응 시나리오
+## 권고 한 줄
+
+> {{decisionLine}}
+
+## 4가지 대응 시나리오 (참고용)
 
 | 옵션 | A. 따라 내리기 | B. 선별 할인 + 가치 방어 | C. 관망 / 버티기 | D. 프리미엄 재포지셔닝 |
 |---|---|---|---|---|
@@ -1437,22 +1478,20 @@ const scenario3: DemoScenario = {
 | 본질 | 방어 본능 | 균형 본능 | 관망 본능 | 공격 본능 |
 
 각 시나리오의 본능에는 놓치는 구멍이 있어요. 그 구멍을 동료가 검증하고 보강했습니다.
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## 가장 약한 가정 (먼저 검증할 것)
 
-> "3곳이 정말 이탈 의사일까, 아니면 단순 가격 비교일까."
->
-> 영업팀의 "위기" 신호와 실제 발언 사이에 격차가 있을 수 있어요. 정확한 워딩을 한 번 더 확인하는 게 보고서의 첫 줄이에요.
+{{weakestAssumption}}
 <!-- PATCH_1 -->
 
-## 즉시 실행 (이번 주)
+## 다음 3일 (금요일 회의 전까지)
 
-1. **이탈 위험 10곳 확정** + 선별 할인 시행 (해당 시나리오인 경우)
-2. **영업팀 가치 스크립트 배포** + 할인 권한 매트릭스
-3. **재무팀 마진율 도장** + 시나리오별 시뮬
+{{nextSteps}}
 
-## 모니터링
+## 모니터링 (회의 후)
 
 - 월 1회 이탈률 점검 — 5% 넘으면 부분 대응 트리거
 - T사 상황 12개월 시점 재평가 (캘린더에 미리 박기)

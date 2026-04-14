@@ -85,19 +85,58 @@ export function applyPatch(base: AnalysisSnapshot, patch: Partial<AnalysisSnapsh
   };
 }
 
-/** Insert concern-applied results into finalBase */
-export function buildFinal(scenario: DemoScenario, concerns: DMConcern[]): string {
+/** Dynamic data extracted from Q1/Q2 answers — injected into buildFinal to substitute placeholders */
+export interface BuildFinalDynamicData {
+  decisionLine?: string | null;
+  thirdWorker?: {
+    persona: { emoji: string; name: string };
+    task: string;
+    completionNote: string;
+  } | null;
+  weakestAssumption?: { assumption: string; explanation: string } | null;
+  nextThreeDays?: string[] | null;
+}
+
+/** Insert concern-applied results + Q1/Q2 dynamic substitution into finalBase */
+export function buildFinal(
+  scenario: DemoScenario,
+  concerns: DMConcern[],
+  dynamic?: BuildFinalDynamicData,
+): string {
   let doc = scenario.finalBase;
-  if (concerns[0]?.applied) {
-    doc = doc.replace('<!-- PATCH_0 -->', scenario.finalPatches[0]);
-  } else {
-    doc = doc.replace('<!-- PATCH_0 -->', '');
-  }
-  if (concerns[1]?.applied) {
-    doc = doc.replace('<!-- PATCH_1 -->', scenario.finalPatches[1]);
-  } else {
-    doc = doc.replace('<!-- PATCH_1 -->', '');
-  }
+
+  // Existing: concern PATCH_0/1 substitution
+  doc = doc.replace('<!-- PATCH_0 -->', concerns[0]?.applied ? scenario.finalPatches[0] : '');
+  doc = doc.replace('<!-- PATCH_1 -->', concerns[1]?.applied ? scenario.finalPatches[1] : '');
+
+  // v2: substitute placeholders from Q1/Q2 answers (fallback to draftV2 defaults)
+  const draftV2 = scenario.draftV2;
+
+  // {{decisionLine}}
+  const decisionLine = dynamic?.decisionLine ?? draftV2?.decisionLineDefault ?? '';
+  doc = doc.replace('{{decisionLine}}', decisionLine ? `"${decisionLine}"` : '');
+
+  // {{thirdWorkerBlock}} — paragraph for the teammate who joined based on Q1
+  const tw = dynamic?.thirdWorker;
+  const thirdWorkerBlock = tw
+    ? `## ${tw.persona.emoji} ${tw.persona.name} — ${tw.task}\n\n> "${tw.completionNote}"`
+    : '';
+  doc = doc.replace('{{thirdWorkerBlock}}', thirdWorkerBlock);
+
+  // {{weakestAssumption}}
+  const wa = dynamic?.weakestAssumption ?? draftV2?.weakestAssumptionDefault;
+  const weakestBlock = wa
+    ? `> **"${wa.assumption}"**\n>\n> ${wa.explanation}`
+    : '';
+  doc = doc.replace('{{weakestAssumption}}', weakestBlock);
+
+  // {{nextSteps}}
+  const steps = dynamic?.nextThreeDays ?? draftV2?.nextThreeDaysDefault;
+  const nextStepsBlock = steps && steps.length > 0
+    ? steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+    : '';
+  doc = doc.replace('{{nextSteps}}', nextStepsBlock);
+
   return doc.trim();
 }
 
@@ -536,7 +575,7 @@ const scenario1: DemoScenario = {
 
 ## Decision line
 
-> "In 4 weeks, I'll show you a working beta in front of one e-commerce seller."
+> {{decisionLine}}
 
 ## One-page summary
 
@@ -548,6 +587,8 @@ const scenario1: DemoScenario = {
 | Headcount | PM + outsourced | **1 senior + 1 junior, dedicated** |
 
 After signing up for the competitor as a seller and using it for an hour — the biggest weakness is **"doesn't fit our industry, so a human ends up answering anyway."** Industry-specificity is our opportunity.
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## 6-month execution
@@ -560,15 +601,11 @@ After signing up for the competitor as a seller and using it for an hour — the
 
 ## Weakest assumption (validate first)
 
-> **"Will an e-commerce seller really pay $290/month?"**
->
-> We haven't asked a single seller. That's the first risk, and the first item in next steps.
+{{weakestAssumption}}
 
 ## Next steps
 
-1. **This week** — call 5 e-commerce sellers ("Would you pay $290/month?")
-2. **Week 2** — CEO review (direction, headcount, budget approval)
-3. **Week 6** — MVP launch + first pilot`,
+{{nextSteps}}`,
 
   finalPatches: [
     // concern[0] applied: Specific target industry
@@ -983,13 +1020,14 @@ const scenario2: DemoScenario = {
     },
   },
 
+  // ─── Final Document (placeholders: {{decisionLine}}, {{thirdWorkerBlock}}, {{weakestAssumption}}, {{nextSteps}}) ───
   finalBase: `# Logistics Automation — Competitive Pitch Strategy (vs Company S)
 
 > Company S comes to introduce themselves; we come to solve *your* problem.
 
 ## The core line
 
-> "The team you meet at the pitch is the team that runs the project. Not Company S's sales team."
+> {{decisionLine}}
 
 ## Us vs Company S
 
@@ -1011,18 +1049,18 @@ const scenario2: DemoScenario = {
 | 3. The post-pitch promise | 10 min | Concrete deliverables within 1 week of the pitch |
 
 Company S spends 15 of 30 minutes introducing themselves. **We spend 20 minutes on the client's story.**
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## The honest line (weakest assumption)
 
-> "Will the logistics lead's referral alone carry this through to executive approval?"
->
-> A referral opens the door; executives make the call. The evidence that convinces the executives has to be built at the pitch itself.
+{{weakestAssumption}}
 <!-- PATCH_1 -->
 
-## The post-pitch promise (one week out)
+## Next 3 days / pitch prep
 
-The 3 seniors at the pitch stay on the project. Within one week after the pitch, we deliver the first tangible output.`,
+{{nextSteps}}`,
 
   finalPatches: [
     // concern[0]: past projects + dedicated staffing
@@ -1416,11 +1454,16 @@ const scenario3: DemoScenario = {
     },
   },
 
+  // ─── Final Document (placeholders: {{decisionLine}}, {{thirdWorkerBlock}}, {{weakestAssumption}}, {{nextSteps}}) ───
   finalBase: `# Company T 30% Cut — Leadership Meeting Response Strategy
 
 > Company T 30% cut is a short-term play funded by Series B $20M (monthly burn $1.5-2M est → ~12-18 month runway). Of our 80 customers, real churn intent is 1, revenue impact 1.1%.
 
-## 4 response scenarios
+## Recommended one-liner
+
+> {{decisionLine}}
+
+## 4 response scenarios (reference)
 
 | Option | A. Match | B. Selective discount + value defense | C. Wait / endure | D. Premium repositioning |
 |---|---|---|---|---|
@@ -1430,22 +1473,20 @@ const scenario3: DemoScenario = {
 | Comes from | Defensive instinct | Balanced instinct | Wait instinct | Offensive instinct |
 
 Every instinct misses something. A teammate validated and reinforced each one.
+
+{{thirdWorkerBlock}}
 <!-- PATCH_0 -->
 
 ## Weakest assumption (validate first)
 
-> "Are those 3 customers actually churning, or just price-shopping?"
->
-> There may be a gap between sales\'s "crisis" signal and the actual words. Confirming the exact wording one more time is the first line of the report.
+{{weakestAssumption}}
 <!-- PATCH_1 -->
 
-## Immediate execution (this week)
+## Next 3 days (before Friday's meeting)
 
-1. **Finalize 10 at-risk customers** + apply selective discount (if that scenario is chosen)
-2. **Ship sales value script** + discount-authority matrix
-3. **Get finance sign-off on margin rate** + scenario sim
+{{nextSteps}}
 
-## Monitoring
+## Monitoring (after the meeting)
 
 - Monthly churn rate review — >5% triggers partial response
 - Pre-book 12-month Company T reassessment on the calendar

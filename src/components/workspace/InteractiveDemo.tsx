@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Sparkles, Check, ArrowRight, UserCheck, Loader2, ChevronDown } from 'lucide-react';
 import { WorkerAvatar } from './progressive/WorkerAvatar';
@@ -882,16 +882,155 @@ function DemoDMFeedback({ fb, onToggle, onDone, showDoneButton = true, locale = 
    FINAL CARD — with variant swap
    ═══════════════════════════════════════════════════════════ */
 
-function DemoFinalCard({ content, locale = 'ko' }: { content: string; locale?: 'ko' | 'en' }) {
+/* ───── Answer chip with click-to-change dropdown ───── */
+function AnswerChip({
+  label,
+  currentValue,
+  options,
+  onChange,
+  isOverridden,
+}: {
+  label: string;
+  currentValue: string;
+  options: string[];
+  onChange: (v: string) => void;
+  isOverridden?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
+          isOverridden
+            ? 'bg-[var(--accent)]/12 border-[var(--accent)]/40'
+            : 'bg-[var(--surface)] border-[var(--border-subtle)] hover:border-[var(--accent)]/30'
+        }`}
+      >
+        <span className="font-bold text-[var(--accent)]">{label}</span>
+        <span className="text-[var(--text-primary)] font-medium max-w-[200px] truncate">{currentValue}</span>
+        <ChevronDown size={9} className="text-[var(--text-tertiary)]" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full mt-1 left-0 min-w-[280px] max-w-[360px] rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-2xl z-50 py-1.5 overflow-hidden"
+          >
+            {options.map((opt) => {
+              const isCurrent = opt === currentValue;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => { onChange(opt); setOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-[12px] flex items-start gap-2 transition-colors ${
+                    isCurrent
+                      ? 'bg-[var(--accent)]/8 text-[var(--text-primary)] font-medium'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <Check size={11} className={`mt-1 shrink-0 ${isCurrent ? 'text-[var(--accent)]' : 'opacity-0'}`} />
+                  <span className="flex-1 leading-[1.5]">{opt}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ───── Final card — with override-and-morph support ───── */
+function DemoFinalCard({
+  scenario,
+  concerns,
+  q1Answer,
+  q2Answer,
+  dmKey: initialDmKey,
+  locale = 'ko',
+}: {
+  scenario: DemoScenario;
+  concerns: DMConcern[];
+  q1Answer?: string | null;
+  q2Answer?: string | null;
+  dmKey?: string | null;
+  locale?: 'ko' | 'en';
+}) {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [copied, setCopied] = useState(false);
 
+  // Local override state — user can re-pick Q1/Q2 inside the final card
+  const [q1Override, setQ1Override] = useState<string | null>(null);
+  const [q2Override, setQ2Override] = useState<string | null>(null);
+
+  const effectiveQ1 = q1Override ?? q1Answer ?? null;
+  const effectiveQ2 = q2Override ?? q2Answer ?? null;
+
+  // Derive dynamic data from effective answers
+  const q1Effect = effectiveQ1 ? scenario.q1.effects[effectiveQ1] : undefined;
+  const q2Effect = effectiveQ2 ? scenario.q2.effects[effectiveQ2] : undefined;
+  const effectiveThirdWorker = q1Effect?.thirdWorker ?? null;
+  const effectiveDecisionLine = q1Effect?.decisionLine ?? null;
+  const effectiveWeakest = q2Effect?.weakestAssumption ?? null;
+  const effectiveNextThree = q2Effect?.nextThreeDays ?? null;
+  const effectiveDmKey = q1Effect?.dmKey ?? initialDmKey ?? 'ceo';
+  const effectiveDm = scenario.dmVariants[effectiveDmKey];
+
+  const liveContent = useMemo(
+    () => buildFinal(scenario, concerns, {
+      decisionLine: effectiveDecisionLine,
+      thirdWorker: effectiveThirdWorker,
+      weakestAssumption: effectiveWeakest,
+      nextThreeDays: effectiveNextThree,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scenario, concerns, effectiveDecisionLine, effectiveThirdWorker, effectiveWeakest, effectiveNextThree],
+  );
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(content).then(() => {
+    navigator.clipboard.writeText(liveContent).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  const handleDownload = () => {
+    const blob = new Blob([liveContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${L('기획안', 'plan')}-${Date.now()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleReset = () => {
+    setQ1Override(null);
+    setQ2Override(null);
+  };
+
+  const isOverridden = !!(q1Override || q2Override);
+  const hasAttribution = !!(effectiveQ1 || effectiveQ2 || effectiveThirdWorker || effectiveDm);
+
+  const q1Options = Object.keys(scenario.q1.effects);
+  const q2Options = Object.keys(scenario.q2.effects);
 
   return (
     <motion.div initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, ease: EASE }}>
@@ -904,18 +1043,87 @@ function DemoFinalCard({ content, locale = 'ko' }: { content: string; locale?: '
               {L('완성된 기획안', 'Final Document')}
             </span>
           </div>
-          <button onClick={handleCopy}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
-              copied
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.05]'
-            }`}>
-            {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
-          </button>
+          <div className="flex items-center gap-1">
+            {isOverridden && (
+              <button onClick={handleReset}
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.05] transition-all">
+                ↺ {L('원래 답으로', 'Reset')}
+              </button>
+            )}
+            <button onClick={handleCopy}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
+                copied
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.05]'
+              }`}>
+              {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
+            </button>
+            <button onClick={handleDownload}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/[0.05]">
+              {L('.md 저장', '.md')}
+            </button>
+          </div>
         </div>
 
-        {/* Document — paper-like generous padding */}
-        <div className="px-6 md:px-12 py-8 md:py-12 space-y-0 text-[14px] leading-[1.8]">{renderMd(content)}</div>
+        {/* Attribution chips — clickable to change answers */}
+        {hasAttribution && (
+          <div className="px-6 md:px-10 py-3 border-b border-[var(--border-subtle)] bg-[var(--accent)]/[0.025]">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px]">
+              <Sparkles size={11} className="text-[var(--accent)] shrink-0" />
+              <span className="text-[var(--text-tertiary)]">
+                {isOverridden
+                  ? L('다른 답으로 시뮬레이션 중이에요', 'Simulating with different answers')
+                  : L('이 문서는 당신의 답으로 만들어졌어요 — 클릭해서 다른 답도 비교해보세요', 'This document was shaped by your answers — click to compare')}
+              </span>
+              {effectiveQ1 && (
+                <AnswerChip
+                  label="Q1"
+                  currentValue={effectiveQ1}
+                  options={q1Options}
+                  onChange={(v) => setQ1Override(v === q1Answer ? null : v)}
+                  isOverridden={!!q1Override}
+                />
+              )}
+              {effectiveQ2 && (
+                <AnswerChip
+                  label="Q2"
+                  currentValue={effectiveQ2}
+                  options={q2Options}
+                  onChange={(v) => setQ2Override(v === q2Answer ? null : v)}
+                  isOverridden={!!q2Override}
+                />
+              )}
+              {effectiveThirdWorker && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--surface)] border" style={{ borderColor: effectiveThirdWorker.persona.color + '40' }}>
+                  <span style={{ color: effectiveThirdWorker.persona.color }}>{effectiveThirdWorker.persona.emoji}</span>
+                  <span className="font-semibold" style={{ color: effectiveThirdWorker.persona.color }}>{effectiveThirdWorker.persona.name}</span>
+                  <span className="text-[var(--text-tertiary)]">{L('합류', 'joined')}</span>
+                </span>
+              )}
+              {effectiveDm && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--surface)] border border-[var(--border-subtle)]">
+                  <UserCheck size={9} className="text-[var(--text-tertiary)]" />
+                  <span className="text-[var(--text-primary)] font-medium">{effectiveDm.persona_name}</span>
+                  <span className="text-[var(--text-tertiary)]">{L('검토', 'reviewed')}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Document — paper-like generous padding. Key on liveContent so renderMd remounts on change */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={liveContent.slice(0, 100)}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            className="px-6 md:px-12 py-8 md:py-12 space-y-0 text-[14px] leading-[1.8]"
+          >
+            {renderMd(liveContent)}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -1220,7 +1428,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
   const prevSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
   const dm = scenario.dmVariants[dmKey];
   const isDone = phase === 'final';
-  const finalContent = buildFinal(scenario, concerns);
+  // finalContent는 DemoFinalCard 안에서 직접 계산 (override-and-morph 지원)
 
   return (
     <div className="flex flex-col h-full">
@@ -1475,7 +1683,15 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
                 </p>
               </motion.div>
               <AnimatePresence mode="wait">
-                <DemoFinalCard key={concerns.map(c => c.applied ? '1' : '0').join('')} content={finalContent} locale={locale} />
+                <DemoFinalCard
+                  key={concerns.map(c => c.applied ? '1' : '0').join('')}
+                  scenario={scenario}
+                  concerns={concerns}
+                  q1Answer={q1Answer}
+                  q2Answer={q2Answer}
+                  dmKey={dmKey}
+                  locale={locale}
+                />
               </AnimatePresence>
             </>
           )}
