@@ -807,7 +807,7 @@ const scenario2: DemoScenario = {
           'Day 2-3 — build one working screen (minimum viable feature)',
           'Day 4 — live demo rehearsal + record a 30-second fallback video (in case it freezes)',
         ],
-        dmFirstReaction: 'Live demo at the pitch? Bold move — if it freezes you lose the room. The backup video has to be ready. Don\'t hide a failure, cut to the video.',
+        dmFirstReaction: 'A live demo is double-edged. If it lands, you close a big one. If it freezes, the whole contract walks — that\'s a real loss for us. How are you mitigating that risk?',
       },
       'Reframe 2 past projects in the decision-maker\'s language': {
         snapshotPatch: {
