@@ -1,4 +1,4 @@
-import type { RefineLoop, FeedbackRecord, ApprovalCondition, Persona } from '@/stores/types';
+import type { RefineLoop, RefineIteration, FeedbackRecord, ApprovalCondition, Persona } from '@/stores/types';
 import { computeSimilarity } from './similarity';
 import { getCurrentLanguage } from '@/lib/i18n';
 
@@ -78,12 +78,21 @@ export function extractApprovalConditions(
  * 1. Hard gate: zero critical risks
  * 2. Approval gate: ≥80% of high-influence approval conditions met
  * 3. Progress: issue count trending down
+ *
+ * `activePath` lets callers scope evaluation to a single branch of the
+ * iteration tree. When omitted, the full flat iterations array is used
+ * (legacy linear semantics).
  */
-export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
+export function checkLoopConvergence(
+  loop: RefineLoop,
+  activePath?: RefineIteration[],
+): ConvergenceResult {
   const highInfluenceConditions = loop.initial_approval_conditions
     .filter(ac => ac.influence === 'high');
 
-  if (loop.iterations.length === 0) {
+  const path = activePath ?? loop.iterations;
+
+  if (path.length === 0) {
     return {
       converged: false,
       critical_remaining: -1,
@@ -95,16 +104,16 @@ export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
     };
   }
 
-  const latest = loop.iterations[loop.iterations.length - 1];
+  const latest = path[path.length - 1];
   const criticalRemaining = latest.convergence.critical_risks;
 
-  // Track approval conditions across all iterations
+  // Track approval conditions across the active path
   const currentConditions = latest.convergence.approval_conditions;
   const metCount = currentConditions.filter(ac => ac.met && ac.influence === 'high').length;
   const highTotal = currentConditions.filter(ac => ac.influence === 'high').length;
 
-  // Issue trend
-  const trend = loop.iterations.map(it => it.convergence.total_issues);
+  // Issue trend along the active path
+  const trend = path.map(it => it.convergence.total_issues);
 
   // Issue trend check: not increasing (last <= first, or single iteration)
   const trendOk = trend.length <= 1 || trend[trend.length - 1] <= trend[0];
@@ -135,7 +144,7 @@ export function checkLoopConvergence(loop: RefineLoop): ConvergenceResult {
       : 'In progress. Select issues and continue to the next iteration.';
   }
 
-  if (loop.iterations.length >= loop.max_iterations && !converged) {
+  if (path.length >= loop.max_iterations && !converged) {
     guidance = ko
       ? `최대 반복 횟수(${loop.max_iterations}회)에 도달했습니다. ${guidance}`
       : `Maximum iterations (${loop.max_iterations}) reached. ${guidance}`;

@@ -427,6 +427,12 @@ export interface RefineIteration {
   feedback_record_id: string;
   convergence: IterationConvergence;
   created_at: string;
+  // Versioned history (tree-shaped). All optional for backward compat;
+  // a one-shot migration fills them on load for legacy loops.
+  id?: string;
+  parent_iteration_id?: string | null;
+  version_label?: string;
+  change_summary?: string;
 }
 
 export interface RefineLoop {
@@ -441,6 +447,8 @@ export interface RefineLoop {
   iterations: RefineIteration[];
   status: 'active' | 'converged' | 'stopped_by_user';
   max_iterations: number;
+  // Active node in the version tree. null/undefined = main line leaf.
+  active_iteration_id?: string | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRefineStore } from '@/stores/useRefineStore';
+import { useEffect, useMemo, useState } from 'react';
+import { useRefineStore, getActivePathFromLoop } from '@/stores/useRefineStore';
+import { VersionHistoryDrawer } from '@/components/workspace/VersionHistoryDrawer';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { ConvergenceChart } from './ConvergenceChart';
@@ -16,7 +17,7 @@ import { callLLMJson } from '@/lib/llm';
 import { toDisplayError, isAuthError } from '@/lib/error-display';
 import { extractIssuesFromFeedback, extractApprovalConditions, matchApprovalConditions } from '@/lib/convergence';
 import type { FeedbackRecord, RehearsalResult, RevisionChange, ApprovalCondition, StructuredSynthesis, RefineLoop } from '@/stores/types';
-import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target } from 'lucide-react';
+import { RefreshCw, Check, AlertTriangle, ArrowRight, Square, ChevronDown, ChevronUp, Loader2, FileText, ShieldAlert, Target, History, GitBranch, X as XIcon } from 'lucide-react';
 import { track, trackError } from '@/lib/analytics';
 import { buildFeedbackSystemPrompt, buildFeedbackSystemPromptFromAgent } from '@/lib/persona-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
@@ -54,7 +55,8 @@ const REVISION_SYSTEM = `당신은 전략기획 문서 개선 전문가입니다
   "changes": [
     {"what": "무엇을 수정", "why": "왜 수정", "addressing": "어떤 이슈 대응"}
   ],
-  "not_addressed": ["이번에 반영 안 한 이슈와 이유"]
+  "not_addressed": ["이번에 반영 안 한 이슈와 이유"],
+  "change_summary": "이 버전의 주된 변화를 한 줄로 (40자 이내, 예: '재무 리스크 단락 추가 + 톤 완화')"
 }
 
 반드시 JSON만 응답하세요.`;
@@ -64,7 +66,7 @@ interface RefineStepProps {
 }
 
 export function RefineStep({ onNavigate }: RefineStepProps) {
-  const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, checkConvergence } = useRefineStore();
+  const { loops, activeLoopId, loadLoops, setActiveLoopId, updateLoop, addIteration, setActiveIteration, promoteToV1, checkConvergence } = useRefineStore();
   const { projects, loadProjects, updateProject } = useProjectStore();
   const { personas, feedbackHistory, loadData: loadPersonaData, getPersona, addFeedbackRecord } = usePersonaStore();
 
@@ -73,6 +75,26 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState('');
   const [userDirective, setUserDirective] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [previewIterationId, setPreviewIterationId] = useState<string | null>(null);
+  // True for one brief moment after reopening a completed loop via a branch.
+  // Cleared once the user successfully runs an iteration on that branch.
+  const [justReactivated, setJustReactivated] = useState(false);
+
+  // Reusable branch-switch that also reopens a completed loop so the user
+  // can actually iterate on the new branch.
+  const handleBranchTo = (iterationId: string) => {
+    if (!activeLoop) return;
+    const wasCompleted = activeLoop.status !== 'active';
+    setActiveIteration(activeLoop.id, iterationId);
+    if (wasCompleted) {
+      updateLoop(activeLoop.id, { status: 'active' });
+      setJustReactivated(true);
+    }
+    setSelectedIssues(new Set());
+    setUserDirective('');
+    track('refine_branch_switch', { loop_id: activeLoop.id, reactivated: wasCompleted });
+  };
 
   useEffect(() => {
     loadLoops();
@@ -81,14 +103,35 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
   }, [loadLoops, loadProjects, loadPersonaData]);
 
   const activeLoop = loops.find((l) => l.id === activeLoopId);
+  // ─── Active path (root → leaf of the currently-selected branch) ───
+  // All iteration-order logic is scoped to this path, not the flat array.
+  const activePath = useMemo(
+    () => (activeLoop ? getActivePathFromLoop(activeLoop) : []),
+    [activeLoop],
+  );
+  const activePathIds = useMemo(
+    () => new Set(activePath.map((it) => it.id).filter((id): id is string => !!id)),
+    [activePath],
+  );
+  const activeIteration = activePath.length > 0 ? activePath[activePath.length - 1] : undefined;
   const convergence = activeLoop ? checkConvergence(activeLoop.id) : null;
-  const latestIteration = activeLoop?.iterations[activeLoop.iterations.length - 1];
 
-  // Get the current plan text (latest revised or original)
-  const currentPlan = latestIteration?.revised_plan || activeLoop?.original_plan || '';
+  // Preview iteration (read-only look at an older version)
+  const previewIteration = previewIterationId
+    ? activeLoop?.iterations.find((it) => it.id === previewIterationId)
+    : undefined;
 
-  // Get the latest feedback record (from latest iteration or initial)
-  const latestFeedbackRecordId = latestIteration?.feedback_record_id || activeLoop?.initial_feedback_record_id;
+  // "Working off a branch" — active leaf is not the most recently created node
+  const overallLatest = activeLoop && activeLoop.iterations.length > 0
+    ? [...activeLoop.iterations].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0]
+    : undefined;
+  const isOnBranch = !!(activeIteration && overallLatest && activeIteration.id !== overallLatest.id);
+
+  // Get the current plan text (latest revised on active path, or original)
+  const currentPlan = activeIteration?.revised_plan || activeLoop?.original_plan || '';
+
+  // Get the latest feedback record (from active leaf or initial)
+  const latestFeedbackRecordId = activeIteration?.feedback_record_id || activeLoop?.initial_feedback_record_id;
   const latestFeedbackRecord = latestFeedbackRecordId
     ? feedbackHistory.find(f => f.id === latestFeedbackRecordId)
     : null;
@@ -151,6 +194,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
         revised_plan: string;
         changes: RevisionChange[];
         not_addressed: string[];
+        change_summary?: string;
       }>(
         [{ role: 'user', content: revisionPrompt }],
         { system: revisionSystem, maxTokens: 3500, shape: { revised_plan: 'string', changes: 'array' } }
@@ -219,8 +263,9 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
       }
 
       // Save re-review as FeedbackRecord
+      const pathLenAfter = activePath.length + 1;
       const reReviewRecordId = addFeedbackRecord({
-        document_title: `${activeLoop.goal} (v${activeLoop.iterations.length + 2})`,
+        document_title: `${activeLoop.goal} (iter #${pathLenAfter})`,
         document_text: revision.revised_plan,
         persona_ids: personaIds,
         feedback_perspective: '전반적 인상',
@@ -230,35 +275,45 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
         structured_synthesis,
         project_id: activeLoop.project_id,
         loop_id: activeLoop.id,
-        iteration_number: activeLoop.iterations.length + 1,
+        iteration_number: pathLenAfter,
       });
 
       // ── Phase C: Convergence check ──
       const reReviewRecord = usePersonaStore.getState().feedbackHistory.find(f => f.id === reReviewRecordId);
       if (!reReviewRecord) throw new Error('재리뷰 기록을 찾을 수 없습니다.');
 
-      // Match approval conditions
-      const prevConditions = latestIteration?.convergence.approval_conditions
+      // Match approval conditions (based on active path's leaf)
+      const prevConditions = activeIteration?.convergence.approval_conditions
         || activeLoop.initial_approval_conditions;
       const updatedConditions = matchApprovalConditions(
         prevConditions,
         reReviewRecord,
-        activeLoop.iterations.length + 1
+        pathLenAfter
       );
 
       // Count issues from re-review
       const newIssues = extractIssuesFromFeedback(reReviewRecord, personas);
       const newCriticalCount = newIssues.filter(i => i.severity === 'critical').length;
 
-      // Add iteration
-      addIteration(activeLoop.id, {
-        iteration_number: activeLoop.iterations.length + 1,
+      // Fallback change summary if LLM didn't provide one
+      const fallbackSummary = (revision.changes || [])
+        .map((c) => c.what)
+        .filter((w) => !!w)
+        .slice(0, 2)
+        .join(', ')
+        .slice(0, 60) || selectedIssueList.slice(0, 2).map((i) => i.text).join(', ').slice(0, 60) || '피드백 반영';
+
+      // Add iteration as child of active leaf (or null if no iterations yet)
+      const parentId = activeLoop.active_iteration_id ?? null;
+      addIteration(activeLoop.id, parentId, {
+        iteration_number: pathLenAfter,
         issues_to_address: selectedIssueList.map(i => i.text),
         user_directive: userDirective.trim() || undefined,
         revised_plan: revision.revised_plan,
         changes: revision.changes,
         not_addressed: revision.not_addressed,
         feedback_record_id: reReviewRecordId,
+        change_summary: revision.change_summary?.trim() || fallbackSummary,
         convergence: {
           critical_risks: newCriticalCount,
           total_issues: newIssues.length,
@@ -268,9 +323,10 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
 
       setSelectedIssues(new Set());
       setUserDirective('');
-      setExpandedIteration(activeLoop.iterations.length);
+      setJustReactivated(false);
+      setExpandedIteration(activePath.length);
       track('real_iteration_complete', {
-        iteration: activeLoop.iterations.length + 1,
+        iteration: pathLenAfter,
         critical_remaining: newCriticalCount,
         issues_total: newIssues.length,
         issues_selected: selectedIssueList.length,
@@ -359,12 +415,58 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
       {/* ═══ Active loop detail ═══ */}
       {activeLoop && convergence && (
         <div className="space-y-5 animate-fade-in">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <button onClick={() => setActiveLoopId(null)} className="text-[12px] text-[var(--accent)] hover:underline cursor-pointer">&larr; 목록으로</button>
-            <Badge variant={activeLoop.status === 'active' ? 'ai' : 'both'}>
-              {activeLoop.status === 'active' ? '진행 중' : activeLoop.status === 'converged' ? '수렴 완료' : '중단됨'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {/* Version chip — opens history drawer */}
+              {activeLoop.iterations.length > 0 && (
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[11px] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                  title="버전 히스토리 열기"
+                >
+                  <History className="w-3 h-3" />
+                  <span className="font-semibold">
+                    {activeIteration?.version_label || 'v0'}
+                  </span>
+                  <span className="text-[var(--text-tertiary)]">· {activeLoop.iterations.length}개</span>
+                </button>
+              )}
+              <Badge variant={activeLoop.status === 'active' ? 'ai' : 'both'}>
+                {activeLoop.status === 'active' ? '진행 중' : activeLoop.status === 'converged' ? '수렴 완료' : '중단됨'}
+              </Badge>
+            </div>
           </div>
+
+          {/* Branch-in-progress banner */}
+          {isOnBranch && activeIteration && (
+            <div className="flex items-start justify-between gap-2 px-3 py-2 rounded-lg bg-[var(--gold-muted)]/30 border border-[var(--accent-light)]/30">
+              <div className="flex items-start gap-2 text-[12px] text-[var(--text-primary)]">
+                <GitBranch className="w-3.5 h-3.5 text-[var(--accent)] mt-0.5" />
+                <div>
+                  <div>
+                    현재 <span className="font-semibold">{activeIteration.version_label}</span>에서 분기 작업 중
+                  </div>
+                  {justReactivated && (
+                    <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      완료된 합주를 다시 열었습니다. 기존 결과는 버전 히스토리에 그대로 남아있습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
+              {overallLatest && overallLatest.id && (
+                <button
+                  onClick={() => {
+                    setActiveIteration(activeLoop.id, overallLatest.id ?? null);
+                    setJustReactivated(false);
+                  }}
+                  className="text-[11px] text-[var(--accent)] hover:underline shrink-0"
+                >
+                  최신으로 돌아가기
+                </button>
+              )}
+            </div>
+          )}
 
           {/* ═══ Convergence Dashboard ═══ */}
           <Card className={`!p-4 ${convergence.converged ? '!bg-[var(--collab)] !border-green-200' : ''}`}>
@@ -404,7 +506,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
 
           {/* Approval conditions checklist */}
           {(() => {
-            const conditions = latestIteration?.convergence.approval_conditions || activeLoop.initial_approval_conditions;
+            const conditions = activeIteration?.convergence.approval_conditions || activeLoop.initial_approval_conditions;
             const highConditions = conditions.filter(ac => ac.influence === 'high');
             if (highConditions.length === 0) return null;
             return (
@@ -427,8 +529,8 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
             );
           })()}
 
-          {/* Issue trend chart */}
-          <ConvergenceChart iterations={activeLoop.iterations} initialIssueCount={initialIssueCount} />
+          {/* Issue trend chart — scoped to active path */}
+          <ConvergenceChart iterations={activePath} initialIssueCount={initialIssueCount} />
 
           {/* ═══ Convergence Banner ═══ */}
           {convergence.converged && activeLoop.status === 'active' && (
@@ -441,20 +543,29 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
             </div>
           )}
 
-          {/* ═══ Iteration Timeline ═══ */}
-          {activeLoop.iterations.length > 0 && (
+          {/* ═══ Iteration Timeline (active path only) ═══ */}
+          {activePath.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-[14px] font-bold text-[var(--text-primary)]">반복 이력</h3>
-              {activeLoop.iterations.map((iter, i) => {
+              <div className="flex items-center justify-between">
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)]">반복 이력 (현재 분기)</h3>
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="text-[11px] text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+                >
+                  <History className="w-3 h-3" /> 전체 버전 보기
+                </button>
+              </div>
+              {activePath.map((iter, i) => {
                 const iterFeedback = feedbackHistory.find(f => f.id === iter.feedback_record_id);
+                const label = iter.version_label || `v0.${i + 1}`;
                 return (
-                  <Card key={i} className={`!p-4 ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}>
+                  <Card key={iter.id || i} className={`!p-4 ${expandedIteration === i ? '!border-[var(--accent)]' : ''}`}>
                     <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedIteration(expandedIteration === i ? null : i)}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${
+                        <div className={`px-2 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold ${
                           iter.convergence.critical_risks === 0 ? 'bg-[var(--collab)] text-[var(--success)]' : 'bg-[var(--ai)] text-[#2d4a7c]'
                         }`}>
-                          v{i + 2}
+                          {label}
                         </div>
                         <div>
                           <p className="text-[13px] font-semibold text-[var(--text-primary)]">
@@ -525,7 +636,9 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
           )}
 
           {/* ═══ Next Iteration Controls ═══ */}
-          {activeLoop.status === 'active' && activeLoop.iterations.length < activeLoop.max_iterations && (
+          {/* On a branch, skip the max_iterations gate — branches are exploratory
+              and their depth starts from an arbitrary point in the tree. */}
+          {activeLoop.status === 'active' && (activePath.length < activeLoop.max_iterations || isOnBranch) && (
             <Card className="!border-amber-200 !bg-[var(--checkpoint)]">
               <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">
                 다음 반복 {convergence.converged && '(수렴 달성 — 선택적)'}
@@ -611,7 +724,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                     <Square size={12} /> 중단
                   </Button>
                   {convergence.converged && (
-                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activeLoop.iterations.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: 'converged' })); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { updateLoop(activeLoop.id, { status: 'converged' }); track('loop_converged', { iterations: activePath.length }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activePath.length, final_score: convergence?.total_issues || 0, converged: true, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: 'converged' })); }}>
                       <Check size={12} /> 수렴 완료
                     </Button>
                   )}
@@ -625,15 +738,15 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
             </Card>
           )}
 
-          {/* Max iterations reached */}
-          {activeLoop.status === 'active' && activeLoop.iterations.length >= activeLoop.max_iterations && (
+          {/* Max iterations reached — main line only (branches have no limit) */}
+          {activeLoop.status === 'active' && !isOnBranch && activePath.length >= activeLoop.max_iterations && (
             <Card className="!bg-[var(--checkpoint)] !border-[var(--risk-manageable)]/20">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-bold text-amber-800">최대 반복 횟수({activeLoop.max_iterations}회)에 도달했습니다.</p>
                   <p className="text-[11px] text-amber-700 mt-0.5">{convergence.converged ? '수렴이 달성되었습니다.' : '수렴하지 못했지만 현재 상태에서 마무리할 수 있습니다.'}</p>
                 </div>
-                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activeLoop.iterations.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: fs })); }}>
+                <Button size="sm" onClick={() => { const fs = convergence.converged ? 'converged' as const : 'stopped_by_user' as const; updateLoop(activeLoop.id, { status: fs }); recordSignal({ project_id: activeLoop?.project_id, tool: 'refine', signal_type: 'convergence_result', signal_data: { iterations: activePath.length, final_score: convergence?.total_issues || 0, converged: convergence.converged, critical_remaining: convergence?.critical_remaining || 0 } }); lazyEvalEngine().then(m => m.recordRefineEval({ ...activeLoop, status: fs })); }}>
                   마무리
                 </Button>
               </div>
@@ -648,14 +761,14 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                   {activeLoop.status === 'converged' ? <Check size={16} className="text-[var(--success)]" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
                   <p className="text-[14px] font-semibold text-[var(--text-primary)]">
                     {activeLoop.status === 'converged'
-                      ? `수렴 완료 — ${activeLoop.iterations.length}회 반복`
-                      : `중단 — ${activeLoop.iterations.length}회 반복`}
+                      ? `수렴 완료 — ${activePath.length}회 반복`
+                      : `중단 — ${activePath.length}회 반복`}
                   </p>
                 </div>
-                {latestIteration && (
+                {activeIteration && (
                   <div className="mt-2">
-                    <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서</p>
-                    <ShareBar getText={() => latestIteration.revised_plan} getTitle={() => '합주 최종 결과'} />
+                    <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1">최종 문서 ({activeIteration.version_label})</p>
+                    <ShareBar getText={() => activeIteration.revised_plan} getTitle={() => '합주 최종 결과'} />
                   </div>
                 )}
               </Card>
@@ -673,7 +786,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
               <OutcomeRecordingCard loop={activeLoop} feedbackHistory={feedbackHistory} />
 
               {/* Next step: Synthesize */}
-              {latestIteration && (
+              {activeIteration && (
                 <Card className="!border-[#9b5de5]/20">
                   <div className="flex items-center justify-between">
                     <div>
@@ -684,7 +797,7 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
                       onClick={() => {
                         useHandoffStore.getState().setHandoff({
                           from: 'refine',
-                          content: latestIteration.revised_plan,
+                          content: activeIteration.revised_plan,
                         });
                         onNavigate('synthesize');
                       }}
@@ -697,6 +810,80 @@ export function RefineStep({ onNavigate }: RefineStepProps) {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ═══ Version History Drawer ═══ */}
+      {activeLoop && drawerOpen && (
+        <VersionHistoryDrawer
+          loop={activeLoop}
+          activePathIds={activePathIds}
+          previewIterationId={previewIterationId}
+          onClose={() => setDrawerOpen(false)}
+          onPreview={(id) => setPreviewIterationId(id)}
+          onBranch={(id) => {
+            handleBranchTo(id);
+            setDrawerOpen(false);
+          }}
+          onPromote={(id) => {
+            promoteToV1(activeLoop.id, id);
+            track('refine_promote_v1', { loop_id: activeLoop.id });
+          }}
+        />
+      )}
+
+      {/* ═══ Version Preview Modal ═══ */}
+      {previewIteration && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setPreviewIterationId(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] bg-[var(--bg)] rounded-xl shadow-[var(--shadow-lg)] border border-[var(--border)] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+              <div>
+                <p className="text-[11px] text-[var(--text-tertiary)]">미리보기 · 읽기 전용</p>
+                <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">
+                  {previewIteration.version_label || `#${previewIteration.iteration_number}`}
+                </h3>
+                {previewIteration.change_summary && (
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{previewIteration.change_summary}</p>
+                )}
+              </div>
+              <button
+                className="p-1.5 rounded-lg hover:bg-[var(--surface)]"
+                onClick={() => setPreviewIterationId(null)}
+                aria-label="닫기"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
+                {previewIteration.revised_plan}
+              </pre>
+            </div>
+            <footer className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[var(--border)]">
+              <Button variant="secondary" size="sm" onClick={() => setPreviewIterationId(null)}>
+                닫기
+              </Button>
+              {activeLoop && previewIteration.id && previewIteration.id !== activeLoop.active_iteration_id && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (previewIteration.id) {
+                      handleBranchTo(previewIteration.id);
+                      setPreviewIterationId(null);
+                    }
+                  }}
+                >
+                  <GitBranch className="w-3 h-3" /> 여기서 분기
+                </Button>
+              )}
+            </footer>
+          </div>
         </div>
       )}
     </div>

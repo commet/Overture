@@ -14,7 +14,7 @@ export function ConvergenceChart({ iterations, initialIssueCount }: ConvergenceC
   const dataPoints = [
     { label: '초기', issues: initialIssueCount, critical: -1 },
     ...iterations.map((iter, i) => ({
-      label: `v${i + 2}`,
+      label: iter.version_label || `v0.${i + 1}`,
       issues: iter.convergence.total_issues,
       critical: iter.convergence.critical_risks,
     })),

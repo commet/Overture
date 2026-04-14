@@ -133,11 +133,11 @@ describe('RefineStore Simulation', () => {
       expect(active?.id).toBe(loopId);
     });
 
-    it('2. addIteration appends iteration with auto-generated created_at', () => {
+    it('2. addIteration appends iteration with auto-generated created_at + version label', () => {
       const { createLoop, addIteration } = useRefineStore.getState();
       const loopId = createLoop(makeCreateParams());
 
-      addIteration(loopId, makeIteration(1));
+      addIteration(loopId, null, makeIteration(1));
 
       const loop = useRefineStore.getState().loops.find(l => l.id === loopId)!;
       expect(loop.iterations).toHaveLength(1);
@@ -148,37 +148,80 @@ describe('RefineStore Simulation', () => {
       expect(typeof iter.created_at).toBe('string');
       expect(iter.revised_plan).toBe('Revised plan v1');
       expect(iter.issues_to_address).toEqual(['보안 이슈', '성능 문제']);
+      expect(iter.id).toBeTruthy();
+      expect(iter.parent_iteration_id).toBeNull();
+      expect(iter.version_label).toBe('v0.1');
+      expect(loop.active_iteration_id).toBe(iter.id);
     });
 
-    it('3. addIteration on nonexistent loopId does not crash (no-op)', () => {
+    it('3. addIteration on nonexistent loopId does not crash (returns null)', () => {
       const { addIteration } = useRefineStore.getState();
 
-      // Should not throw
+      let result: string | null = 'unset' as unknown as string;
       expect(() => {
-        addIteration('nonexistent-id', makeIteration(1));
+        result = addIteration('nonexistent-id', null, makeIteration(1));
       }).not.toThrow();
 
+      expect(result).toBeNull();
       // State unchanged
       expect(useRefineStore.getState().loops).toHaveLength(0);
     });
 
-    it('4. Multiple iterations accumulate in order', () => {
+    it('4. Main-line iterations chain via active_iteration_id and labels step v0.1 → v0.2 → v0.3', () => {
       const { createLoop, addIteration } = useRefineStore.getState();
       const loopId = createLoop(makeCreateParams());
 
-      addIteration(loopId, makeIteration(1));
-      addIteration(loopId, makeIteration(2));
-      addIteration(loopId, makeIteration(3));
+      // Chain: each iteration's parent = current active leaf (set automatically
+      // by the previous addIteration call).
+      const getActiveLeaf = () =>
+        useRefineStore.getState().loops.find(l => l.id === loopId)!.active_iteration_id ?? null;
+
+      addIteration(loopId, getActiveLeaf(), makeIteration(1));
+      addIteration(loopId, getActiveLeaf(), makeIteration(2));
+      addIteration(loopId, getActiveLeaf(), makeIteration(3));
 
       const loop = useRefineStore.getState().loops.find(l => l.id === loopId)!;
       expect(loop.iterations).toHaveLength(3);
-      expect(loop.iterations[0].iteration_number).toBe(1);
-      expect(loop.iterations[1].iteration_number).toBe(2);
-      expect(loop.iterations[2].iteration_number).toBe(3);
+      expect(loop.iterations[0].version_label).toBe('v0.1');
+      expect(loop.iterations[1].version_label).toBe('v0.2');
+      expect(loop.iterations[2].version_label).toBe('v0.3');
+
+      // parent chain
+      expect(loop.iterations[0].parent_iteration_id).toBeNull();
+      expect(loop.iterations[1].parent_iteration_id).toBe(loop.iterations[0].id);
+      expect(loop.iterations[2].parent_iteration_id).toBe(loop.iterations[1].id);
+
+      // active leaf is the latest
+      expect(loop.active_iteration_id).toBe(loop.iterations[2].id);
 
       // Each has its own created_at
       const timestamps = loop.iterations.map(i => i.created_at);
       timestamps.forEach(t => expect(t).toBeTruthy());
+    });
+
+    it('4b. Branching from an earlier iteration produces a sub-tier label (v0.1.1)', () => {
+      const { createLoop, addIteration, setActiveIteration } = useRefineStore.getState();
+      const loopId = createLoop(makeCreateParams());
+
+      const getActiveLeaf = () =>
+        useRefineStore.getState().loops.find(l => l.id === loopId)!.active_iteration_id ?? null;
+
+      addIteration(loopId, getActiveLeaf(), makeIteration(1)); // v0.1
+      addIteration(loopId, getActiveLeaf(), makeIteration(2)); // v0.2
+
+      const loop1 = useRefineStore.getState().loops.find(l => l.id === loopId)!;
+      const v01Id = loop1.iterations[0].id!;
+
+      // User clicks "branch from v0.1" → active switches to v0.1
+      setActiveIteration(loopId, v01Id);
+      // Next iteration attaches as v0.1's second child → v0.1.1
+      addIteration(loopId, v01Id, makeIteration(3));
+
+      const loop2 = useRefineStore.getState().loops.find(l => l.id === loopId)!;
+      expect(loop2.iterations).toHaveLength(3);
+      expect(loop2.iterations[2].version_label).toBe('v0.1.1');
+      expect(loop2.iterations[2].parent_iteration_id).toBe(v01Id);
+      expect(loop2.active_iteration_id).toBe(loop2.iterations[2].id);
     });
   });
 

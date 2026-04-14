@@ -22,13 +22,15 @@ type TableName = 'projects' | 'personas' | 'reframe_items' | 'recast_items'
 type SoftDeletableTable = 'projects' | 'personas' | 'reframe_items' | 'recast_items' | 'refine_loops' | 'synthesize_items';
 
 /**
- * Strip fields that must only be set by the server/database.
- * Prevents mass-assignment attacks where client data contains
- * crafted user_id, timestamps, or other privileged fields.
+ * Strip fields that must only be set by the server/database, plus
+ * client-local transient fields that have no DB column.
  *
  * - user_id: always set by getCurrentUserId(), never from client
  * - created_at/updated_at: set by DB triggers (update_updated_at),
  *   stripping prevents merge-logic manipulation via future timestamps
+ * - active_iteration_id: RefineLoop-only transient branch selection.
+ *   Intentionally not a DB column — branch focus is per-device working
+ *   state; on another device we fall back to the latest iteration.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitizeItem(item: any): any {
@@ -37,6 +39,7 @@ function sanitizeItem(item: any): any {
     user_id: _uid,
     created_at: _ca,
     updated_at: _ua,
+    active_iteration_id: _aii,
     ...rest
   } = item;
   return rest;
