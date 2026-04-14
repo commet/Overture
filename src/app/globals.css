@@ -1480,6 +1480,320 @@ button, a, input, textarea {
   background: rgb(139, 92, 246);
 }
 
+/* ── Persona Refinement Section (AgentProfile 내) ── */
+
+.pr-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.pr-mini-btn:hover:not(:disabled) {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.pr-mini-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pr-mini-btn-refine {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.25);
+  color: rgb(109, 40, 217);
+}
+.pr-mini-btn-refine:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.45);
+  color: rgb(109, 40, 217);
+}
+
+.pr-btn-primary {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg);
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.pr-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pr-btn-secondary {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pr-btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.pr-cat-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pr-cat-btn[data-active="true"] {
+  background: var(--text-primary);
+  color: var(--bg);
+  border-color: var(--text-primary);
+}
+
+.pr-add-form {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.pr-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 48px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.pr-textarea:focus {
+  border-color: var(--accent);
+}
+
+.pr-proposals {
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(155deg, rgba(139, 92, 246, 0.05) 0%, rgba(30, 27, 75, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  margin-bottom: 10px;
+}
+.pr-proposals-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(109, 40, 217);
+  margin: 0 0 8px;
+}
+.pr-proposal {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+}
+.pr-proposal[data-selected="true"] {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.05);
+}
+.pr-proposal-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--bg);
+  background: var(--surface);
+  transition: all 0.15s;
+}
+.pr-proposal[data-selected="true"] .pr-proposal-check {
+  background: rgb(139, 92, 246);
+  border-color: rgb(139, 92, 246);
+}
+
+.pr-obs {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.pr-obs-source {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+.pr-obs-delete {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+.pr-obs-delete:hover {
+  color: rgb(220, 53, 69);
+  background: rgba(220, 53, 69, 0.1);
+}
+
+/* ── 구체성 지표 (BossChat 헤더) ── */
+.bc-concreteness {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+/* ── Past Verdict Recap (복원된 대화 말미 지난 결론) ── */
+.bc-recap {
+  margin: 14px 16px 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(120, 120, 120, 0.04) 0%, rgba(91, 33, 182, 0.04) 100%);
+  border: 1px dashed rgba(91, 33, 182, 0.22);
+}
+.bc-recap-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.bc-recap-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.bc-recap-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.bc-recap-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.bc-recap-verdict {
+  font-size: 12px;
+  font-weight: 700;
+}
+.bc-recap-situation {
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.bc-recap-reason {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 8px;
+  padding-left: 28px;
+}
+.bc-recap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: rgb(109, 40, 217);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.bc-recap-toggle:hover {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+.bc-recap-count {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.bc-recap-inner {
+  padding: 10px 12px 4px;
+  margin-top: 6px;
+}
+.bc-recap-inner-text {
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-primary);
+  font-style: italic;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+.bc-recap-inner-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px dotted var(--border-subtle);
+}
+.bc-recap-inner-hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+[data-theme="dark"] .bc-recap {
+  background: linear-gradient(160deg, rgba(139, 92, 246, 0.08) 0%, rgba(15, 23, 42, 0.2) 100%);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+[data-theme="dark"] .bc-recap-toggle {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: rgb(196, 181, 253);
+}
+
 /* ── Agent Profile boss CTA ── */
 .agent-boss-cta {
   display: flex;

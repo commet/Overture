@@ -92,6 +92,9 @@ export interface Agent {
   // Boss 대화 연속성 — 최근 대화 스레드 (boss_sim 전용)
   chat_history?: BossChatTurn[];
 
+  // 이 팀장이 나를 본 기록 — 판정 직후 속마음 누적 (boss_sim 전용)
+  inner_monologue_archive?: InnerMonologueArchiveEntry[];
+
   // Growth
   xp: number;
   level: number;
@@ -116,15 +119,33 @@ export interface BossChatTurn {
   timestamp: number;
 }
 
+// ─── 이면 아카이브: 판정 직후 팀장 속마음 기록 ───
+
+export interface InnerMonologueArchiveEntry {
+  id: string;
+  created_at: string;          // ISO
+  text: string;                // 독백 본문
+  verdict: string;             // 'approved' | 'rejected' | 'conditional'
+  verdict_reason: string;
+  situation: string;           // 대화의 발단 (lastSituation)
+  daily_mood?: string;         // 'radiant' | 'light' | ... (기록 시점 무드)
+  daily_mood_label?: string;   // 사용자 친화 라벨
+  daily_name?: string;         // "무오" 식 일진
+}
+
 // ─── Observation: 에이전트가 사용자에 대해 축적하는 관찰 ───
+
+export type ObservationSource = 'auto' | 'user' | 'calibration' | 'refined';
 
 export interface AgentObservation {
   id: string;
   category: 'preference' | 'skill_gap' | 'communication_style' | 'work_pattern';
   observation: string;
-  confidence: number;        // 0.0~1.0. 초기 0.3, 확인 +0.15 (cap 0.95), 반박 -0.2, 0.1 미만 자동 삭제
+  confidence: number;        // 0.0~1.0. 초기값은 source에 따라 다름 (auto 0.3, calibration 0.6, refined 0.5, user 0.8)
   evidence_count: number;
   created_at: string;
+  /** 관찰 출처 — UI 뱃지 + 프롬프트 가중치. 없으면 'auto'로 간주 (backward compat). */
+  source?: ObservationSource;
 }
 
 // ─── Activity: 에이전트 활동 기록 ───

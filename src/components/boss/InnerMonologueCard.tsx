@@ -10,6 +10,8 @@ import {
   buildInnerMonologuePrompt,
   buildInnerMonologuePromptFromAgent,
 } from '@/lib/boss/boss-prompt';
+import { computeDailyMood } from '@/lib/boss/daily-energy';
+import type { InnerMonologueArchiveEntry } from '@/stores/agent-types';
 
 interface InnerMonologueCardProps {
   verdict: { verdict: string; reason: string; tip?: string };
@@ -60,7 +62,33 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
       { system, maxTokens: 300, signal: abortRef.current.signal },
       {
         onToken: (text) => updateInnerStreamingText(text),
-        onComplete: () => commitInnerMonologue(),
+        onComplete: (fullText) => {
+          commitInnerMonologue();
+          // 저장된 팀장이면 archive에 기록 push
+          const text = (fullText || '').trim();
+          if (loadedAgentId && text) {
+            const agentStore = useAgentStore.getState();
+            const currentAgent = agentStore.getAgent(loadedAgentId);
+            if (currentAgent) {
+              const daily = yearMonthProfile ? computeDailyMood(yearMonthProfile) : null;
+              const entry: InnerMonologueArchiveEntry = {
+                id: `ima-${Date.now()}`,
+                created_at: new Date().toISOString(),
+                text,
+                verdict: verdict.verdict,
+                verdict_reason: verdict.reason,
+                situation: useBossStore.getState().lastSituation || '',
+                daily_mood: daily?.mood,
+                daily_mood_label: daily?.label,
+                daily_name: daily?.breakdown.today.name,
+              };
+              const existing = currentAgent.inner_monologue_archive || [];
+              // 가장 최근 20개만 유지
+              const updated = [...existing, entry].slice(-20);
+              agentStore.updateAgent(loadedAgentId, { inner_monologue_archive: updated });
+            }
+          }
+        },
         onError: () => {
           updateInnerStreamingText('...잠깐 생각이 끊겼네. 다시 시도해봐.');
           commitInnerMonologue();

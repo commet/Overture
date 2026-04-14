@@ -16,6 +16,8 @@ import { applyBossCalibration, applyExplicitCalibration } from '@/lib/observatio
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
+import { DailyMoodIndicator } from './DailyMoodIndicator';
+import { PastVerdictRecap } from './PastVerdictRecap';
 
 // ─── 대화 온도 추적 ───
 
@@ -161,6 +163,9 @@ export function BossChat() {
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const elementInfo = getYearElement(birthYear);
   const ymp = yearMonthProfile;
+  // 저장된 팀장이면 관찰 개수 (구체성 지표)
+  const loadedAgent = useAgentStore(s => loadedAgentId ? s.agents.find(a => a.id === loadedAgentId) : undefined);
+  const observationCount = loadedAgent?.observations?.length ?? 0;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -359,6 +364,14 @@ export function BossChat() {
                 {ymp.zodiacSign ? ` · ${ymp.zodiacSign.emoji} ${ymp.zodiacSign.sign}` : ''}
               </span>
             )}
+            {observationCount > 0 && (
+              <span className="bc-concreteness" title="이 팀장에 대해 쌓인 관찰 개수. 프로필에서 확인할 수 있어요.">
+                ✍️ {observationCount}개 관찰로 다듬어짐
+              </span>
+            )}
+            {ymp && (
+              <DailyMoodIndicator profile={ymp} variant="inline" />
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -458,6 +471,11 @@ export function BossChat() {
             </div>
           </motion.div>
         )}
+        {/* 복원된 스레드의 이전 결론 복구 — verdict state는 local이라 복원 안 됨 */}
+        {!verdict && !isStreaming && loadedAgentId && messages.length >= 2 && (
+          <PastVerdictRecap agentId={loadedAgentId} />
+        )}
+
         {/* Verdict 카드 — boss가 결론을 내렸을 때 */}
         {verdict && (
           <motion.div

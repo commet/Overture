@@ -31,30 +31,45 @@ function SavedBossList() {
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
         저장된 팀장
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {bosses.map(boss => (
-          <button
-            key={boss.id}
-            onClick={() => loadBossFromAgent(boss.id)}
-            className="agent-card"
-            style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}
-          >
-            <span style={{ fontSize: 20 }}>{boss.emoji}</span>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {boss.name}
-              </p>
-              {boss.personality_code && (
-                <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{boss.personality_code}</p>
-              )}
-            </div>
-            {boss.level >= 2 && (
-              <span className="agent-lv" data-level={boss.level} style={{ fontSize: 10 }}>
-                Lv.{boss.level}
-              </span>
-            )}
-          </button>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {bosses.map(boss => {
+          const turns = boss.chat_history?.length ?? 0;
+          const obsCount = boss.observations?.length ?? 0;
+          return (
+            <button
+              key={boss.id}
+              onClick={() => loadBossFromAgent(boss.id)}
+              className="agent-card"
+              style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, textAlign: 'left', width: '100%' }}
+            >
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{boss.emoji}</span>
+              <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {boss.name}
+                  </span>
+                  {boss.personality_code && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em' }}>
+                      {boss.personality_code}
+                    </span>
+                  )}
+                  {boss.level >= 2 && (
+                    <span className="agent-lv" data-level={boss.level} style={{ fontSize: 10 }}>
+                      Lv.{boss.level}
+                    </span>
+                  )}
+                </div>
+                {(turns > 0 || obsCount > 0) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    {obsCount > 0 && <span>{obsCount}개 관찰로 다듬어짐</span>}
+                    {obsCount > 0 && turns > 0 && <span>·</span>}
+                    {turns > 0 && <span>지난 대화 {turns}턴</span>}
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </motion.div>
   );

@@ -3,6 +3,8 @@
 import type { PersonalityType } from './personality-types';
 import { getPersonalityType } from './personality-types';
 import type { SajuProfile, YearMonthProfile } from './saju-interpreter';
+import { buildYearMonthProfile } from './saju-interpreter';
+import { computeDailyMood } from './daily-energy';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
 
@@ -20,6 +22,9 @@ export interface BossProfile {
 export function buildBossSystemPrompt(boss: BossProfile): string {
   const { type, saju, yearMonth, gender } = boss;
   const genderLabel = gender === '남' ? '남성' : '여성';
+
+  // 오늘의 기운 — yearMonth가 있을 때만 계산됨 (생년 입력된 경우)
+  const daily = computeDailyMood(yearMonth);
 
   // 사주 기반 성향 (full saju > 연월주 > 없음)
   let sajuSection = '';
@@ -57,7 +62,7 @@ ${type.bossVibe}.
 ${type.exampleDialogues ? `
 ## 너의 실제 대화 예시 (이 톤과 패턴을 따라해)
 ${type.exampleDialogues}` : ''}
-${sajuSection}
+${sajuSection}${daily ? daily.promptContext : ''}
 
 ## 연기 규칙
 - **반말**. 2~4문장. 길어지면 끊어.
@@ -153,6 +158,15 @@ ${saju.raw}
 이 기질이 무의식 층에서 판단에 작용한다. 말 안 한 본심이 이 결을 따라 흐른다.`;
   }
 
+  // 오늘의 기운 — 속마음 독백에도 오늘 무드가 배어든다
+  const daily = computeDailyMood(yearMonth);
+  const dailyLayer = daily
+    ? `\n## 오늘의 기운 (독백의 미세한 톤 조정)
+- ${daily.breakdown.today.name}일. 오늘 너의 무드는 ${daily.label}.
+- ${daily.breakdown.stemRelation.label} · ${daily.breakdown.branchRelation.label}
+- 이 무드가 속마음 독백의 한 문장에 드러나게 하라. 과장 금지 — 한 줄 뉘앙스로만.`
+    : '';
+
   const verdictLabel = verdict.verdict === 'approved' ? '승인' : verdict.verdict === 'rejected' ? '반려' : '조건부';
   const verdictGuide = verdict.verdict === 'approved'
     ? '왜 바로 OK 안 하고 한 번 꺾었는지, 또는 이 승인 이면에 어떤 베팅을 한 건지 드러내라.'
@@ -166,7 +180,7 @@ ${type.bossVibe}
 
 방금 부하직원과의 대화를 마쳤고, 다음 판정을 내렸다:
 **${verdictLabel}** — ${verdict.reason}${verdict.tip ? ` (팁: ${verdict.tip})` : ''}
-${hiddenLayer}
+${hiddenLayer}${dailyLayer}
 
 ## 네가 쓸 것: 속마음 독백
 부하직원은 이 독백을 절대 듣지 못한다. 혼자서, 자리에 돌아와서, 커피 한 모금 마시며 속으로 한 생각.
@@ -203,10 +217,14 @@ export function buildInnerMonologuePromptFromAgent(
   const baseType = getPersonalityType(agent.personality_code);
   if (!baseType) throw new Error(`Unknown personality type: ${agent.personality_code}`);
 
+  const yearMonth = agent.birth_year
+    ? buildYearMonthProfile(agent.birth_year, agent.birth_month || undefined)
+    : null;
+
   const boss: BossProfile = {
     type: { ...baseType, ...agent.personality_profile },
     saju: (agent.saju_profile as SajuProfile) || null,
-    yearMonth: null,
+    yearMonth,
     gender: agent.boss_gender || '남',
   };
   return buildInnerMonologuePrompt(boss, verdict);
@@ -227,13 +245,18 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
     throw new Error(`Unknown personality type: ${agent.personality_code}`);
   }
 
+  // Agent에서 연월주 복원 — birth_year가 저장되어 있으면 daily mood 계산 가능
+  const yearMonth = agent.birth_year
+    ? buildYearMonthProfile(agent.birth_year, agent.birth_month || undefined)
+    : null;
+
   const boss: BossProfile = {
     type: {
       ...baseType,
       ...agent.personality_profile,
     },
     saju: (agent.saju_profile as SajuProfile) || null,
-    yearMonth: null, // Agent에서 로드 시 연월주는 saju_profile에 포함
+    yearMonth,
     gender: agent.boss_gender || '남',
   };
 

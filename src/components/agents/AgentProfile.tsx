@@ -1,10 +1,12 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { X, MessageCircle, PenSquare, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, MessageCircle, PenSquare, ArrowRight, ChevronDown, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import type { Agent } from '@/stores/agent-types';
+import type { Agent, InnerMonologueArchiveEntry } from '@/stores/agent-types';
 import { getLevelProgress, AGENT_LEVELS } from '@/stores/agent-types';
+import { PersonaRefinementSection } from './PersonaRefinementSection';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
@@ -147,6 +149,14 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
             </section>
           )}
 
+          {/* Inner Monologue Archive — 이 팀장이 당신을 본 기록 */}
+          {agent.origin === 'boss_sim' && agent.inner_monologue_archive && agent.inner_monologue_archive.length > 0 && (
+            <section>
+              <SectionLabel>이 팀장이 당신을 본 기록 ({agent.inner_monologue_archive.length})</SectionLabel>
+              <InnerMonologueArchiveList entries={agent.inner_monologue_archive} color={agent.color} />
+            </section>
+          )}
+
           {/* Boss CTAs — 대화 이어가기 + 기획안 리뷰받기 */}
           {agent.origin === 'boss_sim' && (
             <section>
@@ -192,8 +202,10 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
             </section>
           )}
 
-          {/* Observations */}
-          {agent.observations.length > 0 && (
+          {/* Persona Refinement — boss_sim은 PersonaRefinementSection, 그 외는 기존 리스트 유지 */}
+          {agent.origin === 'boss_sim' ? (
+            <PersonaRefinementSection agent={agent} />
+          ) : agent.observations.length > 0 ? (
             <section>
               <SectionLabel>관찰 ({agent.observations.length})</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -225,10 +237,7 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
                   ))}
               </div>
             </section>
-          )}
-
-          {/* Empty observations state */}
-          {agent.observations.length === 0 && (
+          ) : (
             <section>
               <SectionLabel>관찰</SectionLabel>
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
@@ -251,6 +260,165 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function InnerMonologueArchiveList({ entries, color }: { entries: InnerMonologueArchiveEntry[]; color: string }) {
+  const [expanded, setExpanded] = useState<string | null>(
+    entries.length > 0 ? entries[entries.length - 1].id : null,
+  );
+  // 최신이 위로 오도록 역순
+  const sorted = [...entries].reverse();
+
+  const VERDICT_META: Record<string, { label: string; icon: string; color: string }> = {
+    approved: { label: '승인', icon: '✅', color: 'rgb(29, 125, 63)' },
+    conditional: { label: '조건부', icon: '🤔', color: 'rgb(184, 150, 62)' },
+    rejected: { label: '반려', icon: '❌', color: 'rgb(220, 53, 69)' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {sorted.map(entry => {
+        const isOpen = expanded === entry.id;
+        const verdictMeta = VERDICT_META[entry.verdict] || { label: entry.verdict, icon: '•', color: 'var(--text-secondary)' };
+        const date = new Date(entry.created_at);
+        const dateStr = formatRelativeDate(entry.created_at);
+        return (
+          <div
+            key={entry.id}
+            style={{
+              borderRadius: 12,
+              background: isOpen
+                ? 'linear-gradient(155deg, rgba(91,33,182,0.04) 0%, rgba(15,23,42,0.06) 100%)'
+                : 'var(--bg)',
+              border: `1px solid ${isOpen ? 'rgba(91,33,182,0.25)' : 'var(--border-subtle)'}`,
+              transition: 'background 0.2s, border-color 0.2s',
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setExpanded(isOpen ? null : entry.id)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>{verdictMeta.icon}</span>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: verdictMeta.color }}>
+                    {verdictMeta.label}
+                  </span>
+                  {entry.situation && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: 180,
+                      }}
+                    >
+                      — {entry.situation}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{dateStr}</span>
+                  {entry.daily_mood_label && (
+                    <>
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>·</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                        그날 {entry.daily_mood_label}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <ChevronDown
+                size={14}
+                style={{
+                  color: 'var(--text-tertiary)',
+                  flexShrink: 0,
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
+                  transition: 'transform 0.25s',
+                }}
+              />
+            </button>
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div
+                    style={{
+                      padding: '4px 14px 14px',
+                      borderTop: '1px dashed rgba(91,33,182,0.18)',
+                      marginTop: 4,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, marginTop: 8 }}>
+                      <Sparkles size={10} style={{ color: 'rgb(139,92,246)' }} />
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: 'rgb(109,40,217)',
+                        }}
+                      >
+                        속마음
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 12.5,
+                        lineHeight: 1.75,
+                        color: 'var(--text-primary)',
+                        fontStyle: 'italic',
+                        margin: 0,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'keep-all',
+                      }}
+                    >
+                      {entry.text}
+                    </p>
+                    {entry.verdict_reason && (
+                      <p
+                        style={{
+                          fontSize: 10,
+                          color: 'var(--text-tertiary)',
+                          marginTop: 8,
+                          marginBottom: 0,
+                          paddingTop: 6,
+                          borderTop: '1px dotted var(--border-subtle)',
+                        }}
+                      >
+                        당시 판정 근거: {entry.verdict_reason}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

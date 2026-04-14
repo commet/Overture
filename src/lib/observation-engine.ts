@@ -414,24 +414,20 @@ export function applyExplicitCalibration(
   };
 
   // 기존 캘리브레이션 observation 교체
-  const existing = agent.observations.find(o => o.observation.includes('실제 팀장은'));
+  const existing = agent.observations.find(o => o.source === 'calibration' || o.observation.includes('실제 팀장은'));
   if (existing) {
     const updated = agent.observations.map(o =>
       o.id === existing.id
-        ? { ...o, observation: calibrationMap[calibration], confidence: 0.6 }
+        ? { ...o, observation: calibrationMap[calibration], confidence: 0.6, source: 'calibration' as const }
         : o,
     );
     store.updateAgent(agentId, { observations: updated });
   } else {
+    // source: 'calibration' → 자동으로 confidence 0.6 할당됨
     store.addObservation(agentId, {
       category: 'communication_style',
       observation: calibrationMap[calibration],
+      source: 'calibration',
     });
-    // 캘리브레이션 observation은 confidence 높게 시작
-    const added = store.getAgent(agentId)?.observations.find(o => o.observation === calibrationMap[calibration]);
-    if (added) {
-      store.reinforceObservation(agentId, added.id); // 0.3 → 0.45
-      store.reinforceObservation(agentId, added.id); // 0.45 → 0.6
-    }
   }
 }

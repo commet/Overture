@@ -277,7 +277,10 @@ interface AgentState {
   recordActivity: (agentId: string, type: AgentActivityType, context: string, sessionId?: string) => void;
 
   // Observations
-  addObservation: (agentId: string, obs: Pick<AgentObservation, 'category' | 'observation'>) => void;
+  addObservation: (
+    agentId: string,
+    obs: Pick<AgentObservation, 'category' | 'observation'> & { source?: AgentObservation['source'] },
+  ) => void;
   reinforceObservation: (agentId: string, obsId: string) => void;
 
   // 작업 배정
@@ -398,6 +401,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       birth_month: data.birth_month,
       saju_profile: data.saju_profile,
       chat_history: data.chat_history,
+      inner_monologue_archive: data.inner_monologue_archive,
       xp: data.xp || 0,
       level: calculateLevel(data.xp || 0),
       observations: data.observations || [],
@@ -516,13 +520,22 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const agent = get().getAgent(agentId);
     if (!agent) return;
 
+    // source별 초기 confidence — 사용자 입력이 가장 높고, 자동 추출이 가장 낮음
+    const source = obs.source || 'auto';
+    const initialConfidence =
+      source === 'user' ? 0.8 :
+      source === 'calibration' ? 0.6 :
+      source === 'refined' ? 0.5 :
+      0.3;
+
     const newObs: AgentObservation = {
       id: generateId(),
       category: obs.category,
       observation: obs.observation,
-      confidence: 0.3,
+      confidence: initialConfidence,
       evidence_count: 1,
       created_at: now(),
+      source,
     };
 
     // 에이전트당 최대 20개
