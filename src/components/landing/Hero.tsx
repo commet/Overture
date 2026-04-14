@@ -253,15 +253,15 @@ export function Hero() {
           {/* ─── Left: Message + Input ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
-              <span className="lg:whitespace-nowrap">{L('내 전문 분야가 아닌 걸', 'When you have to do')}</span>
+              <span className="lg:whitespace-nowrap">{L('어디로 가려는가.', 'Where are you headed?')}</span>
               <br />
-              <span className="text-gold-gradient">{L('해야 할 때.', "what you've never done.")}</span>
+              <span className="text-gold-gradient">{L('너의 이타카.', 'To your Ithaca.')}</span>
             </h1>
 
             <p className="mt-5 text-[15px] md:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-md">
-              {L('질문 하나 던지면, 30초 안에 뼈대가 나옵니다.', 'Drop a question, get a structured draft in 30 seconds.')}
+              {L('17명의 선원이 이미 배에 올라와 있다.', '17 crew members are already aboard.')}
               <br />
-              {L('채울수록 날카로워집니다.', 'The more you add, the sharper it gets.')}
+              {L('방위만 정하면, 출항한다.', 'Name the heading. We set sail.')}
             </p>
 
             {/* ─── Rotating Voice: synced with auto-type currentIdx ─── */}
@@ -371,9 +371,9 @@ export function Hero() {
                       transitionDuration: '300ms',
                       transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)',
                     }}
-                    aria-label={inputValue.trim() ? L('시작', 'Start') : L('입력 후 시작', 'Type first, then start')}
+                    aria-label={inputValue.trim() ? L('출항', 'Set Sail') : L('방위를 정하면 출항', 'Name the heading to sail')}
                   >
-                    {L('시작', 'Start')}
+                    {L('출항', 'Set Sail')}
                     <ArrowRight size={12} />
                   </button>
                 </div>
@@ -381,7 +381,7 @@ export function Hero() {
 
               <p id="hero-input-hint" className="text-[11px] text-[var(--text-tertiary)] mt-1.5 px-1">
                 {inputValue.trim()
-                  ? L('엔터 또는 [시작] 클릭', 'Press Enter or click [Start]')
+                  ? L('엔터 또는 [출항] 클릭', 'Press Enter or click [Set Sail]')
                   : L('문장으로 적으면 됩니다. 프롬프트 고민 필요 없음', 'Just write it naturally — no prompt engineering')}
               </p>
 
