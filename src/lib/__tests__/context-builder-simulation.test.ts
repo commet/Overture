@@ -188,7 +188,7 @@ describe('Context Builder Simulation', () => {
     vi.clearAllMocks();
     mockGetStorage.mockReturnValue([]);
     mockGetSignals.mockReturnValue([]);
-    mockGetEvalSummary.mockReturnValue({ total_sessions: 0 } as any);
+    mockGetEvalSummary.mockReturnValue({ total_sessions: 0 } as unknown as ReturnType<typeof getEvalSummary>);
     mockGetStageEvalSummary.mockReturnValue(null);
     mockGetActionableInsights.mockReturnValue([]);
   });
@@ -225,7 +225,7 @@ describe('Context Builder Simulation', () => {
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
-        ] as any);
+        ] as unknown as ReturnType<typeof getSignalsByType>);
         setupStorage({ sot_judgments: judgments });
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
@@ -239,7 +239,7 @@ describe('Context Builder Simulation', () => {
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'human', to_actor: 'ai' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'human', to_actor: 'ai' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'human', to_actor: 'ai' }, created_at: '' },
-        ] as any);
+        ] as unknown as ReturnType<typeof getSignalsByType>);
         setupStorage({ sot_judgments: judgments });
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
@@ -263,7 +263,7 @@ describe('Context Builder Simulation', () => {
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'human', to_actor: 'ai' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
-        ] as any);
+        ] as unknown as ReturnType<typeof getSignalsByType>);
         setupStorage({ sot_judgments: judgments });
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
@@ -453,7 +453,7 @@ describe('Context Builder Simulation', () => {
 
     describe('Section 7: 적응형 컨텍스트', () => {
       it('총 세션 < 5 → 적응형 컨텍스트 없음', () => {
-        mockGetEvalSummary.mockReturnValue({ total_sessions: 3 } as any);
+        mockGetEvalSummary.mockReturnValue({ total_sessions: 3 } as unknown as ReturnType<typeof getEvalSummary>);
         setupStorage({ sot_judgments: [makeJudgment(), makeJudgment()] });
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
@@ -461,7 +461,7 @@ describe('Context Builder Simulation', () => {
       });
 
       it('축 갭 감지 → 축 이름 주입', () => {
-        mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as any);
+        mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as unknown as ReturnType<typeof getEvalSummary>);
         // Build reframe items with business gap
         const reframeItems = Array.from({ length: 5 }, () => ({
           id: `rf-${Math.random()}`,
@@ -496,7 +496,7 @@ describe('Context Builder Simulation', () => {
       });
 
       it('reframe 수락률 > 80% → 대안 프레이밍 강화 제안', () => {
-        mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as any);
+        mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as unknown as ReturnType<typeof getEvalSummary>);
         // 5+ items where selected_question === reframed_question
         const reframeItems = Array.from({ length: 6 }, () => ({
           id: `rf-${Math.random()}`,
@@ -559,7 +559,7 @@ describe('Context Builder Simulation', () => {
             signal_type: 'actor_override_direction',
             signal_data: { from_actor: 'ai', to_actor: 'human' },
             created_at: '',
-          })) as any
+          })) as unknown as ReturnType<typeof getSignalsByType>
         );
         mockGetActionableInsights.mockReturnValue([
           '교훈 1: 이것은 긴 교훈입니다',
@@ -589,7 +589,7 @@ describe('Context Builder Simulation', () => {
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
-        ] as any);
+        ] as unknown as ReturnType<typeof getSignalsByType>);
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
         expect(result.startsWith(BASE_PROMPT)).toBe(true);
@@ -601,7 +601,7 @@ describe('Context Builder Simulation', () => {
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
           { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
-        ] as any);
+        ] as unknown as ReturnType<typeof getSignalsByType>);
 
         const result = buildEnhancedSystemPrompt(BASE_PROMPT);
         expect(result).toContain('\n\n---\n\n');
@@ -934,7 +934,7 @@ describe('Context Builder Simulation', () => {
   // ═══════════════════════════════════════
   describe('Cross-scenario: CLAUDE.md 가이드라인 준수', () => {
     it('모든 패턴 주입은 "참고:" 접두사 사용 (directive 아님)', () => {
-      mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as any);
+      mockGetEvalSummary.mockReturnValue({ total_sessions: 10 } as unknown as ReturnType<typeof getEvalSummary>);
       const reframeItems = Array.from({ length: 5 }, () => ({
         id: `rf-${Math.random()}`,
         input_text: 'test',
@@ -964,7 +964,7 @@ describe('Context Builder Simulation', () => {
         { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
         { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
         { signal_type: 'actor_override_direction', signal_data: { from_actor: 'ai', to_actor: 'human' }, created_at: '' },
-      ] as any);
+      ] as unknown as ReturnType<typeof getSignalsByType>);
 
       const result = buildEnhancedSystemPrompt(BASE_PROMPT);
       // Extract all lines that start with "- " (bullet points with insights)

@@ -73,11 +73,6 @@ export async function GET(req: Request) {
   const sessions = new Set(traffic?.map(e => e.session_id) || []);
   const events = traffic || [];
 
-  // 2. Owner sessions to exclude
-  const { data: ownerUsers } = await supabase
-    .rpc('get_owner_sessions_for_report', { owner_emails: OWNER_EMAILS, start_ts: utcStart, end_ts: utcEnd })
-    .select('*');
-
   // Fallback: just count everything, mark owner data as "includes owner"
   // Since user_events has no user_id, we'll note this in the report
 
@@ -90,12 +85,7 @@ export async function GET(req: Request) {
     eventSessions[e.event_name].add(e.session_id);
   }
 
-  // 4. New signups (excluding owner)
-  const { data: newUsers } = await supabase
-    .from('auth_users_view')
-    .select('*');
-
-  // Fallback: direct query via service role
+  // 4. New signups (excluding owner) — direct query via service role
   let newSignups: Array<{ email: string; name: string; created_at: string }> = [];
   try {
     const { data } = await supabase.auth.admin.listUsers();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
-import { validateMessages, validateSystemPrompt, validateRequest, normalizeMaxTokens, MAX_TOKENS_CAP } from '@/lib/llm-validation';
+import { validateMessages, validateSystemPrompt, validateRequest, normalizeMaxTokens } from '@/lib/llm-validation';
 
 const DAILY_LIMIT = 20;
 const ANON_LIMIT = 12;

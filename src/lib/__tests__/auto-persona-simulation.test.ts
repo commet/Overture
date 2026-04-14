@@ -611,7 +611,7 @@ describe('Auto-Persona Simulation', () => {
             assumption: 'bad-axis',
             risk_if_false: 'risk',
             evaluation: 'uncertain' as const,
-            axis: 'invalid_axis' as any,
+            axis: 'invalid_axis' as unknown as 'customer_value',
           }));
         }
         mockGetStorage.mockReturnValue(items);
@@ -745,7 +745,7 @@ describe('Auto-Persona Simulation', () => {
 
       it('알 수 없는 decision_style → 빈 문자열 필터됨', () => {
         const reviewer = makeSuggestedReviewer({
-          decision_style: 'unknown_style' as any,
+          decision_style: 'unknown_style' as unknown as 'analytical',
           risk_tolerance: 'medium',
           priorities: '성장',
         });

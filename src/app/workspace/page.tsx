@@ -345,7 +345,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
               {/* Heading */}
               <div className="mb-8 text-center">
                 <h1 className="text-display-lg text-[var(--text-primary)]">
-                  {locale === 'ko' ? <>막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span></> : <>Stuck on a task?<br /><span className="text-gold-gradient">We'll figure it out together</span></>}
+                  {locale === 'ko' ? <>막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span></> : <>Stuck on a task?<br /><span className="text-gold-gradient">We&apos;ll figure it out together</span></>}
                 </h1>
                 <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
                   {locale === 'ko' ? <>상황을 알려주세요. AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation. An AI team will analyze, draft,<br className="hidden md:block" />and simulate decision-maker reactions.</>}

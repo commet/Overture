@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
@@ -15,7 +15,6 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { generateProjectBrief } from '@/lib/project-brief';
 import { OutputSelector } from '@/components/ui/OutputSelector';
 import { ExecutionReadiness } from '@/components/ui/ExecutionReadiness';
-import type { Project, ReframeItem, RecastItem, SynthesizeItem, FeedbackRecord } from '@/stores/types';
 import Link from 'next/link';
 import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download, Sparkles } from 'lucide-react';
 
