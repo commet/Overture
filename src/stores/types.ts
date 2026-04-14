@@ -726,7 +726,8 @@ export type ProgressivePhase =
   | 'mixing'          // 최종 초안 조합 중
   | 'dm_feedback'     // 판단자 피드백 생성/표시
   | 'refining'        // 이슈 반영 선택
-  | 'complete';       // 최종 산출물 완성
+  | 'complete'        // 최종 산출물 완성
+  | 'iterating';      // Post-complete: 악장에게 수정 요청 진행 중
 
 export interface FlowQuestion {
   id: string;
@@ -1020,6 +1021,21 @@ export interface ProgressiveSession {
    */
   final_mix?: MixResult | null;
 
+  // ─── Post-complete iteration tree ───
+  /**
+   * Versioned drafts of the final deliverable. drafts[0] is auto-created when
+   * the session first reaches `complete`. Subsequent drafts are appended when
+   * the user either re-runs DM review or asks 악장(Concertmaster) to revise.
+   * Forms a tree via `parent_draft_id`; branching/promotion supported.
+   * Optional + backward-compat: legacy sessions without drafts are migrated
+   * on load via `migrateSessionDrafts`.
+   */
+  drafts?: Draft[];
+  /** Currently-focused draft. null/undefined = latest by created_at. */
+  active_draft_id?: string | null;
+  /** Draft marked as the released v1.0+. Used by ShareBar/export preference. */
+  released_draft_id?: string | null;
+
   // Boss/Reviewer 연결
   reviewer_agent_id?: string;   // Boss agent가 DM 리뷰어로 연결
 
@@ -1035,6 +1051,36 @@ export interface ProgressiveSession {
 
   created_at: string;
   updated_at: string;
+}
+
+// ─── Draft (Post-finalize iteration node) ───
+
+/**
+ * A versioned snapshot of the final deliverable. Each Draft is a node in the
+ * iteration tree: drafts[0] is the root (parent=null, produced by the normal
+ * ProgressiveFlow pipeline), subsequent drafts are children produced by either
+ * (a) the 악장 revision loop with a user directive, or
+ * (b) a re-run of the DM stakeholder review ("이해관계자 검증 다시 하기").
+ *
+ * The tree shape allows users to return to an older draft and branch from it.
+ * Version labels follow `lib/version-numbering.ts` (v0.1, v0.1.1, v1.0, ...).
+ */
+export interface Draft {
+  id: string;
+  parent_draft_id: string | null;          // null = first draft off ProgressiveFlow
+  version_label: string;                    // "v0.1" | "v0.1.1" | "v1.0" ...
+  change_summary: string;                   // ≤ 40 chars — what changed in this version
+  directive: string | null;                 // user revision request (null for the initial draft)
+  final_text: string;                       // rendered markdown
+  final_mix?: MixResult | null;             // structured form for attribution (optional)
+  /**
+   * Which agent produced this draft:
+   * - null          → initial draft from the ProgressiveFlow pipeline
+   * - 'concertmaster' → directive-driven 악장 revision
+   * - 'dm_reroll'   → re-run of DM stakeholder review (legacy button)
+   */
+  reviewing_agent_id: string | null;
+  created_at: string;
 }
 
 // ─── Convergence Metrics ───

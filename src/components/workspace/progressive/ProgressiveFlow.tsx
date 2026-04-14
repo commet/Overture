@@ -11,11 +11,14 @@ import {
   runBossDMFeedback,
   runFinalDeliverable,
   runConcertmasterReview,
+  runConcertmasterRevision,
   runDebate,
   runLeadSynthesis,
   type ConcertmasterReview,
   type DebateResult,
 } from '@/lib/progressive-engine';
+import { VersionHistoryDrawer, type VersionTreeItem } from '@/components/workspace/VersionHistoryDrawer';
+import { getActivePath, isOnBranch } from '@/lib/version-tree';
 import { buildLeadDecompositionContext, type LeadAgentConfig } from '@/lib/lead-agent';
 import { assessConvergence, assessConvergenceWithWorkers } from '@/lib/progressive-convergence';
 import { exportProgressiveAsReframe, exportProgressiveAsRecast } from '@/lib/progressive-handoff';
@@ -30,7 +33,7 @@ import { runAllAIWorkers, runPipeline, type WorkerContext } from '@/lib/worker-e
 import { withTranscript } from '@/lib/execution-transcript';
 import { getCompletionNote } from '@/lib/worker-personas';
 import { track } from '@/lib/analytics';
-import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask, LeadSynthesisResult } from '@/stores/types';
+import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, ConvergenceMetrics, WorkerTask, LeadSynthesisResult, Draft } from '@/stores/types';
 import { findEffectForAnswer, applySnapshotPatch } from '@/lib/question-types';
 import type { StrategicForkEffect, WeaknessCheckEffect } from '@/lib/question-types';
 import { WorkerReportBlock } from './WorkerCard';
@@ -38,7 +41,7 @@ import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
-import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
+import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2 } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
 import { EASE, SPRING } from './shared/constants';
 import { diffItems } from './shared/diffItems';
@@ -882,6 +885,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
   const [debateResult, setDebateResult] = useState<DebateResult | null>(null);
+  // ── Post-complete draft tree UI state ──
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
+  const [iterationOpen, setIterationOpen] = useState(false);
+  const [iterationDirective, setIterationDirective] = useState('');
+  const [isIterating, setIsIterating] = useState(false);
+  const [justReactivatedFromBranch, setJustReactivatedFromBranch] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   const workerAbortRef = useRef<AbortController | null>(null);
@@ -967,6 +977,39 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const finalMix = session?.final_mix ?? null;
   const round = session?.round ?? 0;
   const maxR = session?.max_rounds ?? 3;
+
+  // ── Post-complete draft tree derivations ──
+  const drafts = useMemo<Draft[]>(() => session?.drafts ?? [], [session?.drafts]);
+  const activeDraftId = session?.active_draft_id ?? null;
+  const activeDraftPath = useMemo<Draft[]>(() => {
+    if (drafts.length === 0) return [];
+    const nodes = drafts.map((d) => ({
+      id: d.id,
+      parent_id: d.parent_draft_id,
+      created_at: d.created_at,
+      _full: d,
+    }));
+    return getActivePath(nodes, activeDraftId).map((n) => n._full);
+  }, [drafts, activeDraftId]);
+  const activeDraft = activeDraftPath.length > 0
+    ? activeDraftPath[activeDraftPath.length - 1]
+    : undefined;
+  const activeDraftPathIds = useMemo(
+    () => new Set(activeDraftPath.map((d) => d.id)),
+    [activeDraftPath],
+  );
+  const draftIsOnBranch = useMemo(() => {
+    if (drafts.length === 0) return false;
+    const simple = drafts.map((d) => ({
+      id: d.id,
+      parent_id: d.parent_draft_id,
+      created_at: d.created_at,
+    }));
+    return isOnBranch(simple, activeDraftPathIds);
+  }, [drafts, activeDraftPathIds]);
+  const previewDraft = previewDraftId
+    ? drafts.find((d) => d.id === previewDraftId) ?? null
+    : null;
   const dm = session?.decision_maker ?? null;
 
   const qaPairs = useMemo(() => questions.map((q, i) => ({ question: q, answer: answers[i] || null })), [questions, answers]);
@@ -1388,6 +1431,78 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     finally { setBusy(false); scroll(); }
   };
 
+  // ─── Post-complete iteration handlers ─────────────────────────────
+
+  /** User submitted a revision directive → call 악장 → append a new draft. */
+  const onRequestRevision = async () => {
+    // Hard guard against double-submission (double click, keyboard re-entry,
+    // React-18 batched click → state-lag). The `disabled` prop on the button
+    // eventually catches this, but adds a belt to the suspenders.
+    if (isIterating) return;
+    if (!activeDraft || !session) return;
+    const directive = iterationDirective.trim();
+    if (directive.length === 0) return;
+
+    setIsIterating(true);
+    setError(null);
+    // Intentionally do NOT flip session.phase — the session stays in 'complete'
+    // during revision, and only the local `isIterating` flag drives the
+    // in-modal spinner. This keeps PhaseAmbient/progress-dots stable and
+    // makes tab-close-mid-revision recover cleanly.
+
+    try {
+      const { revised_text, change_summary } = await runConcertmasterRevision({
+        currentFinalText: activeDraft.final_text,
+        directive,
+        problemContext: session.problem_text,
+        currentVersionLabel: activeDraft.version_label,
+        priorDrafts: activeDraftPath.map((d) => ({
+          version_label: d.version_label,
+          change_summary: d.change_summary,
+        })),
+      });
+
+      store.addDraft({
+        parent_draft_id: activeDraft.id,
+        directive,
+        change_summary: change_summary || L('수정 반영', 'Revised'),
+        final_text: revised_text,
+        final_mix: null,
+        reviewing_agent_id: 'concertmaster',
+      });
+
+      setIterationDirective('');
+      setIterationOpen(false);
+      setJustReactivatedFromBranch(false);
+      track('progressive_revision_done', { directive_length: directive.length });
+      scroll('top');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : L('수정 요청 실패', 'Revision failed'));
+      // Keep the modal open so the user can read the inline error and retry.
+    } finally {
+      setIsIterating(false);
+    }
+  };
+
+  /** Switch to an older draft (= branch-in-progress). */
+  const handleBranchToDraft = (draftId: string) => {
+    if (!session) return;
+    store.setActiveDraft(draftId);
+    setDrawerOpen(false);
+    setPreviewDraftId(null);
+    // If we landed on a non-leaf branch, flag it so the modal opens primed.
+    const target = drafts.find((d) => d.id === draftId);
+    if (target) {
+      setJustReactivatedFromBranch(true);
+    }
+    track('progressive_branch_to_draft', { draft_id: draftId });
+  };
+
+  const handlePromoteDraft = (draftId: string) => {
+    store.promoteDraftToV1(draftId);
+    track('progressive_promote_v1', { draft_id: draftId });
+  };
+
   return (
     <>
       <PhaseAmbient phase={phase} />
@@ -1599,6 +1714,65 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} onDeepen={onDeepen} busy={busy} />}
 
           {final_ && <>
+            {/* Version chip + history toggle — subtle header */}
+            {activeDraft && (
+              <div className="flex items-center justify-end gap-2 pb-2">
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[11px] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                  title={L('버전 히스토리 열기', 'Open version history')}
+                >
+                  <History className="w-3 h-3" />
+                  <span className="font-semibold">{activeDraft.version_label}</span>
+                  <span className="text-[var(--text-tertiary)]">· {drafts.length}{L('개', '')}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Branch-in-progress banner */}
+            {draftIsOnBranch && activeDraft && (
+              <div className="flex items-start justify-between gap-2 px-3 py-2 mb-2 rounded-lg bg-[var(--gold-muted)]/30 border border-[var(--accent-light)]/30">
+                <div className="flex items-start gap-2 text-[12px] text-[var(--text-primary)]">
+                  <GitBranch className="w-3.5 h-3.5 text-[var(--accent)] mt-0.5" />
+                  <div>
+                    <div>
+                      {L('현재', 'Currently on')}{' '}
+                      <span className="font-semibold">{activeDraft.version_label}</span>
+                      {L('에서 분기 작업 중', ' (branch)')}
+                    </div>
+                    {justReactivatedFromBranch && (
+                      <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                        {L('이전 결과는 버전 히스토리에 그대로 남아있습니다.', 'Previous results remain in version history.')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {drafts.length > 0 && (() => {
+                  // "Latest main line" = draft whose version_label has the fewest dots
+                  // (shallowest branch level), then latest created among those.
+                  const mainLineCandidates = [...drafts].sort((a, b) => {
+                    const aDots = (a.version_label.match(/\./g) || []).length;
+                    const bDots = (b.version_label.match(/\./g) || []).length;
+                    if (aDots !== bDots) return aDots - bDots;
+                    return (b.created_at || '').localeCompare(a.created_at || '');
+                  });
+                  const latestMain = mainLineCandidates[0];
+                  if (!latestMain || latestMain.id === activeDraft.id) return null;
+                  return (
+                    <button
+                      onClick={() => {
+                        store.setActiveDraft(latestMain.id);
+                        setJustReactivatedFromBranch(false);
+                      }}
+                      className="text-[11px] text-[var(--accent)] hover:underline shrink-0"
+                    >
+                      {L('최신으로 돌아가기', 'Back to latest')}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Completion moment */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: EASE }}
               className="flex flex-col items-center justify-center gap-2 py-6">
@@ -1617,10 +1791,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <FinalCard content={final_} mix={finalMix} />
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
               <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">{L('복사해서 바로 사용하세요.', 'Copy and use it right away.')}</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
                 <button onClick={() => { useProgressiveStore.setState({ currentSessionId: null }); window.location.reload(); }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-[13px] font-semibold cursor-pointer"
                   style={{ background: 'var(--gradient-gold)' }}>{L('새 프로젝트 시작', 'Start New Project')} <ArrowRight size={12} /></button>
+                <button onClick={() => { setIterationOpen(true); setIterationDirective(''); }}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] border border-[var(--accent)]/30 bg-[var(--gold-muted)]/30 hover:bg-[var(--gold-muted)]/50 cursor-pointer transition-colors">
+                  <Wand2 size={13} className="text-[var(--accent)]" /> {L('악장에게 수정 요청', 'Ask Concertmaster to revise')}
+                </button>
                 <button onClick={() => { if (mix) { store.setFinalDeliverable(null as unknown as string); store.setDMFeedback(null as unknown as import('@/stores/types').DMFeedbackResult); store.setMix(null as unknown as MixResult); setShowMix(true); } }}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer transition-colors">
                   {L('이해관계자 검증 다시 하기', 'Re-run stakeholder review')}
@@ -1676,6 +1854,170 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           </div>
         </div>
       </motion.div>
+
+      {/* ═══ Version History Drawer ═══ */}
+      {drawerOpen && drafts.length > 0 && (
+        <VersionHistoryDrawer
+          nodes={drafts.map<VersionTreeItem>((d) => ({
+            id: d.id,
+            parent_id: d.parent_draft_id,
+            created_at: d.created_at,
+            label: d.version_label,
+            summary: d.change_summary,
+            is_released: session?.released_draft_id === d.id,
+          }))}
+          activeLeafId={activeDraftId}
+          activePathIds={activeDraftPathIds}
+          previewNodeId={previewDraftId}
+          rootLabel={L('v0 (초기 분석)', 'v0 (initial analysis)')}
+          rootSummary={L('에이전트 팀의 첫 합성', 'First team synthesis')}
+          onClose={() => setDrawerOpen(false)}
+          onPreview={(id) => setPreviewDraftId(id)}
+          onBranch={handleBranchToDraft}
+          onPromote={handlePromoteDraft}
+        />
+      )}
+
+      {/* ═══ Draft Preview Modal ═══ */}
+      {previewDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setPreviewDraftId(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] bg-[var(--bg)] rounded-xl shadow-[var(--shadow-lg)] border border-[var(--border)] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+              <div>
+                <p className="text-[11px] text-[var(--text-tertiary)]">{L('미리보기 · 읽기 전용', 'Preview · read-only')}</p>
+                <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">{previewDraft.version_label}</h3>
+                {previewDraft.change_summary && (
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">{previewDraft.change_summary}</p>
+                )}
+              </div>
+              <button
+                className="p-1.5 rounded-lg hover:bg-[var(--surface)]"
+                onClick={() => setPreviewDraftId(null)}
+                aria-label={L('닫기', 'Close')}
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <pre className="text-[12px] text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
+                {previewDraft.final_text}
+              </pre>
+            </div>
+            <footer className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[var(--border)]">
+              <button
+                className="px-4 py-2 rounded-lg text-[12px] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                onClick={() => setPreviewDraftId(null)}
+              >
+                {L('닫기', 'Close')}
+              </button>
+              {previewDraft.id !== activeDraftId && (
+                <button
+                  className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity"
+                  onClick={() => handleBranchToDraft(previewDraft.id)}
+                >
+                  <GitBranch className="w-3 h-3" /> {L('여기서 분기', 'Branch from here')}
+                </button>
+              )}
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Revision Directive Modal ═══ */}
+      {iterationOpen && activeDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => { if (!isIterating) { setIterationOpen(false); setIterationDirective(''); } }}
+        >
+          <div
+            className="relative w-full max-w-xl bg-[var(--bg)] rounded-xl shadow-[var(--shadow-lg)] border border-[var(--border)] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-[var(--accent)]" />
+                <div>
+                  <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">
+                    {L('악장에게 수정 요청', 'Ask Concertmaster to revise')}
+                  </h3>
+                  <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                    {L('현재 버전', 'Current version')}: <span className="font-semibold">{activeDraft.version_label}</span>
+                  </p>
+                </div>
+              </div>
+              {!isIterating && (
+                <button
+                  className="p-1.5 rounded-lg hover:bg-[var(--surface)]"
+                  onClick={() => { setIterationOpen(false); setIterationDirective(''); }}
+                  aria-label={L('닫기', 'Close')}
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              )}
+            </header>
+            <div className="flex-1 px-5 py-4">
+              <p className="text-[12px] text-[var(--text-secondary)] mb-2">
+                {L('어떻게 고치면 좋을까? 구체적인 지시일수록 좋아요.', 'How should it change? More specific is better.')}
+              </p>
+              <textarea
+                value={iterationDirective}
+                onChange={(e) => setIterationDirective(e.target.value)}
+                placeholder={L('예: 재무 섹션의 가정을 더 보수적으로. 낙관/기본/비관 3가지 시나리오 추가.', 'e.g. Make financial assumptions more conservative. Add 3 scenarios.')}
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] resize-none leading-relaxed"
+                rows={5}
+                maxLength={500}
+                disabled={isIterating}
+                autoFocus
+              />
+              <div className="text-[10px] text-[var(--text-tertiary)] mt-1 text-right">
+                {iterationDirective.length} / 500
+              </div>
+              {isIterating && (
+                <div className="mt-3 flex items-center gap-2 text-[12px] text-[var(--accent)]">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{L('악장이 편집 중입니다...', 'Concertmaster is editing...')}</span>
+                </div>
+              )}
+              {!isIterating && error && (
+                <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-[12px] text-red-700">
+                  <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                  <span className="flex-1">{error}</span>
+                  <button
+                    className="text-[11px] text-red-600 hover:underline shrink-0"
+                    onClick={() => setError(null)}
+                    aria-label={L('에러 닫기', 'Dismiss error')}
+                  >
+                    {L('닫기', 'Dismiss')}
+                  </button>
+                </div>
+              )}
+            </div>
+            <footer className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[var(--border)]">
+              <button
+                className="px-4 py-2 rounded-lg text-[12px] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--surface)] transition-colors disabled:opacity-50"
+                onClick={() => { setIterationOpen(false); setIterationDirective(''); }}
+                disabled={isIterating}
+              >
+                {L('취소', 'Cancel')}
+              </button>
+              <button
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={onRequestRevision}
+                disabled={isIterating || iterationDirective.trim().length === 0}
+              >
+                {isIterating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                {isIterating ? L('생성 중...', 'Generating...') : L('수정본 생성', 'Generate revision')}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </>
   );
 }

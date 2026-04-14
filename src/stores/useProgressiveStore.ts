@@ -11,6 +11,8 @@ import { onTaskApproved, onTaskRejected } from '@/lib/observation-engine';
 import { planWorkers } from '@/lib/orchestrator';
 import { selectLeadAgent } from '@/lib/lead-agent';
 import { computeQualityXP } from '@/lib/agent-quality';
+import { nextChildLabel, promoteToMajor, ROOT_LABEL } from '@/lib/version-numbering';
+import { getActivePath as getActivePathGeneric } from '@/lib/version-tree';
 import type {
   ProgressiveSession,
   ProgressivePhase,
@@ -25,7 +27,21 @@ import type {
   WorkerTask,
   WorkerDeployPhase,
   LeadSynthesisResult,
+  Draft,
 } from '@/stores/types';
+
+/**
+ * Args for `addDraft` — the internal id/label/created_at are computed by the
+ * store so callers only supply the meaningful fields.
+ */
+export interface AddDraftInit {
+  parent_draft_id: string | null;
+  directive: string | null;
+  change_summary: string;
+  final_text: string;
+  final_mix?: MixResult | null;
+  reviewing_agent_id: string | null;
+}
 
 interface ProgressiveState {
   sessions: ProgressiveSession[];
@@ -39,6 +55,16 @@ interface ProgressiveState {
   createSession: (projectId: string, problemText: string, reviewerAgentId?: string) => string;
   setPhase: (phase: ProgressivePhase) => void;
   setDecisionMaker: (name: string) => void;
+
+  // ── Post-complete draft tree ──
+  /** Append a new draft as a child of `parent_draft_id` (null = root child). Returns new id. */
+  addDraft: (init: AddDraftInit) => string | null;
+  /** Switch the active draft pointer without creating anything new. */
+  setActiveDraft: (draftId: string | null) => void;
+  /** Relabel a pre-release draft as v{major}.0 and mark it as released. */
+  promoteDraftToV1: (draftId: string) => void;
+  /** Return the root→leaf path of drafts for the currently-active branch. */
+  getActiveDraftPath: () => Draft[];
 
   // Q&A
   addQuestion: (question: FlowQuestion) => void;
@@ -140,6 +166,36 @@ function migrateWorkers(sessions: ProgressiveSession[]): ProgressiveSession[] {
   }));
 }
 
+/**
+ * Synthesize drafts[0] from legacy sessions that already have a
+ * `final_deliverable` but no drafts tree. Deterministic id keeps the record
+ * stable across reloads. Idempotent: sessions that already have `drafts`
+ * are returned untouched.
+ */
+function migrateSessionDrafts(sessions: ProgressiveSession[]): ProgressiveSession[] {
+  return sessions.map((s) => {
+    if (s.drafts && s.drafts.length > 0) return s;
+    if (!s.final_deliverable) return s;
+    const id = `legacy-${s.id}-0`;
+    const draft: Draft = {
+      id,
+      parent_draft_id: null,
+      version_label: 'v0.1',
+      change_summary: '첫 초안 (에이전트 팀 분석)',
+      directive: null,
+      final_text: s.final_deliverable,
+      final_mix: s.final_mix ?? null,
+      reviewing_agent_id: null,
+      created_at: s.updated_at || s.created_at || new Date().toISOString(),
+    };
+    return {
+      ...s,
+      drafts: [draft],
+      active_draft_id: s.active_draft_id ?? id,
+    };
+  });
+}
+
 function updateSession(
   sessions: ProgressiveSession[],
   id: string,
@@ -161,7 +217,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
   loadSessions: () => {
     const local = getStorage<ProgressiveSession[]>(STORAGE_KEYS.PROGRESSIVE_SESSIONS, []);
-    const migrated = migrateWorkers(local);
+    const migrated = migrateSessionDrafts(migrateWorkers(local));
     set({ sessions: migrated });
 
     // Async: merge with Supabase remote sessions (cross-device sync)
@@ -200,7 +256,7 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
             }
 
             if (changed) {
-              const merged = migrateWorkers(Array.from(localMap.values()));
+              const merged = migrateSessionDrafts(migrateWorkers(Array.from(localMap.values())));
               setStorage(STORAGE_KEYS.PROGRESSIVE_SESSIONS, merged);
               set({ sessions: merged });
             }
@@ -399,13 +455,176 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
   setFinalDeliverable: (text, finalMix) => {
     const { currentSessionId } = get();
     if (!currentSessionId) return;
-    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+
+    // Phase transition is always applied — writing to final_deliverable marks
+    // the session as complete (this preserves the existing reset-then-rerun
+    // flow used by "이해관계자 검증 다시 하기").
+    let sessions = updateSession(get().sessions, currentSessionId, () => ({
       final_deliverable: text,
       final_mix: finalMix ?? null,
       phase: 'complete' as ProgressivePhase,
     }));
+
+    // Auto-append a Draft node only for *real* completions — i.e. when the
+    // caller is writing a non-empty final text. The reset path that passes
+    // null must not pollute the draft tree.
+    if (text && typeof text === 'string' && text.length > 0) {
+      const current = sessions.find((s) => s.id === currentSessionId);
+      if (current) {
+        const existingDrafts = current.drafts || [];
+        let parentId: string | null;
+        let reviewingAgentId: Draft['reviewing_agent_id'];
+        let changeSummary: string;
+
+        if (existingDrafts.length === 0) {
+          // Initial completion — root of the draft tree.
+          parentId = null;
+          reviewingAgentId = null;
+          changeSummary = '첫 초안 (에이전트 팀 분석)';
+        } else {
+          // Re-run of DM stakeholder review — append as child of active leaf.
+          parentId = current.active_draft_id
+            ?? existingDrafts[existingDrafts.length - 1].id;
+          reviewingAgentId = 'dm_reroll';
+          changeSummary = '이해관계자 재검증 반영';
+        }
+
+        // Compute the new version label via pure version-numbering helpers.
+        const parentLabel = parentId
+          ? (existingDrafts.find((d) => d.id === parentId)?.version_label || ROOT_LABEL)
+          : ROOT_LABEL;
+        const siblingLabels = existingDrafts
+          .filter((d) => (d.parent_draft_id ?? null) === parentId)
+          .map((d) => d.version_label);
+        const versionLabel = nextChildLabel(parentLabel, siblingLabels);
+
+        const newDraft: Draft = {
+          id: generateId(),
+          parent_draft_id: parentId,
+          version_label: versionLabel,
+          change_summary: changeSummary,
+          directive: null,
+          final_text: text,
+          final_mix: finalMix ?? null,
+          reviewing_agent_id: reviewingAgentId,
+          created_at: new Date().toISOString(),
+        };
+
+        sessions = updateSession(sessions, currentSessionId, (s) => ({
+          drafts: [...(s.drafts || []), newDraft],
+          active_draft_id: newDraft.id,
+        }));
+      }
+    }
+
     persist(sessions);
     set({ sessions });
+  },
+
+  // ─── Post-complete draft tree actions ───
+
+  addDraft: (init) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return null;
+    const current = get().sessions.find((s) => s.id === currentSessionId);
+    if (!current) return null;
+
+    const existing = current.drafts || [];
+    const parentId = init.parent_draft_id;
+    const parentLabel = parentId
+      ? (existing.find((d) => d.id === parentId)?.version_label || ROOT_LABEL)
+      : ROOT_LABEL;
+    const siblingLabels = existing
+      .filter((d) => (d.parent_draft_id ?? null) === parentId)
+      .map((d) => d.version_label);
+    const versionLabel = nextChildLabel(parentLabel, siblingLabels);
+
+    const newId = generateId();
+    const newDraft: Draft = {
+      id: newId,
+      parent_draft_id: parentId,
+      version_label: versionLabel,
+      change_summary: init.change_summary.slice(0, 60),
+      directive: init.directive,
+      final_text: init.final_text,
+      final_mix: init.final_mix ?? null,
+      reviewing_agent_id: init.reviewing_agent_id,
+      created_at: new Date().toISOString(),
+    };
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      drafts: [...(s.drafts || []), newDraft],
+      active_draft_id: newId,
+      // Also update the flat final_deliverable so the rest of the UI (ShareBar,
+      // FinalCard, export) sees the new version without any special casing.
+      final_deliverable: init.final_text,
+      final_mix: init.final_mix ?? s.final_mix ?? null,
+      phase: 'complete' as ProgressivePhase,
+    }));
+    persist(sessions);
+    set({ sessions });
+    track('progressive_draft_added', {
+      parent_id: parentId,
+      label: versionLabel,
+      agent: init.reviewing_agent_id,
+    });
+    return newId;
+  },
+
+  setActiveDraft: (draftId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const current = get().sessions.find((s) => s.id === currentSessionId);
+    if (!current) return;
+    const target = draftId
+      ? (current.drafts || []).find((d) => d.id === draftId)
+      : undefined;
+
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      active_draft_id: draftId,
+      // When branching to an older draft, update the surface-level final_*
+      // fields so the main UI (FinalCard) shows that draft's content.
+      ...(target
+        ? { final_deliverable: target.final_text, final_mix: target.final_mix ?? null }
+        : {}),
+    }));
+    persist(sessions);
+    set({ sessions });
+    track('progressive_active_draft_changed', { draft_id: draftId });
+  },
+
+  promoteDraftToV1: (draftId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => {
+      const drafts = s.drafts || [];
+      const target = drafts.find((d) => d.id === draftId);
+      if (!target) return {};
+      const newLabel = promoteToMajor(target.version_label);
+      return {
+        drafts: drafts.map((d) =>
+          d.id === draftId ? { ...d, version_label: newLabel } : d,
+        ),
+        released_draft_id: draftId,
+      };
+    });
+    persist(sessions);
+    set({ sessions });
+    track('progressive_draft_promoted', { draft_id: draftId });
+  },
+
+  getActiveDraftPath: () => {
+    const current = get().currentSession();
+    if (!current || !current.drafts || current.drafts.length === 0) return [];
+    const nodes = current.drafts.map((d) => ({
+      id: d.id,
+      parent_id: d.parent_draft_id,
+      created_at: d.created_at,
+      _full: d,
+    }));
+    const path = getActivePathGeneric(nodes, current.active_draft_id ?? null);
+    return path.map((n) => n._full);
   },
 
   // ─── Workers ───

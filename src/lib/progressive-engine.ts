@@ -1028,3 +1028,123 @@ export async function runDebate(
     criticExpertise: critic.expertise || critic.role,
   });
 }
+
+/* ─── Concertmaster Revision (Post-finalize iteration) ───────────────── */
+
+export interface ConcertmasterRevisionResult {
+  revised_text: string;
+  change_summary: string;
+}
+
+/**
+ * Post-finalize revision loop. User has a complete draft in hand and wants
+ * the 악장(Concertmaster) to edit it per a natural-language directive.
+ *
+ * Unlike runFinalDeliverable (which synthesizes a fresh final from mix +
+ * concerns), this function is a minimal-invasive text-level edit: it assumes
+ * the document is already good and only touches what the directive targets.
+ *
+ * Pure function — caller records the result via `useProgressiveStore.addDraft`.
+ */
+export async function runConcertmasterRevision(params: {
+  currentFinalText: string;
+  directive: string;
+  problemContext: string;
+  currentVersionLabel: string;
+  priorDrafts?: Array<{ version_label: string; change_summary: string }>;
+  signal?: AbortSignal;
+}): Promise<ConcertmasterRevisionResult> {
+  const {
+    currentFinalText,
+    directive,
+    problemContext,
+    currentVersionLabel,
+    priorDrafts,
+    signal,
+  } = params;
+
+  const locale = getCurrentLanguage();
+
+  const systemKo = `당신은 오케스트라의 악장(Concertmaster)입니다. 다른 전문가 에이전트들의 분석을 종합해 이미 완성된 기획안을, 사용자의 수정 요청에 따라 최소 침습 원칙으로 편집합니다.
+
+## 원칙
+1. **원본 구조 유지** — 섹션 제목, 순서, 전체 톤을 보존합니다. directive가 명시적으로 구조 변경을 요구할 때만 변경합니다.
+2. **지시 범위 정확히 파악** — directive가 가리키는 범위(전체/섹션/문장)만 수정합니다. 범위 밖은 **한 글자도 손대지 않습니다**.
+3. **사실 보존** — 숫자, 고유명사, 기존에 합의된 가정은 directive가 명시적으로 뒤집지 않는 한 유지합니다.
+4. **문체 일관성** — 수정 부분이 나머지와 이질적이지 않도록 톤과 어휘를 맞춥니다.
+5. **모호한 지시의 해석** — directive가 추상적("더 공격적으로", "덜 낙관적으로")이면, 그 의도에 가장 부합하는 구체적 변경 2~3개를 골라 적용합니다.
+6. **change_summary** — 무엇이 바뀌었는지 40자 이내로 명확히. "섹션 3 재무 가정 보수화", "톤을 더 직설적으로" 같은 구체적 기술. "개선함" 같은 추상어 금지.
+
+## 반환 JSON (다른 말 없이 JSON만)
+{
+  "revised_text": "수정된 전체 마크다운 (전체 반환, 부분 X)",
+  "change_summary": "한 줄 요약 (40자 이내)"
+}`;
+
+  const systemEn = `You are the Concertmaster of an orchestra of expert agents. A complete document already exists; your job is to edit it per the user's directive with minimum-invasive edits.
+
+## Principles
+1. **Preserve original structure** — section headings, order, tone. Change them only if the directive explicitly requires it.
+2. **Scope precisely** — touch only the part the directive targets. Do not change anything outside that scope.
+3. **Preserve facts** — numbers, proper names, agreed assumptions stay unless the directive explicitly overrides them.
+4. **Tone consistency** — edits must feel of a piece with the surrounding prose.
+5. **Interpret abstract directives** — if the directive is vague ("more aggressive", "less optimistic"), pick 2-3 concrete changes that best capture the intent.
+6. **change_summary** — describe what changed in ≤ 40 chars. Concrete, not abstract ("tightened financial section", not "improved it").
+
+## Return JSON only
+{
+  "revised_text": "the entire revised markdown",
+  "change_summary": "one-line summary (≤ 40 chars)"
+}`;
+
+  const priorBlock = priorDrafts && priorDrafts.length > 0
+    ? (locale === 'ko'
+        ? `\n\n## 이전 버전 이력\n${priorDrafts.map((d) => `- ${d.version_label}: ${d.change_summary}`).join('\n')}`
+        : `\n\n## Prior version history\n${priorDrafts.map((d) => `- ${d.version_label}: ${d.change_summary}`).join('\n')}`)
+    : '';
+
+  const userKo = `## 원래 문제 맥락
+${problemContext}
+
+## 현재 버전 ${currentVersionLabel}
+${currentFinalText}
+
+## 수정 요청
+${directive}${priorBlock}`;
+
+  const userEn = `## Original problem context
+${problemContext}
+
+## Current version ${currentVersionLabel}
+${currentFinalText}
+
+## Revision request
+${directive}${priorBlock}`;
+
+  const result = await callLLMJson<ConcertmasterRevisionResult>(
+    [{ role: 'user', content: locale === 'ko' ? userKo : userEn }],
+    {
+      system: locale === 'ko' ? systemKo : systemEn,
+      maxTokens: 4000,
+      signal,
+      shape: { revised_text: 'string', change_summary: 'string' },
+    },
+  );
+
+  // Record activity if 악장 agent exists (even if not fully unlocked — this
+  // is a meta-capability separate from task-based unlock progression).
+  try {
+    useAgentStore.getState().recordActivity(
+      'concertmaster',
+      'review_given',
+      `revision:${directive.slice(0, 60)}`,
+    );
+  } catch {
+    // Non-critical — revision itself succeeded.
+  }
+
+  return {
+    revised_text: (result.revised_text || '').trim(),
+    change_summary: (result.change_summary || '').trim().slice(0, 60),
+  };
+}

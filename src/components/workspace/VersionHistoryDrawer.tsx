@@ -1,52 +1,39 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { RefineLoop, RefineIteration } from '@/stores/types';
 import { Button } from '@/components/ui/Button';
 import { GitBranch, Check, Crown, X, Eye } from 'lucide-react';
 import { isPreRelease } from '@/lib/version-numbering';
+import { buildTree, type TreeHierarchyNode, type VersionNode } from '@/lib/version-tree';
+
+/**
+ * Generic tree-view drawer for version histories.
+ *
+ * Consumers (RefineStep, ProgressiveFlow) adapt their domain types
+ * (RefineIteration, Draft, …) into `VersionTreeItem` and hand the drawer
+ * a flat array. The drawer is shape-agnostic — it only knows about
+ * `{id, parent_id, label, summary, created_at}`. Mutations are delegated
+ * to the parent via the four callbacks.
+ */
+export interface VersionTreeItem extends VersionNode {
+  label: string;
+  summary: string;
+  is_released?: boolean;
+}
 
 interface VersionHistoryDrawerProps {
-  loop: RefineLoop;
+  nodes: VersionTreeItem[];
+  activeLeafId: string | null;
   activePathIds: Set<string>;
-  previewIterationId: string | null;
+  previewNodeId: string | null;
+  /** Label for the synthetic root entry (e.g. "v0 (초안)"). Defaults to "v0". */
+  rootLabel?: string;
+  /** Summary text for the synthetic root entry. Defaults to "원본". */
+  rootSummary?: string;
   onClose: () => void;
-  onPreview: (iterationId: string) => void;
-  onBranch: (iterationId: string) => void;
-  onPromote: (iterationId: string) => void;
-}
-
-interface TreeNode {
-  iter: RefineIteration;
-  children: TreeNode[];
-}
-
-function buildTree(iterations: RefineIteration[]): TreeNode[] {
-  const nodes = new Map<string, TreeNode>();
-  const roots: TreeNode[] = [];
-  for (const it of iterations) {
-    if (!it.id) continue;
-    nodes.set(it.id, { iter: it, children: [] });
-  }
-  for (const it of iterations) {
-    if (!it.id) continue;
-    const node = nodes.get(it.id)!;
-    const parentId = it.parent_iteration_id;
-    if (!parentId) {
-      roots.push(node);
-    } else {
-      const parent = nodes.get(parentId);
-      if (parent) parent.children.push(node);
-      else roots.push(node); // orphaned → treat as root
-    }
-  }
-  // Sort siblings by created_at so older main-line comes first
-  const sortRec = (list: TreeNode[]) => {
-    list.sort((a, b) => (a.iter.created_at || '').localeCompare(b.iter.created_at || ''));
-    list.forEach((n) => sortRec(n.children));
-  };
-  sortRec(roots);
-  return roots;
+  onPreview: (nodeId: string) => void;
+  onBranch: (nodeId: string) => void;
+  onPromote: (nodeId: string) => void;
 }
 
 function relativeTime(iso: string): string {
@@ -66,30 +53,34 @@ function relativeTime(iso: string): string {
 }
 
 export function VersionHistoryDrawer({
-  loop,
+  nodes,
+  activeLeafId,
   activePathIds,
-  previewIterationId,
+  previewNodeId,
+  rootLabel = 'v0 (초안)',
+  rootSummary = '원본',
   onClose,
   onPreview,
   onBranch,
   onPromote,
 }: VersionHistoryDrawerProps) {
-  const tree = useMemo(() => buildTree(loop.iterations), [loop.iterations]);
+  const tree = useMemo(() => buildTree(nodes), [nodes]);
 
-  const renderNode = (node: TreeNode, depth: number) => {
-    const { iter } = node;
-    const iterId = iter.id || '';
-    const isActivePath = activePathIds.has(iterId);
-    const isActiveLeaf = loop.active_iteration_id === iterId;
-    const isPreview = previewIterationId === iterId;
-    const label = iter.version_label || `#${iter.iteration_number}`;
-    const summary = iter.change_summary || iter.issues_to_address?.slice(0, 2).join(', ') || '—';
-    // Only the currently-active iteration may be promoted. Prevents users
-    // from relabeling multiple nodes in the same tree to "v1.0".
+  const renderNode = (node: TreeHierarchyNode<VersionTreeItem>, depth: number) => {
+    const item = node.data;
+    const nodeId = item.id;
+    const isActivePath = activePathIds.has(nodeId);
+    const isActiveLeaf = activeLeafId === nodeId;
+    const isPreview = previewNodeId === nodeId;
+    const label = item.label;
+    const summary = item.summary || '—';
+    // Only the currently-active leaf may be promoted — prevents multiple
+    // nodes in the same tree from being relabeled "v1.0".
     const canPromote = isPreRelease(label) && isActiveLeaf;
+    const isReleased = !!item.is_released || !isPreRelease(label);
 
     return (
-      <div key={iterId} className="relative">
+      <div key={nodeId} className="relative">
         <div
           className={[
             'group rounded-lg border px-3 py-2.5 mb-1.5 transition-all',
@@ -111,18 +102,18 @@ export function VersionHistoryDrawer({
                 <Check className="w-2.5 h-2.5" /> 현재
               </span>
             )}
-            {!isPreRelease(label) && (
+            {isReleased && (
               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
                 <Crown className="w-2.5 h-2.5" /> released
               </span>
             )}
             <span className="ml-auto text-[10px] text-[var(--text-tertiary)]">
-              {iter.created_at ? relativeTime(iter.created_at) : ''}
+              {item.created_at ? relativeTime(item.created_at) : ''}
             </span>
           </div>
           <p
             className="text-[12px] text-[var(--text-secondary)] leading-snug line-clamp-2 mb-2 cursor-pointer hover:text-[var(--text-primary)]"
-            onClick={() => onPreview(iterId)}
+            onClick={() => onPreview(nodeId)}
             title="클릭하면 이 버전의 본문을 미리 봅니다"
           >
             {summary}
@@ -130,14 +121,14 @@ export function VersionHistoryDrawer({
           <div className="flex items-center gap-1.5">
             <button
               className="inline-flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
-              onClick={() => onPreview(iterId)}
+              onClick={() => onPreview(nodeId)}
             >
               <Eye className="w-3 h-3" /> 보기
             </button>
             {!isActiveLeaf && (
               <button
                 className="inline-flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
-                onClick={() => onBranch(iterId)}
+                onClick={() => onBranch(nodeId)}
               >
                 <GitBranch className="w-3 h-3" /> 여기서 분기
               </button>
@@ -145,7 +136,7 @@ export function VersionHistoryDrawer({
             {canPromote && (
               <button
                 className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-900 transition-colors ml-auto"
-                onClick={() => onPromote(iterId)}
+                onClick={() => onPromote(nodeId)}
                 title="이 버전을 v1.0으로 승격합니다"
               >
                 <Crown className="w-3 h-3" /> v1으로 승격
@@ -188,8 +179,8 @@ export function VersionHistoryDrawer({
           ) : (
             <div>
               <div className="mb-3 pb-2 border-b border-dashed border-[var(--border)]">
-                <div className="text-[11px] text-[var(--text-tertiary)] mb-0.5">v0 (초안)</div>
-                <div className="text-[12px] text-[var(--text-secondary)] italic">원본 기획안</div>
+                <div className="text-[11px] text-[var(--text-tertiary)] mb-0.5">{rootLabel}</div>
+                <div className="text-[12px] text-[var(--text-secondary)] italic">{rootSummary}</div>
               </div>
               {tree.map((node) => renderNode(node, 0))}
             </div>
