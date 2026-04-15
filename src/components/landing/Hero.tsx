@@ -253,9 +253,9 @@ export function Hero() {
           {/* ─── Left: Message + Input ─── */}
           <div className="phrase-entrance">
             <h1 className="text-display-xl text-[var(--text-primary)]">
-              <span className="lg:whitespace-nowrap">{L('어디로 가려는가.', 'Where are you headed?')}</span>
+              <span className="lg:whitespace-nowrap">{L('내 전문 분야가 아닌 걸', 'When you need to do')}</span>
               <br />
-              <span className="text-gold-gradient">{L('너의 이타카.', 'To your Ithaca.')}</span>
+              <span className="text-gold-gradient">{L('해야 할 때.', 'what you\'ve never done.')}</span>
             </h1>
 
             <p className="mt-5 text-[15px] md:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-md">
