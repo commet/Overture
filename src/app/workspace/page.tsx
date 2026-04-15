@@ -176,7 +176,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
   const [streamingText, setStreamingText] = useState('');
   const [previewPersonas, setPreviewPersonas] = useState<WorkerPersona[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { createProject, setCurrentProjectId } = useProjectStore();
+  const { createProject } = useProjectStore();
   const progressiveStore = useProgressiveStore();
   const phaseRef = React.useRef<HeroPhase>('idle');
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,25 +218,22 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
     if (!text || phase !== 'idle') return;
     if (directText) setProblemInput(text);
 
-    // 1. idle → assembling: 팀 등장
+    // 1. idle → assembling: 팀 등장 (store 미동기 — HeroFlow가 언마운트되면 안 됨)
     setPhase('assembling');
     setError(null);
     const pool = getPersonaPool();
     setPreviewPersonas(pool.slice(0, 4));
-
-    // 2. 프로젝트 + 세션 생성
-    const pid = createProject(text.slice(0, 40));
-    setCurrentProjectId(pid);
-    progressiveStore.createSession(pid, text, reviewerAgentId);
     track('workspace_problem_submit', { text_length: text.length, source: 'hero_flow' });
 
-    // 3. assembling → analyzing (타이머 또는 첫 토큰)
+    // 2. assembling → analyzing (타이머 또는 첫 토큰)
     timerRef.current = setTimeout(() => {
       if (phaseRef.current === 'assembling') setPhase('analyzing');
     }, 2000);
 
     try {
-      // 4. 스트리밍 분석
+      // 3. 스트리밍 분석 — 프로젝트/세션은 분석 성공 후에 생성한다.
+      //    createProject가 동기로 currentProjectId를 set하면 부모가 ProgressiveLayout으로 전환하면서
+      //    HeroFlow가 즉시 언마운트돼 assembling/analyzing 애니메이션이 한 번도 렌더되지 않음.
       const result = await runInitialAnalysis(text, (token) => {
         setStreamingText(token);
         if (phaseRef.current === 'assembling') {
@@ -245,28 +242,29 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
         }
       });
 
-      // 5. 결과 저장
+      // 4. 분석 성공 — 이제 프로젝트 + 세션 생성 후 결과 주입
+      const pid = createProject(text.slice(0, 40));
+      progressiveStore.createSession(pid, text, reviewerAgentId);
       progressiveStore.addSnapshot(result.snapshot);
       if (result.detectedDM) progressiveStore.setDecisionMaker(result.detectedDM);
       progressiveStore.addQuestion(result.question);
       progressiveStore.setPhase('conversing');
 
-      // 6. ready → ProgressiveFlow로 전환
+      // 5. ready → ProgressiveFlow로 전환 (onReady → 부모가 setCurrentProjectId)
       setPhase('ready');
       onReady(pid);
     } catch (err) {
       if (timerRef.current) clearTimeout(timerRef.current);
       const errMsg = err instanceof Error ? err.message : String(err);
-      const isRateLimit = errMsg.includes('한도') || errMsg.includes('rate') || errMsg.includes('limit');
+      const isRateLimit = errMsg.includes('한도') || errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('429');
+      const needsLogin = errMsg.includes('needsLogin') || errMsg.includes('로그인하면');
 
-      if (isRateLimit) {
-        // Rate limit: 세션 보존 (사용자 입력 날리지 않음), 안내 제공
-        setError(L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.'));
+      if (isRateLimit || needsLogin) {
+        setError(needsLogin
+          ? L('무료 체험을 모두 사용했어요. 로그인하면 하루 10회까지 무료로 사용할 수 있습니다.', 'Free trial limit reached. Sign in to get up to 10 free uses per day.')
+          : L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.'));
       } else {
-        // 다른 에러: 세션 정리
-        const sid = progressiveStore.currentSessionId;
-        if (sid) progressiveStore.deleteSession(sid);
-        setCurrentProjectId(null);
+        // 실패 시 아직 세션이 없으니 정리 로직 불필요 — 그냥 에러만 보여준다
         setError(errMsg || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.'));
       }
       setPhase('idle');
