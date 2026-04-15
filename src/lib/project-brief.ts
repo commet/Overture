@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from './storage';
-import type { Project, ReframeItem, RecastItem, SynthesizeItem, FeedbackRecord, RehearsalResult, RefineLoop, HiddenAssumption } from '@/stores/types';
+import type { Project, ReframeItem, RecastItem, SynthesizeItem, FeedbackRecord, HiddenAssumption } from '@/stores/types';
 
 export function generateProjectBrief(project: Project | null): string {
   if (!project) return '';
@@ -14,9 +14,6 @@ export function generateProjectBrief(project: Project | null): string {
 
   const sections: string[] = [];
 
-  const refineLoops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, [])
-    .filter((l) => l.project_id === project.id);
-
   // Header
   sections.push(`# ${project.name}`);
   sections.push(`> Overture Project Brief — ${new Date().toLocaleDateString('ko-KR')}`);
@@ -26,7 +23,6 @@ export function generateProjectBrief(project: Project | null): string {
   if (decompositions.length > 0) {
     const latestD = decompositions[decompositions.length - 1];
     const latestO = recasts.length > 0 ? recasts[recasts.length - 1] : null;
-    const latestL = refineLoops.length > 0 ? refineLoops[refineLoops.length - 1] : null;
 
     sections.push('## 사고의 궤적');
     sections.push(`처음 주어진 과제: ${latestD.input_text}`);
@@ -44,10 +40,6 @@ export function generateProjectBrief(project: Project | null): string {
         if (criticalCount > 0 || unspokenCount > 0) {
           sections.push(`리허설 주요 리스크: ${criticalCount > 0 ? `🔴 핵심 위협 ${criticalCount}건` : ''} ${unspokenCount > 0 ? `/ 🟣 침묵의 리스크 ${unspokenCount}건` : ''}`);
         }
-      }
-      if (latestL && latestL.iterations.length > 0) {
-        const lastIter = latestL.iterations[latestL.iterations.length - 1];
-        sections.push(`합주 결과: 핵심 위협 ${lastIter.convergence?.critical_risks ?? '?'}건 남음`);
       }
     }
     sections.push('');

@@ -1,5 +1,5 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { ReframeItem, RecastItem, SynthesizeItem, RefineLoop, Project, JudgmentRecord, PersonaAccuracyRating, FeedbackRecord, DecisionQualityScore, VitalityAssessment } from '@/stores/types';
+import type { ReframeItem, RecastItem, SynthesizeItem, Project, JudgmentRecord, PersonaAccuracyRating, FeedbackRecord, DecisionQualityScore, VitalityAssessment } from '@/stores/types';
 
 /**
  * Typed data accessors — single source of truth for reading from localStorage.
@@ -32,7 +32,6 @@ export const data = {
   reframeItems: () => getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, []),
   recastItems: () => getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, []),
   synthesizeItems: () => getStorage<SynthesizeItem[]>(STORAGE_KEYS.SYNTHESIZE_LIST, []),
-  refineLoops: () => getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []),
   projects: () => getStorage<Project[]>(STORAGE_KEYS.PROJECTS, []),
   judgments: () => getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []),
   ratings: () => getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []),

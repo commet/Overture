@@ -72,7 +72,6 @@ import {
   buildEnhancedSystemPrompt,
   buildProjectItemsContext,
   buildPersonaAccuracyContext,
-  buildConvergencePatterns,
 } from '@/lib/context-builder';
 import { getSignalsByType } from '@/lib/signal-recorder';
 import { getEvalSummary, getStageEvalSummary } from '@/lib/eval-engine';
@@ -851,81 +850,6 @@ describe('Context Builder Simulation', () => {
       });
       const result = buildPersonaAccuracyContext('persona-1');
       expect(result).toContain('정확도 4.5/5'); // (5+4)/2 = 4.5, not affected by persona-2
-    });
-  });
-
-  // ═══════════════════════════════════════
-  // buildConvergencePatterns
-  // ═══════════════════════════════════════
-  describe('buildConvergencePatterns', () => {
-    it('converged 루프 0개 → null', () => {
-      setupStorage({ sot_refine_loops: [] });
-      expect(buildConvergencePatterns()).toBeNull();
-    });
-
-    it('converged 1개 (< 2) → null', () => {
-      setupStorage({ sot_refine_loops: [makeRefineLoop('converged', 2)] });
-      expect(buildConvergencePatterns()).toBeNull();
-    });
-
-    it('active 루프만 있으면 → null', () => {
-      setupStorage({
-        sot_refine_loops: [
-          makeRefineLoop('active', 3),
-          makeRefineLoop('active', 2),
-        ],
-      });
-      expect(buildConvergencePatterns()).toBeNull();
-    });
-
-    it('converged 2개 → 평균 수렴 횟수 표시', () => {
-      setupStorage({
-        sot_refine_loops: [
-          makeRefineLoop('converged', 2),
-          makeRefineLoop('converged', 4),
-        ],
-      });
-      const result = buildConvergencePatterns();
-      expect(result).not.toBeNull();
-      expect(result).toContain('수렴 패턴');
-      expect(result).toContain('3.0회'); // (2+4)/2
-    });
-
-    it('평균 > 3 → 리스크 반영 강화 제안', () => {
-      setupStorage({
-        sot_refine_loops: [
-          makeRefineLoop('converged', 4),
-          makeRefineLoop('converged', 5),
-        ],
-      });
-      const result = buildConvergencePatterns();
-      expect(result).toContain('수렴에 시간이 걸리는');
-      expect(result).toContain('리스크를 더 강하게');
-    });
-
-    it('평균 <= 2 → 현재 정밀도 유지', () => {
-      setupStorage({
-        sot_refine_loops: [
-          makeRefineLoop('converged', 1),
-          makeRefineLoop('converged', 2),
-        ],
-      });
-      const result = buildConvergencePatterns();
-      expect(result).toContain('빠르게 수렴');
-      expect(result).toContain('현재 수준의 설계 정밀도');
-    });
-
-    it('평균 2 < x <= 3 → 중립 (특별 메시지 없음)', () => {
-      setupStorage({
-        sot_refine_loops: [
-          makeRefineLoop('converged', 3),
-          makeRefineLoop('converged', 3),
-        ],
-      });
-      const result = buildConvergencePatterns();
-      expect(result).toContain('3.0회');
-      expect(result).not.toContain('수렴에 시간이');
-      expect(result).not.toContain('빠르게 수렴');
     });
   });
 

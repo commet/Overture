@@ -15,7 +15,6 @@ import type {
   ReframeItem,
   RecastItem,
   FeedbackRecord,
-  RefineLoop,
   Persona,
   PersonaAccuracyRating,
 } from '@/stores/types';
@@ -219,28 +218,6 @@ export function recordRehearsalEval(record: FeedbackRecord, personas: Persona[],
   const history = getStorage<EvalResult[]>(REHEARSAL_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REHEARSAL_EVAL_KEY, history);
   recordSignal({ tool: 'rehearse', signal_type: 'eval_result', signal_data: { record_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, persona_count: record.results.length }, project_id: record.project_id });
   try { const fp = buildStageFingerprint('rehearse', record); recordSignal({ tool: 'rehearse', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: record.project_id }); } catch { /* non-critical */ }
-  return evalResult;
-}
-
-/* ────────────────────────────────────
-   Refine Evals (합주 연습 품질 측정)
-   ──────────────────────────────────── */
-
-export const REFINE_EVALS: Array<{ id: string; question: string; measure: (loop: RefineLoop) => boolean }> = [
-  { id: 'converged_efficiently', question: '3회 이내에 수렴했는가?', measure: (loop) => loop.status === 'converged' && loop.iterations.length <= 3 },
-  { id: 'issues_trending_down', question: '이슈 수가 반복마다 감소했는가?', measure: (loop) => { if (loop.iterations.length < 2) return true; const t = loop.iterations.map(it => it.convergence.total_issues); for (let i = 1; i < t.length; i++) { if (t[i] > t[i - 1]) return false; } return true; } },
-  { id: 'critical_resolved', question: '모든 핵심 리스크가 해소됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; return loop.iterations[loop.iterations.length - 1].convergence.critical_risks === 0; } },
-  { id: 'approval_conditions_met', question: '고영향력 승인 조건 80% 이상 충족됐는가?', measure: (loop) => { if (loop.iterations.length === 0) return false; const hi = loop.iterations[loop.iterations.length - 1].convergence.approval_conditions.filter(ac => ac.influence === 'high'); if (hi.length === 0) return true; return hi.filter(ac => ac.met).length >= hi.length * 0.8; } },
-];
-
-export function recordRefineEval(loop: RefineLoop): EvalResult {
-  const evals: Record<string, boolean> = {};
-  let passed = 0;
-  for (const e of REFINE_EVALS) { const r = e.measure(loop); evals[e.id] = r; if (r) passed++; }
-  const evalResult: EvalResult = { id: crypto.randomUUID ? crypto.randomUUID() : `eval_${Date.now()}`, item_id: loop.id, tool: 'refine', strategy: null, interview_signals: null, evals, pass_rate: passed / REFINE_EVALS.length, recorded_at: new Date().toISOString() };
-  const history = getStorage<EvalResult[]>(REFINE_EVAL_KEY, []); history.push(evalResult); if (history.length > 200) history.splice(0, history.length - 200); setStorage(REFINE_EVAL_KEY, history);
-  recordSignal({ tool: 'refine', signal_type: 'eval_result', signal_data: { loop_id: evalResult.item_id, evals: evalResult.evals, pass_rate: evalResult.pass_rate, iteration_count: loop.iterations.length, final_status: loop.status }, project_id: loop.project_id });
-  try { const fp = buildStageFingerprint('refine', loop); recordSignal({ tool: 'refine', signal_type: 'stage_fingerprint', signal_data: { ...fp } as Record<string, unknown>, project_id: loop.project_id }); } catch { /* non-critical */ }
   return evalResult;
 }
 

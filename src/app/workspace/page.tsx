@@ -20,7 +20,6 @@ import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { runInitialAnalysis } from '@/lib/progressive-engine';
 import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle, Layers } from 'lucide-react';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { RefineLoop, OutcomeRecord } from '@/stores/types';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
@@ -803,42 +802,8 @@ function WorkspaceContent() {
 }
 
 function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
-  const locale = useLocale();
-  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const [staleCount, setStaleCount] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
-    const outcomes = getStorage<OutcomeRecord[]>(STORAGE_KEYS.OUTCOME_RECORDS, []);
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
-    const stale = loops.filter(l =>
-      l.status !== 'active' &&
-      new Date(l.updated_at) < twoWeeksAgo &&
-      !outcomes.some(o => o.project_id === l.project_id)
-    );
-    setStaleCount(stale.length);
-  }, []);
-
-  if (staleCount === 0 || dismissed) return null;
-
-  return (
-    <div className="relative max-w-4xl mx-auto px-4 md:px-6 lg:px-8 mt-3">
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[var(--checkpoint)] border border-[var(--risk-manageable)]/20">
-        <div className="flex items-center gap-2 text-[12px]">
-          <Clock size={13} className="text-[var(--risk-manageable)] shrink-0" />
-          <span className="text-[var(--text-primary)]">
-            {locale === 'ko' ? <>{staleCount}개 프로젝트 결과 기록 가능 ·{' '}<button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">기록하기</button></> : <>{staleCount} project(s) ready for outcome recording ·{' '}<button onClick={() => onNavigate('refine')} className="text-[var(--accent)] font-semibold underline cursor-pointer">Record</button></>}
-          </span>
-        </div>
-        <button onClick={() => setDismissed(true)} className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer">
-          <X size={13} />
-        </button>
-      </div>
-    </div>
-  );
+  // Legacy refine-loop stale nudge — removed along with RefineStep path.
+  return null;
 }
 
 function SuspenseFallback() {

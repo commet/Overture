@@ -9,7 +9,6 @@ import { getStorage, STORAGE_KEYS } from './storage';
 import { getSignals } from './signal-recorder';
 import type {
   JudgmentRecord,
-  RefineLoop,
   PersonaAccuracyRating,
   LearningHealth,
 } from '@/stores/types';
@@ -21,7 +20,6 @@ import type {
 export function assessLearningHealth(): LearningHealth {
   const signals = getSignals();
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
-  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
   const ratings = getStorage<PersonaAccuracyRating[]>(STORAGE_KEYS.ACCURACY_RATINGS, []);
   const reframeItems = getStorage<{ id: string }[]>(STORAGE_KEYS.REFRAME_LIST, []);
 
@@ -64,28 +62,14 @@ export function assessLearningHealth(): LearningHealth {
     }
   }
 
-  // Convergence speed trend
-  const completedLoops = loops
-    .filter(l => l.status === 'converged')
-    .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
-
-  let convergence_trend: LearningHealth['convergence_trend'] = 'not_enough_data';
-  if (completedLoops.length >= 3) {
-    const mid = Math.floor(completedLoops.length / 2);
-    const earlyAvg = completedLoops.slice(0, mid).reduce((s, l) => s + l.iterations.length, 0) / mid;
-    const lateAvg = completedLoops.slice(mid).reduce((s, l) => s + l.iterations.length, 0) / (completedLoops.length - mid);
-
-    if (lateAvg < earlyAvg * 0.8) {
-      convergence_trend = 'improving';
-    } else {
-      convergence_trend = 'stable';
-    }
-  }
+  // Convergence speed trend — legacy RefineLoop-based. Kept as 'not_enough_data'
+  // since the post-finalize iteration path now lives in ProgressiveFlow drafts.
+  const convergence_trend: LearningHealth['convergence_trend'] = 'not_enough_data';
 
   // Learning tier
   let learning_tier: 1 | 2 | 3 = 1;
   if (signal_count >= 10 && judgments.length >= 5) learning_tier = 2;
-  if (signal_count >= 30 && judgments.length >= 15 && completedLoops.length >= 3) learning_tier = 3;
+  if (signal_count >= 30 && judgments.length >= 15) learning_tier = 3;
 
   // Recommendations
   if (signal_count < 5) {
@@ -102,9 +86,6 @@ export function assessLearningHealth(): LearningHealth {
   }
   if (override_trend === 'improving') {
     recommendations.push('오버라이드율이 감소하고 있습니다. 학습이 작동하고 있습니다.');
-  }
-  if (convergence_trend === 'improving') {
-    recommendations.push('수렴 속도가 빨라지고 있습니다. 초기 설계 품질이 향상되고 있습니다.');
   }
 
   return {

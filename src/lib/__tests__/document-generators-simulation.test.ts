@@ -285,21 +285,6 @@ describe('Document Generators Simulation', () => {
       expect(result).toContain('조건A');
     });
 
-    it('refine loop 데이터로 수렴 과정 포함', () => {
-      mockStorage = {
-        sot_reframe_list: [],
-        sot_recast_list: [],
-        sot_feedback_history: [],
-        sot_personas: [],
-        sot_refine_loops: [makeRefineLoop()],
-        sot_judgments: [],
-      };
-      const result = generateDecisionRationale(makeProject());
-      expect(result).toContain('## 4. 반복과 수렴');
-      expect(result).toContain('1회 반복');
-      expect(result).toContain('변경1');
-    });
-
     it('judgment 이력 포함 (user_changed)', () => {
       mockStorage = {
         sot_reframe_list: [],
@@ -310,7 +295,7 @@ describe('Document Generators Simulation', () => {
         sot_judgments: [makeJudgment()],
       };
       const result = generateDecisionRationale(makeProject());
-      expect(result).toContain('## 5. 판단 이력');
+      expect(result).toContain('## 4. 판단 이력');
       expect(result).toContain('역할 변경');
       expect(result).toContain('AI 제안 수정 1건');
     });

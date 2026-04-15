@@ -122,23 +122,9 @@ export async function GET(req: Request) {
     pageCounts[path] = (pageCounts[path] || 0) + 1;
   }
 
-  // 7. Stale projects needing outcome recording
-  const { data: staleProjects } = await supabase
-    .from('refine_loops')
-    .select('project_id, user_id, updated_at')
-    .in('status', ['converged', 'stopped_by_user'])
-    .lt('updated_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString());
-
-  let staleWithoutOutcome = 0;
-  if (staleProjects && staleProjects.length > 0) {
-    const projectIds = staleProjects.map(p => p.project_id);
-    const { data: existingOutcomes } = await supabase
-      .from('outcome_records')
-      .select('project_id')
-      .in('project_id', projectIds);
-    const outcomeProjectIds = new Set((existingOutcomes || []).map(o => o.project_id));
-    staleWithoutOutcome = staleProjects.filter(p => !outcomeProjectIds.has(p.project_id)).length;
-  }
+  // 7. Stale projects needing outcome recording — legacy refine loop metric
+  // removed. Kept as 0 for downstream HTML template compatibility.
+  const staleWithoutOutcome = 0;
 
   // ── Build HTML Report ──
 

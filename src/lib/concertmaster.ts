@@ -18,7 +18,7 @@ import { getDQScores, analyzeDQTrend } from '@/lib/decision-quality';
 import { getSignals } from '@/lib/signal-recorder';
 import { t } from '@/lib/i18n';
 import { analyzeVitalityTrend, getVitalityCoaching as getVitalityStepCoaching, generateInterventions } from '@/lib/judgment-vitality';
-import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore, RefineLoop, VitalityAssessment } from '@/stores/types';
+import type { JudgmentRecord, Project, PersonaAccuracyRating, ReframeItem, RecastItem, DecisionQualityScore, VitalityAssessment } from '@/stores/types';
 import type { ReframingStrategy } from '@/lib/reframing-strategy';
 
 /* ────────────────────────────────────
@@ -707,18 +707,7 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     }
   }
 
-  // Check if there are active refine loops
-  const loops = data.refineLoops();
-  if (loops.length > 0) {
-    const activeLoop = [...loops].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!;
-    const iterationCount = Array.isArray(activeLoop?.iterations) ? activeLoop.iterations.length : 0;
-
-    if (iterationCount > 0) {
-      results.push({
-        message: t('coaching.refine.iterationStatus', { count: iterationCount }),
-      });
-    }
-  }
+  // (Removed) Active refine loops coaching — legacy path gone.
 
   return results;
 }

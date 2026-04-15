@@ -257,65 +257,6 @@ describe('Scenario B: 대기업 임원 (org 과집중)', () => {
 });
 
 // ══════════════════════════════════════
-// Scenario C: 빠른 결정자 — 항상 1회 반복에 끝남
-// Refine 루프를 제대로 활용하지 않는 사용자
-// ══════════════════════════════════════
-
-describe('Scenario C: 빠른 결정자 (1회 반복 패턴)', () => {
-  beforeEach(() => {
-    setupScenario({
-      sessions: 6, projects: 3,
-      reframeItems: makeReframeItems(6, ['customer_value', 'business', 'feasibility', 'org_capacity']),
-      refineLoops: Array.from({ length: 3 }, (_, i) => ({
-        id: `loop-${i}`, project_id: `p${i}`, status: 'stopped_by_user',
-        iterations: [{ convergence: { total_issues: 5, critical_risks: 2 } }],
-        created_at: '',
-      })),
-    });
-  });
-
-  it('refine 코칭: 반복 관련 메시지가 나와야 한다', () => {
-    const profile = buildConcertmasterProfile();
-    const coaching = getStepCoaching('refine', profile);
-    // 1회 반복 후 stopped → 반복 관련 코칭
-    const iterMsg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
-    expect(iterMsg).toBeDefined();
-  });
-});
-
-// ══════════════════════════════════════
-// Scenario D: 분석 마비 — 5회+ 반복해도 수렴 안 됨
-// ══════════════════════════════════════
-
-describe('Scenario D: 분석 마비 (과도한 반복)', () => {
-  beforeEach(() => {
-    setupScenario({
-      sessions: 4, projects: 2,
-      reframeItems: makeReframeItems(4, ['customer_value', 'business', 'feasibility', 'org_capacity']),
-      refineLoops: [{
-        id: 'loop-current', project_id: 'p1', status: 'active',
-        iterations: [
-          { convergence: { total_issues: 8, critical_risks: 3 } },
-          { convergence: { total_issues: 7, critical_risks: 3 } },
-          { convergence: { total_issues: 7, critical_risks: 2 } },
-          { convergence: { total_issues: 6, critical_risks: 2 } },
-          { convergence: { total_issues: 6, critical_risks: 2 } }, // 5회인데도 critical 남아있음
-        ],
-        created_at: '',
-      }],
-    });
-  });
-
-  it('refine 코칭: 5회 반복 중임을 알려줘야 한다', () => {
-    const profile = buildConcertmasterProfile();
-    const coaching = getStepCoaching('refine', profile);
-    // mock t() returns "coaching.refine.iterationStatus count=5"
-    const msg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
-    expect(msg).toBeDefined();
-  });
-});
-
-// ══════════════════════════════════════
 // Scenario E: DQ 하락 사용자
 // 초반에 잘하다가 최근에 나빠짐 (번아웃? 복잡한 결정?)
 // ══════════════════════════════════════

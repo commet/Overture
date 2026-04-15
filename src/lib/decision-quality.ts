@@ -19,7 +19,6 @@ import type {
   ReframeItem,
   RecastItem,
   FeedbackRecord,
-  RefineLoop,
   JudgmentRecord,
   Persona,
   VitalityAssessment,
@@ -38,7 +37,6 @@ export interface DQInput {
   reframe: ReframeItem | null;
   recast: RecastItem | null;
   feedbackRecords: FeedbackRecord[];
-  refineLoop: RefineLoop | null;
   judgments: JudgmentRecord[];
   personas: Persona[];
   projectId: string;
@@ -52,7 +50,7 @@ export interface DQInput {
  */
 export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   const {
-    reframe, recast, feedbackRecords, refineLoop,
+    reframe, recast, feedbackRecords,
     judgments, personas, projectId, force,
   } = input;
 
@@ -132,22 +130,13 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   }
 
   // ── DQ Element 5: Sound Reasoning (건전한 추론) ──
-  // Did the refine loop converge without circular issues?
+  // Proxy: did the user go through stakeholder feedback at all?
+  // The legacy refine-loop-based convergence signal is gone.
   let soundReasoning = 0;
-  if (refineLoop) {
-    if (refineLoop.status === 'converged') soundReasoning += 3;
-    if (refineLoop.iterations.length <= 3) soundReasoning += 1;
-
-    // Issue trend decreasing?
-    const trend = refineLoop.iterations.map(it => it.convergence.total_issues);
-    let decreasing = true;
-    for (let i = 1; i < trend.length; i++) {
-      if (trend[i] > trend[i - 1]) { decreasing = false; break; }
-    }
-    if (decreasing && trend.length >= 2) soundReasoning += 1;
-  } else if (feedbackRecords.length > 0) {
-    // No refine loop but had feedback
+  if (feedbackRecords.length > 0) {
     soundReasoning += 1;
+    // Multiple rounds of feedback indicates deeper reasoning
+    if (feedbackRecords.length >= 2) soundReasoning += 2;
   }
 
   // ── DQ Element 6: Commitment to Action (실행 의지) ──
@@ -241,7 +230,7 @@ export function computeDecisionQuality(input: DQInput): DecisionQualityScore {
   // Vitality: assess and persist
   try {
     const pastFeedback = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, []);
-    const va = assessVitality(reframe, recast, feedbackRecords, refineLoop, score.overall_dq, pastFeedback);
+    const va = assessVitality(reframe, recast, feedbackRecords, score.overall_dq, pastFeedback);
     const vaList = getStorage<VitalityAssessment[]>(STORAGE_KEYS.VITALITY_ASSESSMENTS, []);
     vaList.push(va);
     if (vaList.length > 50) vaList.splice(0, vaList.length - 50);

@@ -12,7 +12,7 @@ import { upsertToSupabase, softDeleteFromSupabase, loadAndMerge } from '@/lib/db
 
 type Timestamped = { id: string; created_at: string; updated_at: string };
 
-type TableName = 'projects' | 'reframe_items' | 'recast_items' | 'refine_loops' | 'synthesize_items';
+type TableName = 'projects' | 'reframe_items' | 'recast_items' | 'synthesize_items';
 
 /** Load from localStorage immediately, then merge with Supabase in background. */
 export function loadItems<T extends Timestamped>(

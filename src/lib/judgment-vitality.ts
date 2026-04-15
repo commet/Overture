@@ -14,7 +14,6 @@ import type {
   ReframeItem,
   RecastItem,
   FeedbackRecord,
-  RefineLoop,
   Persona,
   RecastStep,
   StageFingerprint,
@@ -49,12 +48,8 @@ export function buildStageFingerprint(
   item: FeedbackRecord
 ): StageFingerprint;
 export function buildStageFingerprint(
-  phase: 'refine',
-  item: RefineLoop
-): StageFingerprint;
-export function buildStageFingerprint(
-  phase: 'reframe' | 'recast' | 'rehearse' | 'refine',
-  item: ReframeItem | RecastItem | FeedbackRecord | RefineLoop
+  phase: 'reframe' | 'recast' | 'rehearse',
+  item: ReframeItem | RecastItem | FeedbackRecord
 ): StageFingerprint {
   const now = new Date().toISOString();
 
@@ -99,48 +94,27 @@ export function buildStageFingerprint(
     };
   }
 
-  if (phase === 'rehearse') {
-    const r = item as FeedbackRecord;
-    const allRisks = (r.results || []).flatMap(res => res.classified_risks || []);
-    const allConcerns = (r.results || []).flatMap(res => [
-      ...(res.concerns || []),
-      ...(res.first_questions || []),
-    ]);
-    const uniqueConcerns = new Set(allConcerns.map(c => c.toLowerCase().trim()));
-    const totalConcerns = allConcerns.length || 1;
-    const allConditions = (r.results || []).flatMap(res => res.approval_conditions || []);
-
-    return {
-      phase: 'rehearse',
-      item_id: r.id || '',
-      timestamp: now,
-      fingerprint: {
-        risk_count: allRisks.length,
-        critical_risk_count: allRisks.filter(r => r.category === 'critical').length,
-        unspoken_risk_count: allRisks.filter(r => r.category === 'unspoken').length,
-        approval_condition_count: allConditions.length,
-        unique_concern_ratio: uniqueConcerns.size / totalConcerns,
-      },
-    };
-  }
-
-  // refine
-  const r = item as RefineLoop;
-  const iterations = r.iterations || [];
-  const lastIter = iterations[iterations.length - 1];
-  const totalConditions = lastIter?.convergence?.approval_conditions?.length || 1;
-  const metConditions = (lastIter?.convergence?.approval_conditions || []).filter(c => c.met).length;
+  // rehearse
+  const r = item as FeedbackRecord;
+  const allRisks = (r.results || []).flatMap(res => res.classified_risks || []);
+  const allConcerns = (r.results || []).flatMap(res => [
+    ...(res.concerns || []),
+    ...(res.first_questions || []),
+  ]);
+  const uniqueConcerns = new Set(allConcerns.map(c => c.toLowerCase().trim()));
+  const totalConcerns = allConcerns.length || 1;
+  const allConditions = (r.results || []).flatMap(res => res.approval_conditions || []);
 
   return {
-    phase: 'refine',
+    phase: 'rehearse',
     item_id: r.id || '',
     timestamp: now,
     fingerprint: {
-      iteration_count: iterations.length,
-      issues_resolved: iterations.length > 1
-        ? Math.max(0, (iterations[0]?.convergence?.total_issues || 0) - (lastIter?.convergence?.total_issues || 0))
-        : 0,
-      conditions_met_ratio: metConditions / totalConditions,
+      risk_count: allRisks.length,
+      critical_risk_count: allRisks.filter(r => r.category === 'critical').length,
+      unspoken_risk_count: allRisks.filter(r => r.category === 'unspoken').length,
+      approval_condition_count: allConditions.length,
+      unique_concern_ratio: uniqueConcerns.size / totalConcerns,
     },
   };
 }
@@ -202,7 +176,6 @@ export function buildProvenanceChain(
   reframe: ReframeItem | null,
   recast: RecastItem | null,
   feedbackRecords: FeedbackRecord[],
-  refineLoop: RefineLoop | null
 ): Map<string, ProvenanceTag[]> {
   const chain = new Map<string, ProvenanceTag[]>();
   const now = new Date().toISOString();
@@ -249,25 +222,6 @@ export function buildProvenanceChain(
             source_field: 'classified_risks',
             created_at: now,
           });
-        }
-      }
-    }
-  }
-
-  // Trace into refine changes
-  if (refineLoop) {
-    for (const iter of refineLoop.iterations || []) {
-      for (const change of iter.changes || []) {
-        const changeText = `${change.what || ''} ${change.why || ''}`;
-        for (const [assumptionText, tags] of chain) {
-          if (computeSimilarity(assumptionText, changeText) > 0.2) {
-            tags.push({
-              phase: 'refine',
-              source_id: refineLoop.id,
-              source_field: `iterations[${iter.iteration_number}].changes`,
-              created_at: now,
-            });
-          }
         }
       }
     }
@@ -365,7 +319,6 @@ export function computeProjectGamma(
   reframe: ReframeItem | null,
   recast: RecastItem | null,
   feedbackRecords: FeedbackRecord[],
-  refineLoop: RefineLoop | null
 ): { per_stage: Array<{ phase: string; gamma: number }>; overall: number; fingerprints: StageFingerprint[] } {
   const fingerprints: StageFingerprint[] = [];
   const stageGammas: Array<{ phase: string; gamma: number }> = [];
@@ -388,16 +341,10 @@ export function computeProjectGamma(
     fingerprints.push(fp);
     stageGammas.push({ phase: 'rehearse', gamma: computeStageGamma(fp) });
   }
-  if (refineLoop) {
-    const fp = buildStageFingerprint('refine', refineLoop);
-    fingerprints.push(fp);
-    stageGammas.push({ phase: 'refine', gamma: computeStageGamma(fp) });
-  }
-
   // Provenance bonus: how far did reframe insights travel?
   let provenanceBonus = 0;
   if (reframe && fingerprints.length >= 2) {
-    const chain = buildProvenanceChain(reframe, recast, feedbackRecords, refineLoop);
+    const chain = buildProvenanceChain(reframe, recast, feedbackRecords);
     const totalAssumptions = chain.size || 1;
     let traveledCount = 0;
     for (const [, tags] of chain) {
@@ -468,7 +415,6 @@ export function detectRigiditySignals(
   reframe: ReframeItem | null,
   recast: RecastItem | null,
   feedbackRecords: FeedbackRecord[],
-  refineLoop: RefineLoop | null,
   gamma: number,
   dqScore?: number,
   pastFeedbackRecords?: FeedbackRecord[],
@@ -478,18 +424,6 @@ export function detectRigiditySignals(
   const mkId = () => `rs-${Date.now()}-${signalIdx++}`;
 
   // ── User ↔ AI ──
-
-  // convergence_too_fast: 1회 수렴 + low γ
-  if (refineLoop && (refineLoop.iterations || []).length <= 1 && refineLoop.status === 'converged' && gamma < 0.3) {
-    signals.push({
-      id: mkId(),
-      category: 'user_ai',
-      signal_type: 'convergence_too_fast',
-      severity: RIGIDITY_THRESHOLDS.convergence_too_fast.severity,
-      evidence: '리파인이 1회 만에 수렴했고 γ가 낮습니다.',
-      recommendation: '페르소나 피드백을 더 꼼꼼히 검토해보세요.',
-    });
-  }
 
   // frame_unchanged: reframed question ≈ surface task
   if (reframe?.analysis) {
@@ -560,27 +494,6 @@ export function detectRigiditySignals(
     });
   }
 
-  // translated_approval_ignored: specific step suggestions not reflected
-  if (refineLoop && feedbackRecords.length > 0) {
-    const latestFeedback = feedbackRecords.length > 0
-    ? [...feedbackRecords].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).pop()!
-    : undefined;
-    const translatedApprovals = (latestFeedback?.results || [])
-      .flatMap(r => r.translated_approvals || [])
-      .filter(ta => ta.affected_steps.length > 0 && !ta.met);
-
-    if (translatedApprovals.length > 0 && refineLoop.status === 'converged') {
-      signals.push({
-        id: mkId(),
-        category: 'user_system',
-        signal_type: 'translated_approval_ignored',
-        severity: RIGIDITY_THRESHOLDS.translated_approval_ignored.severity,
-        evidence: `${translatedApprovals.length}개의 구체적 step 수정 제안이 반영되지 않은 채 수렴했습니다.`,
-        recommendation: '무시한 제안이 의도적인지 검토해보세요.',
-      });
-    }
-  }
-
   // actor_pattern_rigid: always same actor distribution
   if (pastFeedbackRecords && pastFeedbackRecords.length >= RIGIDITY_THRESHOLDS.actor_pattern_rigid.min_sessions) {
     // This would need recast data from past sessions — simplified check via step_actors in fingerprints
@@ -598,17 +511,16 @@ export function assessVitality(
   reframe: ReframeItem | null,
   recast: RecastItem | null,
   feedbackRecords: FeedbackRecord[],
-  refineLoop: RefineLoop | null,
   dqScore?: number,
   pastFeedbackRecords?: FeedbackRecord[],
 ): VitalityAssessment {
   // Compute gamma + fingerprints in one pass (no duplication)
   const { per_stage, overall: gamma, fingerprints } = computeProjectGamma(
-    reframe, recast, feedbackRecords, refineLoop
+    reframe, recast, feedbackRecords,
   );
 
   const signals = detectRigiditySignals(
-    reframe, recast, feedbackRecords, refineLoop, gamma, dqScore, pastFeedbackRecords
+    reframe, recast, feedbackRecords, gamma, dqScore, pastFeedbackRecords
   );
 
   // Use weighted severity: high signals matter more, but average for stored metric

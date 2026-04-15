@@ -1,7 +1,7 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { getSignalsByType } from '@/lib/signal-recorder';
 import { getEvalSummary, getStageEvalSummary } from '@/lib/eval-engine';
-import type { JudgmentRecord, ReframeItem, RecastItem, SynthesizeItem, PersonaAccuracyRating, Project, RefineLoop, OutcomeRecord } from '@/stores/types';
+import type { JudgmentRecord, ReframeItem, RecastItem, SynthesizeItem, PersonaAccuracyRating, Project, OutcomeRecord } from '@/stores/types';
 import { getActionableInsights } from '@/lib/retrospective';
 
 /**
@@ -37,9 +37,8 @@ export function buildEnhancedSystemPrompt(
     sections.push(codaInsights);
   }
 
-  // 4. Convergence patterns from past refine loops
-  const convergenceCtx = buildConvergencePatterns();
-  if (convergenceCtx) sections.push(convergenceCtx);
+  // 4. (Removed) Convergence patterns from past refine loops —
+  //     legacy RefineStep path is gone. Intentionally no-op.
 
   // 5. Outcome-based insights (Phase 1)
   const outcomes = getStorage<OutcomeRecord[]>(STORAGE_KEYS.OUTCOME_RECORDS, []).filter(o => o.project_id !== projectId);
@@ -348,24 +347,3 @@ function buildAdaptiveContext(): string | null {
   return lines.slice(0, 6).join('\n'); // header + max 5 insight lines
 }
 
-/**
- * Build convergence patterns from past refine loops.
- * Helps calibrate initial design precision for future projects.
- */
-export function buildConvergencePatterns(): string | null {
-  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, []);
-  const completed = loops.filter(l => l.status === 'converged');
-  if (completed.length < 2) return null;
-
-  const avgIterations = completed.reduce((s, l) => s + l.iterations.length, 0) / completed.length;
-  const lines: string[] = ['### 이 사용자의 수렴 패턴'];
-  lines.push(`- 평균 수렴 반복 횟수: ${avgIterations.toFixed(1)}회`);
-
-  if (avgIterations > 3) {
-    lines.push('- 수렴에 시간이 걸리는 편입니다. 초기 설계에서 리스크를 더 강하게 반영하세요.');
-  } else if (avgIterations <= 2) {
-    lines.push('- 빠르게 수렴하는 편입니다. 현재 수준의 설계 정밀도를 유지하세요.');
-  }
-
-  return lines.join('\n');
-}

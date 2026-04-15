@@ -345,25 +345,6 @@ describe('concertmaster', () => {
       expect(accuracyMsg).toBeDefined();
     });
 
-    it('returns convergence coaching for refine step', () => {
-      mockGetStorage.mockImplementation((key: string) => {
-        if (key === 'sot_refine_loops') return [
-          { iterations: [{}, {}, {}] },
-        ];
-        return [];
-      });
-
-      const profile: ConcertmasterProfile = {
-        sessionCount: 5, projectCount: 1, totalJudgments: 5,
-        overrideRate: 0.2, dominantStrategy: null, avgPassRate: 0.7, tier: 2,
-      };
-
-      const coaching = getStepCoaching('refine', profile);
-      expect(coaching.length).toBeGreaterThan(0);
-      const convergenceMsg = coaching.find(c => c.message.includes('coaching.refine.iterationStatus'));
-      expect(convergenceMsg).toBeDefined();
-    });
-
     it('returns at most 2 coaching items', () => {
       // Tier 2 user with strategy pattern + assumption failure + high pass rate
       mockGetSessionInsights.mockReturnValue([

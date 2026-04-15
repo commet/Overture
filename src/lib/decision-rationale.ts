@@ -1,8 +1,8 @@
 import { getStorage, STORAGE_KEYS } from './storage';
 import type {
   Project, ReframeItem, RecastItem,
-  FeedbackRecord, RefineLoop, JudgmentRecord,
-  Persona, HiddenAssumption,
+  FeedbackRecord, JudgmentRecord,
+  Persona,
 } from '@/stores/types';
 
 export function generateDecisionRationale(project: Project | null): string {
@@ -14,15 +14,12 @@ export function generateDecisionRationale(project: Project | null): string {
   const feedbacks = getStorage<FeedbackRecord[]>(STORAGE_KEYS.FEEDBACK_HISTORY, [])
     .filter(f => f.project_id === project.id);
   const personas = getStorage<Persona[]>(STORAGE_KEYS.PERSONAS, []);
-  const loops = getStorage<RefineLoop[]>(STORAGE_KEYS.REFINE_LOOPS, [])
-    .filter(l => l.project_id === project.id);
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, [])
     .filter(j => j.project_id === project.id);
 
   const d = decompositions[decompositions.length - 1];
   const o = recasts[recasts.length - 1];
   const fb = feedbacks[feedbacks.length - 1];
-  const loop = loops[loops.length - 1];
 
   const s: string[] = [];
 
@@ -45,10 +42,6 @@ export function generateDecisionRationale(project: Project | null): string {
       if (critical.length || unspoken.length) {
         parts.push(`이해관계자 검증에서 핵심 위협 ${critical.length}건, 침묵의 리스크 ${unspoken.length}건을 발견했습니다.`);
       }
-    }
-    if (loop) {
-      const lastIter = loop.iterations[loop.iterations.length - 1];
-      parts.push(`${loop.iterations.length}회 반복 끝에 핵심 위협 ${lastIter?.convergence?.critical_risks ?? '?'}건이 남았습니다.`);
     }
     if (parts.length > 0) {
       s.push('## 요약');
@@ -195,25 +188,10 @@ export function generateDecisionRationale(project: Project | null): string {
     }
   }
 
-  // ── 4. 수렴 과정 ──
-  if (loop) {
-    s.push('## 4. 반복과 수렴');
-    s.push('');
-    const lastIter = loop.iterations[loop.iterations.length - 1];
-    s.push(`**${loop.iterations.length}회 반복**, 핵심 위협 ${lastIter?.convergence?.critical_risks ?? '?'}건 남음`);
-    s.push('');
-
-    for (const iter of loop.iterations) {
-      const summary = iter.changes?.map(c => c.what).join(', ') || '수정 사항 없음';
-      s.push(`- ${iter.iteration_number}차 (위협 ${iter.convergence?.critical_risks ?? '?'}): ${summary}`);
-    }
-    s.push('');
-  }
-
-  // ── 5. 판단 이력 ──
+  // ── 4. 판단 이력 ──
   if (judgments.length > 0) {
     const overrides = judgments.filter(j => j.user_changed);
-    s.push('## 5. 판단 이력');
+    s.push('## 4. 판단 이력');
     s.push('');
     s.push(`총 ${judgments.length}건의 판단 기록, AI 제안 수정 ${overrides.length}건`);
     s.push('');
@@ -228,10 +206,10 @@ export function generateDecisionRationale(project: Project | null): string {
     }
   }
 
-  // ── 6. 성찰 ──
+  // ── 5. 성찰 ──
   if (project.meta_reflection) {
     const mr = project.meta_reflection;
-    s.push('## 6. 성찰');
+    s.push('## 5. 성찰');
     s.push('');
     if (mr.understanding_change) s.push(`**이해의 변화**: ${mr.understanding_change}`);
     if (mr.surprising_discovery) s.push(`**놀라운 발견**: ${mr.surprising_discovery}`);

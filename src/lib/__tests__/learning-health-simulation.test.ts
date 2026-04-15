@@ -159,44 +159,6 @@ describe('Learning Health Simulation', () => {
     });
   });
 
-  // ── Convergence Trend ──
-
-  describe('convergence_trend', () => {
-    it('returns not_enough_data when < 3 converged loops', () => {
-      mockStorage['sot_refine_loops'] = [
-        makeLoop({ created_at: '2025-01-01' }),
-        makeLoop({ created_at: '2025-01-02' }),
-      ];
-      const result = assessLearningHealth();
-      expect(result.convergence_trend).toBe('not_enough_data');
-    });
-
-    it('returns improving when later loops have fewer iterations', () => {
-      // 4 loops: early avg = (5+5)/2 = 5, late avg = (2+2)/2 = 2
-      // 2 < 5*0.8 = 4 → improving
-      const iters = (n: number) => Array.from({ length: n }, (_, i) => ({ iteration_number: i + 1 }));
-      mockStorage['sot_refine_loops'] = [
-        makeLoop({ iterations: iters(5), created_at: '2025-01-01' }),
-        makeLoop({ iterations: iters(5), created_at: '2025-01-02' }),
-        makeLoop({ iterations: iters(2), created_at: '2025-01-03' }),
-        makeLoop({ iterations: iters(2), created_at: '2025-01-04' }),
-      ];
-      const result = assessLearningHealth();
-      expect(result.convergence_trend).toBe('improving');
-    });
-
-    it('returns stable when late loops have similar iteration count', () => {
-      const iters = (n: number) => Array.from({ length: n }, (_, i) => ({ iteration_number: i + 1 }));
-      mockStorage['sot_refine_loops'] = [
-        makeLoop({ iterations: iters(3), created_at: '2025-01-01' }),
-        makeLoop({ iterations: iters(3), created_at: '2025-01-02' }),
-        makeLoop({ iterations: iters(3), created_at: '2025-01-03' }),
-      ];
-      const result = assessLearningHealth();
-      expect(result.convergence_trend).toBe('stable');
-    });
-  });
-
   // ── Learning Tier ──
 
   describe('learning_tier', () => {
@@ -283,19 +245,5 @@ describe('Learning Health Simulation', () => {
       );
     });
 
-    it('positive message when convergence improving', () => {
-      const iters = (n: number) => Array.from({ length: n }, (_, i) => ({ iteration_number: i + 1 }));
-      mockStorage['sot_refine_loops'] = [
-        makeLoop({ iterations: iters(6), created_at: '2025-01-01' }),
-        makeLoop({ iterations: iters(6), created_at: '2025-01-02' }),
-        makeLoop({ iterations: iters(1), created_at: '2025-01-03' }),
-        makeLoop({ iterations: iters(1), created_at: '2025-01-04' }),
-      ];
-      const result = assessLearningHealth();
-      expect(result.convergence_trend).toBe('improving');
-      expect(result.recommendations).toEqual(
-        expect.arrayContaining([expect.stringContaining('수렴 속도가 빨라지고')]),
-      );
-    });
   });
 });

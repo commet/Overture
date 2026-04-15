@@ -544,11 +544,29 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
 }
 
 /* ═══ Final deliverable — triumphant, widest ═══ */
-function FinalCard({ content, mix }: { content: string; mix?: MixResult | null }) {
+function FinalCard({
+  content,
+  mix,
+  releasedContent,
+  releasedLabel,
+}: {
+  content: string;
+  mix?: MixResult | null;
+  /** When set, the Copy button copies this instead of `content`. Used when
+   *  the user has promoted a draft to v1.x and is currently viewing a
+   *  branch experiment — we want the "shared" text to always be the
+   *  released version per Decision #5 (a). */
+  releasedContent?: string | null;
+  releasedLabel?: string | null;
+}) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [copied, setCopied] = useState(false);
-  const copy = async () => { await navigator.clipboard.writeText(content); setCopied(true); track('flow_copy', {}); setTimeout(() => setCopied(false), 2000); };
+  const copyTarget = releasedContent && releasedContent.length > 0 ? releasedContent : content;
+  const copyHint = releasedContent && releasedContent !== content && releasedLabel
+    ? L(`${releasedLabel} 복사`, `Copy ${releasedLabel}`)
+    : null;
+  const copy = async () => { await navigator.clipboard.writeText(copyTarget); setCopied(true); track('flow_copy', { released: !!copyHint }); setTimeout(() => setCopied(false), 2000); };
 
   // When we have the structured mix, render it with attribution; fall back to flat markdown otherwise.
   const hasStructured = !!mix && mix.sections.length > 0;
@@ -570,10 +588,11 @@ function FinalCard({ content, mix }: { content: string; mix?: MixResult | null }
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={copy}
+                title={copyHint || undefined}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
                   copied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
                 }`}>
-                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : <>{L('복사', 'Copy')}</>}
+                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : copyHint ? <>{copyHint}</> : <>{L('복사', 'Copy')}</>}
               </button>
             </div>
           </div>
@@ -1788,7 +1807,24 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 {L('아래에서 복사하거나, 새 프로젝트를 시작할 수 있어요', 'Copy below or start a new project')}
               </p>
             </motion.div>
-            <FinalCard content={final_} mix={finalMix} />
+            <FinalCard
+              content={final_}
+              mix={finalMix}
+              releasedContent={(() => {
+                const rid = session?.released_draft_id;
+                if (!rid) return null;
+                const r = drafts.find((d) => d.id === rid);
+                if (!r || r.id === activeDraftId) return null;
+                return r.final_text;
+              })()}
+              releasedLabel={(() => {
+                const rid = session?.released_draft_id;
+                if (!rid) return null;
+                const r = drafts.find((d) => d.id === rid);
+                if (!r || r.id === activeDraftId) return null;
+                return r.version_label;
+              })()}
+            />
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
               <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">{L('복사해서 바로 사용하세요.', 'Copy and use it right away.')}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
