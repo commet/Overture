@@ -48,6 +48,7 @@ import { diffItems } from './shared/diffItems';
 import { renderInline, renderMd } from './shared/renderMd';
 import { AnalysisCard } from './shared/AnalysisCard';
 import { QuestionCard } from './shared/QuestionCard';
+import { ShareBar } from '@/components/ui/ShareBar';
 
 /* Reviewer 배지 — 저장된 팀장이 있으면 세션 내내 노출 */
 function ReviewerBadge({ reviewerId }: { reviewerId: string | null }) {
@@ -122,18 +123,35 @@ function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; 
   const idx = phaseIdx(phase, round, hasMix);
   const pct = Math.min((idx / 4) * 100, 100);
   return (
-    <div className="mb-12">
-      <div className="relative h-[2px] rounded-full bg-[var(--border-subtle)] overflow-hidden">
+    <div className="mb-10">
+      <div className="flex items-center justify-between mb-3">
+        {PHASES.map((label, i) => {
+          const done = i < idx;
+          const active = i === idx && phase !== 'complete';
+          const final_ = phase === 'complete' && i === 3;
+          return (
+            <div key={label} className="flex flex-col items-center gap-1.5 flex-1">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-700 ${
+                done || final_
+                  ? 'bg-[var(--accent)] text-white'
+                  : active
+                    ? 'bg-[var(--accent)]/15 text-[var(--accent)] ring-2 ring-[var(--accent)]/30'
+                    : 'bg-[var(--border-subtle)] text-[var(--text-tertiary)]'
+              }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                {done || final_ ? '✓' : i + 1}
+              </div>
+              <span className={`text-[12px] font-medium transition-all duration-700 ${
+                done || final_ ? 'text-[var(--accent)]' : active ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'
+              }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="relative h-[3px] rounded-full bg-[var(--border-subtle)] overflow-hidden">
         <motion.div className="absolute inset-y-0 left-0 rounded-full" style={{ background: 'var(--gradient-gold)' }}
           animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: EASE }} />
-      </div>
-      <div className="flex justify-between mt-2.5 px-1">
-        {PHASES.map((label, i) => {
-          const done = i < idx; const active = i === idx && phase !== 'complete'; const final_ = phase === 'complete' && i === 3;
-          return <span key={label} className={`text-[10px] tracking-wide font-medium transition-all duration-700 ${
-            done || final_ ? 'text-[var(--accent)]' : active ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'
-          }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{done || final_ ? '✓ ' : ''}{label}</span>;
-        })}
       </div>
     </div>
   );
@@ -561,12 +579,10 @@ function FinalCard({
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const [copied, setCopied] = useState(false);
   const copyTarget = releasedContent && releasedContent.length > 0 ? releasedContent : content;
-  const copyHint = releasedContent && releasedContent !== content && releasedLabel
+  const copyLabel = releasedContent && releasedContent !== content && releasedLabel
     ? L(`${releasedLabel} 복사`, `Copy ${releasedLabel}`)
-    : null;
-  const copy = async () => { await navigator.clipboard.writeText(copyTarget); setCopied(true); track('flow_copy', { released: !!copyHint }); setTimeout(() => setCopied(false), 2000); };
+    : L('복사', 'Copy');
 
   // When we have the structured mix, render it with attribution; fall back to flat markdown otherwise.
   const hasStructured = !!mix && mix.sections.length > 0;
@@ -586,15 +602,11 @@ function FinalCard({
                 <span className="text-[11px] text-[var(--text-tertiary)] ml-2">{L('바로 보낼 수 있어요', 'Ready to send')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button onClick={copy}
-                title={copyHint || undefined}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-200 ${
-                  copied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-[var(--bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
-                }`}>
-                {copied ? <><Check size={12} /> {L('복사됨', 'Copied')}</> : copyHint ? <>{copyHint}</> : <>{L('복사', 'Copy')}</>}
-              </button>
-            </div>
+            <ShareBar
+              getText={() => copyTarget}
+              getTitle={() => mix?.title || L('Overture 기획안', 'Overture Document')}
+              copyLabel={copyLabel}
+            />
           </div>
           {hasStructured ? (
             <div className="p-5 md:p-8 space-y-5">
@@ -631,16 +643,169 @@ function FinalCard({
 /* renderInline, renderMd — imported from shared/ */
 
 /* ═══ Loading ═══ */
-function LoadingState({ text, steps }: { text: string; steps?: string[] }) {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => { if (!steps?.length) return; const t = setInterval(() => setIdx(p => (p + 1) % steps.length), 3000); return () => clearInterval(t); }, [steps]);
+/* ═══ PhaseStatusBar — always-visible sticky bar showing current state ═══ */
+type StatusMode = 'ai_working' | 'your_turn' | 'phase_done';
+
+function PhaseStatusBar({
+  phase, busy, hasQuestion, deployReady, shouldMix, workersRunning, workersDone, workersTotal, elapsedLabel, leadAgentName,
+}: {
+  phase: string; busy: boolean; hasQuestion: boolean; deployReady: boolean; shouldMix: boolean;
+  workersRunning: number; workersDone: number; workersTotal: number; elapsedLabel: string; leadAgentName?: string;
+}) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+
+  // Determine mode
+  let mode: StatusMode = 'ai_working';
+  let label = '';
+  let sub = '';
+
+  if (phase === 'complete') return null;
+
+  if (busy || phase === 'analyzing' || phase === 'mixing' || phase === 'lead_synthesizing') {
+    mode = 'ai_working';
+    if (phase === 'analyzing') {
+      label = L('상황을 분석하고 있습니다', 'Analyzing the situation');
+      sub = workersRunning > 0 ? L(`에이전트 ${workersDone}/${workersTotal} 완료`, `Agents ${workersDone}/${workersTotal} done`) : '';
+    } else if (phase === 'lead_synthesizing') {
+      label = L(`${leadAgentName || '리드'}가 팀 결과를 통합하는 중`, `${leadAgentName || 'Lead'} is synthesizing findings`);
+    } else if (phase === 'mixing') {
+      label = L('초안을 작성하고 있습니다', 'Drafting the document');
+    } else {
+      label = L('처리 중...', 'Processing...');
+    }
+  } else if (hasQuestion) {
+    mode = 'your_turn';
+    label = L('당신 차례입니다', 'Your turn');
+    sub = L('질문에 답해주세요', 'Please answer the question');
+  } else if (deployReady) {
+    mode = 'your_turn';
+    label = L('당신 차례입니다', 'Your turn');
+    sub = L('팀 구성을 확인하고 시작하세요', 'Review the team and start');
+  } else if (shouldMix) {
+    mode = 'your_turn';
+    label = L('팀 분석이 끝났습니다', 'Team analysis complete');
+    sub = L('초안 작성을 시작하세요', 'Ready to create the draft');
+  } else if (workersRunning > 0) {
+    mode = 'ai_working';
+    label = L('팀이 분석하고 있습니다', 'Team is analyzing');
+    sub = L(`${workersDone}/${workersTotal} 완료`, `${workersDone}/${workersTotal} done`);
+  } else {
+    return null;
+  }
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4 px-6 py-5 rounded-2xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/8">
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}><Loader2 size={16} className="text-[var(--accent)]" /></motion.div>
-      <AnimatePresence mode="wait">
-        <motion.span key={idx} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3, ease: EASE }}
-          className="text-[13px] text-[var(--text-secondary)]">{steps?.length ? steps[idx] : text}</motion.span>
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`sticky top-14 z-30 mx-auto mb-6 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm transition-colors duration-500 ${
+        mode === 'ai_working'
+          ? 'bg-[var(--surface)]/90 border-[var(--accent)]/15'
+          : 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-300/30'
+      }`}
+    >
+      {mode === 'ai_working' ? (
+        <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
+          <div className="absolute inset-0 rounded-full bg-[var(--accent)]/20 animate-ping" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
+        </div>
+      ) : (
+        <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+          <UserCheck size={11} className="text-white" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <span className={`text-[13px] font-semibold ${mode === 'ai_working' ? 'text-[var(--text-primary)]' : 'text-amber-700 dark:text-amber-300'}`}>
+          {label}
+        </span>
+        {sub && <span className="text-[12px] text-[var(--text-tertiary)] ml-2">{sub}</span>}
+      </div>
+      {mode === 'ai_working' && elapsedLabel && (
+        <span className="text-[11px] text-[var(--text-tertiary)] tabular-nums shrink-0">{elapsedLabel}</span>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══ LeadSynthesisCard — show lead agent's hidden synthesis ═══ */
+function LeadSynthesisCard({ synthesis }: { synthesis: LeadSynthesisResult }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const [collapsed, setCollapsed] = useState(true);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-2xl border border-[var(--accent)]/15 bg-[var(--surface)] overflow-hidden">
+      <button onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-[var(--bg)]/50 transition-colors">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[var(--accent)]/10 shrink-0">
+          <Sparkles size={13} className="text-[var(--accent)]" />
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <span className="text-[13px] font-semibold text-[var(--text-primary)]">{synthesis.lead_agent_name}</span>
+          <span className="text-[11px] text-[var(--text-tertiary)] ml-2">{L('통합 분석', 'Integrated Analysis')}</span>
+        </div>
+        <ChevronRight size={14} className={`text-[var(--text-tertiary)] transition-transform ${collapsed ? '' : 'rotate-90'}`} />
+      </button>
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+            <div className="px-5 pb-5 space-y-4 border-t border-[var(--border-subtle)]">
+              <div className="pt-4 text-[13px] text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">{synthesis.integrated_analysis}</div>
+              {synthesis.key_findings.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-2">{L('핵심 발견', 'Key Findings')}</p>
+                  <ul className="space-y-1.5">
+                    {synthesis.key_findings.map((f, i) => (
+                      <li key={i} className="flex gap-2 text-[13px] text-[var(--text-primary)]">
+                        <span className="text-[var(--accent)] shrink-0">·</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {synthesis.unresolved_tensions.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-amber-600 uppercase tracking-[0.15em] mb-2">{L('미해결 쟁점', 'Unresolved Tensions')}</p>
+                  <ul className="space-y-1.5">
+                    {synthesis.unresolved_tensions.map((t, i) => (
+                      <li key={i} className="flex gap-2 text-[13px] text-amber-700 dark:text-amber-400">
+                        <AlertTriangle size={11} className="shrink-0 mt-1" />
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {synthesis.recommendation_direction && (
+                <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-4 text-[13px] text-[var(--text-secondary)] italic leading-relaxed">
+                  {synthesis.recommendation_direction}
+                </blockquote>
+              )}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ═══ PhaseDivider — visual break at phase boundaries ═══ */
+function PhaseDivider({ done, next, yourTurn }: { done: string; next: string; yourTurn?: boolean }) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: EASE }}
+      className={`flex items-center gap-3 py-3 ${yourTurn ? 'px-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/30 dark:border-amber-700/20' : ''}`}>
+      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
+        <Check size={10} className="text-[var(--accent)]" />
+        <span>{done}</span>
+      </div>
+      <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+      <div className={`flex items-center gap-1.5 text-[12px] font-semibold ${yourTurn ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--text-primary)]'}`}>
+        <span>{next}</span>
+        <ChevronRight size={11} />
+      </div>
     </motion.div>
   );
 }
@@ -903,7 +1068,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
-  const [debateResult, setDebateResult] = useState<DebateResult | null>(null);
+  const debateResult = session?.debate_result as DebateResult | null ?? null;
   // ── Post-complete draft tree UI state ──
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
@@ -915,8 +1080,25 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const mountedRef = useRef(true);
   const workerAbortRef = useRef<AbortController | null>(null);
   const workersRef = useRef<Promise<void> | null>(null);
+  // Scroll refs for targeted navigation
+  const statusBarRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<HTMLDivElement>(null);
+  const workerSectionRef = useRef<HTMLDivElement>(null);
+  const mixPreviewRef = useRef<HTMLDivElement>(null);
+  const dmFeedbackRef = useRef<HTMLDivElement>(null);
+  const finalRef = useRef<HTMLDivElement>(null);
+
   const scroll = useCallback((mode: 'bottom' | 'top' = 'bottom') => {
     setTimeout(() => window.scrollTo({ top: mode === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' }), 200);
+  }, []);
+  const scrollToRef = useCallback((ref: React.RefObject<HTMLElement | null>, fallback: 'top' | 'bottom' = 'bottom') => {
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: fallback === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' });
+      }
+    }, 250);
   }, []);
 
   // Cleanup: abort all in-flight requests on unmount
@@ -996,6 +1178,26 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const finalMix = session?.final_mix ?? null;
   const round = session?.round ?? 0;
   const maxR = session?.max_rounds ?? 3;
+
+  // Elapsed timer for PhaseStatusBar
+  const [phaseStartTime, setPhaseStartTime] = useState<number | null>(null);
+  const [elapsedLabel, setElapsedLabel] = useState('');
+  useEffect(() => {
+    if (busy || phase === 'analyzing' || phase === 'mixing' || phase === 'lead_synthesizing') {
+      if (!phaseStartTime) setPhaseStartTime(Date.now());
+    } else {
+      setPhaseStartTime(null);
+      setElapsedLabel('');
+    }
+  }, [busy, phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!phaseStartTime) return;
+    const t = setInterval(() => {
+      const sec = Math.floor((Date.now() - phaseStartTime) / 1000);
+      setElapsedLabel(sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [phaseStartTime]);
 
   // ── Post-complete draft tree derivations ──
   const drafts = useMemo<Draft[]>(() => session?.drafts ?? [], [session?.drafts]);
@@ -1235,8 +1437,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         }
         // After deployed — don't touch running workers
       }
-      r.readyForMix || !r.question ? (setShowMix(true), store.setPhase('conversing')) : (store.addQuestion(r.question), store.setPhase('conversing'));
-    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); }
+      if (r.readyForMix || !r.question) {
+        setShowMix(true); store.setPhase('conversing');
+      } else {
+        store.addQuestion(r.question); store.setPhase('conversing');
+        scrollToRef(questionRef);
+      }
+    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
     finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
@@ -1274,7 +1481,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           try {
             const debateRes = await runDebate(session!.problem_text, debateWorkers);
             if (debateRes) {
-              setDebateResult(debateRes);
+              store.setDebateResult(debateRes);
               // debate 결과를 workerResults에 추가하여 mix에 반영
               workerResults.push({
                 workerId: '',
@@ -1297,7 +1504,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (sessionLead && workerResults.length > 0) {
         const leadAgent = useAgentStore.getState().getAgent(sessionLead.agent_id);
         if (leadAgent) {
-          store.setPhase('lead_synthesizing');
+          store.setPhase('lead_synthesizing'); scrollToRef(statusBarRef);
           const leadConfig: LeadAgentConfig = {
             agentId: leadAgent.id, agentName: leadAgent.name, agentNameEn: leadAgent.nameEn || leadAgent.name,
             agentRole: leadAgent.role, agentRoleEn: leadAgent.roleEn || leadAgent.role,
@@ -1324,13 +1531,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       }
 
       // Lead synthesis 완료 대기 (짧은 타임아웃) — 끝났으면 Mix에 포함, 아니면 null로 진행
-      store.setPhase('mixing');
+      store.setPhase('mixing'); scrollToRef(statusBarRef);
       leadSynthesis = await Promise.race([
         leadPromise,
         new Promise<null>(resolve => setTimeout(() => resolve(null), 4000)),
       ]);
 
-      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined, undefined, leadSynthesis);
+      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined, undefined, leadSynthesis, session?.user_notes);
       // Lead가 Mix보다 늦게 끝났으면 비동기로 저장 (Mix에는 미포함이지만 UI에는 표시)
       if (!leadSynthesis) leadPromise.then(late => { if (late) store.setLeadSynthesis(late); });
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round, has_lead: !!leadSynthesis });
@@ -1347,8 +1554,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session.problem_text.slice(0, 100));
         }
       }
-    } catch (e) { setError(e instanceof Error ? e.message : L('초안 생성 실패', 'Draft creation failed')); store.setPhase('conversing'); }
-    finally { setBusy(false); scroll(); }
+    } catch (e) { setError(e instanceof Error ? e.message : L('초안 생성 실패', 'Draft creation failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
+    finally { setBusy(false); scrollToRef(mixPreviewRef); }
   };
 
   const onDM = async () => {
@@ -1374,11 +1581,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       }
     }
     catch (e) { setError(e instanceof Error ? e.message : L('DM 피드백 실패', 'DM feedback failed')); }
-    finally { setBusy(false); scroll('top'); }
+    finally { setBusy(false); scrollToRef(dmFeedbackRef, 'top'); }
   };
 
   const onDeepen = async () => {
-    if (!mix) return; setBusy(true); setError(null); scroll();
+    if (!mix) return; setBusy(true); setError(null); scrollToRef(statusBarRef);
     try {
       const reviewerAgent = session?.reviewer_agent_id
         ? useAgentStore.getState().getAgent(session.reviewer_agent_id)
@@ -1396,7 +1603,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   };
 
   const onMore = async () => {
-    if (!latest) return; setShowMix(false); setBusy(true); store.setPhase('analyzing');
+    if (!latest) return; setShowMix(false); setBusy(true); store.setPhase('analyzing'); scrollToRef(statusBarRef);
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: { id: 's', text: '더?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: '한 가지 더 확인' } });
@@ -1432,6 +1639,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     // Skip keeps the original mix intact → attribution survives for FinalCard.
     store.setFinalDeliverable(md, mix);
     setError(null);
+    scrollToRef(finalRef, 'top');
   };
 
   const onFinalize = async () => {
@@ -1532,6 +1740,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         <PingToast />
         <ProgressLine phase={phase} round={round} hasMix={!!mix} />
 
+        {/* PhaseStatusBar — sticky, always visible during work */}
+        <div ref={statusBarRef}>
+          <PhaseStatusBar
+            phase={phase} busy={busy}
+            hasQuestion={!!curQ && !busy && phase === 'conversing'}
+            deployReady={deployPhase === 'ready' && workers.length > 0}
+            shouldMix={shouldMix && !busy && phase === 'conversing' && !curQ}
+            workersRunning={workers.filter(w => w.status === 'running').length}
+            workersDone={workers.filter(w => w.status === 'done').length}
+            workersTotal={workers.length}
+            elapsedLabel={elapsedLabel}
+            leadAgentName={session?.lead_agent?.agent_name}
+          />
+        </div>
+
         <div className="space-y-8">
           {/* User input + reviewer — stacked pills */}
           <div className="flex flex-col gap-2 items-start">
@@ -1543,6 +1766,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             </motion.div>
             <ReviewerBadge reviewerId={session.reviewer_agent_id || null} />
           </div>
+
+          {/* PhaseDivider: Team assembled → confirm */}
+          {deployPhase === 'ready' && workers.length > 0 && (
+            <PhaseDivider done={L('상황 파악', 'Analysis')} next={L('팀 구성 확인', 'Confirm team')} yourTurn />
+          )}
 
           {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
           {deployPhase === 'ready' && workers.length > 0 && (
@@ -1569,11 +1797,18 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           )}
 
           {/* Question FIRST — user action at the top, not buried below */}
-          {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} locale={locale} />}
+          <div ref={questionRef}>
+            {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} locale={locale} />}
+          </div>
+
+          {/* PhaseDivider: Team work begins */}
+          {deployPhase === 'deployed' && !final_ && workers.length > 0 && (
+            <PhaseDivider done={L('질문 완료', 'Questions done')} next={L('팀 작업 중', 'Team working')} />
+          )}
 
           {/* Inline worker reports — staggered reveal for polished feel */}
           {deployPhase === 'deployed' && !final_ && (
-            <div className="space-y-4">
+            <div ref={workerSectionRef} className="space-y-4">
               {/* Running workers — minimal: avatar + task + spinner (no streaming text) */}
               {workers.filter(w => w.status === 'running').map(w => (
                 <motion.div key={w.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
@@ -1621,18 +1856,43 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             ) : null;
           })()}
 
-          {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
+          {/* PhaseDivider: Team analysis complete → create draft */}
+          {shouldMix && !busy && phase === 'conversing' && !curQ && (
+            <PhaseDivider done={L('팀 분석 완료', 'Team analysis done')} next={L('초안 작성 시작', 'Create draft')} yourTurn />
+          )}
 
-          {/* Loading states */}
-          {phase === 'analyzing' && snapshots.length === 0 && !streamingText && <LoadingState text={L('시작...', 'Starting...')} steps={locale === 'ko' ? ['상황을 읽고 있습니다...', '당신이 놓치고 있는 걸 찾는 중...', '문서 뼈대를 잡고 있습니다...', '거의 다 됐습니다...'] : ['Reading the situation...', 'Finding what you might be missing...', 'Building the document structure...', 'Almost done...']} />}
-          {phase === 'analyzing' && snapshots.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-3 py-4">
-              <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
-              <span className="text-[13px] text-[var(--text-secondary)]">{L('답변을 반영하는 중...', 'Incorporating your answer...')}</span>
+          {/* UserNotesInput — add your thoughts before mixing */}
+          {shouldMix && !busy && phase === 'conversing' && !curQ && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+              className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 md:p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0">
+                  <span className="text-[var(--bg)] text-[8px] font-bold">{L('나', 'Me')}</span>
+                </div>
+                <span className="text-[13px] font-medium text-[var(--text-primary)]">{L('내 생각 추가', 'Add my thoughts')}</span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">({L('선택', 'optional')})</span>
+              </div>
+              <textarea
+                value={session?.user_notes || ''}
+                onChange={(e) => store.setUserNotes(e.target.value || null)}
+                placeholder={L('팀 분석에 빠진 것, 강조할 점, 방향 수정 등', 'What the team missed, what to emphasize, direction changes...')}
+                rows={3} maxLength={500}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-all placeholder:text-[var(--text-tertiary)]"
+              />
             </motion.div>
           )}
-          {phase === 'lead_synthesizing' && <LoadingState text={L(`${session?.lead_agent?.agent_name || '리드 에이전트'}${getParticle(session?.lead_agent?.agent_name || '리드')} 팀 결과를 통합하고 있습니다...`, `${session?.lead_agent?.agent_name || 'Lead agent'} is synthesizing the team's findings...`)} steps={locale === 'ko' ? ['각 팀원의 분석을 교차 검증 중...', '핵심 인사이트를 추출하고 있습니다...', '통합 분석을 작성 중...'] : ['Cross-validating each team member\'s analysis...', 'Extracting key insights...', 'Writing the integrated analysis...']} />}
-          {phase === 'mixing' && <LoadingState text={L('초안 작성 중...', 'Drafting...')} steps={locale === 'ko' ? ['팀의 분석을 하나로 엮는 중...', '문서 구조를 잡고 있습니다...', '거의 완성입니다...'] : ['Weaving the team analysis together...', 'Building document structure...', 'Almost complete...']} />}
+
+          {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
+
+          {/* PhaseDivider: Synthesizing */}
+          {(phase === 'mixing' || phase === 'lead_synthesizing') && (
+            <PhaseDivider done={L('팀 분석', 'Team analysis')} next={L('초안 작성 중', 'Drafting')} />
+          )}
+
+          {/* Lead Synthesis — previously hidden, now visible */}
+          {session?.lead_synthesis && !final_ && (
+            <LeadSynthesisCard synthesis={session.lead_synthesis} />
+          )}
 
           {/* Version indicator — shows what round we're on */}
           {snapshots.length > 1 && !final_ && (
@@ -1729,10 +1989,22 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Answered Q&A history — collapsed at bottom */}
           {!final_ && <AnsweredPills qaPairs={qaPairs} />}
-          {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} debateResult={debateResult} />}
-          {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} onDeepen={onDeepen} busy={busy} />}
 
-          {final_ && <>
+          {/* PhaseDivider: Draft ready → Review */}
+          {mix && !dmFb && !final_ && phase !== 'mixing' && (
+            <PhaseDivider done={L('초안 완성', 'Draft ready')} next={L('검토', 'Review')} yourTurn />
+          )}
+          <div ref={mixPreviewRef}>
+            {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} debateResult={debateResult} />}
+          </div>
+          <div ref={dmFeedbackRef}>
+            {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} onDeepen={onDeepen} busy={busy} />}
+          </div>
+
+          {final_ && <div ref={finalRef}>
+            {/* PhaseDivider: Final document */}
+            {dmFb && <PhaseDivider done={L('검토 반영', 'Feedback applied')} next={L('최종 문서', 'Final document')} />}
+
             {/* Version chip + history toggle — subtle header */}
             {activeDraft && (
               <div className="flex items-center justify-end gap-2 pb-2">
@@ -1825,6 +2097,26 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 return r.version_label;
               })()}
             />
+
+            {/* Debate result — persisted, collapsible */}
+            {debateResult && (
+              <motion.details initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                className="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] group">
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-[12px] font-semibold text-[var(--text-secondary)] select-none">
+                  <span className="text-[14px]">{'⚔️'}</span>
+                  {L('팀 내 반론', 'Team Dissent')}
+                  <span className={`ml-auto text-[9px] px-2 py-0.5 rounded-full font-medium ${
+                    debateResult.severity === 'critical' ? 'bg-red-100 text-red-600' : debateResult.severity === 'important' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                  }`}>{debateResult.severity}</span>
+                </summary>
+                <div className="px-4 pb-4 space-y-2 text-[13px] text-[var(--text-primary)] leading-relaxed">
+                  <p>{debateResult.challenge}</p>
+                  {debateResult.weakestClaim && <p className="text-[var(--text-secondary)]"><strong>{debateResult.targetAgent}</strong>{L('의 약점: ', "'s weakness: ")}{debateResult.weakestClaim}</p>}
+                  {debateResult.alternativeView && <p className="text-[var(--text-secondary)] italic">{debateResult.alternativeView}</p>}
+                </div>
+              </motion.details>
+            )}
+
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-8 pb-16">
               <p className="text-[13px] text-[var(--text-tertiary)] text-center mb-6">{L('복사해서 바로 사용하세요.', 'Copy and use it right away.')}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
@@ -1841,7 +2133,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 </button>
               </div>
             </motion.div>
-          </>}
+          </div>}
 
           <AnimatePresence>
             {error && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -1867,7 +2159,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Phase progress dots — bottom milestone indicator */}
           <div className="pt-8 pb-4">
-            <div className="flex items-center justify-center gap-1.5">
+            <div className="flex items-center justify-center gap-2">
               {(locale === 'ko'
                 ? ['상황 파악', '질문', '팀 작업', '피드백', '완성']
                 : ['Analysis', 'Questions', 'Team Work', 'Feedback', 'Done']
@@ -1877,11 +2169,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 const reached = i <= milestoneIdx;
                 const current = i === milestoneIdx;
                 return (
-                  <div key={i} className="flex items-center gap-1.5">
-                    {i > 0 && <div className={`w-4 h-px transition-colors duration-500 ${reached ? 'bg-[var(--accent)]/40' : 'bg-[var(--border-subtle)]'}`} />}
-                    <div className={`flex items-center gap-1 transition-all duration-300 ${current ? 'opacity-100' : reached ? 'opacity-60' : 'opacity-25'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${reached ? 'bg-[var(--accent)]' : 'bg-[var(--text-tertiary)]'}`} />
-                      <span className={`text-[9px] ${current ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-tertiary)]'}`}>{label}</span>
+                  <div key={i} className="flex items-center gap-2">
+                    {i > 0 && <div className={`w-5 h-[1.5px] transition-colors duration-500 ${reached ? 'bg-[var(--accent)]/50' : 'bg-[var(--border-subtle)]'}`} />}
+                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-300 ${
+                      current ? 'bg-[var(--accent)]/10' : ''
+                    } ${current ? 'opacity-100' : reached ? 'opacity-70' : 'opacity-35'}`}>
+                      <div className={`relative w-2 h-2 rounded-full transition-colors duration-500 ${reached ? 'bg-[var(--accent)]' : 'bg-[var(--text-tertiary)]'}`}>
+                        {current && <div className="absolute inset-0 rounded-full bg-[var(--accent)] animate-ping opacity-40" />}
+                      </div>
+                      <span className={`text-[12px] ${current ? 'text-[var(--accent)] font-semibold' : reached ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'}`}>{label}</span>
                     </div>
                   </div>
                 );

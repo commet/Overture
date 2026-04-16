@@ -107,6 +107,8 @@ interface ProgressiveState {
   // Lead Agent
   setLeadAgent: (agentId: string, agentName: string, domain: string) => void;
   setLeadSynthesis: (result: LeadSynthesisResult) => void;
+  setUserNotes: (notes: string | null) => void;
+  setDebateResult: (result: { challenge: string; targetAgent: string; weakestClaim: string; alternativeView: string; severity: string } | null) => void;
 
   // Cleanup
   deleteSession: (id: string) => void;
@@ -928,6 +930,26 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     if (!currentSessionId) return;
     const sessions = updateSession(get().sessions, currentSessionId, () => ({
       lead_synthesis: result,
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  setUserNotes: (notes) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      user_notes: notes,
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  setDebateResult: (result) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      debate_result: result,
     }));
     persist(sessions);
     set({ sessions });

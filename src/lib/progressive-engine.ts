@@ -624,11 +624,16 @@ export async function runMix(
   workerResults?: Array<{ task: string; result: string; name?: string; workerId?: string }>,
   signal?: AbortSignal,
   leadSynthesis?: LeadSynthesisResult | null,
+  userNotes?: string | null,
 ): Promise<MixResult> {
   const locale = getCurrentLanguage();
-  const { system, user } = buildMixPrompt(
+  const { system, user: userPrompt } = buildMixPrompt(
     problemText, snapshots, questionsAndAnswers, decisionMaker, workerResults, locale, leadSynthesis,
   );
+  // Append user notes to the user prompt if provided
+  const user = userNotes?.trim()
+    ? `${userPrompt}\n\n<user-notes>\n사용자가 직접 추가한 의견입니다. 초안에 반드시 반영하세요:\n${userNotes.trim()}\n</user-notes>`
+    : userPrompt;
 
   const result = await callLLMJson<MixResponse>(
     [{ role: 'user', content: user }],

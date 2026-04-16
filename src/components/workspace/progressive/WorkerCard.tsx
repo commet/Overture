@@ -419,7 +419,9 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
   // Done state — the main report block
   const isRejected = worker.approved === false;
   const isApproved = worker.approved === true;
-  const previewText = (worker.result || '').slice(0, 150);
+  const previewText = (worker.result || '').slice(0, 300);
+  const hasMore = (worker.result || '').length > 300;
+  const [expanded, setExpanded] = useState(false);
   const agentLevel = worker.agent_id
     ? useAgentStore.getState().getAgent(worker.agent_id)?.level
     : undefined;
@@ -452,24 +454,45 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
             {/* Task name */}
             <p className="text-[11px] text-[var(--accent)] mt-0.5">{worker.task}</p>
 
+            {/* Validation score badge */}
+            {worker.validation_score != null && (
+              <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                worker.validation_score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : worker.validation_score >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+              }`}>
+                {L('품질', 'Quality')} {worker.validation_score}{L('점', 'pt')}
+              </span>
+            )}
+
             {/* Completion note — persona's voice */}
             {worker.completion_note && (
-              <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed line-clamp-2">
+              <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
                 &ldquo;{worker.completion_note.replace(/^[^:]+:\s*/, '')}&rdquo;
               </p>
             )}
 
-            {/* Result preview */}
+            {/* Result preview — inline expandable */}
             <div className={`mt-2.5 text-[13px] leading-[1.75] rounded-xl p-3.5 sm:p-4 break-words ${
               isRejected
                 ? 'bg-[var(--bg)]/30 text-[var(--text-tertiary)] line-through'
                 : 'bg-[var(--bg)]/60 text-[var(--text-primary)]'
             }`}>
-              <p className="whitespace-pre-wrap">{previewText}{(worker.result || '').length > 150 ? '...' : ''}</p>
-              {(worker.result || '').length > 150 && (
-                <button onClick={() => setShowModal(true)}
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key={expanded ? 'full' : 'preview'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="whitespace-pre-wrap">{expanded ? worker.result : previewText}{!expanded && hasMore ? '...' : ''}</p>
+                </motion.div>
+              </AnimatePresence>
+              {hasMore && (
+                <button onClick={() => setExpanded(!expanded)}
                   className="flex items-center gap-1 mt-2 text-[11px] text-[var(--accent)] hover:underline cursor-pointer">
-                  <ExternalLink size={10} /> {L('전문 보기', 'View full')}
+                  <ChevronDown size={10} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                  {expanded ? L('접기', 'Collapse') : L('전체 보기', 'Show all')}
                 </button>
               )}
             </div>

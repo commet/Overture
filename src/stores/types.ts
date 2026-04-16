@@ -936,6 +936,8 @@ export interface ProgressiveSession {
   stages?: PipelineStage[];       // 스테이지 파이프라인 (Phase 3)
   lead_agent?: { agent_id: string; agent_name: string; domain: string } | null;
   lead_synthesis?: LeadSynthesisResult | null;
+  user_notes?: string | null;           // 사용자가 mix 전에 추가한 의견
+  debate_result?: { challenge: string; targetAgent: string; weakestClaim: string; alternativeView: string; severity: string } | null;
   mix: MixResult | null;
   dm_feedback: DMFeedbackResult | null;
 
