@@ -221,14 +221,14 @@ export function BossChat() {
     // "읽는 중" → 짧은 딜레이 → "타이핑" (첫 메시지는 빠르게)
     setBossState('reading');
     setStreaming(true);
-    const readDelay = isFirst ? 400 : 500 + Math.random() * 500;
+    const readDelay = isFirst ? 250 : 300 + Math.random() * 300;
     await new Promise(r => setTimeout(r, readDelay));
     if (abortRef.current?.signal.aborted) return;
     setBossState('typing');
 
     await callLLMStream(
       llmMessages,
-      { system, maxTokens: 400, signal: abortRef.current.signal },
+      { system, maxTokens: 350, model: 'fast', signal: abortRef.current.signal },
       {
         onToken: (text) => updateStreamingText(text),
         onComplete: () => {
