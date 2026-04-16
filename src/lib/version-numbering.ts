@@ -1,5 +1,5 @@
 /**
- * Version label arithmetic for RefineLoop iteration tree.
+ * Version label arithmetic for the Draft version tree.
  *
  * Shapes we support:
  *   "v0"          virtual root (the original_plan)

@@ -14,7 +14,6 @@ import type {
   RecastStep,
   Persona,
   FeedbackRecord,
-  RefineLoop,
   JudgmentRecord,
   QualitySignal,
   HiddenAssumption,
@@ -133,27 +132,6 @@ export function makeFeedbackRecord(overrides: Partial<FeedbackRecord> = {}): Fee
     results: [],
     synthesis: '',
     created_at: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-/* ── RefineLoop ── */
-
-export function makeLoop(overrides: Partial<RefineLoop> = {}): RefineLoop {
-  return {
-    id: 'loop-1',
-    project_id: 'proj-1',
-    name: 'test',
-    goal: 'test',
-    original_plan: '',
-    initial_feedback_record_id: 'fb1',
-    initial_approval_conditions: [],
-    persona_ids: ['p1'],
-    iterations: [],
-    status: 'active',
-    max_iterations: 3,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
     ...overrides,
   };
 }

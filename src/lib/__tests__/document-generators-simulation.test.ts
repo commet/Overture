@@ -25,7 +25,6 @@ vi.mock('@/lib/storage', () => ({
     REFRAME_LIST: 'sot_reframe_list',
     RECAST_LIST: 'sot_recast_list',
     FEEDBACK_HISTORY: 'sot_feedback_history',
-    REFINE_LOOPS: 'sot_refine_loops',
     PERSONAS: 'sot_personas',
     JUDGMENTS: 'sot_judgments',
     SYNTHESIZE_LIST: 'sot_synthesize_list',
@@ -53,7 +52,7 @@ vi.mock('@/lib/output-helpers', async (importOriginal) => {
 import { generateDecisionRationale } from '@/lib/decision-rationale';
 import { generateProjectBrief } from '@/lib/project-brief';
 import { generateAgentSpec } from '@/lib/agent-spec';
-import type { Project, ReframeItem, RecastItem, FeedbackRecord, RefineLoop, JudgmentRecord } from '@/stores/types';
+import type { Project, ReframeItem, RecastItem, FeedbackRecord, JudgmentRecord } from '@/stores/types';
 
 // ── Helpers ──
 
@@ -171,35 +170,6 @@ function makeFeedback(overrides: Partial<FeedbackRecord> = {}): FeedbackRecord {
   };
 }
 
-function makeRefineLoop(overrides: Partial<RefineLoop> = {}): RefineLoop {
-  return {
-    id: 'loop-1',
-    project_id: 'proj-1',
-    name: '반복 1',
-    goal: '수렴 목표',
-    original_plan: '원래 계획',
-    initial_feedback_record_id: 'fb-1',
-    initial_approval_conditions: [],
-    persona_ids: ['persona-1'],
-    iterations: [
-      {
-        iteration_number: 1,
-        issues_to_address: ['이슈1'],
-        revised_plan: '수정 계획',
-        changes: [{ what: '변경1', why: '이유1', type: 'revised' as const }],
-        feedback_record_id: 'fb-2',
-        convergence: { critical_risks: 1, manageable_risks: 2, unspoken_risks: 0, new_issues: 0, resolved_issues: 1 },
-        created_at: '2026-01-01T00:00:00Z',
-      },
-    ],
-    status: 'converged',
-    max_iterations: 3,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
 function makeJudgment(overrides: Partial<JudgmentRecord> = {}): JudgmentRecord {
   return {
     id: 'j-1',
@@ -242,7 +212,6 @@ describe('Document Generators Simulation', () => {
         sot_recast_list: [],
         sot_feedback_history: [],
         sot_personas: [],
-        sot_refine_loops: [],
         sot_judgments: [],
       };
       const result = generateDecisionRationale(makeProject());
@@ -258,7 +227,6 @@ describe('Document Generators Simulation', () => {
         sot_recast_list: [makeRecast()],
         sot_feedback_history: [],
         sot_personas: [],
-        sot_refine_loops: [],
         sot_judgments: [],
       };
       const result = generateDecisionRationale(makeProject());
@@ -274,7 +242,6 @@ describe('Document Generators Simulation', () => {
         sot_recast_list: [],
         sot_feedback_history: [makeFeedback()],
         sot_personas: [{ id: 'persona-1', name: 'CTO', influence: 'high' }],
-        sot_refine_loops: [],
         sot_judgments: [],
       };
       const result = generateDecisionRationale(makeProject());
@@ -291,7 +258,6 @@ describe('Document Generators Simulation', () => {
         sot_recast_list: [],
         sot_feedback_history: [],
         sot_personas: [],
-        sot_refine_loops: [],
         sot_judgments: [makeJudgment()],
       };
       const result = generateDecisionRationale(makeProject());
@@ -328,7 +294,6 @@ describe('Document Generators Simulation', () => {
         sot_reframe_list: [makeReframe()],
         sot_recast_list: [],
         sot_feedback_history: [],
-        sot_refine_loops: [],
         sot_synthesize_list: [],
       };
       const result = generateProjectBrief(makeProject());
@@ -344,7 +309,6 @@ describe('Document Generators Simulation', () => {
         sot_reframe_list: [],
         sot_recast_list: [makeRecast()],
         sot_feedback_history: [],
-        sot_refine_loops: [],
         sot_synthesize_list: [],
       };
       const result = generateProjectBrief(makeProject());
@@ -358,7 +322,6 @@ describe('Document Generators Simulation', () => {
         sot_reframe_list: [],
         sot_recast_list: [],
         sot_feedback_history: [makeFeedback()],
-        sot_refine_loops: [],
         sot_synthesize_list: [],
       };
       const result = generateProjectBrief(makeProject());
@@ -373,7 +336,6 @@ describe('Document Generators Simulation', () => {
         sot_reframe_list: [makeReframe({ analysis: null })],
         sot_recast_list: [],
         sot_feedback_history: [],
-        sot_refine_loops: [],
         sot_synthesize_list: [],
       };
       const result = generateProjectBrief(makeProject());

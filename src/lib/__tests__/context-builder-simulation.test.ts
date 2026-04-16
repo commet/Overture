@@ -21,12 +21,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type {
   JudgmentRecord,
-  ReframeItem,
-  RecastItem,
-  SynthesizeItem,
   PersonaAccuracyRating,
   Project,
-  RefineLoop,
   OutcomeRecord,
 } from '@/stores/types';
 
@@ -45,7 +41,6 @@ vi.mock('@/lib/storage', () => ({
     SYNTHESIZE_LIST: 'sot_synthesize_list',
     PROJECTS: 'sot_projects',
     ACCURACY_RATINGS: 'sot_accuracy_ratings',
-    REFINE_LOOPS: 'sot_refine_loops',
     OUTCOME_RECORDS: 'sot_outcome_records',
   },
 }));
@@ -123,32 +118,6 @@ function makeOutcome(projectId: string, success: OutcomeRecord['overall_success'
     key_learnings: '',
     what_would_change: '',
     created_at: new Date().toISOString(),
-  };
-}
-
-function makeRefineLoop(status: 'converged' | 'active', iterations: number): RefineLoop {
-  return {
-    id: `rl-${Math.random().toString(36).slice(2)}`,
-    project_id: 'proj-1',
-    name: 'loop',
-    goal: 'goal',
-    original_plan: 'plan',
-    initial_feedback_record_id: 'fr-1',
-    initial_approval_conditions: [],
-    persona_ids: ['p1'],
-    iterations: Array.from({ length: iterations }, (_, i) => ({
-      iteration_number: i + 1,
-      issues_to_address: ['issue'],
-      revised_plan: `plan v${i + 2}`,
-      changes: [{ what: 'c', why: 'w', addressing: 'a' }],
-      feedback_record_id: `fr-${i}`,
-      convergence: { critical_risks: 0, total_issues: 1, approval_conditions: [] },
-      created_at: new Date().toISOString(),
-    })),
-    status,
-    max_iterations: 5,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
   };
 }
 
