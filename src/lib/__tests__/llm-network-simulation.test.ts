@@ -158,6 +158,24 @@ describe('callLLM', () => {
     await expect(callLLM(MESSAGES, OPTIONS)).rejects.toThrow('LOGIN_REQUIRED');
   });
 
+  it('429 + needsLogin 응답 시 retry 없이 즉시 LOGIN_REQUIRED throw', async () => {
+    // 익명 무료 체험 소진 시 서버가 429 + needsLogin:true를 내려줌.
+    // retry해도 절대 풀리지 않으므로 바로 LOGIN_REQUIRED로 분류해야 함.
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(
+        {
+          needsLogin: true,
+          error: '무료 체험을 모두 사용했습니다. 로그인하면 하루 10회까지 무료로 계속 사용할 수 있어요!',
+        },
+        429
+      )
+    );
+
+    await expect(callLLM(MESSAGES, OPTIONS)).rejects.toThrow('LOGIN_REQUIRED');
+    // retry 안 함 — 첫 응답에서 즉시 throw
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('성공 응답에서 text 반환', async () => {
     mockFetch.mockResolvedValueOnce(
       mockResponse({ text: '분석 완료: 위험 요소 3개 발견' })

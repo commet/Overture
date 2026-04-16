@@ -61,6 +61,14 @@ export class LLMError extends Error {
 
 function categorizeError(status: number, body?: Record<string, unknown>): LLMError {
   if (status === 429) {
+    // 무료 체험 한도 소진(익명 사용자) — 서버가 needsLogin 플래그를 함께 내려줌.
+    // 이 경우는 단순 rate limit이 아니라 "로그인하면 풀린다"는 별개의 UX 경로.
+    const needsLogin = body?.needsLogin === true;
+    if (needsLogin) {
+      return new LLMError('LOGIN_REQUIRED:무료 체험을 모두 사용했습니다. 로그인하면 하루 10회까지 무료로 사용할 수 있어요.', {
+        category: 'auth', status, retryable: false,
+      });
+    }
     const retryAfter = typeof body?.retry_after === 'number' ? body.retry_after * 1000 : 5000;
     return new LLMError('요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.', {
       category: 'rate_limit', status, retryable: true, retryAfterMs: retryAfter,
@@ -166,8 +174,13 @@ async function fetchWithRetry(
         throw categorizeError(res.status, body);
       }
 
-      // Retry with smart delay
+      // 429 + needsLogin은 retry해도 절대 풀리지 않음 — 익명 쿼터 소진 상태.
+      // 바로 LOGIN_REQUIRED로 분류해서 사용자에게 login 안내를 보여준다.
       const body = await res.json().catch(() => ({}));
+      if (res.status === 429 && body?.needsLogin === true) {
+        recordFailure(provider);
+        throw categorizeError(res.status, body);
+      }
       const baseDelay = res.status === 429
         ? (typeof body?.retry_after === 'number' ? body.retry_after * 1000 : 5000)
         : 1000 * Math.pow(2, attempt);

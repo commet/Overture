@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense, useRef } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -18,14 +18,12 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useLocale } from '@/hooks/useLocale';
 import { playTransitionTone, resumeAudioContext } from '@/lib/audio';
 import { runInitialAnalysis } from '@/lib/progressive-engine';
-import { Sparkles, Clock, X, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle, Layers } from 'lucide-react';
-import { getStorage, STORAGE_KEYS } from '@/lib/storage';
+import { Sparkles, ChevronRight, MessageSquare, Sliders, UserCheck, RefreshCw, FolderOpen, ChevronDown, AlertTriangle, Layers } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
-import { StaffLines, CrescendoHairpin, TrebleClef } from '@/components/ui/MusicalElements';
+import { StaffLines } from '@/components/ui/MusicalElements';
 import { EASE } from '@/components/workspace/progressive/shared/constants';
-import { useHandoffStore } from '@/stores/useHandoffStore';
 import { getPersonaPool } from '@/lib/worker-personas';
 import { WorkerAvatar, AvatarRow } from '@/components/workspace/progressive/WorkerAvatar';
 import { InteractiveDemo } from '@/components/workspace/InteractiveDemo';
@@ -255,20 +253,18 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
     } catch (err) {
       if (timerRef.current) clearTimeout(timerRef.current);
       const errMsg = err instanceof Error ? err.message : String(err);
-      const isRateLimit = errMsg.includes('한도') || errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('429');
-      const needsLogin = errMsg.includes('needsLogin') || errMsg.includes('로그인하면');
+      // LLM layer가 던지는 분류 신호:
+      //   - "LOGIN_REQUIRED:..." prefix → 익명 무료 체험 소진 (categorizeError at 429+needsLogin)
+      //   - "한도" / "rate" → 로그인 사용자의 일반 rate limit
+      const needsLogin = errMsg.startsWith('LOGIN_REQUIRED');
+      const isRateLimit = !needsLogin && (errMsg.includes('한도') || errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('429'));
 
-      if (isRateLimit || needsLogin) {
-        setError(needsLogin
-          ? L('무료 체험을 모두 사용했어요. 로그인하면 하루 10회까지 무료로 사용할 수 있습니다.', 'Free trial limit reached. Sign in to get up to 10 free uses per day.')
-          : L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.'));
-      } else {
-        // 실패 시 아직 세션이 없으니 정리 로직 불필요 — 그냥 에러만 보여준다
-        setError(errMsg || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.'));
-      }
+      // errMsg 그대로 setError — 렌더 쪽에서 prefix로 분기해 login CTA vs generic 배너 결정.
+      // 세션은 아직 생성 안 했으므로 정리 로직 불필요.
+      setError(errMsg || L('분석에 실패했습니다. 다시 시도해주세요.', 'Analysis failed. Please try again.'));
       setPhase('idle');
       setStreamingText('');
-      track('workspace_start_error', { error: errMsg, is_rate_limit: isRateLimit });
+      track('workspace_start_error', { error: errMsg, is_rate_limit: isRateLimit, needs_login: needsLogin });
     }
   };
 
@@ -389,12 +385,25 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                     </button>
                   </div>
 
-                  {error && (
+                  {error && error.startsWith('LOGIN_REQUIRED') && (
+                    <div className="mt-3 p-4 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/20">
+                      <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Free trial limit reached')}</p>
+                      <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{L('로그인하면 하루 10회까지 무료로 사용할 수 있습니다.', 'Sign in to get up to 10 free uses per day.')}</p>
+                      <Link href="/login" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[12px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>
+                        {L('로그인', 'Sign In')} <ChevronRight size={12} />
+                      </Link>
+                    </div>
+                  )}
+                  {error && !error.startsWith('LOGIN_REQUIRED') && (
                     <div className="mt-3 px-3 py-2.5 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 text-[13px] text-[var(--text-primary)] flex items-start gap-2">
                       <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
                       <div>
-                        <span>{error}</span>
-                        {(error.includes('API 키') || error.includes('API key')) && (
+                        <span>
+                          {error.includes('한도') || error.includes('rate') || error.includes('limit')
+                            ? L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.')
+                            : error}
+                        </span>
+                        {(error.includes('API 키') || error.includes('API key') || error.includes('한도') || error.includes('rate')) && (
                           <a href="/settings" className="block mt-1.5 text-[12px] text-[var(--accent)] font-medium hover:underline">
                             {L('Settings에서 API 키 등록하기 →', 'Register your API key in Settings →')}
                           </a>
@@ -579,7 +588,6 @@ function WorkspaceContent() {
   const { projects, currentProjectId, setCurrentProjectId, loadProjects } = useProjectStore();
   const { settings, loadSettings } = useSettingsStore();
   const { user } = useAuth();
-  const { setHandoff } = useHandoffStore();
   const progressiveStore = useProgressiveStore();
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
@@ -622,8 +630,6 @@ function WorkspaceContent() {
   const progressiveSession = currentProjectId
     ? progressiveStore.sessions.find(s => s.project_id === currentProjectId)
     : null;
-
-  const currentStepMeta = STEPS.find(s => s.id === activeStep)!;
 
   /* ─── Empty state: HeroFlow with morphing transition ─── */
   if (!currentProjectId) {
@@ -756,9 +762,6 @@ function WorkspaceContent() {
           </div>
         )}
 
-        {/* Outcome nudge */}
-        <OutcomeNudge onNavigate={handleNavigate} />
-
         {/* Step component */}
         <div className="relative p-4 md:p-6 lg:p-8 max-w-4xl mx-auto animate-fade-in" key={activeStep}>
           <ErrorBoundary fallback={<StepErrorFallback />}>
@@ -799,11 +802,6 @@ function WorkspaceContent() {
       </div>
     </div>
   );
-}
-
-function OutcomeNudge({ onNavigate }: { onNavigate: (step: string) => void }) {
-  // Legacy refine-loop stale nudge — removed along with RefineStep path.
-  return null;
 }
 
 function SuspenseFallback() {
