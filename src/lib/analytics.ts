@@ -103,14 +103,74 @@ function getSessionMeta(): Record<string, unknown> {
   return _sessionMeta;
 }
 
+/**
+ * Source attribution (UTM params + initial referrer) — captured once per session,
+ * persisted in sessionStorage so subsequent page navigations within the session
+ * still know the original entry point.
+ */
+function getSourceMeta(): Record<string, unknown> {
+  if (typeof window === 'undefined') return {};
+  const cached = sessionStorage.getItem('ov_src');
+  if (cached) {
+    try { return JSON.parse(cached); } catch { /* fall through — recompute */ }
+  }
+  const params = new URLSearchParams(window.location.search);
+  const meta: Record<string, unknown> = {
+    initial_referrer: document.referrer || null,
+    initial_path: window.location.pathname,
+    utm_source: params.get('utm_source'),
+    utm_medium: params.get('utm_medium'),
+    utm_campaign: params.get('utm_campaign'),
+    utm_content: params.get('utm_content'),
+    fbclid: params.get('fbclid'),
+  };
+  for (const k of Object.keys(meta)) if (meta[k] == null) delete meta[k];
+  sessionStorage.setItem('ov_src', JSON.stringify(meta));
+  return meta;
+}
+
+/**
+ * Current authenticated user ID — set by the auth layer on login/logout.
+ * Attached to every event so we can join against auth.users server-side.
+ */
+let _userId: string | null = null;
+
+export function setAnalyticsUser(userId: string | null) {
+  const previous = _userId;
+  _userId = userId;
+  // When a user first becomes known within a session, emit an identify event
+  // so we can stitch pre-login anonymous events to their post-login identity
+  // via session_id without a client-side email leak.
+  if (userId && !previous && typeof window !== 'undefined') {
+    track('user_identified', {});
+  }
+}
+
+/**
+ * Emit a session_start event the first time any event fires in a session.
+ * Carries the source attribution so we can query "this session came from X"
+ * by session_id without bloating every row with UTM columns.
+ */
+function maybeEmitSessionStart() {
+  if (typeof window === 'undefined') return;
+  if (sessionStorage.getItem('ov_sst') === '1') return;
+  sessionStorage.setItem('ov_sst', '1');
+  track('session_start', getSourceMeta());
+}
+
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
+
+  // First event of the session → emit session_start first (flag is set inside
+  // maybeEmitSessionStart before the recursive track() call, so no infinite loop)
+  if (event !== 'session_start') maybeEmitSessionStart();
 
   try {
     supabase.from('user_events').insert({
       event_name: event,
       properties: { ...getSessionMeta(), ...properties },
       session_id: getSessionId(),
+      user_id: _userId,
       page_path: window.location.pathname + window.location.search,
       referrer: document.referrer || null,
     }).then(() => { /* fire and forget */ });

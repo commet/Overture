@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, clearUserCache } from './supabase';
 import { clearAllStorage } from './storage';
+import { setAnalyticsUser } from './analytics';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setAnalyticsUser(session?.user?.id ?? null);
       setLoading(false);
     }).catch(() => {
       setLoading(false);
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearUserCache();
       setSession(session);
       setUser(session?.user ?? null);
+      setAnalyticsUser(session?.user?.id ?? null);
       setLoading(false);
     });
 
