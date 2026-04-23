@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
 import { SyncStatus } from '@/components/ui/SyncStatus';
 import { useLocale } from '@/hooks/useLocale';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 export function Header() {
   const locale = useLocale();
@@ -21,6 +22,13 @@ export function Header() {
     { href: '/guide', label: L('가이드', 'Guide') },
     { href: '/settings', label: L('설정', 'Settings') },
   ];
+
+  const { updateSettings } = useSettingsStore();
+  const handleLocaleChange = (next: 'ko' | 'en') => {
+    if (next === locale) return;
+    updateSettings({ language: next });
+    window.location.reload();
+  };
 
   const pathname = usePathname();
   const router = useRouter();
@@ -98,8 +106,34 @@ export function Header() {
               })}
             </nav>
 
-            {/* Theme toggle + Status badges */}
+            {/* Locale toggle + Theme toggle + Status badges */}
             <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-full bg-[var(--surface)]/60 border border-[var(--border-subtle)] overflow-hidden" role="group" aria-label="Language">
+                <button
+                  onClick={() => handleLocaleChange('ko')}
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer ${
+                    locale === 'ko'
+                      ? 'bg-[var(--primary)] text-[var(--bg)]'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                  aria-pressed={locale === 'ko'}
+                  title="한국어"
+                >
+                  KO
+                </button>
+                <button
+                  onClick={() => handleLocaleChange('en')}
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer ${
+                    locale === 'en'
+                      ? 'bg-[var(--primary)] text-[var(--bg)]'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                  aria-pressed={locale === 'en'}
+                  title="English"
+                >
+                  EN
+                </button>
+              </div>
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
@@ -193,6 +227,30 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            {/* Mobile locale toggle */}
+            <div className="pt-2 mt-1 border-t border-[var(--border-subtle)] flex items-center gap-2 px-4">
+              <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">{L('언어', 'Language')}</span>
+              <div className="flex items-center rounded-full bg-[var(--bg)] border border-[var(--border-subtle)] overflow-hidden ml-auto">
+                <button
+                  onClick={() => handleLocaleChange('ko')}
+                  className={`px-3 py-1.5 text-[12px] font-bold transition-colors cursor-pointer ${
+                    locale === 'ko' ? 'bg-[var(--primary)] text-[var(--bg)]' : 'text-[var(--text-secondary)]'
+                  }`}
+                  aria-pressed={locale === 'ko'}
+                >
+                  KO
+                </button>
+                <button
+                  onClick={() => handleLocaleChange('en')}
+                  className={`px-3 py-1.5 text-[12px] font-bold transition-colors cursor-pointer ${
+                    locale === 'en' ? 'bg-[var(--primary)] text-[var(--bg)]' : 'text-[var(--text-secondary)]'
+                  }`}
+                  aria-pressed={locale === 'en'}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
             {/* Mobile auth */}
             {!loading && (
               <div className="pt-1 mt-1 border-t border-[var(--border-subtle)]">
