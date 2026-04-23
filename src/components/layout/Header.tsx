@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LogOut, Sun, Moon } from 'lucide-react';
+import { Menu, X, LogOut, Sun, Moon, Lock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
@@ -14,10 +14,10 @@ export function Header() {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
-  const navItems = [
+  const navItems: Array<{ href: string; label: string; primary?: boolean; requiresAuth?: boolean }> = [
     { href: '/workspace', label: L('워크스페이스', 'Workspace'), primary: true },
-    { href: '/project', label: L('프로젝트', 'Projects') },
-    { href: '/agents', label: L('에이전트', 'Agents') },
+    { href: '/project', label: L('프로젝트', 'Projects'), requiresAuth: true },
+    { href: '/agents', label: L('에이전트', 'Agents'), requiresAuth: true },
     { href: '/boss', label: L('팀장', 'Manager') },
     { href: '/guide', label: L('가이드', 'Guide') },
     { href: '/settings', label: L('설정', 'Settings') },
@@ -90,17 +90,20 @@ export function Header() {
             <nav className="flex items-center gap-0.5 bg-[var(--surface)]/60 backdrop-blur-sm rounded-full px-1.5 py-1 border border-[var(--border-subtle)] shadow-[var(--shadow-xs)]">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
+                const showLock = item.requiresAuth && !user && !loading;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                    className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 flex items-center gap-1.5 ${
                       isActive
                         ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
+                    title={showLock ? L('로그인이 필요해요', 'Requires sign-in') : undefined}
                   >
                     {item.label}
+                    {showLock && <Lock size={10} className="opacity-60" />}
                   </Link>
                 );
               })}
@@ -213,20 +216,24 @@ export function Header() {
       {mobileMenuOpen && (
         <nav className="md:hidden border-t border-[var(--border-subtle)] bg-[var(--surface)]/95 backdrop-blur-xl animate-slide-down">
           <div className="px-4 py-2 space-y-0.5">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${
-                  pathname === item.href
-                    ? 'bg-[var(--bg)] text-[var(--primary)]'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const showLock = item.requiresAuth && !user && !loading;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${
+                    pathname === item.href
+                      ? 'bg-[var(--bg)] text-[var(--primary)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {showLock && <Lock size={11} className="opacity-60" />}
+                </Link>
+              );
+            })}
             {/* Mobile locale toggle */}
             <div className="pt-2 mt-1 border-t border-[var(--border-subtle)] flex items-center gap-2 px-4">
               <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">{L('언어', 'Language')}</span>
