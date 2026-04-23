@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useLocale } from '@/hooks/useLocale';
+import { DAILY_LIMIT, ANON_LIMIT } from '@/lib/quota-config';
+import { Zap, FolderOpen, Users, MessageSquare } from 'lucide-react';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -119,7 +122,7 @@ function LoginContent() {
 
       <div className="relative w-full max-w-[400px]">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2.5 mb-3">
             <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shadow-[var(--shadow-sm)]" style={{ background: 'var(--gradient-gold)' }}>
               <span className="text-white font-black text-[15px]">O</span>
@@ -130,6 +133,35 @@ function LoginContent() {
             {L('과제를 해석하고, 실행을 설계하세요', 'Reframe the problem. Design the execution.')}
           </p>
         </div>
+
+        {/* Benefits — only shown in sign-up mode (not reset or sign-in) */}
+        {isSignUp && !isReset && (
+          <div className="mb-4 p-4 rounded-2xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
+            <p className="text-[12px] font-bold text-[var(--accent)] uppercase tracking-wider mb-3">
+              {L('가입하면 이런 게 풀려요', 'Sign up unlocks')}
+            </p>
+            <ul className="space-y-2 text-[13px] text-[var(--text-primary)]">
+              <li className="flex items-start gap-2">
+                <Zap size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <span>{locale === 'ko'
+                  ? <>하루 <strong>{DAILY_LIMIT}회</strong> 무료 사용 (비회원 {ANON_LIMIT}회)</>
+                  : <><strong>{DAILY_LIMIT} free calls per day</strong> (vs {ANON_LIMIT} for guests)</>}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <FolderOpen size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <span>{L('프로젝트 저장 · 다음에 이어서 작업', 'Save projects and pick up where you left off')}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Users size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <span>{L('나만의 리뷰어 팀 저장 · 어디서든 호출', 'Save your reviewer team and call them anywhere')}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <MessageSquare size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <span>{L('팀장 프로필 저장 · 리허설 반복', 'Save boss profiles and run rehearsals repeatedly')}</span>
+              </li>
+            </ul>
+          </div>
+        )}
 
         {/* Auth Card */}
         <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden">
@@ -290,6 +322,16 @@ function LoginContent() {
             </button>
           </p>
           </div>
+        </div>
+
+        {/* Escape hatch — anon users can keep exploring */}
+        <div className="text-center mt-5">
+          <Link
+            href="/workspace"
+            className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+          >
+            {L(`로그인 없이 계속 → 하루 ${ANON_LIMIT}회 무료`, `Continue without login → ${ANON_LIMIT} free calls/day`)}
+          </Link>
         </div>
       </div>
     </div>
