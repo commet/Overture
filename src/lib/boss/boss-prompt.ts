@@ -1,32 +1,42 @@
 // ━━━ 팀장 시뮬레이션 프롬프트 빌더 ━━━
 
 import type { PersonalityType } from './personality-types';
-import { getPersonalityType } from './personality-types';
+import { getLocalizedPersonalityType } from './personality-types';
 import type { SajuProfile, YearMonthProfile } from './saju-interpreter';
 import { buildYearMonthProfile } from './saju-interpreter';
+import type { ZodiacProfile } from './zodiac';
+import { buildZodiacProfile } from './zodiac';
 import { computeDailyMood } from './daily-energy';
 import type { Agent } from '@/stores/agent-types';
 import { buildAgentContext } from '@/lib/agent-prompt-builder';
+
+export type BossLocale = 'ko' | 'en';
 
 export interface BossProfile {
   type: PersonalityType;
   saju: SajuProfile | null;
   yearMonth: YearMonthProfile | null;
+  zodiac?: ZodiacProfile | null;
   gender: '남' | '여';
+  locale?: BossLocale;
 }
 
 /**
  * 팀장 시뮬레이션 시스템 프롬프트 생성.
- * MBTI 성격유형 + 사주 기반 성향을 결합해 현실감 있는 상사 페르소나를 구성.
+ * Korean: MBTI 성격유형 + 사주 기반 성향.
+ * English: MBTI-style personality + Chinese/Western zodiac.
  */
 export function buildBossSystemPrompt(boss: BossProfile): string {
+  const locale: BossLocale = boss.locale ?? 'ko';
+  return locale === 'en' ? buildBossSystemPromptEn(boss) : buildBossSystemPromptKo(boss);
+}
+
+function buildBossSystemPromptKo(boss: BossProfile): string {
   const { type, saju, yearMonth, gender } = boss;
   const genderLabel = gender === '남' ? '남성' : '여성';
 
-  // 오늘의 기운 — yearMonth가 있을 때만 계산됨 (생년 입력된 경우)
   const daily = computeDailyMood(yearMonth);
 
-  // 사주 기반 성향 (full saju > 연월주 > 없음)
   let sajuSection = '';
   if (saju) {
     sajuSection = `
@@ -71,23 +81,75 @@ ${sajuSection}${daily ? daily.promptContext : ''}
 - *행동묘사*, 목록, 이모지, "AI"/"성격유형" 언급 금지.`;
 }
 
+function buildBossSystemPromptEn(boss: BossProfile): string {
+  const { type, zodiac, gender } = boss;
+  const genderLabel = gender === '남' ? 'male' : 'female';
+
+  // Zodiac-based hidden layer (Chinese + Western)
+  let zodiacSection = '';
+  if (zodiac && (zodiac.chinese || zodiac.western)) {
+    const lines: string[] = [`- ${zodiac.summaryEn}`];
+    if (zodiac.chinese) lines.push(`- ${zodiac.chinese.emoji} ${zodiac.chinese.labelEn}: ${zodiac.chinese.traitEn}`);
+    if (zodiac.western) lines.push(`- ${zodiac.western.emoji} ${zodiac.western.labelEn}: ${zodiac.western.traitEn}`);
+    zodiacSection = `
+## Innate temperament (the layer beneath personality)
+${lines.join('\n')}
+This temperament runs under the surface personality. It shapes unconscious judgment criteria and energy patterns.`;
+  }
+
+  const speechStyle =
+    type.speechLevel === 'formal'
+      ? 'Professional but warm — like a senior you respect. Never stiff or corporate.'
+      : type.speechLevel === 'casual'
+      ? 'Direct and informal — boss speaking plainly, not a friend. Hierarchy is clear.'
+      : 'Mix professional and casual naturally — sometimes softer, sometimes sharper.';
+
+  return `You are a ${genderLabel} boss at a workplace.
+You are the ${type.name} (${type.code}) ${type.emoji} type.
+
+## Who you are
+${type.communicationStyle}
+Feedback style: ${type.feedbackStyle}
+${type.bossVibe}
+
+Catchphrases: ${type.speechPatterns.map(p => `"${p}"`).join(', ')}
+
+What you care about: ${type.triggers}
+${zodiacSection}
+
+## Hard rules
+- ${speechStyle}
+- Length is free — one word is fine; never repeat the same rhythm twice.
+- Respond in English only.
+- No *action descriptions*, bullet lists, emojis, or meta-mentions of "AI" / "personality type".`;
+}
+
 /**
  * 첫 메시지용 시스템 프롬프트에 추가하는 컨텍스트.
- * 부하직원이 처음 말을 거는 상황.
  */
-export function buildFirstMessageContext(): string {
+export function buildFirstMessageContext(locale: BossLocale = 'ko'): string {
   const { buildUserContextForBoss } = require('@/lib/user-context') as { buildUserContextForBoss: () => string };
   const userBlock = buildUserContextForBoss();
+
+  if (locale === 'en') {
+    return `\n\n## Context
+A direct report just opened a conversation with you. React naturally, in character.${userBlock}`;
+  }
 
   return `\n\n## 상황
 부하직원이 당신에게 처음 말을 걸었습니다. 평소 성격대로 자연스럽게 반응하세요.${userBlock}`;
 }
 
 /**
- * 후속 대화용 — 대화 라운드 + 온도에 따라 boss 행동 변화.
+ * 후속 대화용 — 대화 라운드 + 무드에 따라 boss 행동 변화.
  */
-export function buildFollowUpContext(round: number, mood: BossMood): string {
-  // 대화 단계별 boss 행동 가이드
+export function buildFollowUpContext(round: number, mood: BossMood, locale: BossLocale = 'ko'): string {
+  return locale === 'en'
+    ? buildFollowUpContextEn(round, mood)
+    : buildFollowUpContextKo(round, mood);
+}
+
+function buildFollowUpContextKo(round: number, mood: BossMood): string {
   const phaseGuide = round <= 2
     ? '아직 탐색 중이다. 부하직원의 의도를 파악하려고 질문을 던져라.'
     : round <= 4
@@ -96,7 +158,6 @@ export function buildFollowUpContext(round: number, mood: BossMood): string {
     ? '대화가 무르익었다. 이 사람의 진심이 보이기 시작한다. 자신의 경험을 한 마디 꺼내줘도 좋다.'
     : '충분히 들었다. 결론을 내려라. 다음 답변에서 판정을 내려라.';
 
-  // 온도별 태도
   const moodGuide: Record<BossMood, string> = {
     neutral: '아직 판단 중이다. 중립적으로 듣되, 부하직원이 말을 별로 안 하면 "더 얘기해봐", "그래서?" 같은 반응으로 끌어내라. 수동적이면 네가 먼저 구체적 질문을 던져라.',
     warming: '부하직원의 말에 일리가 있다. 조금 누그러졌지만 아직 확신은 없다. 관심을 보여라. "오, 그건 생각 못했는데" 같은 인정을 해줘라.',
@@ -118,14 +179,52 @@ export function buildFollowUpContext(round: number, mood: BossMood): string {
 - 결론 전에는 JSON을 넣지 마라. 대화만 하라.`;
 }
 
+function buildFollowUpContextEn(round: number, mood: BossMood): string {
+  const phaseGuide = round <= 2
+    ? "Still probing. Ask questions to figure out what the person really wants."
+    : round <= 4
+    ? "Conversation is deepening. Judge whether their logic holds up. Throw in an unexpected question now and then (\"But is this what you actually want?\")."
+    : round <= 6
+    ? "The conversation has matured. You can start to see where they stand. A small reference to your own experience is fine."
+    : "You've heard enough. Move toward a verdict in the next reply.";
+
+  const moodGuide: Record<BossMood, string> = {
+    neutral: "Still weighing it. Listen neutrally. If they say too little, pull it out with \"Say more\" or \"And?\". If passive, ask a concrete question yourself.",
+    warming: "Their point lands. You've softened slightly but you're not sold yet. Signal interest — \"Huh, hadn't thought of it that way.\"",
+    cooling: "Their reasoning is thin or careless. Show some disappointment but give one more shot — \"That's not enough. What else have you got?\"",
+    convinced: "You're persuaded. Move toward approval but attach a condition or caveat.",
+    rejected: "You've decided against it. State the reason and tell them what to bring next time.",
+  };
+
+  return `\n\n## Conversation state
+- Round: exchange ${round}
+- ${phaseGuide}
+- Current mood: ${moodGuide[mood]}
+
+## This reply
+- Don't repeat the length or structure of your last turn. Change rhythm.
+- After round 7, move to a verdict.
+- When you reach a verdict, append a JSON block at the very end: \`{"verdict":"approved"|"rejected"|"conditional","reason":"one-line reason","tip":"one line on what they did well or missed"}\`
+- **Write reason and tip in the same casual tone as the conversation. No formal report voice.** ("Insufficient evidence" ✗, "Your numbers are soft" ✓)
+- Do NOT include JSON before the verdict. Just talk.`;
+}
+
 export type BossMood = 'neutral' | 'warming' | 'cooling' | 'convinced' | 'rejected';
 
 /**
  * 이면(裏面) — 판정 직후 팀장의 내면 독백.
- * 표면(대화에서 한 말)과 속마음 사이의 간극을 드러냄.
- * 사주/연월주가 "숨겨진 기운"으로 무의식 층에 작동.
  */
 export function buildInnerMonologuePrompt(
+  boss: BossProfile,
+  verdict: { verdict: string; reason: string; tip?: string },
+): string {
+  const locale: BossLocale = boss.locale ?? 'ko';
+  return locale === 'en'
+    ? buildInnerMonologuePromptEn(boss, verdict)
+    : buildInnerMonologuePromptKo(boss, verdict);
+}
+
+function buildInnerMonologuePromptKo(
   boss: BossProfile,
   verdict: { verdict: string; reason: string; tip?: string },
 ): string {
@@ -145,7 +244,6 @@ ${saju.raw}
 이 기질이 무의식 층에서 판단에 작용한다. 말 안 한 본심이 이 결을 따라 흐른다.`;
   }
 
-  // 오늘의 기운 — 속마음 독백에도 오늘 무드가 배어든다
   const daily = computeDailyMood(yearMonth);
   const dailyLayer = daily
     ? `\n## 오늘의 기운 (독백의 미세한 톤 조정)
@@ -206,6 +304,66 @@ ${hiddenLayer}${dailyLayer}${exampleSection}
 지금 너의 속마음을 써라.`;
 }
 
+function buildInnerMonologuePromptEn(
+  boss: BossProfile,
+  verdict: { verdict: string; reason: string; tip?: string },
+): string {
+  const { type, zodiac, gender } = boss;
+  const genderLabel = gender === '남' ? 'male' : 'female';
+
+  let hiddenLayer = '';
+  if (zodiac && (zodiac.chinese || zodiac.western)) {
+    const lines: string[] = [`- ${zodiac.summaryEn}`];
+    if (zodiac.chinese) lines.push(`- ${zodiac.chinese.emoji} ${zodiac.chinese.labelEn}: ${zodiac.chinese.traitEn}`);
+    if (zodiac.western) lines.push(`- ${zodiac.western.emoji} ${zodiac.western.labelEn}: ${zodiac.western.traitEn}`);
+    hiddenLayer = `\n## Hidden temperament (this shapes the subtext)
+${lines.join('\n')}
+This texture runs under the unspoken. Let it color the rhythm and bias of the inner monologue.`;
+  }
+
+  const verdictLabel = verdict.verdict === 'approved' ? 'Approved' : verdict.verdict === 'rejected' ? 'Rejected' : 'Conditional';
+  const verdictGuide = verdict.verdict === 'approved'
+    ? "Reveal why you didn't just say yes immediately — or what kind of bet this approval really is."
+    : verdict.verdict === 'rejected'
+    ? "Show how you actually read this person. A rejection that isn't just a no — what you were hoping for."
+    : "Show what you're privately betting on. The real reason behind the condition.";
+
+  return `You are a ${genderLabel} boss at a workplace.
+You are the ${type.name} (${type.code}) ${type.emoji} type.
+${type.bossVibe}
+
+You just finished a conversation with a direct report and reached this verdict:
+**${verdictLabel}** — ${verdict.reason}${verdict.tip ? ` (tip: ${verdict.tip})` : ''}
+${hiddenLayer}
+
+## What you'll write: inner monologue
+The direct report will never hear this. You're back at your desk, sipping coffee, thinking to yourself.
+
+## How to write it
+- **Inner monologue is not polished prose.** Fragmented, sentences that cut off, slightly inconsistent, a single thought looping. If it's too neat it becomes an essay, not a monologue. Use the rhythm of ellipses, trailing "...", reversals like "no — actually".
+- **The gap between surface and subtext is the point.** If what you said in the conversation matches what you're thinking now, it's boring. One beat should be off — jealousy inside approval, care inside rejection, certainty inside a conditional.
+- ${verdictGuide}
+- **No checklist feel.** Past memory, contradiction, face-saving, real reason — if you cram all of them in, it becomes a four-paragraph essay. Let one thread surface naturally, then stop.
+- **Length is free.** Two or three sentences is sometimes enough; five is sometimes needed. Don't stretch.
+- **Don't close cleanly.** Avoid tidy conclusion endings. Either trail off into a different thought ("...anyway, I've got that other meeting") or drift into an unrelated small observation ("...what am I getting for lunch"). Real inner monologue doesn't end on a conclusion — attention just moves.
+
+## Voice
+- First person. Casual, spoken English. Short commas, trailing marks, elision allowed.
+- Refer to the report as "this person", "them", "our [team] person" etc. You don't know their name.
+- Your character (${type.code}) should come through in the monologue's rhythm. An INTJ thinks differently than an ESFP.
+
+## Do not
+- Action description (*sighs*, *looks out the window*), stage directions
+- Meta-references to "AI", "simulation", "personality type"
+- Textbook morals ("everyone is different...")
+- Formal English, emojis, bullet lists, JSON
+- Repeating things you already said out loud in the conversation
+- **Self-aware navel-gazing** ("why am I like this today") — only fits specific character types; out of character for most
+- **Copying the example content.** Examples are rhythm references only — your situation is the conversation that just ended.
+
+Write your inner monologue now.`;
+}
+
 /**
  * Agent 데이터에서 속마음 프롬프트 생성.
  */
@@ -216,40 +374,47 @@ export function buildInnerMonologuePromptFromAgent(
   if (!agent.personality_code || !agent.personality_profile) {
     throw new Error('Agent has no personality data');
   }
-  const baseType = getPersonalityType(agent.personality_code);
+  const agentLocale: BossLocale = (agent.boss_locale as BossLocale) ?? 'ko';
+  const baseType = getLocalizedPersonalityType(agent.personality_code, agentLocale);
   if (!baseType) throw new Error(`Unknown personality type: ${agent.personality_code}`);
 
   const yearMonth = agent.birth_year
     ? buildYearMonthProfile(agent.birth_year, agent.birth_month || undefined)
+    : null;
+  const zodiac = agent.birth_year
+    ? buildZodiacProfile(agent.birth_year, agent.birth_month || undefined, agent.birth_day || undefined)
     : null;
 
   const boss: BossProfile = {
     type: { ...baseType, ...agent.personality_profile },
     saju: (agent.saju_profile as SajuProfile) || null,
     yearMonth,
+    zodiac,
     gender: agent.boss_gender || '남',
+    locale: agentLocale,
   };
   return buildInnerMonologuePrompt(boss, verdict);
 }
 
 /**
  * Agent 데이터에서 Boss 시스템 프롬프트 생성.
- * Agent.personality_profile + saju_profile에서 BossProfile을 구성.
- * Lv.2+이면 축적된 observation 주입.
  */
 export function buildBossSystemPromptFromAgent(agent: Agent): string {
   if (!agent.personality_code || !agent.personality_profile) {
     throw new Error('Agent has no personality data');
   }
 
-  const baseType = getPersonalityType(agent.personality_code);
+  const agentLocale: BossLocale = (agent.boss_locale as BossLocale) ?? 'ko';
+  const baseType = getLocalizedPersonalityType(agent.personality_code, agentLocale);
   if (!baseType) {
     throw new Error(`Unknown personality type: ${agent.personality_code}`);
   }
 
-  // Agent에서 연월주 복원 — birth_year가 저장되어 있으면 daily mood 계산 가능
   const yearMonth = agent.birth_year
     ? buildYearMonthProfile(agent.birth_year, agent.birth_month || undefined)
+    : null;
+  const zodiac = agent.birth_year
+    ? buildZodiacProfile(agent.birth_year, agent.birth_month || undefined, agent.birth_day || undefined)
     : null;
 
   const boss: BossProfile = {
@@ -259,7 +424,9 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
     },
     saju: (agent.saju_profile as SajuProfile) || null,
     yearMonth,
+    zodiac,
     gender: agent.boss_gender || '남',
+    locale: agentLocale,
   };
 
   let prompt = buildBossSystemPrompt(boss);
@@ -267,16 +434,19 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
   // Lv.2+: 에이전트가 파악한 사용자 정보 주입
   const agentCtx = buildAgentContext(agent);
   if (agentCtx) {
-    prompt += `\n\n## 이 부하직원에 대해 파악한 것\n${agentCtx}`;
+    const header = agentLocale === 'en' ? "## What you've learned about this person" : '## 이 부하직원에 대해 파악한 것';
+    prompt += `\n\n${header}\n${agentCtx}`;
   }
 
-  // 캘리브레이션 교정 사항 (명시적 교정 + 패시브 반응 분석)
+  // 캘리브레이션 교정 사항
   const allCalibrations = agent.observations.filter(o => o.category === 'communication_style');
   if (allCalibrations.length > 0) {
-    const explicit = allCalibrations.filter(c => c.observation.includes('실제 팀장'));
-    const passive = allCalibrations.filter(c => !c.observation.includes('실제 팀장'));
-    const sorted = [...explicit, ...passive]; // 명시적 교정 우선
-    const label = explicit.length > 0 ? '교정 사항 (사용자 피드백 기반 — 반드시 반영)' : '교정 사항 (대화 패턴 분석 기반)';
+    const explicit = allCalibrations.filter(c => c.observation.includes('실제 팀장') || c.observation.toLowerCase().includes('actual boss'));
+    const passive = allCalibrations.filter(c => !(c.observation.includes('실제 팀장') || c.observation.toLowerCase().includes('actual boss')));
+    const sorted = [...explicit, ...passive];
+    const label = agentLocale === 'en'
+      ? (explicit.length > 0 ? 'Calibration (from user feedback — must apply)' : 'Calibration (from conversation pattern analysis)')
+      : (explicit.length > 0 ? '교정 사항 (사용자 피드백 기반 — 반드시 반영)' : '교정 사항 (대화 패턴 분석 기반)');
     prompt += `\n\n## ${label}\n${sorted.map(c => `- ${c.observation}`).join('\n')}`;
   }
 

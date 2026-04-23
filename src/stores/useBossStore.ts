@@ -2,10 +2,13 @@ import { create } from 'zustand';
 import type { SajuProfile, YearMonthProfile } from '@/lib/boss/saju-interpreter';
 import { buildYearMonthProfile } from '@/lib/boss/saju-interpreter';
 import type { PersonalityType } from '@/lib/boss/personality-types';
-import { getPersonalityType } from '@/lib/boss/personality-types';
+import { getPersonalityType, getLocalizedPersonalityType } from '@/lib/boss/personality-types';
+import type { ZodiacProfile } from '@/lib/boss/zodiac';
+import { buildZodiacProfile } from '@/lib/boss/zodiac';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { summarizeBossChatTopic, extractBossChatObservation, applyBossCalibration } from '@/lib/observation-engine';
 import type { Agent, BossChatTurn } from '@/stores/agent-types';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 // ━━━ Types ━━━
 
@@ -29,11 +32,14 @@ interface BossState {
   gender: '남' | '여';
   birthYear: number;
   birthMonth: number;
+  birthDay: number;
 
   // 사주 연월주 프로필 (클라이언트 계산) + full 사주 (API, optional)
   yearMonthProfile: YearMonthProfile | null;
   sajuProfile: SajuProfile | null;
   sajuLoading: boolean;
+  /** 영어 로케일용 zodiac 프로필 (Western + Chinese) — parallel to yearMonthProfile */
+  zodiacProfile: ZodiacProfile | null;
 
   // Chat
   messages: ChatMessage[];
@@ -54,7 +60,7 @@ interface BossState {
   // Actions
   setAxis: (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => void;
   setGender: (g: '남' | '여') => void;
-  setBirth: (y: number, m?: number) => void;
+  setBirth: (y: number, m?: number, d?: number) => void;
   loadSaju: () => Promise<void>;
   startChat: () => void;
   addUserMessage: (content: string) => void;
@@ -85,9 +91,11 @@ const INITIAL_STATE = {
   gender: '남' as const,
   birthYear: 0,
   birthMonth: 0,
+  birthDay: 0,
   yearMonthProfile: null,
   sajuProfile: null,
   sajuLoading: false,
+  zodiacProfile: null,
   messages: [] as ChatMessage[],
   isStreaming: false,
   streamingText: '',
@@ -107,12 +115,22 @@ export const useBossStore = create<BossState>((set, get) => ({
 
   setGender: (g) => set({ gender: g }),
 
-  setBirth: (y, m?) => {
+  setBirth: (y, m?, d?) => {
     const yearNum = isNaN(y) ? 0 : Math.floor(y);
     const monthNum = m && !isNaN(m) ? Math.floor(m) : 0;
-    const newState: Partial<BossState> = { birthYear: yearNum, birthMonth: monthNum, yearMonthProfile: null };
+    const dayNum = d && !isNaN(d) ? Math.floor(d) : 0;
+    const newState: Partial<BossState> = {
+      birthYear: yearNum,
+      birthMonth: monthNum,
+      birthDay: dayNum,
+      yearMonthProfile: null,
+      zodiacProfile: null,
+    };
     if (yearNum >= 1940 && yearNum <= 2006) {
-      newState.yearMonthProfile = buildYearMonthProfile(yearNum, monthNum >= 1 && monthNum <= 12 ? monthNum : undefined);
+      const validMonth = monthNum >= 1 && monthNum <= 12 ? monthNum : undefined;
+      const validDay = dayNum >= 1 && dayNum <= 31 ? dayNum : undefined;
+      newState.yearMonthProfile = buildYearMonthProfile(yearNum, validMonth);
+      newState.zodiacProfile = buildZodiacProfile(yearNum, validMonth, validDay);
     }
     set(newState);
   },
@@ -182,7 +200,7 @@ export const useBossStore = create<BossState>((set, get) => ({
     const { loadedAgentId, messages: allMsgs } = get();
     if (loadedAgentId) {
       const agentStore = useAgentStore.getState();
-      agentStore.recordActivity(loadedAgentId, 'boss_chat', '대화');
+      agentStore.recordActivity(loadedAgentId, 'boss_chat', getCurrentLanguage() === 'ko' ? '대화' : 'Conversation');
 
       // chat_history 저장 — 최근 20턴까지. 프롬프트 포함 목적이 아닌 UI 복원용.
       const thread: BossChatTurn[] = allMsgs
@@ -253,17 +271,18 @@ export const useBossStore = create<BossState>((set, get) => ({
   // ─── Agent 연동 ───
 
   saveAsAgent: (name) => {
-    const { axes, gender, sajuProfile } = get();
+    const { axes, gender, sajuProfile, zodiacProfile, birthYear, birthMonth, birthDay } = get();
     const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
-    const personalityType = getPersonalityType(typeCode);
+    const locale: 'ko' | 'en' = getCurrentLanguage() === 'ko' ? 'ko' : 'en';
+    // Use locale-aware personality data so EN bosses get English name/style/triggers persisted.
+    const personalityType = getLocalizedPersonalityType(typeCode, locale);
     if (!personalityType) return null;
 
     const agentStore = useAgentStore.getState();
     if (agentStore.agents.length === 0) agentStore.loadAgents();
 
-    const { birthYear, birthMonth } = get();
     const agentId = agentStore.createBossAgent({
-      name: name || `${personalityType.name} 팀장`,
+      name: name || (locale === 'ko' ? `${personalityType.name} 팀장` : `${personalityType.name} Boss`),
       typeCode,
       gender,
       personalityProfile: {
@@ -276,8 +295,11 @@ export const useBossStore = create<BossState>((set, get) => ({
         bossVibe: personalityType.bossVibe,
       },
       sajuProfile: sajuProfile ?? undefined,
+      zodiacProfile: zodiacProfile ?? undefined,
       birthYear: birthYear || undefined,
       birthMonth: birthMonth || undefined,
+      birthDay: birthDay || undefined,
+      locale,
     });
 
     set({ loadedAgentId: agentId });
@@ -294,6 +316,7 @@ export const useBossStore = create<BossState>((set, get) => ({
     const code = agent.personality_code;
     const bYear = agent.birth_year || 0;
     const bMonth = agent.birth_month || 0;
+    const bDay = agent.birth_day || 0;
 
     // 저장된 대화 스레드 복원 — 이전 대화 연속성
     const restored: ChatMessage[] = (agent.chat_history || []).map((t, i) => ({
@@ -314,7 +337,11 @@ export const useBossStore = create<BossState>((set, get) => ({
       gender: agent.boss_gender || '남',
       birthYear: bYear,
       birthMonth: bMonth,
+      birthDay: bDay,
       yearMonthProfile: bYear >= 1940 ? buildYearMonthProfile(bYear, bMonth >= 1 ? bMonth : undefined) : null,
+      zodiacProfile: bYear >= 1940
+        ? buildZodiacProfile(bYear, bMonth >= 1 ? bMonth : undefined, bDay >= 1 ? bDay : undefined)
+        : null,
       sajuProfile: agent.saju_profile as SajuProfile | null,
       phase: 'chat',
       messages: restored,

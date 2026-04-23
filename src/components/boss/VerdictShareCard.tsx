@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useBossStore } from '@/stores/useBossStore';
+import { t } from '@/lib/i18n';
 
 interface VerdictShareCardProps {
   verdict: { verdict: string; reason: string; tip?: string };
@@ -13,10 +14,10 @@ interface VerdictShareCardProps {
   onClose: () => void;
 }
 
-const VERDICT_LABELS: Record<string, string> = {
-  approved: '승인',
-  conditional: '조건부 승인',
-  rejected: '반려',
+const VERDICT_LABEL_KEY: Record<string, Parameters<typeof t>[0]> = {
+  approved: 'boss.verdict.approved',
+  conditional: 'boss.verdict.conditional',
+  rejected: 'boss.verdict.rejected',
 };
 
 const VERDICT_EMOJI: Record<string, string> = {
@@ -47,14 +48,15 @@ export function VerdictShareCard({ verdict, typeCode, situation, onClose }: Verd
   const bestQuote = findBestQuote(messages);
   const situationShort = situation.length > 25 ? situation.slice(0, 25) + '...' : situation;
 
-  // 대화체 공유 텍스트 — 카카오톡에 붙여넣으면 자연스러운 형태
-  const shareText = `${type?.emoji || '👔'} ${typeCode} 팀장한테 "${situationShort}" 해봤는데
+  // Share text — natural when pasted into a chat
+  const verdictLabel = VERDICT_LABEL_KEY[verdict.verdict] ? t(VERDICT_LABEL_KEY[verdict.verdict]) : verdict.verdict;
+  const shareText = `${t('boss.shareIntro', { emoji: type?.emoji || '👔', typeCode, situation: situationShort })}
 
 "${bestQuote || verdict.reason}"
 
-${VERDICT_EMOJI[verdict.verdict]} 결과: ${VERDICT_LABELS[verdict.verdict] || verdict.verdict}
+${t('boss.shareVerdict', { emoji: VERDICT_EMOJI[verdict.verdict], label: verdictLabel })}
 
-너네 팀장은 뭐 유형이야? ㅋㅋ
+${t('boss.shareInvite')}
 ▸ overture.so/boss`;
 
   const handleCopy = async () => {
@@ -91,8 +93,8 @@ ${VERDICT_EMOJI[verdict.verdict]} 결과: ${VERDICT_LABELS[verdict.verdict] || v
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <span style={{ fontSize: 28 }}>{type?.emoji || '👔'}</span>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{type?.name || typeCode} 팀장</p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>&ldquo;{situationShort}&rdquo;에 대한 반응</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{type?.name || typeCode} {t('boss.managerSuffix')}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>{t('boss.situationReaction', { situation: situationShort })}</p>
           </div>
         </div>
 
@@ -114,7 +116,7 @@ ${VERDICT_EMOJI[verdict.verdict]} 결과: ${VERDICT_LABELS[verdict.verdict] || v
         {/* Verdict — secondary, not primary */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>{VERDICT_EMOJI[verdict.verdict]}</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{VERDICT_LABELS[verdict.verdict]}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{verdictLabel}</span>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>— {verdict.reason.length > 30 ? verdict.reason.slice(0, 30) + '...' : verdict.reason}</span>
         </div>
       </div>
@@ -132,7 +134,7 @@ ${VERDICT_EMOJI[verdict.verdict]} 결과: ${VERDICT_LABELS[verdict.verdict] || v
           transition: 'background 0.2s',
         }}
       >
-        {copied ? <><Check size={16} /> 복사 완료! 카톡에 붙여넣기</> : <><Copy size={16} /> 카톡에 공유하기</>}
+        {copied ? <><Check size={16} /> {t('boss.copyDone')}</> : <><Copy size={16} /> {t('boss.shareKakao')}</>}
       </button>
     </motion.div>
   );

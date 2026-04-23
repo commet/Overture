@@ -18,36 +18,55 @@ import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
 import { DailyMoodIndicator } from './DailyMoodIndicator';
 import { PastVerdictRecap } from './PastVerdictRecap';
+import { t, getCurrentLanguage } from '@/lib/i18n';
 
 // ─── 대화 온도 추적 ───
 
 type Reaction = 'strong' | 'weak' | 'emotional' | 'passive' | 'neutral';
 
 // 근거/논리가 있는 발언
-const STRONG_SIGNALS = [
+const STRONG_SIGNALS_KO = [
   '데이터', '숫자', '근거', '조사', '사례', '계획', '대안', '비교', '분석', '수치',
   '기한', '마감', '성과', '매출', '실적', '제안', '경쟁사', '오퍼', '시장',
   '왜냐하면', '이유는', '기준', '원칙', '합리', '논리', '따지면',
   '준비', '확인', '검토', '일하고 싶', '기여', '책임',
 ];
+const STRONG_SIGNALS_EN = [
+  'data', 'number', 'evidence', 'research', 'case', 'plan', 'alternative', 'compared', 'analysis', 'metric',
+  'deadline', 'result', 'revenue', 'proposal', 'competitor', 'offer', 'market',
+  'because', 'reason', 'criteria', 'principle', 'rational', 'logic',
+  'prepared', 'verified', 'reviewed', 'contribute', 'responsibility',
+];
 // 감정적 발언 (캐주얼/감정 공존)
-const EMOTIONAL_SIGNALS = ['힘들', '지쳐', '불안', '걱정', '화나', '답답', '솔직히', '속상'];
+const EMOTIONAL_SIGNALS_KO = ['힘들', '지쳐', '불안', '걱정', '화나', '답답', '솔직히', '속상'];
+const EMOTIONAL_SIGNALS_EN = ['tired', 'exhausted', 'anxious', 'worried', 'frustrated', 'honestly', 'upset', 'burned out'];
 // 수동적/짧은 수용
-const PASSIVE_SIGNALS = ['네', '알겠', '그렇죠', 'ㅇㅇ', '넵', '네네', '그럴게'];
+const PASSIVE_SIGNALS_KO = ['네', '알겠', '그렇죠', 'ㅇㅇ', '넵', '네네', '그럴게'];
+const PASSIVE_SIGNALS_EN = ['ok', 'okay', 'sure', 'got it', 'yeah', 'yep', 'fine', 'alright', 'noted'];
+
+function getStrongSignals(): string[] {
+  return getCurrentLanguage() === 'ko' ? STRONG_SIGNALS_KO : [...STRONG_SIGNALS_EN, ...STRONG_SIGNALS_KO];
+}
+function getEmotionalSignals(): string[] {
+  return getCurrentLanguage() === 'ko' ? EMOTIONAL_SIGNALS_KO : [...EMOTIONAL_SIGNALS_EN, ...EMOTIONAL_SIGNALS_KO];
+}
+function getPassiveSignals(): string[] {
+  return getCurrentLanguage() === 'ko' ? PASSIVE_SIGNALS_KO : [...PASSIVE_SIGNALS_EN, ...PASSIVE_SIGNALS_KO];
+}
 
 function classifyReaction(text: string): Reaction {
   const t = text.toLowerCase().trim();
   const len = t.length;
 
   // 극히 짧은 답변(10자 이하) = 수동적
-  if (len <= 10 && PASSIVE_SIGNALS.some(kw => t.includes(kw))) return 'passive';
+  if (len <= 10 && getPassiveSignals().some(kw => t.includes(kw))) return 'passive';
 
   // 감정적 발언
-  const emotionalHits = EMOTIONAL_SIGNALS.filter(kw => t.includes(kw)).length;
+  const emotionalHits = getEmotionalSignals().filter(kw => t.includes(kw)).length;
   if (emotionalHits >= 2 || (emotionalHits >= 1 && len < 30)) return 'emotional';
 
   // 근거/논리
-  const strongHits = STRONG_SIGNALS.filter(kw => t.includes(kw)).length;
+  const strongHits = getStrongSignals().filter(kw => t.includes(kw)).length;
   if (strongHits >= 2) return 'strong';
   // 긴 답변(50자+)은 노력의 신호 — strong 1개만 있어도 인정
   if (strongHits >= 1 && len >= 50) return 'strong';
@@ -94,7 +113,7 @@ function updateMood(current: BossMood, reaction: Reaction, round: number): BossM
 }
 
 // 업무/의사결정 관련 대화인지 감지 (키워드 3개 이상 매칭 시 true)
-const WORK_SIGNALS = [
+const WORK_SIGNALS_KO = [
   '기획', '보고', '제안', '예산', '일정', '프로젝트', '전략', '실행',
   '검토', '승인', '피드백', '수정', '방향', '목표', '성과', '발표',
   '회의', '결정', '판단', '계획', '분석', '데이터', '숫자', '시장',
@@ -102,13 +121,22 @@ const WORK_SIGNALS = [
   '부족', '다시 해', '이 부분', '보완', '개선', '준비', '마감',
 ];
 
+const WORK_SIGNALS_EN = [
+  'plan', 'report', 'proposal', 'budget', 'schedule', 'project', 'strategy', 'execution',
+  'review', 'approval', 'feedback', 'revise', 'direction', 'goal', 'result', 'presentation',
+  'meeting', 'decision', 'analysis', 'data', 'market',
+  'customer', 'revenue', 'cost', 'investment', 'competition', 'risk', 'document', 'slide',
+  'deadline', 'improve', 'preparation',
+];
+
 function isWorkRelated(messages: Array<{ role: string; content: string }>): boolean {
   const allText = messages.map(m => m.content).join(' ').toLowerCase();
-  const hits = WORK_SIGNALS.filter(kw => allText.includes(kw));
+  const signals = getCurrentLanguage() === 'ko' ? WORK_SIGNALS_KO : [...WORK_SIGNALS_EN, ...WORK_SIGNALS_KO];
+  const hits = signals.filter(kw => allText.includes(kw));
   return hits.length >= 3;
 }
 
-const FOLLOW_UP_NEUTRAL = [
+const FOLLOW_UP_NEUTRAL_KO = [
   '그래도 저는 할 말은 해야겠는데요',
   '진짜요? 다른 팀은 안 그러던데',
   '그건 좀 아닌 것 같은데...',
@@ -117,24 +145,47 @@ const FOLLOW_UP_NEUTRAL = [
   '그 말씀은 좀 너무하신 것 같은데요',
 ];
 
-const FOLLOW_UP_WARMING = [
+const FOLLOW_UP_WARMING_KO = [
   '구체적인 숫자를 더 준비해왔는데요',
   '사실 이것 말고도 하나 더 말씀드릴 게 있어요',
   '그 부분은 이렇게 해결할 수 있을 것 같습니다',
   '감사합니다, 추가로 제안 하나만 더요',
 ];
 
-const FOLLOW_UP_COOLING = [
+const FOLLOW_UP_COOLING_KO = [
   '잠깐만요, 근거를 하나 더 말씀드려도 될까요',
   '다른 각도에서 다시 설명드리겠습니다',
   '제가 좀 더 준비해서 다시 말씀드릴게요',
   '아, 그 부분은 제가 잘못 전달한 것 같습니다',
 ];
 
+const FOLLOW_UP_NEUTRAL_EN = [
+  "I still need to make my case, though",
+  "Really? Other teams don't seem to do that",
+  "I'm not sure that sits right with me...",
+  "Understood... but one more thing",
+  "Can I be honest here?",
+  "That feels a bit harsh, if I can say so",
+];
+
+const FOLLOW_UP_WARMING_EN = [
+  "I've prepared more concrete numbers",
+  "Actually there's one more thing I wanted to mention",
+  "I think we can solve that part like this",
+  "Thanks — one more proposal if I may",
+];
+
+const FOLLOW_UP_COOLING_EN = [
+  "Wait — can I add one more reason?",
+  "Let me explain from a different angle",
+  "I'll prepare more and come back to this",
+  "Ah, I think I miscommunicated that part",
+];
+
 function getFollowUps(mood: BossMood): string[] {
-  if (mood === 'warming' || mood === 'convinced') return FOLLOW_UP_WARMING;
-  if (mood === 'cooling' || mood === 'rejected') return FOLLOW_UP_COOLING;
-  return FOLLOW_UP_NEUTRAL;
+  if (mood === 'warming' || mood === 'convinced') return getCurrentLanguage() === 'ko' ? FOLLOW_UP_WARMING_KO : FOLLOW_UP_WARMING_EN;
+  if (mood === 'cooling' || mood === 'rejected') return getCurrentLanguage() === 'ko' ? FOLLOW_UP_COOLING_KO : FOLLOW_UP_COOLING_EN;
+  return getCurrentLanguage() === 'ko' ? FOLLOW_UP_NEUTRAL_KO : FOLLOW_UP_NEUTRAL_EN;
 }
 
 export function BossChat() {
@@ -204,15 +255,18 @@ export function BossChat() {
       setBossMood(currentMood); // UI 반영용 (프롬프트에는 이미 currentMood 사용)
     }
 
-    const contextSuffix = isFirst
-      ? buildFirstMessageContext()
-      : buildFollowUpContext(round, currentMood);
-
     // Agent에서 로드된 boss면 agent 프롬프트 사용 (Lv.2+ observation 주입)
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
+    const bossLocale: 'ko' | 'en' = (agent?.boss_locale as 'ko' | 'en') ?? (getCurrentLanguage() === 'ko' ? 'ko' : 'en');
+
+    const contextSuffix = isFirst
+      ? buildFirstMessageContext(bossLocale)
+      : buildFollowUpContext(round, currentMood, bossLocale);
+
+    const zodiac = useBossStore.getState().zodiacProfile;
     const system = (agent?.personality_profile
       ? buildBossSystemPromptFromAgent(agent)
-      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, gender })
+      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, zodiac, gender, locale: bossLocale })
     ) + contextSuffix;
     const llmMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
 
@@ -258,10 +312,11 @@ export function BossChat() {
         },
         onError: async (err) => {
           const msg = err instanceof Error ? err.message : String(err);
-          const isOverloaded = msg.includes('과부하') || msg.includes('503') || msg.includes('529') || msg.includes('서버');
+          const isOverloaded = msg.includes('과부하') || msg.includes('503') || msg.includes('529') || msg.includes('서버') || msg.toLowerCase().includes('overloaded') || msg.toLowerCase().includes('server');
+          const ko = getCurrentLanguage() === 'ko';
           if (isOverloaded && retry < 2) {
-            console.warn(`[boss] 서버 과부하, ${retry + 1}회 재시도...`);
-            updateStreamingText('잠시만...');
+            console.warn(`[boss] overloaded, retry ${retry + 1}...`);
+            updateStreamingText(ko ? '잠시만...' : 'One moment...');
             await new Promise((r) => setTimeout(r, 2000 * (retry + 1)));
             sendToLLM(chatMessages, retry + 1);
             return;
@@ -269,11 +324,17 @@ export function BossChat() {
 
           console.error('[boss] LLM error:', msg);
           if (msg.includes('LOGIN_REQUIRED') || msg.includes('로그인')) {
-            updateStreamingText('로그인이 필요해요. 무료 체험 횟수를 다 썼을 수 있어요.');
-          } else if (msg.includes('사용량') || msg.includes('429') || msg.includes('한도')) {
-            updateStreamingText('오늘 사용량을 다 썼어요. 설정에서 API 키를 입력하면 계속 쓸 수 있어요.');
+            updateStreamingText(ko
+              ? '로그인이 필요해요. 무료 체험 횟수를 다 썼을 수 있어요.'
+              : "Please sign in — your free trial may be used up.");
+          } else if (msg.includes('사용량') || msg.includes('429') || msg.includes('한도') || msg.toLowerCase().includes('rate')) {
+            updateStreamingText(ko
+              ? '오늘 사용량을 다 썼어요. 설정에서 API 키를 입력하면 계속 쓸 수 있어요.'
+              : "You've hit today's usage. Enter your own API key in Settings to keep going.");
           } else {
-            updateStreamingText('연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
+            updateStreamingText(ko
+              ? '연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+              : 'Connection error. Please try again in a moment.');
           }
           commitAssistantMessage();
           setBossState('idle');
@@ -352,21 +413,21 @@ export function BossChat() {
               color: bossMood === 'warming' ? 'var(--success)' : bossMood === 'cooling' ? 'var(--danger)' : undefined,
               transition: 'color 0.6s',
             }}>
-              {bossMood === 'warming' ? '관심을 보이고 있다...'
-                : bossMood === 'cooling' ? '불만족스러워 보인다...'
-                : bossMood === 'convinced' ? '납득한 표정이다'
-                : bossMood === 'rejected' ? '안 된다는 표정이다'
+              {bossMood === 'warming' ? t('boss.mood.warming')
+                : bossMood === 'cooling' ? t('boss.mood.cooling')
+                : bossMood === 'convinced' ? t('boss.mood.convinced')
+                : bossMood === 'rejected' ? t('boss.mood.rejected')
                 : typeData?.bossVibe}
             </span>
             {ymp && (
               <span className="bc-element" style={{ color: ymp.yearElement.color }}>
-                {ymp.animal.emoji} {ymp.animal.animal}띠
+                {ymp.animal.emoji} {ymp.animal.animal}{t('boss.zodiacSuffix')}
                 {ymp.zodiacSign ? ` · ${ymp.zodiacSign.emoji} ${ymp.zodiacSign.sign}` : ''}
               </span>
             )}
             {observationCount > 0 && (
-              <span className="bc-concreteness" title="이 팀장에 대해 쌓인 관찰 개수. 프로필에서 확인할 수 있어요.">
-                ✍️ {observationCount}개 관찰로 다듬어짐
+              <span className="bc-concreteness" title={t('boss.observationsTooltip')}>
+                {t('boss.observationsShaped', { count: observationCount })}
               </span>
             )}
             {ymp && (

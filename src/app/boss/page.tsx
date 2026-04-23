@@ -8,8 +8,11 @@ import { BossChat } from '@/components/boss/BossChat';
 import { useBossStore } from '@/stores/useBossStore';
 import { useAgentStore } from '@/stores/useAgentStore';
 import type { Agent } from '@/stores/agent-types';
+import { useLocale } from '@/hooks/useLocale';
 
 function SavedBossList() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [bosses, setBosses] = useState<Agent[]>([]);
   const loadBossFromAgent = useBossStore(s => s.loadBossFromAgent);
 
@@ -29,7 +32,7 @@ function SavedBossList() {
       style={{ padding: '0 24px', maxWidth: 520, margin: '0 auto 24px' }}
     >
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-        저장된 팀장
+        {L('저장된 팀장', 'Saved bosses')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {bosses.map(boss => {
@@ -61,9 +64,13 @@ function SavedBossList() {
                 </div>
                 {(turns > 0 || obsCount > 0) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-tertiary)' }}>
-                    {obsCount > 0 && <span>{obsCount}개 관찰로 다듬어짐</span>}
+                    {obsCount > 0 && (
+                      <span>{L(`${obsCount}개 관찰로 다듬어짐`, `Refined by ${obsCount} observation${obsCount === 1 ? '' : 's'}`)}</span>
+                    )}
                     {obsCount > 0 && turns > 0 && <span>·</span>}
-                    {turns > 0 && <span>지난 대화 {turns}턴</span>}
+                    {turns > 0 && (
+                      <span>{L(`지난 대화 ${turns}턴`, `${turns} prior turn${turns === 1 ? '' : 's'}`)}</span>
+                    )}
                   </div>
                 )}
               </div>

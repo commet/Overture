@@ -57,7 +57,9 @@ export interface Agent {
 
   // Worker traits (WorkerPersona 유래)
   expertise?: string;
+  expertiseEn?: string;         // English translation for expertise
   tone?: string;
+  toneEn?: string;              // English translation for tone
   keywords?: string[];
 
   // Stakeholder traits (Persona 유래)
@@ -87,7 +89,10 @@ export interface Agent {
   boss_gender?: '남' | '여';
   birth_year?: number;
   birth_month?: number;
-  saju_profile?: unknown;    // SajuProfile — import cycle 방지
+  birth_day?: number;        // 서양 zodiac 정밀 매핑에 필요 (선택)
+  saju_profile?: unknown;    // SajuProfile (Korean locale only) — import cycle 방지
+  zodiac_profile?: unknown;  // ZodiacProfile (English locale / globalized) — import cycle 방지
+  boss_locale?: 'ko' | 'en'; // 보스 생성 당시 로케일 — 렌더/프롬프트 분기에 사용
 
   // Boss 대화 연속성 — 최근 대화 스레드 (boss_sim 전용)
   chat_history?: BossChatTurn[];

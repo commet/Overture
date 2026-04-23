@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import { PERSONALITY_TYPES } from '@/lib/boss/personality-types';
+import { useLocale } from '@/hooks/useLocale';
 
 export interface BossCollectionEntry {
   typeCode: string;
@@ -34,14 +35,21 @@ const VERDICT_INDICATOR: Record<string, { color: string; label: string }> = {
 };
 
 const ALL_TYPES = Object.keys(PERSONALITY_TYPES);
-const MILESTONE_MESSAGES: Record<number, string> = {
+const MILESTONE_MESSAGES_KO: Record<number, string> = {
   4: '25% 클리어!',
   8: '절반 돌파! 설득력 중급 🎖️',
   12: '75%! 거의 다 왔어요',
   16: '전유형 클리어! 직장인 마스터 🏆',
 };
+const MILESTONE_MESSAGES_EN: Record<number, string> = {
+  4: '25% unlocked!',
+  8: 'Halfway there — intermediate persuader 🎖️',
+  12: '75%! Almost there',
+  16: 'All types cleared — Workplace Master 🏆',
+};
 
 export function CollectionProgress() {
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const collection = useMemo(() => getCollection(), []);
   const completedSet = useMemo(() => new Set(collection.map(c => c.typeCode)), [collection]);
@@ -49,7 +57,7 @@ export function CollectionProgress() {
 
   if (count === 0) return null;
 
-  const milestone = MILESTONE_MESSAGES[count];
+  const milestone = (locale === 'ko' ? MILESTONE_MESSAGES_KO : MILESTONE_MESSAGES_EN)[count];
 
   return (
     <div style={{ marginTop: 4 }}>

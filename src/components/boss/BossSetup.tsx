@@ -5,12 +5,14 @@ import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { TypeToggle } from './TypeToggle';
 import { useBossStore } from '@/stores/useBossStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
-import { getPersonalityType } from '@/lib/boss/personality-types';
+import { getLocalizedPersonalityType } from '@/lib/boss/personality-types';
 import { ArrowRight } from 'lucide-react';
 import { SajuPreview } from './SajuPreview';
 import { CollectionProgress } from './CollectionProgress';
+import { t } from '@/lib/i18n';
+import { useLocale } from '@/hooks/useLocale';
 
-const EXAMPLE_SITUATIONS = [
+const EXAMPLE_SITUATIONS_KO = [
   '연봉 협상을 하고 싶은데요',
   '이번에 제가 잘한 건지 솔직히 알고 싶습니다',
   '회의를 좀 줄일 수 있을까요?',
@@ -28,6 +30,24 @@ const EXAMPLE_SITUATIONS = [
   '제 업무 범위가 좀 애매한 것 같아서요',
 ];
 
+const EXAMPLE_SITUATIONS_EN = [
+  "I'd like to ask for a raise",
+  "I honestly want to know if I did well this time",
+  "Can we have fewer meetings?",
+  "I'd like to work from home a bit more",
+  "I want to pitch this idea",
+  "The timeline might slip by about two weeks",
+  "Honestly, I've been pretty burned out lately",
+  "Could I take the lead on this one?",
+  "Can I leave on time today?",
+  "Other teams work remotely — could we?",
+  "Curious about this cycle's incentive criteria",
+  "Can we revisit that feedback?",
+  "I'm thinking about leaving the company",
+  "Could we reconsider the project direction?",
+  "My scope of work feels a bit unclear",
+];
+
 const stagger: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.06 } },
@@ -39,14 +59,17 @@ const fadeUp: Variants = {
 };
 
 export function BossSetup() {
-  const { axes, gender, birthYear, birthMonth, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
+  const locale = useLocale();
+  const { axes, gender, birthYear, birthMonth, birthDay, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
-  const typeData = getPersonalityType(typeCode);
+  const typeData = getLocalizedPersonalityType(typeCode, locale);
+  const examples = locale === 'ko' ? EXAMPLE_SITUATIONS_KO : EXAMPLE_SITUATIONS_EN;
   const birthYearValid = birthYear >= 1940 && birthYear <= 2006;
   const birthMonthValid = birthMonth >= 1 && birthMonth <= 12;
+  const birthDayValid = birthDay >= 1 && birthDay <= 31;
 
   const handleSubmit = useCallback(async () => {
     if (!situation.trim() || isLaunching) return;
@@ -76,9 +99,9 @@ export function BossSetup() {
       {/* ── Hero (compact) ── */}
       <motion.div className="bs-hero" variants={fadeUp}>
         <h1 className="bs-title">
-          팀장한테 <span className="bs-title-accent">할 말 있어?</span>
+          {t('boss.heroTitle')} <span className="bs-title-accent">{t('boss.heroAccent')}</span>
         </h1>
-        <p className="bs-sub">미리 시뮬레이션 해봐. 진짜 뭐라 하는지.</p>
+        <p className="bs-sub">{t('boss.heroSub')}</p>
       </motion.div>
 
       {/* ── Collection progress ── */}
@@ -86,7 +109,7 @@ export function BossSetup() {
 
       {/* ── MBTI selector ── */}
       <motion.div className="bs-type-section" variants={fadeUp}>
-        <p className="text-[12px] text-[var(--text-tertiary)] mb-2">팀장 성격 설정 · 모르면 그대로 두셔도 됩니다</p>
+        <p className="text-[12px] text-[var(--text-tertiary)] mb-2">{t('boss.typeHint')}</p>
         <TypeToggle />
 
         {/* Personality — always visible card */}
@@ -118,19 +141,19 @@ export function BossSetup() {
                 <div className="bs-meta-header">
                   <span className="bs-meta-title">
                     <span className="bs-meta-sparkle">✨</span>
-                    <span>이면을 더 선명하게</span>
+                    <span>{t('boss.insideTitle')}</span>
                   </span>
                   <span className="bs-meta-hint">
                     {birthYearValid
-                      ? (birthMonthValid ? '타고난 결이 독백에 섞입니다' : '월까지 넣으면 결이 더 선명해져요')
-                      : '생년월을 넣으면 팀장의 타고난 결이 속마음에 섞입니다'}
+                      ? (birthMonthValid ? t('boss.birthHintFull') : t('boss.birthHintMonth'))
+                      : t('boss.birthHintNone')}
                   </span>
                 </div>
                 <div className="bs-meta-row">
                   <div className="bs-gender">
                     {(['남', '여'] as const).map((g) => (
                       <button key={g} type="button" onClick={() => setGender(g)} className="bs-gen-btn" data-active={gender === g}>
-                        {g === '남' ? '남' : '여'}
+                        {locale === 'ko' ? g : (g === '남' ? 'M' : 'F')}
                       </button>
                     ))}
                   </div>
@@ -139,32 +162,49 @@ export function BossSetup() {
                       type="number"
                       placeholder="1990"
                       value={birthYear || ''}
-                      onChange={(e) => setBirth(Number(e.target.value), birthMonth)}
+                      onChange={(e) => setBirth(Number(e.target.value), birthMonth, birthDay)}
                       className="bs-num bs-num-y"
                       min={1940}
                       max={2006}
-                      aria-label="출생 연도"
+                      aria-label={t('boss.yearLabel')}
                     />
-                    <span className="bs-num-suffix">년</span>
+                    <span className="bs-num-suffix">{t('boss.yearSuffix')}</span>
                     <span className="bs-dot">·</span>
                     <input
                       type="number"
                       placeholder="6"
                       value={birthMonth || ''}
-                      onChange={(e) => setBirth(birthYear, Number(e.target.value))}
+                      onChange={(e) => setBirth(birthYear, Number(e.target.value), birthDay)}
                       className="bs-num bs-num-m"
                       min={1}
                       max={12}
                       disabled={!birthYearValid}
-                      aria-label="출생 월"
+                      aria-label={t('boss.monthLabel')}
                     />
-                    <span className="bs-num-suffix">월</span>
+                    <span className="bs-num-suffix">{t('boss.monthSuffix')}</span>
+                    {locale === 'en' && (
+                      <>
+                        <span className="bs-dot">·</span>
+                        <input
+                          type="number"
+                          placeholder="15"
+                          value={birthDay || ''}
+                          onChange={(e) => setBirth(birthYear, birthMonth, Number(e.target.value))}
+                          className="bs-num bs-num-m"
+                          min={1}
+                          max={31}
+                          disabled={!birthMonthValid}
+                          aria-label="Birth day"
+                        />
+                        <span className="bs-num-suffix">day</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 {birthYear > 0 && !birthYearValid && (
-                  <p className="bs-meta-warn">1940~2006년 사이로 입력해주세요</p>
+                  <p className="bs-meta-warn">{t('boss.yearRangeError')}</p>
                 )}
-                <SajuPreview year={birthYear} month={birthMonth} />
+                <SajuPreview year={birthYear} month={birthMonth} day={birthDay} />
               </div>
             </motion.div>
           )}
@@ -183,14 +223,14 @@ export function BossSetup() {
             maxLength={500}
           />
           <AnimatedPlaceholder
-            texts={EXAMPLE_SITUATIONS}
+            texts={examples}
             visible={!situation}
             interval={2800}
             className="bs-placeholder"
           />
         </div>
         <div className="bs-cta-row">
-          <p className="bs-fine">AI 시뮬레이션 · 실제와 다를 수 있음</p>
+          <p className="bs-fine">{t('boss.disclaimer')}</p>
           <motion.button
             type="button"
             onClick={handleSubmit}
@@ -200,11 +240,11 @@ export function BossSetup() {
           >
             {isLaunching ? (
               <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.2 }}>
-                소환 중...
+                {t('boss.summoning')}
               </motion.span>
             ) : (
               <>
-                팀장 반응 보기
+                {t('boss.cta')}
                 <ArrowRight size={16} strokeWidth={2.5} />
               </>
             )}

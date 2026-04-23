@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check } from 'lucide-react';
 import type { PersonalityType } from '@/lib/boss/personality-types';
+import { useLocale } from '@/hooks/useLocale';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -13,12 +14,15 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessageProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const isUser = role === 'user';
   const [showCopy, setShowCopy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopyQuote = async () => {
-    const text = `${bossType?.emoji || '👔'} ${bossType?.code || ''} 팀장:\n"${content}"\n\n▸ overture.so/boss`;
+    const bossLabel = L('팀장', 'Boss');
+    const text = `${bossType?.emoji || '👔'} ${bossType?.code || ''} ${bossLabel}:\n"${content}"\n\n▸ overture.so/boss`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -81,7 +85,9 @@ export function ChatMessage({ role, content, isStreaming, bossType }: ChatMessag
               zIndex: 10,
             }}
           >
-            {copied ? <><Check size={10} /> 복사됨</> : <><Copy size={10} /> 이 대사 공유</>}
+            {copied
+              ? <><Check size={10} /> {L('복사됨', 'Copied')}</>
+              : <><Copy size={10} /> {L('이 대사 공유', 'Share this line')}</>}
           </motion.button>
         )}
       </div>

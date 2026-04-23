@@ -8,6 +8,7 @@ import { getPersonalityType, PERSONALITY_TYPES } from '@/lib/boss/personality-ty
 import { pickScenarios, detectCategory, DIFFICULTY_LABELS, type Scenario } from '@/lib/boss/scenarios';
 import { CollectionProgress } from './CollectionProgress';
 import { InnerMonologueCard } from './InnerMonologueCard';
+import { t } from '@/lib/i18n';
 
 interface PostVerdictPanelProps {
   verdict: { verdict: string; reason: string; tip?: string };
@@ -70,24 +71,24 @@ export function PostVerdictPanel({ verdict, onShare }: PostVerdictPanelProps) {
               <button
                 onClick={handleNewType}
                 className="bc-post-btn"
-                title={suggestedType ? `${suggestedType.emoji} ${suggestedType.name} 팀장이면?` : '랜덤 유형'}
+                title={suggestedType ? t('boss.otherTypeTitle', { emoji: suggestedType.emoji, name: suggestedType.name }) : t('boss.otherTypeRandom')}
               >
                 <RefreshCw size={12} />
-                <span>다른 유형</span>
+                <span>{t('boss.otherType')}</span>
               </button>
               <button
                 onClick={() => setShowScenarios(!showScenarios)}
                 className="bc-post-btn"
               >
                 <MessageSquare size={12} />
-                <span>다른 상황</span>
+                <span>{t('boss.otherSituation')}</span>
               </button>
               <button
                 onClick={onShare}
                 className="bc-post-btn"
               >
                 <Share2 size={12} />
-                <span>공유</span>
+                <span>{t('boss.share')}</span>
               </button>
             </div>
 
@@ -102,7 +103,7 @@ export function PostVerdictPanel({ verdict, onShare }: PostVerdictPanelProps) {
                   style={{ overflow: 'hidden' }}
                 >
                   <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-                    이 상황도 해보세요
+                    {t('boss.trySituations')}
                   </p>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {scenarios.map(s => {

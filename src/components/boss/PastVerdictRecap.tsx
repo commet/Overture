@@ -4,15 +4,16 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Sparkles } from 'lucide-react';
 import { useAgentStore } from '@/stores/useAgentStore';
+import { t } from '@/lib/i18n';
 
 interface PastVerdictRecapProps {
   agentId: string;
 }
 
-const VERDICT_META: Record<string, { label: string; icon: string; color: string }> = {
-  approved: { label: '승인', icon: '✅', color: 'rgb(29, 125, 63)' },
-  conditional: { label: '조건부', icon: '🤔', color: 'rgb(184, 150, 62)' },
-  rejected: { label: '반려', icon: '❌', color: 'rgb(220, 53, 69)' },
+const VERDICT_META: Record<string, { labelKey: Parameters<typeof t>[0]; icon: string; color: string }> = {
+  approved: { labelKey: 'boss.verdict.approved', icon: '✅', color: 'rgb(29, 125, 63)' },
+  conditional: { labelKey: 'boss.verdict.conditionalShort', icon: '🤔', color: 'rgb(184, 150, 62)' },
+  rejected: { labelKey: 'boss.verdict.rejected', icon: '❌', color: 'rgb(220, 53, 69)' },
 };
 
 /**
@@ -43,9 +44,9 @@ export function PastVerdictRecap({ agentId }: PastVerdictRecapProps) {
       <div className="bc-recap-header">
         <span className="bc-recap-icon">{verdictMeta.icon}</span>
         <div className="bc-recap-meta">
-          <span className="bc-recap-label">지난 결론</span>
+          <span className="bc-recap-label">{t('boss.lastVerdict')}</span>
           <span className="bc-recap-verdict" style={{ color: verdictMeta.color }}>
-            {verdictMeta.label}
+            {t(verdictMeta.labelKey)}
           </span>
           {latest.situation && (
             <span className="bc-recap-situation">— {latest.situation}</span>
@@ -61,9 +62,9 @@ export function PastVerdictRecap({ agentId }: PastVerdictRecapProps) {
         className="bc-recap-toggle"
       >
         <Sparkles size={11} />
-        <span>{openInner ? '속마음 접기' : '지난 속마음 보기'}</span>
+        <span>{openInner ? t('boss.innerCollapse') : t('boss.innerView')}</span>
         {total > 1 && !openInner && (
-          <span className="bc-recap-count">· 전체 {total}개</span>
+          <span className="bc-recap-count">{t('boss.totalEntries', { n: total })}</span>
         )}
         <ChevronDown
           size={12}
@@ -87,13 +88,13 @@ export function PastVerdictRecap({ agentId }: PastVerdictRecapProps) {
               <p className="bc-recap-inner-text">{latest.text}</p>
               {latest.daily_mood_label && (
                 <p className="bc-recap-inner-meta">
-                  그날 기운: {latest.daily_mood_label}
-                  {latest.daily_name ? ` · ${latest.daily_name}일` : ''}
+                  {t('boss.dailyMood', { label: latest.daily_mood_label })}
+                  {latest.daily_name ? t('boss.dailyName', { name: latest.daily_name }) : ''}
                 </p>
               )}
               {total > 1 && (
                 <p className="bc-recap-inner-hint">
-                  프로필에서 전체 {total}개 기록 볼 수 있음
+                  {t('boss.allInProfile', { n: total })}
                 </p>
               )}
             </div>

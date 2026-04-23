@@ -10,6 +10,7 @@
 
 import { create } from 'zustand';
 import { generateId } from '@/lib/uuid';
+import { getCurrentLanguage } from '@/lib/i18n';
 import { getStorage, setStorage, STORAGE_KEYS } from '@/lib/storage';
 import { loadAndMerge, upsertToSupabase, syncToSupabase, insertToSupabase } from '@/lib/db';
 import type { Persona } from '@/stores/types';
@@ -39,7 +40,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '기초 자료 정리, 벤치마킹, 사례 수집을 담당합니다. 열정적으로 찾아옵니다.',
+    expertiseEn: 'Handles basic research, benchmarking, and case collection. Enthusiastic and thorough.',
     tone: '공손하고 열심히, 찾은 것을 빠짐없이 정리해서 보고합니다.',
+    toneEn: 'Polite and eager; reports everything found without omission.',
     keywords: ['조사', '리서치', '자료', '사례', '벤치마크', '현황'],
     is_builtin: true, archived: false,
   },
@@ -49,7 +52,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
     expertise: '자료 조사, 시장 분석, 데이터 수집에 강합니다. 빠짐없이 꼼꼼하게 찾아냅니다.',
+    expertiseEn: 'Strong at desk research, market analysis, and data gathering. Thorough and exhaustive.',
     tone: '팩트 중심으로 간결하게, 출처를 명시하며 신뢰감 있게 정리합니다.',
+    toneEn: 'Fact-first, concise, cites sources for credibility.',
     keywords: ['분석', '시장', '트렌드', '데이터', '출처'],
     is_builtin: true, archived: false,
   },
@@ -59,7 +64,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'research', chain_id: 'research',
     unlock_condition: { type: 'chain_tasks', chain_id: 'research', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
     expertise: '종합적 인사이트 도출, 데이터 간 패턴 발견, 전략적 함의 제시에 강합니다.',
+    expertiseEn: 'Strong at synthesizing insights, finding patterns across data, and articulating strategic implications.',
     tone: '핵심 인사이트를 먼저 제시하고, 근거를 간결하게 뒷받침합니다.',
+    toneEn: 'Leads with the key insight, then briefly supports it with evidence.',
     keywords: ['인사이트', '종합', '패턴', '함의', '해석'],
     is_builtin: true, archived: false,
   },
@@ -71,7 +78,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '경쟁 비교, SWOT 정리, 기본 포지셔닝을 담당합니다.',
+    expertiseEn: 'Handles competitor comparison, SWOT structuring, and basic positioning.',
     tone: '구조적으로 정리하고, 핵심 비교 포인트를 명확히 제시합니다.',
+    toneEn: 'Structures thinking and states key comparison points clearly.',
     keywords: ['경쟁', '비교', 'SWOT', '포지셔닝'],
     is_builtin: true, archived: false,
   },
@@ -81,7 +90,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.senior }, unlocked: false,
     expertise: '전략 수립, 포지셔닝, 경쟁 분석의 전문가입니다. 큰 그림을 그립니다.',
+    expertiseEn: 'Expert in strategy formulation, positioning, and competitive analysis. Draws the big picture.',
     tone: '핵심만 짚되, 왜 그런지 한 줄로 설득력 있게 설명합니다.',
+    toneEn: 'Hits the core points and explains why in a single persuasive line.',
     keywords: ['전략', '방향', '비전', '로드맵', '차별화'],
     is_builtin: true, archived: false,
   },
@@ -91,7 +102,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'strategy', chain_id: 'strategy',
     unlock_condition: { type: 'chain_tasks', chain_id: 'strategy', required: CHAIN_UNLOCK_THRESHOLDS.master }, unlocked: false,
     expertise: '시나리오 플래닝, 프레임 전환, 의사결정 구조 설계에 강합니다.',
+    expertiseEn: 'Strong at scenario planning, reframing, and decision-structure design.',
     tone: '여러 시나리오를 제시하되, 권장안을 명확히 밝히고 논거를 붙입니다.',
+    toneEn: 'Presents multiple scenarios, clearly recommends one with reasoning.',
     keywords: ['시나리오', '프레임', '의사결정', '구조'],
     is_builtin: true, archived: false,
   },
@@ -103,7 +116,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '문서 작성, 카피라이팅, 메시지 설계의 전문가입니다. 읽히는 글을 씁니다.',
+    expertiseEn: 'Expert in document writing, copywriting, and message design. Writes prose that reads easily.',
     tone: '독자 관점에서 쓰고, 한 문장이 하나의 메시지를 전달하도록 다듬습니다.',
+    toneEn: 'Writes from the reader\'s perspective; one sentence, one message.',
     keywords: ['작성', '문서', '카피', '초안', '보고서', '제안서', '정리', '요약', '슬라이드'],
     is_builtin: true, archived: false,
   },
@@ -113,7 +128,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '시장 규모 추정, Unit Economics, ROI/BEP 계산, 민감도 분석에 능합니다. 빠른 추정과 시나리오 비교로 의사결정을 돕습니다.',
+    expertiseEn: 'Skilled at market sizing, unit economics, ROI/BEP calculation, and sensitivity analysis. Helps decisions via quick estimates and scenario comparison.',
     tone: '정량적 근거를 먼저 제시하고, 해석을 덧붙입니다. 표와 수치를 적극 활용합니다.',
+    toneEn: 'Leads with quantitative evidence, adds interpretation. Uses tables and figures liberally.',
     keywords: ['수치', '숫자', 'ROI', 'TAM', '추정', '시나리오', '계산', '지표', 'KPI', 'estimate', 'numbers'],
     is_builtin: true, archived: false,
   },
@@ -123,7 +140,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '재무제표 분석, 손익 구조, 현금흐름 관리, 예산 편성, 세무 검토, 밸류에이션(DCF/멀티플)에 강합니다.',
+    expertiseEn: 'Strong in financial-statement analysis, P&L structure, cash-flow management, budgeting, tax review, and valuation (DCF/multiples).',
     tone: '정확하고 보수적으로, 수치의 출처와 가정을 명시합니다. 리스크를 수치로 환산합니다.',
+    toneEn: 'Precise and conservative; states source and assumption for every figure. Translates risk into numbers.',
     keywords: ['재무', '회계', '손익', '현금흐름', '예산', '세금', '밸류에이션', 'DCF', 'P&L', 'cash flow', 'budget', 'finance'],
     is_builtin: true, archived: false,
   },
@@ -133,7 +152,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '조직 설계, 채용 계획, 변화 관리, 보상·평가 체계, 내부 커뮤니케이션, 팀 문화 전략에 강합니다.',
+    expertiseEn: 'Strong in organizational design, hiring plans, change management, comp/eval systems, internal communications, and team-culture strategy.',
     tone: '사람 중심으로 생각하되, 비즈니스 임팩트로 설득합니다. 공감과 구조를 동시에 갖춥니다.',
+    toneEn: 'Thinks people-first but argues via business impact. Combines empathy with structure.',
     keywords: ['채용', '조직', 'HR', '인사', '평가', '보상', '문화', '온보딩', '퇴사', '변화관리', '인력', '조직 계획', 'hiring', 'team', 'culture', 'org', 'people'],
     is_builtin: true, archived: false,
   },
@@ -143,7 +164,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '채널 전략, 캠페인 설계, 퍼널 최적화, 그로스 루프, 마케팅 예산 배분에 강합니다. 전략을 실행 가능한 마케팅 계획으로 전환합니다.',
+    expertiseEn: 'Strong at channel strategy, campaign design, funnel optimization, growth loops, and marketing budget allocation. Translates strategy into executable marketing plans.',
     tone: '데이터 기반으로 채널과 예산을 설계하되, 고객 심리를 놓치지 않습니다.',
+    toneEn: 'Designs channels and budgets from data while keeping customer psychology in view.',
     keywords: ['마케팅', '캠페인', '채널', '퍼널', '그로스', '광고', 'SEO', 'SNS', '브랜딩', '콘텐츠', 'GTM', 'marketing', 'campaign', 'growth', 'funnel', 'channel', 'ads', 'brand'],
     is_builtin: true, archived: false,
   },
@@ -153,7 +176,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '기술 아키텍처, 구현 가능성 검토, 시스템 설계에 강합니다.',
+    expertiseEn: 'Strong at technical architecture, feasibility review, and system design.',
     tone: '구조적으로 정리하고, 트레이드오프를 명확히 제시합니다.',
+    toneEn: 'Structures thinking and states trade-offs clearly.',
     keywords: ['기술', '개발', '구현', '아키텍처', '시스템', 'API', '인프라', '서버'],
     is_builtin: true, archived: false,
   },
@@ -163,7 +188,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'production', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '일정 관리, 이해관계자 조율, 실행 계획 수립에 능합니다.',
+    expertiseEn: 'Skilled at scheduling, stakeholder alignment, and execution planning.',
     tone: '액션 아이템 중심으로, 누가·언제·뭘 해야 하는지 명확하게 정리합니다.',
+    toneEn: 'Action-item focused; crisp on who, when, and what.',
     keywords: ['일정', '계획', '마일스톤', '타임라인', '실행', '단계', '우선순위'],
     is_builtin: true, archived: false,
   },
@@ -175,7 +202,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '리스크 분석, 반론 검토, 약점 파악의 전문가입니다. 놓치기 쉬운 걸 찾습니다.',
+    expertiseEn: 'Expert in risk analysis, counterarguments, and weak-spot detection. Catches what others miss.',
     tone: '직설적이지만 건설적으로, "이건 위험하다" 다음에 반드시 "대신 이렇게"를 제시합니다.',
+    toneEn: 'Direct but constructive — every "this is risky" is followed by "try this instead."',
     keywords: ['리스크', '위험', '반론', '약점', '검토', '비판', '문제점', '실패'],
     is_builtin: true, archived: false,
   },
@@ -185,7 +214,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '사용자 경험, 인터페이스 설계, 사용성 평가에 강합니다.',
+    expertiseEn: 'Strong at user experience, interface design, and usability evaluation.',
     tone: '사용자 입장에서 생각하고, 구체적인 시나리오로 설명합니다.',
+    toneEn: 'Thinks from the user\'s perspective, explains with concrete scenarios.',
     keywords: ['UX', 'UI', '사용자', '인터페이스', '디자인', '화면', '프로토타입'],
     is_builtin: true, archived: false,
   },
@@ -195,7 +226,9 @@ const BUILTIN_AGENTS: Omit<Agent, 'xp' | 'level' | 'observations' | 'last_used_a
     group: 'validation', chain_id: null,
     unlock_condition: { type: 'always', required: 0 }, unlocked: true,
     expertise: '법적 리스크, 규정 준수, 계약 조건 검토에 능합니다.',
+    expertiseEn: 'Skilled at legal risk, compliance, and contract review.',
     tone: '명확하고 보수적으로, 가능/불가능을 확실히 구분합니다.',
+    toneEn: 'Clear and conservative; draws firm lines between what is and isn\'t allowed.',
     keywords: ['법', '규정', '계약', '라이선스', '개인정보', '약관', '컴플라이언스'],
     is_builtin: true, archived: false,
   },
@@ -293,8 +326,11 @@ interface AgentState {
     gender: '남' | '여';
     personalityProfile: Agent['personality_profile'];
     sajuProfile?: unknown;
+    zodiacProfile?: unknown;
     birthYear?: number;
     birthMonth?: number;
+    birthDay?: number;
+    locale?: 'ko' | 'en';
   }) => string;
 
   // 해금
@@ -399,7 +435,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       boss_gender: data.boss_gender,
       birth_year: data.birth_year,
       birth_month: data.birth_month,
+      birth_day: data.birth_day,
       saju_profile: data.saju_profile,
+      zodiac_profile: data.zodiac_profile,
+      boss_locale: data.boss_locale,
       chat_history: data.chat_history,
       inner_monologue_archive: data.inner_monologue_archive,
       xp: data.xp || 0,
@@ -605,9 +644,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   // ─── Boss 생성 ───
 
   createBossAgent: (config) => {
+    const locale = config.locale ?? (getCurrentLanguage() === 'ko' ? 'ko' : 'en');
     return get().createAgent({
       name: config.name,
-      role: '팀장',
+      role: locale === 'ko' ? '팀장' : 'Boss',
+      roleEn: 'Boss',
       emoji: '👔',
       color: '#92400E',
       origin: 'boss_sim',
@@ -621,7 +662,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       boss_gender: config.gender,
       birth_year: config.birthYear,
       birth_month: config.birthMonth,
+      birth_day: config.birthDay,
       saju_profile: config.sajuProfile,
+      zodiac_profile: config.zodiacProfile,
+      boss_locale: locale,
     });
   },
 

@@ -12,6 +12,8 @@ import {
 } from '@/lib/boss/boss-prompt';
 import { computeDailyMood } from '@/lib/boss/daily-energy';
 import type { InnerMonologueArchiveEntry } from '@/stores/agent-types';
+import { t } from '@/lib/i18n';
+import { useLocale } from '@/hooks/useLocale';
 
 interface InnerMonologueCardProps {
   verdict: { verdict: string; reason: string; tip?: string };
@@ -23,6 +25,7 @@ interface InnerMonologueCardProps {
  * "표면 vs 이면"의 간극이 감정적 피크를 만드는 장치.
  */
 export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
+  const locale = useLocale();
   const {
     innerMonologue,
     innerStreamingText,
@@ -33,6 +36,7 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
     getPersonalityType,
     sajuProfile,
     yearMonthProfile,
+    zodiacProfile,
     gender,
     loadedAgentId,
   } = useBossStore();
@@ -41,7 +45,8 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
   const abortRef = useRef<AbortController | null>(null);
 
   const revealed = !!innerMonologue || innerLoading || !!innerStreamingText;
-  const hasHiddenLayer = !!sajuProfile || !!yearMonthProfile;
+  // "Hidden layer" = saju for Korean, zodiac for English.
+  const hasHiddenLayer = !!sajuProfile || !!yearMonthProfile || !!zodiacProfile;
 
   const handleReveal = useCallback(async () => {
     if (!typeData || innerLoading || innerMonologue) return;
@@ -50,7 +55,14 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
     const system = agent?.personality_profile
       ? buildInnerMonologuePromptFromAgent(agent, verdict)
       : buildInnerMonologuePrompt(
-          { type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, gender },
+          {
+            type: typeData,
+            saju: sajuProfile,
+            yearMonth: yearMonthProfile,
+            zodiac: zodiacProfile,
+            gender,
+            locale,
+          },
           verdict,
         );
 
@@ -58,7 +70,7 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
     abortRef.current = new AbortController();
 
     await callLLMStream(
-      [{ role: 'user', content: '지금 자리에 돌아와서 혼잣말로 속마음을 써라.' }],
+      [{ role: 'user', content: t('boss.innerMonologuePrompt') }],
       { system, maxTokens: 300, signal: abortRef.current.signal },
       {
         onToken: (text) => updateInnerStreamingText(text),
@@ -90,12 +102,12 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
           }
         },
         onError: () => {
-          updateInnerStreamingText('...잠깐 생각이 끊겼네. 다시 시도해봐.');
+          updateInnerStreamingText(t('boss.innerStreamError'));
           commitInnerMonologue();
         },
       },
     );
-  }, [typeData, sajuProfile, yearMonthProfile, gender, loadedAgentId, verdict,
+  }, [typeData, sajuProfile, yearMonthProfile, zodiacProfile, gender, locale, loadedAgentId, verdict,
       innerLoading, innerMonologue, startInnerMonologue, updateInnerStreamingText, commitInnerMonologue]);
 
   // ─── Locked state ───
@@ -122,12 +134,12 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
           </motion.div>
           <div className="bc-inner-locked-copy">
             <span className="bc-inner-locked-title">
-              {typeData?.name} 팀장의 <em>이면</em> 공개
+              {t('boss.insideReveal', { name: typeData?.name || '' })}
             </span>
             <span className="bc-inner-locked-sub">
               {hasHiddenLayer
-                ? '말 안 한 속마음이 있어요 · 타고난 결이 배어나요'
-                : '말 안 한 속마음이 있어요 · 열어볼까?'}
+                ? t('boss.insideHint1')
+                : t('boss.innerLockedNoHidden')}
             </span>
           </div>
           <motion.span
@@ -156,11 +168,11 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
       <div className="bc-inner-revealed-header">
         <span className="bc-inner-revealed-emoji">{typeData?.emoji || '👔'}</span>
         <div className="bc-inner-revealed-meta">
-          <span className="bc-inner-revealed-label">속마음</span>
-          <span className="bc-inner-revealed-sub">{typeData?.name} · 자리에 돌아와서</span>
+          <span className="bc-inner-revealed-label">{t('boss.innerReveledLabel')}</span>
+          <span className="bc-inner-revealed-sub">{t('boss.innerRevealedSub', { name: typeData?.name || '' })}</span>
         </div>
         {hasHiddenLayer && (
-          <span className="bc-inner-revealed-saju" title="타고난 결이 반영됨">
+          <span className="bc-inner-revealed-saju" title={t('boss.innerSajuTooltip')}>
             <Sparkles size={12} />
           </span>
         )}
@@ -179,7 +191,7 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
               transition={{ repeat: Infinity, duration: 1.6 }}
               style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}
             >
-              자리로 돌아가는 중...
+              {t('boss.returningToSeat')}
             </motion.span>
           )}
           {isStreaming && text && (
