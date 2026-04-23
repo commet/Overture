@@ -19,6 +19,7 @@ import { getYearElement } from '@/lib/boss/saju-interpreter';
 import { DailyMoodIndicator } from './DailyMoodIndicator';
 import { PastVerdictRecap } from './PastVerdictRecap';
 import { t, getCurrentLanguage } from '@/lib/i18n';
+import { useLocale } from '@/hooks/useLocale';
 
 // ─── 대화 온도 추적 ───
 
@@ -197,6 +198,8 @@ export function BossChat() {
     loadedAgentId, saveAsAgent,
   } = useBossStore();
 
+  const locale = useLocale();
+  const L = (k: string, e: string) => (locale === 'ko' ? k : e);
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
   const [ctaDismissed, setCtaDismissed] = useState(false);
@@ -443,7 +446,7 @@ export function BossChat() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="bc-reset"
-              title="이 팀장 저장하기"
+              title={L('이 팀장 저장하기', 'Save this boss')}
               onClick={() => {
                 const id = saveAsAgent();
                 if (id) {
@@ -462,18 +465,18 @@ export function BossChat() {
           {saved && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Check size={10} /> 저장됨
+                <Check size={10} /> {L('저장됨', 'Saved')}
               </span>
               <Link
                 href={`/workspace?reviewer=${loadedAgentId || ''}`}
                 style={{ fontSize: 10, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
-                title="이 팀장이 리뷰어로 활용됩니다"
+                title={L('이 팀장이 리뷰어로 활용됩니다', 'This boss will be used as a reviewer')}
               >
-                기획안 만들기 →
+                {L('기획안 만들기 →', 'Create plan →')}
               </Link>
             </div>
           )}
-          <button type="button" onClick={handleReset} className="bc-reset" title="다시">
+          <button type="button" onClick={handleReset} className="bc-reset" title={L('다시', 'Restart')}>
             <RotateCcw size={14} />
           </button>
         </div>
@@ -516,7 +519,7 @@ export function BossChat() {
                     animate={{ opacity: [0.35, 0.9, 0.35] }}
                     transition={{ repeat: Infinity, duration: 1.6 }}
                   >
-                    읽는 중
+                    {L('읽는 중', 'Reading')}
                   </motion.span>
                   <span className="bm-reading-dots">
                     <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}>.</motion.span>
@@ -638,9 +641,9 @@ export function BossChat() {
             exit={{ opacity: 0, y: -5 }}
             className="bc-calibration"
           >
-            <p className="bc-cal-q">실제 팀장이랑 얼마나 비슷해?</p>
+            <p className="bc-cal-q">{L('실제 팀장이랑 얼마나 비슷해?', 'How close is this to your actual boss?')}</p>
             <div className="bc-cal-options">
-              <button onClick={() => setCalibrationStep('detail')} className="bc-cal-btn">😐 좀 다름</button>
+              <button onClick={() => setCalibrationStep('detail')} className="bc-cal-btn">{L('😐 좀 다름', '😐 A bit off')}</button>
               <button onClick={() => {
                 // "꽤 비슷" = 패시브 교정만 유지, 추가 교정 불필요
                 if (loadedAgentId) {
@@ -649,7 +652,7 @@ export function BossChat() {
                   if (tonObs) useAgentStore.getState().reinforceObservation(loadedAgentId, tonObs.id);
                 }
                 setCalibrationStep('done');
-              }} className="bc-cal-btn bc-cal-btn-active">🤔 꽤 비슷</button>
+              }} className="bc-cal-btn bc-cal-btn-active">{L('🤔 꽤 비슷', '🤔 Pretty close')}</button>
               <button onClick={() => {
                 // "소름" = 현재 프로필 강하게 reinforce
                 if (loadedAgentId) {
@@ -661,7 +664,7 @@ export function BossChat() {
                   });
                 }
                 setCalibrationStep('done');
-              }} className="bc-cal-btn bc-cal-btn-active">😮 소름</button>
+              }} className="bc-cal-btn bc-cal-btn-active">{L('😮 소름', '😮 Eerie')}</button>
             </div>
           </motion.div>
         )}
@@ -672,20 +675,20 @@ export function BossChat() {
             exit={{ opacity: 0, y: -5 }}
             className="bc-calibration"
           >
-            <p className="bc-cal-q">어떤 점이 달라?</p>
+            <p className="bc-cal-q">{L('어떤 점이 달라?', 'What feels different?')}</p>
             <div className="bc-cal-options">
               <button
                 onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_direct'); setCalibrationStep('done'); }}
                 className="bc-cal-btn"
-              >실제로 더 직설적</button>
+              >{L('실제로 더 직설적', 'They\'re more direct')}</button>
               <button
                 onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_soft'); setCalibrationStep('done'); }}
                 className="bc-cal-btn"
-              >실제로 더 부드러움</button>
+              >{L('실제로 더 부드러움', 'They\'re softer')}</button>
               <button
                 onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'different_tone'); setCalibrationStep('done'); }}
                 className="bc-cal-btn"
-              >말투가 좀 다름</button>
+              >{L('말투가 좀 다름', 'The tone is different')}</button>
             </div>
           </motion.div>
         )}
@@ -698,7 +701,7 @@ export function BossChat() {
             onAnimationComplete={() => setTimeout(() => setCalibrationStep('none'), 2000)}
           >
             <p style={{ fontSize: 12, color: 'var(--accent)', textAlign: 'center' }}>
-              ✓ 반영됨 — 다음 대화부터 적용돼요
+              {L('✓ 반영됨 — 다음 대화부터 적용돼요', '✓ Applied — takes effect from the next reply')}
             </p>
           </motion.div>
         )}
