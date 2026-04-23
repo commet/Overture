@@ -10,6 +10,7 @@
 import { callLLMJson } from './llm';
 import type { Persona } from '@/stores/types';
 import { sanitizeForPrompt } from './persona-prompt';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 // ─── Types ───
 
@@ -61,17 +62,20 @@ interface FieldSpec {
   richThreshold: number;
 }
 
-const PERSONA_FIELDS: FieldSpec[] = [
-  { key: 'name',                label: '이름/직함',    weight: 8,  hint: '이름이나 직함을 알려주세요', richThreshold: 3 },
-  { key: 'role',                label: '역할',        weight: 8,  hint: '어떤 역할인지 알려주세요', richThreshold: 5 },
-  { key: 'decision_style',     label: '의사결정 방식', weight: 14, hint: '어떻게 결정하는 사람인가요? (데이터 vs 직관 vs 합의 vs 지시)', richThreshold: 3 },
-  { key: 'priorities',         label: '우선순위',      weight: 14, hint: '이 사람이 가장 중요하게 여기는 건 뭔가요?', richThreshold: 10 },
-  { key: 'communication_style', label: '소통 습관',    weight: 16, hint: '보고 받을 때 어떤 스타일? (결론부터? 맥락부터? 입버릇?)', richThreshold: 15 },
-  { key: 'known_concerns',     label: '주요 우려',     weight: 12, hint: '자주 짚는 것이나 우려하는 건?', richThreshold: 10 },
-  { key: 'risk_tolerance',     label: '리스크 수용도',  weight: 10, hint: '도전적인 편? 신중한 편?', richThreshold: 3 },
-  { key: 'success_metric',     label: 'OK 기준',      weight: 12, hint: '"이거 보여주면 OK" 하는 기준이 있나요?', richThreshold: 10 },
-  { key: 'user_description',   label: '사용자 서술',   weight: 6,  hint: '이 사람에 대해 자유롭게 설명해주세요', richThreshold: 20 },
-];
+function getPersonaFields(): FieldSpec[] {
+  const ko = getCurrentLanguage() === 'ko';
+  return [
+    { key: 'name',                label: ko ? '이름/직함' : 'Name/Title', weight: 8,  hint: ko ? '이름이나 직함을 알려주세요' : 'Share a name or title', richThreshold: 3 },
+    { key: 'role',                label: ko ? '역할' : 'Role',           weight: 8,  hint: ko ? '어떤 역할인지 알려주세요' : 'What role do they play?', richThreshold: 5 },
+    { key: 'decision_style',      label: ko ? '의사결정 방식' : 'Decision Style', weight: 14, hint: ko ? '어떻게 결정하는 사람인가요? (데이터 vs 직관 vs 합의 vs 지시)' : 'How do they decide? (data vs intuition vs consensus vs directive)', richThreshold: 3 },
+    { key: 'priorities',          label: ko ? '우선순위' : 'Priorities',  weight: 14, hint: ko ? '이 사람이 가장 중요하게 여기는 건 뭔가요?' : 'What do they care about most?', richThreshold: 10 },
+    { key: 'communication_style', label: ko ? '소통 습관' : 'Communication Style', weight: 16, hint: ko ? '보고 받을 때 어떤 스타일? (결론부터? 맥락부터? 입버릇?)' : 'How do they like to be briefed? (conclusion-first? context-first? signature phrases?)', richThreshold: 15 },
+    { key: 'known_concerns',      label: ko ? '주요 우려' : 'Known Concerns', weight: 12, hint: ko ? '자주 짚는 것이나 우려하는 건?' : 'What do they frequently raise or worry about?', richThreshold: 10 },
+    { key: 'risk_tolerance',      label: ko ? '리스크 수용도' : 'Risk Tolerance', weight: 10, hint: ko ? '도전적인 편? 신중한 편?' : 'Adventurous or cautious?', richThreshold: 3 },
+    { key: 'success_metric',      label: ko ? 'OK 기준' : 'Success Signal', weight: 12, hint: ko ? '"이거 보여주면 OK" 하는 기준이 있나요?' : 'What "show me this and I\'ll approve" threshold do they have?', richThreshold: 10 },
+    { key: 'user_description',    label: ko ? '사용자 서술' : 'Your Description', weight: 6,  hint: ko ? '이 사람에 대해 자유롭게 설명해주세요' : 'Describe this person in your own words', richThreshold: 20 },
+  ];
+}
 
 /** 필드의 밀도(density)를 평가 — 존재 여부만이 아니라 내용의 구체성 */
 function getFieldDensity(value: unknown, richThreshold: number): 'empty' | 'thin' | 'rich' {
@@ -93,28 +97,39 @@ const DENSITY_ICON: Record<'empty' | 'thin' | 'rich', string> = {
   rich: '●',
 };
 
-const SIMULATION_QUALITY: Record<1 | 2 | 3 | 4, SimulationQuality> = {
-  1: {
-    level: 'generic',
-    label: '일반적 시뮬레이션',
-    description: '역할 기반 추측. 실제 이 사람의 반응과 다를 수 있습니다.',
-  },
-  2: {
-    level: 'directional',
-    label: '방향성 시뮬레이션',
-    description: '의사결정 성향은 반영됨. 구체적 말투와 습관은 아직 모릅니다.',
-  },
-  3: {
-    level: 'realistic',
-    label: '현실적 시뮬레이션',
-    description: '소통 습관과 우려사항 반영. 이 사람다운 반응에 가깝습니다.',
-  },
-  4: {
-    level: 'authentic',
-    label: '정밀 시뮬레이션',
-    description: '사용자 묘사 + 리허설 이력 반영. 실제 반응에 가장 가깝습니다.',
-  },
-};
+function getSimulationQuality(): Record<1 | 2 | 3 | 4, SimulationQuality> {
+  const ko = getCurrentLanguage() === 'ko';
+  return {
+    1: {
+      level: 'generic',
+      label: ko ? '일반적 시뮬레이션' : 'Generic Simulation',
+      description: ko
+        ? '역할 기반 추측. 실제 이 사람의 반응과 다를 수 있습니다.'
+        : 'Role-based guesswork. May differ from this person\'s actual reactions.',
+    },
+    2: {
+      level: 'directional',
+      label: ko ? '방향성 시뮬레이션' : 'Directional Simulation',
+      description: ko
+        ? '의사결정 성향은 반영됨. 구체적 말투와 습관은 아직 모릅니다.'
+        : 'Decision tendencies reflected. Specific voice and habits are still unknown.',
+    },
+    3: {
+      level: 'realistic',
+      label: ko ? '현실적 시뮬레이션' : 'Realistic Simulation',
+      description: ko
+        ? '소통 습관과 우려사항 반영. 이 사람다운 반응에 가깝습니다.'
+        : 'Communication habits and concerns reflected. Close to how this person would react.',
+    },
+    4: {
+      level: 'authentic',
+      label: ko ? '정밀 시뮬레이션' : 'Authentic Simulation',
+      description: ko
+        ? '사용자 묘사 + 리허설 이력 반영. 실제 반응에 가장 가깝습니다.'
+        : 'Includes your description plus rehearsal history. Closest to real reactions.',
+    },
+  };
+}
 
 /**
  * Calculate how complete/vivid a persona is.
@@ -126,7 +141,8 @@ export function getPersonaCompleteness(persona: Persona): PersonaCompleteness {
   const filled: FieldStatus[] = [];
   const missing: FieldStatus[] = [];
 
-  for (const field of PERSONA_FIELDS) {
+  const personaFields = getPersonaFields();
+  for (const field of personaFields) {
     totalWeight += field.weight;
     const value = persona[field.key];
     const density = getFieldDensity(value, field.richThreshold);
@@ -144,7 +160,8 @@ export function getPersonaCompleteness(persona: Persona): PersonaCompleteness {
   // Bonus: feedback_logs (persona has been tested in rehearsal)
   if ((persona.feedback_logs || []).length > 0) {
     earnedWeight += 5;
-    filled.push({ label: '리허설 이력', density: 'rich', icon: '●' });
+    const ko = getCurrentLanguage() === 'ko';
+    filled.push({ label: ko ? '리허설 이력' : 'Rehearsal History', density: 'rich', icon: '●' });
   }
 
   const score = Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
@@ -154,13 +171,13 @@ export function getPersonaCompleteness(persona: Persona): PersonaCompleteness {
   let label: string;
   let labelEn: string;
   if (score >= 80) {
-    level = 4; label = '살아있음'; labelEn = 'Alive';
+    level = 4; label = getCurrentLanguage() === 'ko' ? '살아있음' : 'Alive'; labelEn = 'Alive';
   } else if (score >= 55) {
-    level = 3; label = '생생함'; labelEn = 'Vivid';
+    level = 3; label = getCurrentLanguage() === 'ko' ? '생생함' : 'Vivid'; labelEn = 'Vivid';
   } else if (score >= 30) {
-    level = 2; label = '구체화'; labelEn = 'Shaped';
+    level = 2; label = getCurrentLanguage() === 'ko' ? '구체화' : 'Shaped'; labelEn = 'Shaped';
   } else {
-    level = 1; label = '윤곽'; labelEn = 'Outline';
+    level = 1; label = getCurrentLanguage() === 'ko' ? '윤곽' : 'Outline'; labelEn = 'Outline';
   }
 
   // Visual: 5 dots using density icons (shows quality, not just count)
@@ -168,7 +185,7 @@ export function getPersonaCompleteness(persona: Persona): PersonaCompleteness {
   const visual = '●'.repeat(filledDots) + '○'.repeat(5 - filledDots);
 
   // Next hint: highest-weight missing OR thin field
-  const improvable = PERSONA_FIELDS
+  const improvable = personaFields
     .map(f => ({ ...f, density: getFieldDensity(persona[f.key], f.richThreshold) }))
     .filter(f => f.density !== 'rich')
     .sort((a, b) => {
@@ -177,14 +194,15 @@ export function getPersonaCompleteness(persona: Persona): PersonaCompleteness {
       return b.weight - a.weight;
     });
 
+  const ko = getCurrentLanguage() === 'ko';
   const nextHint = improvable.length > 0
     ? improvable[0].hint
-    : '충분히 구체적입니다';
+    : (ko ? '충분히 구체적입니다' : 'Specific enough');
 
   return {
     score, level, label, labelEn,
     filled, missing, visual, nextHint,
-    simulationQuality: SIMULATION_QUALITY[level],
+    simulationQuality: getSimulationQuality()[level],
   };
 }
 
@@ -225,11 +243,12 @@ export function formatPersonaCard(persona: Persona): string {
 
   // Detail lines — shown from Level 2+
   if (c.level >= 2) {
+    const ko = getCurrentLanguage() === 'ko';
     const details: Array<[string, string | undefined]> = [
-      ['우선순위', persona.priorities],
-      ['소통 습관', persona.communication_style],
-      ['우려', persona.known_concerns],
-      ['OK 기준', persona.success_metric],
+      [ko ? '우선순위' : 'Priorities', persona.priorities],
+      [ko ? '소통 습관' : 'Comms style', persona.communication_style],
+      [ko ? '우려' : 'Concerns', persona.known_concerns],
+      [ko ? 'OK 기준' : 'Approval signal', persona.success_metric],
     ];
     for (const [label, value] of details) {
       if (value) {
@@ -295,30 +314,44 @@ export function formatRefinementDiff(
   lines.push('');
 
   // Changed fields
-  const STYLE_LABELS: Record<string, string> = {
+  const ko = getCurrentLanguage() === 'ko';
+  const STYLE_LABELS: Record<string, string> = ko ? {
     analytical: '분석적 — 데이터와 근거 중심',
     intuitive: '직관적 — 경험과 패턴 중심',
     consensus: '합의형 — 동의와 공감 중심',
     directive: '지시형 — 핵심만, 빠른 결정',
+  } : {
+    analytical: 'Analytical — data and evidence first',
+    intuitive: 'Intuitive — experience and pattern driven',
+    consensus: 'Consensus — agreement and empathy driven',
+    directive: 'Directive — essentials only, quick decisions',
   };
-  const RISK_LABELS: Record<string, string> = {
+  const RISK_LABELS: Record<string, string> = ko ? {
     low: '신중한 편 — 안전 우선',
     medium: '균형적 — 위험 대비 기회 저울질',
     high: '도전적 — 기회 포착 우선',
+  } : {
+    low: 'Cautious — safety first',
+    medium: 'Balanced — weighs risk vs. opportunity',
+    high: 'Adventurous — seizes opportunity first',
   };
 
-  if (changes.decision_style) lines.push(`+ 의사결정: ${STYLE_LABELS[changes.decision_style] || changes.decision_style}`);
-  if (changes.risk_tolerance) lines.push(`+ 리스크: ${RISK_LABELS[changes.risk_tolerance] || changes.risk_tolerance}`);
-  if (changes.priorities) lines.push(`+ 우선순위: ${changes.priorities}`);
-  if (changes.communication_style) lines.push(`+ 소통: "${changes.communication_style}"`);
-  if (changes.known_concerns) lines.push(`+ 우려: ${changes.known_concerns}`);
-  if (changes.success_metric) lines.push(`+ OK 기준: ${changes.success_metric}`);
-  if (changes.extracted_traits?.length) lines.push(`+ 성격: ${changes.extracted_traits.join(', ')}`);
+  const L = ko
+    ? { decision: '의사결정', risk: '리스크', priorities: '우선순위', comms: '소통', concerns: '우려', approval: 'OK 기준', traits: '성격', sim: '시뮬레이션 정밀도' }
+    : { decision: 'Decision', risk: 'Risk', priorities: 'Priorities', comms: 'Comms', concerns: 'Concerns', approval: 'Approval', traits: 'Traits', sim: 'Simulation fidelity' };
+
+  if (changes.decision_style) lines.push(`+ ${L.decision}: ${STYLE_LABELS[changes.decision_style] || changes.decision_style}`);
+  if (changes.risk_tolerance) lines.push(`+ ${L.risk}: ${RISK_LABELS[changes.risk_tolerance] || changes.risk_tolerance}`);
+  if (changes.priorities) lines.push(`+ ${L.priorities}: ${changes.priorities}`);
+  if (changes.communication_style) lines.push(`+ ${L.comms}: "${changes.communication_style}"`);
+  if (changes.known_concerns) lines.push(`+ ${L.concerns}: ${changes.known_concerns}`);
+  if (changes.success_metric) lines.push(`+ ${L.approval}: ${changes.success_metric}`);
+  if (changes.extracted_traits?.length) lines.push(`+ ${L.traits}: ${changes.extracted_traits.join(', ')}`);
 
   // Simulation quality change
   if (before.simulationQuality.level !== after.simulationQuality.level) {
     lines.push('');
-    lines.push(`시뮬레이션 정밀도: ${before.simulationQuality.label} → ${after.simulationQuality.label} ↑`);
+    lines.push(`${L.sim}: ${before.simulationQuality.label} → ${after.simulationQuality.label} ↑`);
   }
 
   return lines.join('\n');
@@ -350,7 +383,9 @@ export async function refinePersonaFromFreeText(
 ): Promise<PersonaRefinement> {
   const s = sanitizeForPrompt;
 
-  const existingContext = existingPersona
+  const ko = getCurrentLanguage() === 'ko';
+
+  const existingContextKo = existingPersona
     ? `\n\n현재 프로필:
 - 이름: ${s(existingPersona.name)}
 - 역할: ${s(existingPersona.role)}
@@ -365,7 +400,22 @@ export async function refinePersonaFromFreeText(
 사용자의 설명과 충돌하는 부분만 업데이트하세요. 언급하지 않은 필드는 null로 두세요.`
     : '';
 
-  const system = `당신은 조직 심리학 전문가입니다. 사용자가 자연어로 상사/이해관계자의 특성을 설명합니다.
+  const existingContextEn = existingPersona
+    ? `\n\nCurrent profile:
+- Name: ${s(existingPersona.name)}
+- Role: ${s(existingPersona.role)}
+- Priorities: ${s(existingPersona.priorities)}
+- Communication style: ${s(existingPersona.communication_style)}
+- Known concerns: ${s(existingPersona.known_concerns)}
+- Decision style: ${existingPersona.decision_style || 'unknown'}
+- Risk tolerance: ${existingPersona.risk_tolerance || 'unknown'}
+- Success metric: ${s(existingPersona.success_metric || '')}
+- Traits: ${(existingPersona.extracted_traits || []).join(', ')}
+
+Only update fields that conflict with the user's description. Leave unmentioned fields as null.`
+    : '';
+
+  const systemKo = `당신은 조직 심리학 전문가입니다. 사용자가 자연어로 상사/이해관계자의 특성을 설명합니다.
 이 설명을 분석하여 구조화된 페르소나 프로필로 변환하세요.
 
 핵심 원칙:
@@ -388,9 +438,9 @@ export async function refinePersonaFromFreeText(
    - 그 외 → 가장 가까운 것으로 매핑
 4. 구체적 에피소드나 습관 → communication_style과 known_concerns에 원문 느낌 살려서
 5. "이거 보여주면 통과" 류의 언급 → success_metric으로
-6. extracted_traits는 사용자가 쓴 표현 기반 키워드 3-5개${existingContext}
+6. extracted_traits는 사용자가 쓴 표현 기반 키워드 3-5개${existingContextKo}
 
-응답 형식 (JSON만):
+응답 형식 (JSON만, 모든 문자열 한국어):
 {
   "name": "이름/직함 (언급된 경우만, 아니면 null)",
   "role": "역할 (언급된 경우만, 아니면 null)",
@@ -406,7 +456,51 @@ export async function refinePersonaFromFreeText(
 
 null = 정보 부족 또는 변경 없음. 반드시 JSON만 응답.`;
 
-  const userMessage = `사용자의 설명:\n"${s(freeText)}"`;
+  const systemEn = `You are an organizational psychology expert. The user describes a boss or stakeholder in natural language.
+Analyze that description and convert it into a structured persona profile.
+
+Core principles:
+1. Preserve the user's own phrasing where possible
+   "won't move on without numbers" → reflect literally in communication_style
+   "won't read reports past 3 pages" → communication_style + success_metric
+   "ex-consultant, loves frameworks" → priorities + extracted_traits
+2. If it isn't stated, leave the field null — do not infer
+3. MBTI/personality type → decision_style + risk_tolerance mapping:
+   - ISTJ/INTJ → analytical + low (systematic, data-driven)
+   - ESTJ → directive + low (quick decisions, rule-abiding)
+   - ENTJ → directive + medium (strategic, bold)
+   - ENFP/ENTP → intuitive + high (ideas, possibility oriented)
+   - INFP/INFJ → intuitive + low (values-based, cautious)
+   - ISFJ/ESFJ → consensus + low (harmony, stability)
+   - ENFJ → consensus + medium (vision-sharing, agreement)
+   - ESTP → directive + high (action first, results-driven)
+   - ISTP → analytical + medium (logical, pragmatic)
+   - INTP → analytical + medium (theoretical, inquisitive)
+   - Otherwise → map to the closest match
+4. Concrete episodes/habits → preserve tone in communication_style and known_concerns
+5. "show me X and I'll sign off" type remarks → success_metric
+6. extracted_traits: 3–5 keywords based on the user's own phrasing${existingContextEn}
+
+Response format (JSON only, all strings in English):
+{
+  "name": "name/title (only if mentioned, else null)",
+  "role": "role (only if mentioned, else null)",
+  "priorities": "what this person cares about most — based on user phrasing (or null)",
+  "communication_style": "communication habits — preserve what the user said (or null)",
+  "known_concerns": "things they frequently raise (or null)",
+  "decision_style": "analytical | intuitive | consensus | directive (or null)",
+  "risk_tolerance": "low | medium | high (or null)",
+  "success_metric": "specific criterion they approve on (or null)",
+  "extracted_traits": ["3-5 user-phrase-based keywords"] or null,
+  "influence": "high | medium | low (or null)"
+}
+
+null = insufficient info or no change. JSON only.`;
+
+  const system = ko ? systemKo : systemEn;
+  const userMessage = ko
+    ? `사용자의 설명:\n"${s(freeText)}"`
+    : `User's description:\n"${s(freeText)}"`;
 
   try {
     const result = await callLLMJson<PersonaRefinement>(

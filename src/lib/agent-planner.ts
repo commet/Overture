@@ -61,12 +61,17 @@ function buildPlanningPrompt(
   context: WorkerContext,
   agent: Agent,
   availableCapabilities?: string[],
+  locale: 'ko' | 'en' = 'ko',
 ): { system: string; user: string } {
-  const delegationBlock = availableCapabilities && availableCapabilities.length > 0
-    ? `\n\n만약 이 작업의 일부가 너의 전문 영역이 아니라면, 해당 단계를 다른 전문가에게 위임할 수 있다.\n위임 가능 전문 분야: ${availableCapabilities.join(', ')}\n위임이 필요한 단계에는 "is_delegation": true, "delegate_capability": "분야명" 을 추가하라.`
-    : '';
+  const agentName = (locale === 'en' && agent.nameEn) ? agent.nameEn : agent.name;
+  const agentRole = (locale === 'en' && agent.roleEn) ? agent.roleEn : agent.role;
 
-  const system = `너는 ${agent.name} (${agent.role})이다.
+  if (locale === 'ko') {
+    const delegationBlock = availableCapabilities && availableCapabilities.length > 0
+      ? `\n\n만약 이 작업의 일부가 너의 전문 영역이 아니라면, 해당 단계를 다른 전문가에게 위임할 수 있다.\n위임 가능 전문 분야: ${availableCapabilities.join(', ')}\n위임이 필요한 단계에는 "is_delegation": true, "delegate_capability": "분야명" 을 추가하라.`
+      : '';
+
+    const system = `너는 ${agentName} (${agentRole})이다.
 주어진 작업을 2~4개의 하위 단계로 나눠서 계획을 세워라.
 각 단계는 순서대로 실행되며, 이전 단계의 결과가 다음 단계에 활용된다.
 
@@ -74,7 +79,8 @@ function buildPlanningPrompt(
 - 각 단계는 명확한 task와 expected_output이 있어야 한다
 - 불필요하게 세분화하지 마라. 단일 호출로 충분하면 1개 step만 반환해도 된다
 - 단계 수는 2~4개. 5개 이상은 금지
-- 각 단계의 output은 구체적이고 측정 가능해야 한다${delegationBlock}
+- 각 단계의 output은 구체적이고 측정 가능해야 한다
+- 한국어로 응답하라${delegationBlock}
 
 반드시 아래 JSON 형식으로만 응답:
 {
@@ -85,10 +91,43 @@ function buildPlanningPrompt(
   "estimated_quality_gain": "어떤 측면의 품질이 개선되는지 한 문장"
 }`;
 
-  const user = `문제: ${context.problemText.slice(0, 500)}
+    const user = `문제: ${context.problemText.slice(0, 500)}
 핵심 질문: ${context.realQuestion.slice(0, 300)}
 내 작업: ${task.task}
 기대 산출물: ${task.expected_output}`;
+
+    return { system, user };
+  }
+
+  // English
+  const delegationBlock = availableCapabilities && availableCapabilities.length > 0
+    ? `\n\nIf part of this task falls outside your expertise, you may delegate that step to another specialist.\nAvailable specialist capabilities: ${availableCapabilities.join(', ')}\nFor any step to be delegated, add "is_delegation": true, "delegate_capability": "<capability>".`
+    : '';
+
+  const system = `You are ${agentName} (${agentRole}).
+Break the given task into 2-4 sub-steps and plan them out.
+Each step runs in order; the result of one step feeds into the next.
+
+Rules:
+- Each step must have a clear task and expected_output
+- Do not over-subdivide. If a single call would suffice, return just 1 step
+- 2-4 steps maximum. 5+ is forbidden
+- Each step's output must be specific and measurable
+- Respond in English${delegationBlock}
+
+Respond with JSON only in this exact shape:
+{
+  "steps": [
+    { "step_number": 1, "task": "...", "expected_output": "..." }
+  ],
+  "reasoning": "one sentence on why this decomposition beats a single call",
+  "estimated_quality_gain": "one sentence on which quality dimension improves"
+}`;
+
+  const user = `Problem: ${context.problemText.slice(0, 500)}
+Core question: ${context.realQuestion.slice(0, 300)}
+My task: ${task.task}
+Expected output: ${task.expected_output}`;
 
   return { system, user };
 }
@@ -101,7 +140,8 @@ export async function planTask(
   agent: Agent,
   availableCapabilities?: string[],
 ): Promise<AgentPlan> {
-  const { system, user } = buildPlanningPrompt(task, context, agent, availableCapabilities);
+  const locale = getCurrentLanguage();
+  const { system, user } = buildPlanningPrompt(task, context, agent, availableCapabilities, locale);
 
   const plan = await callLLMJson<AgentPlan>(
     [{ role: 'user', content: user }],
@@ -133,6 +173,25 @@ export async function executePlan(
 ): Promise<PlanExecutionResult> {
   const step_results: PlanExecutionResult['step_results'] = [];
   let accumulatedContext = '';
+  const locale = getCurrentLanguage();
+
+  const LBL = locale === 'ko' ? {
+    prevStepResults: '이전 단계 결과',
+    stepHeader: (n: number | undefined, t: string) => `\n\n### 단계 ${n}: ${t}\n\n`,
+    delegationResult: (n: number | undefined, who: string) => `\n\n[단계 ${n} 위임 결과 — ${who}]`,
+    stepResult: (n: number | undefined) => `\n\n[단계 ${n} 결과]`,
+    agentFallback: '에이전트',
+    reasonSuffix: '전문 영역',
+    aggregationKeywords: ['통합', '정리', '종합', 'integrate', 'consolidate', 'synthesize', 'summarize'],
+  } : {
+    prevStepResults: 'Previous step result',
+    stepHeader: (n: number | undefined, t: string) => `\n\n### Step ${n}: ${t}\n\n`,
+    delegationResult: (n: number | undefined, who: string) => `\n\n[Step ${n} delegated result — ${who}]`,
+    stepResult: (n: number | undefined) => `\n\n[Step ${n} result]`,
+    agentFallback: 'Agent',
+    reasonSuffix: 'specialty area',
+    aggregationKeywords: ['integrate', 'consolidate', 'synthesize', 'summarize', '통합', '정리', '종합'],
+  };
 
   const level = numericLevelToAgentLevel(
     task.agent_id ? (await import('@/stores/useAgentStore')).useAgentStore.getState().getAgent(task.agent_id)?.level ?? 1 : 1,
@@ -148,7 +207,7 @@ export async function executePlan(
       ...context,
       qaHistory: [
         ...context.qaHistory,
-        ...(accumulatedContext ? [{ q: '이전 단계 결과', a: accumulatedContext }] : []),
+        ...(accumulatedContext ? [{ q: LBL.prevStepResults, a: accumulatedContext }] : []),
       ],
     };
 
@@ -158,16 +217,18 @@ export async function executePlan(
       if (delegate) {
         const agentStore = (await import('@/stores/useAgentStore')).useAgentStore.getState();
         const fromAgent = agentStore.getAgent(task.agent_id);
+        const fromAgentName = fromAgent ? ((locale === 'en' && fromAgent.nameEn) ? fromAgent.nameEn : fromAgent.name) : LBL.agentFallback;
+        const toAgentName = (locale === 'en' && delegate.nameEn) ? delegate.nameEn : delegate.name;
         const delegationResult = await executeDelegation(
           {
             from_agent_id: task.agent_id,
-            from_agent_name: fromAgent?.name || '에이전트',
+            from_agent_name: fromAgentName,
             to_agent_id: delegate.id,
-            to_agent_name: delegate.name,
+            to_agent_name: toAgentName,
             capability: step.delegate_capability,
             sub_task: step.task,
             expected_output: step.expected_output,
-            reason: `${step.delegate_capability} 전문 영역`,
+            reason: `${step.delegate_capability} ${LBL.reasonSuffix}`,
           },
           task,
           enrichedContext,
@@ -175,13 +236,12 @@ export async function executePlan(
           signal,
         );
         step_results.push({ step, result: delegationResult.result });
-        accumulatedContext += `\n\n[단계 ${step.step_number} 위임 결과 — ${delegate.name}]\n${delegationResult.result}`;
+        accumulatedContext += `${LBL.delegationResult(step.step_number, toAgentName)}\n${delegationResult.result}`;
         continue;
       }
       // 위임 대상 없으면 직접 실행으로 fallthrough
     }
 
-    const locale = getCurrentLanguage();
     const { system, user } = buildWorkerTaskPrompt(
       step.task,
       step.expected_output,
@@ -196,14 +256,14 @@ export async function executePlan(
     );
 
     // Stream prefix로 현재 step 표시
-    onStream(`\n\n### 단계 ${step.step_number}: ${step.task}\n\n`);
+    onStream(LBL.stepHeader(step.step_number, step.task));
 
     const text = await new Promise<string>((resolve, reject) => {
       callLLMStream(
         [{ role: 'user', content: user }],
         { system, maxTokens: 2000, signal },
         {
-          onToken: (fullText) => onStream(`\n\n### 단계 ${step.step_number}: ${step.task}\n\n${fullText}`),
+          onToken: (fullText) => onStream(`${LBL.stepHeader(step.step_number, step.task)}${fullText}`),
           onComplete: (fullText) => resolve(fullText),
           onError: (err) => reject(err),
         },
@@ -218,9 +278,10 @@ export async function executePlan(
         // Early stop: 높은 품질 + 남은 step이 통합/정리만이면 중단
         if (prev.validation.score >= 90 && plan.steps.length > 1) {
           const remaining = plan.steps.filter(s => s.step_number > step.step_number);
-          const isRemainingJustAggregation = remaining.length > 0 && remaining.every(s =>
-            s.task.includes('통합') || s.task.includes('정리') || s.task.includes('종합'),
-          );
+          const isRemainingJustAggregation = remaining.length > 0 && remaining.every(s => {
+            const taskLower = s.task.toLowerCase();
+            return LBL.aggregationKeywords.some(kw => taskLower.includes(kw.toLowerCase()));
+          });
           if (isRemainingJustAggregation) break;
         }
       }
@@ -228,7 +289,7 @@ export async function executePlan(
     }
 
     step_results.push({ step, result: text });
-    accumulatedContext += `\n\n[단계 ${step.step_number} 결과]\n${text}`;
+    accumulatedContext += `${LBL.stepResult(step.step_number)}\n${text}`;
 
     // 검증을 비동기로 시작 — 다음 step과 병렬 실행
     const stepIdx = step_results.length - 1;
@@ -256,6 +317,7 @@ export async function executePlan(
       completedResults.map(r => `[${r.step.task}]\n${r.result}`),
       task.task,
       task.expected_output,
+      locale,
     );
     onStream(aggregated);
   }
@@ -269,8 +331,10 @@ async function aggregateResults(
   stepResults: string[],
   originalTask: string,
   expectedOutput: string,
+  locale: 'ko' | 'en' = 'ko',
 ): Promise<string> {
-  const system = `아래는 하나의 작업을 여러 단계로 나눠 실행한 결과들이다.
+  if (locale === 'ko') {
+    const system = `아래는 하나의 작업을 여러 단계로 나눠 실행한 결과들이다.
 이것들을 하나의 일관된 산출물로 통합하라.
 
 규칙:
@@ -279,10 +343,31 @@ async function aggregateResults(
 - 단계 구분 없이 하나의 완성된 문서로 작성하라
 - 한국어로 작성`;
 
-  const user = `원래 작업: ${originalTask}
+    const user = `원래 작업: ${originalTask}
 기대 산출물: ${expectedOutput}
 
 ─── 단계별 결과 ───
+${stepResults.join('\n\n---\n\n')}`;
+
+    return callLLM(
+      [{ role: 'user', content: user }],
+      { system, maxTokens: 3000 },
+    );
+  }
+
+  const system = `Below are the step-by-step results of one task split into multiple stages.
+Integrate them into a single, coherent deliverable.
+
+Rules:
+- Remove duplication; keep only the essential content
+- Match the original expected-output format
+- Write as one completed document, without step markers
+- Write in English`;
+
+  const user = `Original task: ${originalTask}
+Expected output: ${expectedOutput}
+
+─── Step-by-step results ───
 ${stepResults.join('\n\n---\n\n')}`;
 
   return callLLM(

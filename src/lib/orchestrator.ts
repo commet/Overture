@@ -57,6 +57,7 @@ function buildStages(
     const stages: PipelineStage[] = [{
       id: stageId,
       label: '분석',
+      labelEn: 'Analysis',
       workerIds: updated.map((_, i) => `w_${i}`), // 실제 ID는 initWorkers에서 부여
       status: 'pending',
     }];
@@ -83,12 +84,14 @@ function buildStages(
     {
       id: 'stage_1',
       label: '분석',
+      labelEn: 'Analysis',
       workerIds: stage1Workers.map((_, i) => `w_${i}`),
       status: 'pending',
     },
     {
       id: 'stage_2',
       label: '검증',
+      labelEn: 'Validation',
       workerIds: [`w_${stage2Idx}`],
       status: 'pending',
       dependsOnStageId: 'stage_1',

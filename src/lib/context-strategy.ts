@@ -64,13 +64,24 @@ const DEFAULT_STRATEGY: Record<TaskType, ContextStrategy> = {
 
 /* ─── Strategy Reason (디버깅/투명성) ─── */
 
-const STRATEGY_REASONS: Record<ContextStrategy, string> = {
-  full:       '전체 맥락 필요 (종합/작성)',
-  focused:    '대상 결과물에 집중 (비판/검증)',
-  structured: '데이터와 가정에 집중 (분석/계산)',
-  compressed: '핵심만 압축 (전략/계획)',
-  minimal:    '독립 실행, 편향 방지 (리서치)',
-};
+import { getCurrentLanguage } from '@/lib/i18n';
+
+function getStrategyReasons(): Record<ContextStrategy, string> {
+  const ko = getCurrentLanguage() === 'ko';
+  return ko ? {
+    full:       '전체 맥락 필요 (종합/작성)',
+    focused:    '대상 결과물에 집중 (비판/검증)',
+    structured: '데이터와 가정에 집중 (분석/계산)',
+    compressed: '핵심만 압축 (전략/계획)',
+    minimal:    '독립 실행, 편향 방지 (리서치)',
+  } : {
+    full:       'Full context needed (synthesis/writing)',
+    focused:    'Focus on target output (critique/validation)',
+    structured: 'Focus on data and assumptions (analysis/calculation)',
+    compressed: 'Essentials only (strategy/planning)',
+    minimal:    'Independent execution, avoid bias (research)',
+  };
+}
 
 /* ─── Self-Tuning: 전략별 효과 추적 ─── */
 
@@ -145,9 +156,12 @@ export function selectContextStrategy(
       }
 
       if (bestStrategy && bestRate > 0.5) {
+        const ko = getCurrentLanguage() === 'ko';
         return {
           strategy: bestStrategy,
-          reason: `데이터 기반: ${agentId}의 ${taskType} 작업에서 ${bestStrategy} 전략이 히트율 ${Math.round(bestRate * 100)}%`,
+          reason: ko
+            ? `데이터 기반: ${agentId}의 ${taskType} 작업에서 ${bestStrategy} 전략이 히트율 ${Math.round(bestRate * 100)}%`
+            : `Data-driven: strategy ${bestStrategy} hit rate ${Math.round(bestRate * 100)}% for ${agentId} on ${taskType}`,
         };
       }
     }
@@ -157,7 +171,7 @@ export function selectContextStrategy(
   const strategy = DEFAULT_STRATEGY[taskType] ?? 'full' as ContextStrategy;
   return {
     strategy,
-    reason: STRATEGY_REASONS[strategy] ?? 'Unknown task type — full context fallback',
+    reason: getStrategyReasons()[strategy] ?? 'Unknown task type — full context fallback',
   };
 }
 
@@ -187,16 +201,31 @@ export function assembleContext(
 ): AssembledContext {
   const parts: string[] = [];
 
+  const ko = getCurrentLanguage() === 'ko';
+  const L = ko
+    ? {
+        project_full: '프로젝트 배경', project: '프로젝트', question: '핵심 질문',
+        skeleton: '뼈대', assumptions_full: '검증 필요 가정', assumptions: '가정',
+        premises: '전제', peer: '팀원들의 분석 결과', data: '관련 데이터',
+        key_assumptions: '핵심 가정', recent: '최근 논의',
+      }
+    : {
+        project_full: 'Project background', project: 'Project', question: 'Core question',
+        skeleton: 'Skeleton', assumptions_full: 'Assumptions to verify', assumptions: 'Assumptions',
+        premises: 'Premises', peer: 'Teammates\' analysis', data: 'Relevant data',
+        key_assumptions: 'Key assumptions', recent: 'Recent discussion',
+      };
+
   switch (strategy) {
     case 'full': {
       // 전부 포함
-      parts.push(`프로젝트 배경: ${input.problemText}`);
-      parts.push(`핵심 질문: ${input.realQuestion}`);
+      parts.push(`${L.project_full}: ${input.problemText}`);
+      parts.push(`${L.question}: ${input.realQuestion}`);
       if (input.skeleton.length > 0) {
-        parts.push(`뼈대: ${input.skeleton.join(' / ')}`);
+        parts.push(`${L.skeleton}: ${input.skeleton.join(' / ')}`);
       }
       if (input.hiddenAssumptions.length > 0) {
-        parts.push(`검증 필요 가정:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
+        parts.push(`${L.assumptions_full}:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
       }
       if (input.qaHistory.length > 0) {
         const qaText = input.qaHistory.map((qa, i) => `Q${i + 1}: ${qa.q}\nA${i + 1}: ${qa.a}`).join('\n');
@@ -207,13 +236,13 @@ export function assembleContext(
 
     case 'focused': {
       // 핵심 질문 + 이전 워커 결과만 (비판/검증용)
-      parts.push(`프로젝트: ${input.problemText.slice(0, 200)}`);
-      parts.push(`핵심 질문: ${input.realQuestion}`);
+      parts.push(`${L.project}: ${input.problemText.slice(0, 200)}`);
+      parts.push(`${L.question}: ${input.realQuestion}`);
       if (input.hiddenAssumptions.length > 0) {
-        parts.push(`전제:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
+        parts.push(`${L.premises}:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
       }
       if (input.peerResults) {
-        parts.push(`팀원들의 분석 결과:\n${input.peerResults}`);
+        parts.push(`${L.peer}:\n${input.peerResults}`);
       }
       // Q&A, skeleton 제외 — 대상 결과물에 집중
       break;
@@ -221,21 +250,21 @@ export function assembleContext(
 
     case 'structured': {
       // 데이터, 숫자, 가정만 추출 (계산/분석용)
-      parts.push(`프로젝트: ${input.problemText.slice(0, 200)}`);
-      parts.push(`핵심 질문: ${input.realQuestion}`);
+      parts.push(`${L.project}: ${input.problemText.slice(0, 200)}`);
+      parts.push(`${L.question}: ${input.realQuestion}`);
       if (input.hiddenAssumptions.length > 0) {
-        parts.push(`가정:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
+        parts.push(`${L.assumptions}:\n${input.hiddenAssumptions.map(a => `- ${a}`).join('\n')}`);
       }
       // Q&A에서 숫자/데이터가 포함된 답변만 추출
       if (input.qaHistory.length > 0) {
         const dataAnswers = input.qaHistory.filter(qa => {
-          const hasNumbers = /\d[\d,.]*\s*(%|만|억|조|원|달러|명|건|개|배|\$|M|K)/.test(qa.a);
-          const hasData = /데이터|수치|통계|예산|비용|매출|가격/.test(qa.a);
+          const hasNumbers = /\d[\d,.]*\s*(%|만|억|조|원|달러|명|건|개|배|\$|M|K|months?|years?|users?|people|cases|dollars?)/i.test(qa.a);
+          const hasData = /데이터|수치|통계|예산|비용|매출|가격|data|figures|statistics|budget|cost|revenue|pricing/i.test(qa.a);
           return hasNumbers || hasData;
         });
         if (dataAnswers.length > 0) {
           const dataText = dataAnswers.map(qa => `Q: ${qa.q}\nA: ${qa.a}`).join('\n');
-          parts.push(`관련 데이터:\n${dataText}`);
+          parts.push(`${L.data}:\n${dataText}`);
         }
       }
       break;
@@ -243,26 +272,26 @@ export function assembleContext(
 
     case 'compressed': {
       // 핵심만 압축 (전략/계획용)
-      parts.push(`프로젝트: ${input.problemText.slice(0, 300)}`);
-      parts.push(`핵심 질문: ${input.realQuestion}`);
+      parts.push(`${L.project}: ${input.problemText.slice(0, 300)}`);
+      parts.push(`${L.question}: ${input.realQuestion}`);
       if (input.skeleton.length > 0) {
-        parts.push(`뼈대: ${input.skeleton.join(' / ')}`);
+        parts.push(`${L.skeleton}: ${input.skeleton.join(' / ')}`);
       }
       if (input.hiddenAssumptions.length > 0) {
-        parts.push(`핵심 가정: ${input.hiddenAssumptions.slice(0, 3).join(', ')}`);
+        parts.push(`${L.key_assumptions}: ${input.hiddenAssumptions.slice(0, 3).join(', ')}`);
       }
       // Q&A는 최근 1개만
       if (input.qaHistory.length > 0) {
         const last = input.qaHistory[input.qaHistory.length - 1];
-        parts.push(`최근 논의: Q: ${last.q}\nA: ${last.a}`);
+        parts.push(`${L.recent}: Q: ${last.q}\nA: ${last.a}`);
       }
       break;
     }
 
     case 'minimal': {
       // 문제 + 핵심 질문만 (독립 리서치, 편향 방지)
-      parts.push(`프로젝트: ${input.problemText}`);
-      parts.push(`핵심 질문: ${input.realQuestion}`);
+      parts.push(`${L.project}: ${input.problemText}`);
+      parts.push(`${L.question}: ${input.realQuestion}`);
       // skeleton, Q&A, assumptions 전부 제외 — 편향 없이 독립 조사
       break;
     }

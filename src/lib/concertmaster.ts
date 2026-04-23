@@ -195,9 +195,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
       insights.push({
         id: 'eval_summary',
         category: 'growth',
-        message: getCurrentLanguage() === 'ko'
-          ? `${evalSummary.total_sessions}회 분석, 평균 활용률 ${pct}%`
-          : `${evalSummary.total_sessions} analyses, average utilization ${pct}%`,
+        message: t('concertmaster.evalSummary', { count: evalSummary.total_sessions, pct }),
         tier: 2,
         priority: priority++,
       });
@@ -211,9 +209,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
       insights.push({
         id: `coaching_${mutation.evalId}`,
         category: 'coaching',
-        message: getCurrentLanguage() === 'ko'
-          ? `${evalName}이 ${pct}%로 낮습니다`
-          : `${evalName} is low at ${pct}%`,
+        message: t('concertmaster.evalLow', { name: evalName, pct }),
         detail: mutation.instruction,
         tier: 2,
         priority: priority++,
@@ -227,12 +223,8 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_high',
           category: 'pattern',
-          message: getCurrentLanguage() === 'ko'
-            ? `AI 제안 수정률 ${pct}% — 자기 판단이 강한 패턴입니다.`
-            : `AI suggestion override rate ${pct}% — strong independent judgment pattern.`,
-          detail: getCurrentLanguage() === 'ko'
-            ? '이 패턴이 향후 AI 제안에 반영됩니다.'
-            : 'This pattern will be reflected in future AI suggestions.',
+          message: t('concertmaster.overrideHighMessage', { pct }),
+          detail: t('concertmaster.overrideHighDetail'),
           tier: 2,
           priority: priority++,
         });
@@ -240,12 +232,8 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
         insights.push({
           id: 'override_rate_low',
           category: 'coaching',
-          message: getCurrentLanguage() === 'ko'
-            ? `AI 제안을 거의 그대로 수용하고 있습니다 (수정률 ${pct}%).`
-            : `Accepting AI suggestions almost as-is (override rate ${pct}%).`,
-          detail: getCurrentLanguage() === 'ko'
-            ? 'AI 제안을 비판적으로 검토하면 더 나은 결과를 얻을 수 있습니다.'
-            : 'Critically reviewing AI suggestions can lead to better results.',
+          message: t('concertmaster.overrideLowMessage', { pct }),
+          detail: t('concertmaster.overrideLowDetail'),
           tier: 2,
           priority: priority++,
         });
@@ -282,9 +270,7 @@ export function buildConcertmasterInsights(profile: ConcertmasterProfile): Conce
       insights.push({
         id: 'strategy_best',
         category: 'growth',
-        message: getCurrentLanguage() === 'ko'
-          ? `"${bestName}" 전략의 활용률이 ${bestPct}%로 가장 높습니다`
-          : `"${bestName}" strategy has the highest utilization at ${bestPct}%`,
+        message: t('concertmaster.strategyBest', { name: bestName, pct: bestPct }),
         tier: 3,
         priority: priority++,
       });
@@ -636,9 +622,9 @@ function getPersonaFeedbackCoaching(profile: ConcertmasterProfile): StepCoaching
 
       let detail: string | undefined;
       if (best && worst) {
-        detail = `${best}에서 정확, ${worst}는 보정 필요`;
+        detail = t('coaching.rehearse.accurateNeedsFix', { best, worst });
       } else if (best) {
-        detail = `${best}에서 정확`;
+        detail = t('coaching.rehearse.accurateAt', { best });
       }
 
       results.push({
@@ -671,12 +657,12 @@ function getRefineCoaching(profile: ConcertmasterProfile): StepCoaching[] {
     const prev = sorted[sorted.length - 2];
     const last = sorted[sorted.length - 1];
     const dqElements = [
-      { key: 'appropriate_frame' as const, label: '프레이밍' },
-      { key: 'creative_alternatives' as const, label: '대안 탐색' },
-      { key: 'relevant_information' as const, label: '정보 수집' },
-      { key: 'clear_values' as const, label: '관점 다양성' },
-      { key: 'sound_reasoning' as const, label: '추론 품질' },
-      { key: 'commitment_to_action' as const, label: '실행 가능성' },
+      { key: 'appropriate_frame' as const, label: t('dq.element.appropriateFrame') },
+      { key: 'creative_alternatives' as const, label: t('dq.element.creativeAlternatives') },
+      { key: 'relevant_information' as const, label: t('dq.element.relevantInformation') },
+      { key: 'clear_values' as const, label: t('dq.element.clearValues') },
+      { key: 'sound_reasoning' as const, label: t('dq.element.soundReasoning') },
+      { key: 'commitment_to_action' as const, label: t('dq.element.commitmentToAction') },
     ];
     if (last.overall_dq > prev.overall_dq) {
       let biggestGainLabel = '';
@@ -717,22 +703,22 @@ function getSynthesizeCoaching(profile: ConcertmasterProfile): StepCoaching[] {
 
   if (profile.sessionCount === 0) {
     results.push({
-      message: '쟁점을 발견하면 성급하게 절충하지 마세요. 각 입장이 어떤 가정 위에 서 있는지 먼저 파악하세요.',
-      detail: '합의는 "중간값"이 아니라 "더 나은 질문"에서 나옵니다.',
+      message: t('coaching.synthesize.firstUse'),
+      detail: t('coaching.synthesize.firstUseDetail'),
       tone: 'counterfactual',
     });
     return results;
   }
 
-  // Override rate coaching — 사용자가 AI 제안을 많이 수정하는지
+  // Override rate coaching — prompts based on how often the user rewrites AI suggestions
   if (profile.overrideRate > 0.5 && profile.totalJudgments >= 5) {
     results.push({
-      message: '당신은 AI 제안의 절반 이상을 수정합니다. 조율에서도 그 판단력이 핵심입니다.',
+      message: t('coaching.synthesize.overrideHigh'),
       tone: 'positive',
     });
   } else if (profile.overrideRate < 0.1 && profile.totalJudgments >= 5) {
     results.push({
-      message: '소스 간 충돌에서 한쪽을 선택하는 건 판단입니다. 두 소스 모두 틀릴 수도 있습니다.',
+      message: t('coaching.synthesize.overrideLow'),
       tone: 'challenge',
     });
   }
@@ -783,21 +769,25 @@ export interface LearningCurve {
   has_data: boolean;
 }
 
-const DQ_ELEMENTS = [
-  { key: 'appropriate_frame' as const, label: '프레이밍' },
-  { key: 'creative_alternatives' as const, label: '대안 탐색' },
-  { key: 'relevant_information' as const, label: '정보 수집' },
-  { key: 'clear_values' as const, label: '관점 다양성' },
-  { key: 'sound_reasoning' as const, label: '추론 품질' },
-  { key: 'commitment_to_action' as const, label: '실행 가능성' },
-] as const;
+function getDqElements() {
+  return [
+    { key: 'appropriate_frame' as const, label: t('dq.element.appropriateFrame') },
+    { key: 'creative_alternatives' as const, label: t('dq.element.creativeAlternatives') },
+    { key: 'relevant_information' as const, label: t('dq.element.relevantInformation') },
+    { key: 'clear_values' as const, label: t('dq.element.clearValues') },
+    { key: 'sound_reasoning' as const, label: t('dq.element.soundReasoning') },
+    { key: 'commitment_to_action' as const, label: t('dq.element.commitmentToAction') },
+  ];
+}
 
-const AXIS_LABELS: Record<string, string> = {
-  customer_value: '고객 가치',
-  feasibility: '실현 가능성',
-  business: '비즈니스',
-  org_capacity: '조직 역량',
-};
+function getAxisLabels(): Record<string, string> {
+  return {
+    customer_value: t('axis.customerValue'),
+    feasibility: t('axis.feasibility'),
+    business: t('axis.business'),
+    org_capacity: t('axis.orgCapacity'),
+  };
+}
 
 export function buildLearningCurve(): LearningCurve {
   const projects = data.projects();
@@ -806,16 +796,18 @@ export function buildLearningCurve(): LearningCurve {
 
   // ── DQ points with project names ──
   const projectNameMap = new Map(projects.map(p => [p.id, p.name]));
+  const defaultProject = t('concertmaster.defaultProject');
   const dq_points: LearningCurvePoint[] = sorted.map(s => ({
     project_id: s.project_id,
-    project_name: projectNameMap.get(s.project_id) || '프로젝트',
+    project_name: projectNameMap.get(s.project_id) || defaultProject,
     overall_dq: s.overall_dq,
     date: s.created_at,
   }));
 
   // ── Element trends ──
+  const dqElements = getDqElements();
   const element_trends: Record<string, number[]> = {};
-  for (const { key, label } of DQ_ELEMENTS) {
+  for (const { key, label } of dqElements) {
     element_trends[label] = sorted.map(s => s[key]);
   }
 
@@ -828,7 +820,7 @@ export function buildLearningCurve(): LearningCurve {
     const firstHalf = sorted.slice(0, mid);
     const secondHalf = sorted.slice(mid);
 
-    for (const { key, label } of DQ_ELEMENTS) {
+    for (const { key, label } of dqElements) {
       const firstAvg = firstHalf.reduce((s, sc) => s + sc[key], 0) / firstHalf.length;
       const secondAvg = secondHalf.reduce((s, sc) => s + sc[key], 0) / secondHalf.length;
       const delta = secondAvg - firstAvg;
@@ -874,9 +866,10 @@ export function buildLearningCurve(): LearningCurve {
     }
   }
 
+  const axisLabels = getAxisLabels();
   const axis_coverage: Record<string, number> = {};
   for (const [axis, count] of Object.entries(axisCounts)) {
-    axis_coverage[AXIS_LABELS[axis] || axis] = totalAssumptions > 0
+    axis_coverage[axisLabels[axis] || axis] = totalAssumptions > 0
       ? Math.round((count / totalAssumptions) * 100)
       : 0;
   }

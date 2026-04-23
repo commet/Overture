@@ -3,6 +3,18 @@ import { getSignalsByType } from '@/lib/signal-recorder';
 import { getEvalSummary, getStageEvalSummary } from '@/lib/eval-engine';
 import type { JudgmentRecord, ReframeItem, RecastItem, SynthesizeItem, PersonaAccuracyRating, Project, OutcomeRecord } from '@/stores/types';
 import { getActionableInsights } from '@/lib/retrospective';
+import { getCurrentLanguage } from '@/lib/i18n';
+
+/**
+ * Returns the LLM response-language directive.
+ * Appended to every enhanced system prompt so the model outputs in the user's locale
+ * regardless of the prompt body's language.
+ */
+function getLocaleDirective(): string {
+  return getCurrentLanguage() === 'ko'
+    ? '\n\n---\n\n## Response Language\n한국어로만 응답하세요. 제목, 필드 이름(JSON key 제외), 설명, 예시 — 모두 한국어.'
+    : '\n\n---\n\n## Response Language\nRespond in English only. Headings, field values (not JSON keys), explanations, examples — all English. Do not mix languages.';
+}
 
 /**
  * Builds an enhanced system prompt by injecting user patterns and project context.
@@ -12,22 +24,27 @@ export function buildEnhancedSystemPrompt(
   basePrompt: string,
   projectId?: string,
 ): string {
+  const ko = getCurrentLanguage() === 'ko';
   const judgments = getStorage<JudgmentRecord[]>(STORAGE_KEYS.JUDGMENTS, []);
-  if (judgments.length === 0) return basePrompt;
+  if (judgments.length === 0) return basePrompt + getLocaleDirective();
 
   const sections: string[] = [];
 
   // 1. User pattern summary
   const patterns = analyzePatterns(judgments);
   if (patterns) {
-    sections.push(`## 사용자 패턴 (과거 ${judgments.length}건의 판단 기반)\n${patterns}`);
+    sections.push(ko
+      ? `## 사용자 패턴 (과거 ${judgments.length}건의 판단 기반)\n${patterns}`
+      : `## User pattern (based on ${judgments.length} past judgments)\n${patterns}`);
   }
 
   // 2. Project-specific context
   if (projectId) {
     const projectContext = buildProjectContext(projectId, judgments);
     if (projectContext) {
-      sections.push(`## 이 프로젝트에서의 이전 판단\n${projectContext}`);
+      sections.push(ko
+        ? `## 이 프로젝트에서의 이전 판단\n${projectContext}`
+        : `## Prior judgments in this project\n${projectContext}`);
     }
   }
 
@@ -46,27 +63,34 @@ export function buildEnhancedSystemPrompt(
     const successCount = outcomes.filter(o => o.overall_success === 'exceeded' || o.overall_success === 'met').length;
     const unspoken = outcomes.flatMap(o => o.materialized_risks).filter(r => r.category === 'unspoken');
     const unspokenHit = unspoken.filter(r => r.actually_happened);
-    const lines = [`## 과거 프로젝트 결과 학습`, `- 성공률: ${Math.round(successCount / outcomes.length * 100)}%`];
-    if (unspoken.length >= 2 && unspokenHit.length / unspoken.length > 0.5) lines.push('- ⚠️ 침묵의 리스크가 자주 실현됩니다. unspoken 리스크에 더 주의하세요.');
+    const lines = ko
+      ? [`## 과거 프로젝트 결과 학습`, `- 성공률: ${Math.round(successCount / outcomes.length * 100)}%`]
+      : [`## Learning from past project outcomes`, `- Success rate: ${Math.round(successCount / outcomes.length * 100)}%`];
+    if (unspoken.length >= 2 && unspokenHit.length / unspoken.length > 0.5) {
+      lines.push(ko
+        ? '- ⚠️ 침묵의 리스크가 자주 실현됩니다. unspoken 리스크에 더 주의하세요.'
+        : '- ⚠️ Unspoken risks materialize often. Pay extra attention to unspoken risks.');
+    }
     sections.push(lines.join('\n'));
   }
 
   // 6. Retrospective actionable insights (Phase 2)
   const retroInsights = getActionableInsights(projectId);
   if (retroInsights.length > 0) {
-    sections.push('## 이전 프로젝트 성찰 교훈\n' + retroInsights.map(i => `- "${i}"`).join('\n'));
+    const header = ko ? '## 이전 프로젝트 성찰 교훈\n' : '## Lessons from prior project retrospectives\n';
+    sections.push(header + retroInsights.map(i => `- "${i}"`).join('\n'));
   }
 
   // 7. Axis Fingerprint + Eval-based adaptation (Phase 3: Active Adaptation)
   const adaptiveCtx = buildAdaptiveContext();
   if (adaptiveCtx) sections.push(adaptiveCtx);
 
-  if (sections.length === 0) return basePrompt;
+  if (sections.length === 0) return basePrompt + getLocaleDirective();
 
   // Append as a bounded context section
   const contextSection = sections.join('\n\n').slice(0, 1200);
 
-  return `${basePrompt}\n\n---\n\n${contextSection}`;
+  return `${basePrompt}\n\n---\n\n${contextSection}${getLocaleDirective()}`;
 }
 
 function analyzePatterns(judgments: JudgmentRecord[]): string | null {
@@ -129,14 +153,19 @@ function buildCodaInsights(excludeProjectId?: string): string | null {
 
   if (withReflection.length === 0) return null;
 
-  const lines: string[] = ['## 이전 프로젝트에서의 깨달음'];
+  const ko = getCurrentLanguage() === 'ko';
+  const lines: string[] = [ko ? '## 이전 프로젝트에서의 깨달음' : '## Lessons from prior projects'];
   for (const p of withReflection) {
     const r = p.meta_reflection!;
     if (r.surprising_discovery) {
-      lines.push(`- ${p.name}: 놀라운 발견 — "${r.surprising_discovery}"`);
+      lines.push(ko
+        ? `- ${p.name}: 놀라운 발견 — "${r.surprising_discovery}"`
+        : `- ${p.name}: surprising discovery — "${r.surprising_discovery}"`);
     }
     if (r.next_time_differently) {
-      lines.push(`- ${p.name}: 다음에 다르게 — "${r.next_time_differently}"`);
+      lines.push(ko
+        ? `- ${p.name}: 다음에 다르게 — "${r.next_time_differently}"`
+        : `- ${p.name}: next time, differently — "${r.next_time_differently}"`);
     }
   }
   return lines.join('\n');

@@ -12,6 +12,7 @@ import { planWorkers } from '@/lib/orchestrator';
 import { selectLeadAgent } from '@/lib/lead-agent';
 import { computeQualityXP } from '@/lib/agent-quality';
 import { nextChildLabel, promoteToMajor, ROOT_LABEL } from '@/lib/version-numbering';
+import { getCurrentLanguage } from '@/lib/i18n';
 import { getActivePath as getActivePathGeneric } from '@/lib/version-tree';
 import type {
   ProgressiveSession,
@@ -183,7 +184,7 @@ function migrateSessionDrafts(sessions: ProgressiveSession[]): ProgressiveSessio
       id,
       parent_draft_id: null,
       version_label: 'v0.1',
-      change_summary: '첫 초안 (에이전트 팀 분석)',
+      change_summary: getCurrentLanguage() === 'ko' ? '첫 초안 (에이전트 팀 분석)' : 'First draft (agent team analysis)',
       directive: null,
       final_text: s.final_deliverable,
       final_mix: s.final_mix ?? null,
@@ -482,13 +483,13 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
           // Initial completion — root of the draft tree.
           parentId = null;
           reviewingAgentId = null;
-          changeSummary = '첫 초안 (에이전트 팀 분석)';
+          changeSummary = getCurrentLanguage() === 'ko' ? '첫 초안 (에이전트 팀 분석)' : 'First draft (agent team analysis)';
         } else {
           // Re-run of DM stakeholder review — append as child of active leaf.
           parentId = current.active_draft_id
             ?? existingDrafts[existingDrafts.length - 1].id;
           reviewingAgentId = 'dm_reroll';
-          changeSummary = '이해관계자 재검증 반영';
+          changeSummary = getCurrentLanguage() === 'ko' ? '이해관계자 재검증 반영' : 'Re-applied stakeholder validation';
         }
 
         // Compute the new version label via pure version-numbering helpers.
@@ -906,7 +907,8 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
           return { workerId: w.id, task: w.task, result: w.ai_preliminary, type: 'preliminary' as const, ...base };
         }
         if (w.agent_type === 'human' && (w.status === 'waiting_response' || w.status === 'sent')) {
-          return { workerId: w.id, task: w.task, result: `[응답 대기 중] ${w.question_to_human || w.task}`, type: 'pending_human' as const, ...base };
+          const awaitingLabel = getCurrentLanguage() === 'ko' ? '[응답 대기 중]' : '[awaiting response]';
+          return { workerId: w.id, task: w.task, result: `${awaitingLabel} ${w.question_to_human || w.task}`, type: 'pending_human' as const, ...base };
         }
         return null;
       })

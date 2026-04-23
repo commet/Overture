@@ -13,7 +13,9 @@ export function agentToWorkerPersona(agent: Agent): WorkerPersona {
   return {
     id: agent.id,
     name: agent.name,
+    nameEn: agent.nameEn,
     role: agent.role,
+    roleEn: agent.roleEn,
     emoji: agent.emoji,
     expertise: agent.expertise || '',
     tone: agent.tone || '',

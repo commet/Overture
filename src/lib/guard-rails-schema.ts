@@ -249,7 +249,7 @@ export const FRAMEWORK_RULES: FrameworkValidationRule[] = [
       {
         id: 'strength',
         type: 'keywords',
-        patterns: ['강점', 'Strength', 'S:', 'S)'],
+        patterns: ['강점', 'Strength', 'strength', 'S:', 'S)'],
         minCount: 1,
         weight: 25,
         failMessage: 'Strength quadrant missing',
@@ -257,7 +257,7 @@ export const FRAMEWORK_RULES: FrameworkValidationRule[] = [
       {
         id: 'weakness',
         type: 'keywords',
-        patterns: ['약점', 'Weakness', 'W:', 'W)'],
+        patterns: ['약점', 'Weakness', 'weakness', 'W:', 'W)'],
         minCount: 1,
         weight: 25,
         failMessage: 'Weakness quadrant missing',
@@ -265,7 +265,7 @@ export const FRAMEWORK_RULES: FrameworkValidationRule[] = [
       {
         id: 'opportunity',
         type: 'keywords',
-        patterns: ['기회', 'Opportunit', 'O:', 'O)'],
+        patterns: ['기회', 'Opportunit', 'opportunit', 'O:', 'O)'],
         minCount: 1,
         weight: 25,
         failMessage: 'Opportunity quadrant missing',
@@ -273,7 +273,7 @@ export const FRAMEWORK_RULES: FrameworkValidationRule[] = [
       {
         id: 'threat',
         type: 'keywords',
-        patterns: ['위협', 'Threat', 'T:', 'T)'],
+        patterns: ['위협', 'Threat', 'threat', 'T:', 'T)'],
         minCount: 1,
         weight: 25,
         failMessage: 'Threat quadrant missing',

@@ -61,11 +61,15 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
     ['조사', 3], ['리서치', 3], ['수집', 2], ['탐색', 2], ['벤치마크', 3],
     ['사례', 2], ['현황', 2], ['트렌드', 2], ['데이터', 1],
     [/research/i, 3], [/benchmark/i, 3], [/survey/i, 2],
+    [/explor/i, 2], [/investigat/i, 2], [/discover/i, 2], [/trend/i, 2],
+    [/case\s+stud/i, 2], [/data\s+collect/i, 2],
   ],
   analysis: [
     ['분석', 3], ['파악', 2], ['진단', 2], ['평가', 2], ['검토', 1],
     ['비교 분석', 3], ['심층', 2], ['인사이트', 2],
     [/analy/i, 3], [/assess/i, 2],
+    [/review/i, 1], [/evaluat/i, 2], [/diagnos/i, 2], [/examin/i, 2], [/insight/i, 2],
+    [/deep\s+dive/i, 2],
   ],
   synthesis: [
     ['종합', 3], ['요약', 3], ['정리', 2], ['초안', 2], ['통합', 2],
@@ -77,10 +81,12 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
     ['비전', 2], ['로드맵', 2], ['진입', 2], ['성장', 1],
     ['사업 계획', 3], ['사업 전략', 3], ['비즈니스', 2], ['수립', 2],
     [/strateg/i, 3], [/position/i, 3], [/business plan/i, 3],
+    [/vision/i, 2], [/differentiat/i, 3], [/go-to-market/i, 3], [/\bGTM\b/i, 3],
+    [/growth/i, 1], [/market entry/i, 3],
   ],
   calculation: [
     ['계산', 3], ['산출', 3], ['추정', 2], ['모델링', 3], ['예측', 2],
-    ['시뮬레이션', 3], [/ROI/i, 3], [/BEP/i, 3], [/TAM/i, 3],
+    ['시뮬레이션', 3], [/\bROI\b/i, 3], [/\bBEP\b/i, 3], [/\bTAM\b/i, 3],
     ['손익', 3], ['단가', 2], ['원가', 2],
     [/calculat/i, 3], [/estimat/i, 2], [/model/i, 2], [/forecast/i, 2], [/simulat/i, 3],
   ],
@@ -94,9 +100,12 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
     ['비판', 3], ['리스크', 3], ['위험', 3], ['검증', 2], ['반론', 3],
     ['취약', 2], ['실패', 2], ['문제점', 2], ['약점', 2],
     [/risk/i, 3], [/critic/i, 3],
+    [/weakness/i, 2], [/failure/i, 2], [/vulnerab/i, 2], [/flaw/i, 2],
+    [/counterargument/i, 3], [/concern/i, 2], [/red\s+team/i, 3],
+    [/pushback/i, 2],
   ],
   design: [
-    [/UX/i, 3], [/UI/i, 3], ['설계', 2], ['프로토', 3], ['와이어', 3],
+    [/\bUX\b/i, 3], [/\bUI\b/i, 3], ['설계', 2], ['프로토', 3], ['와이어', 3],
     ['사용성', 3], ['접근성', 2], ['인터페이스', 2], ['사용자 경험', 3],
     [/design/i, 2], [/proto/i, 3], [/wireframe/i, 3], [/usability/i, 3], [/accessibility/i, 2],
   ],
@@ -104,6 +113,7 @@ const TASK_TYPE_PATTERNS: Record<TaskType, PatternRule[]> = {
     ['법률', 3], ['규제', 3], ['계약', 3], ['특허', 3], ['라이선스', 3],
     ['컴플라이언스', 3], ['약관', 2], ['인허가', 3],
     [/legal/i, 3], [/regulat/i, 3], [/complian/i, 3],
+    [/contract/i, 3], [/patent/i, 3], [/license/i, 3], [/terms\s+of/i, 2],
   ],
   planning: [
     ['일정', 3], ['타임라인', 3], ['마일스톤', 3], ['리소스', 2],
@@ -117,60 +127,84 @@ const DOMAIN_PATTERNS: Record<ContextDomain, PatternRule[]> = {
   market: [
     ['시장', 3], ['경쟁', 3], ['고객', 2], ['소비자', 2], ['점유율', 3],
     ['수요', 2], ['공급', 2], ['타겟', 2], [/market/i, 3], [/competitor/i, 3],
+    [/customer/i, 2], [/consumer/i, 2], [/demand/i, 2], [/supply/i, 2], [/target/i, 2],
   ],
   finance: [
     ['재무', 3], ['비용', 2], ['매출', 3], ['수익', 3], ['투자', 3],
     ['예산', 2], ['자금', 2], ['가격', 2], [/financ/i, 3], [/revenue/i, 3],
+    [/cost/i, 2], [/profit/i, 3], [/invest/i, 3], [/budget/i, 2], [/pricing/i, 2],
   ],
   tech: [
     ['기술', 2], ['아키텍처', 3], ['구현', 2], ['인프라', 3], ['스택', 2],
-    [/API/i, 3], ['서버', 2], ['데이터베이스', 2], [/tech/i, 2],
+    [/\bAPI\b/i, 3], ['서버', 2], ['데이터베이스', 2], [/tech/i, 2],
+    [/architecture/i, 3], [/infrastructure/i, 3], [/server/i, 2], [/database/i, 2],
+    [/implementation/i, 2], [/stack/i, 2], [/engineer/i, 2], [/codebase/i, 2],
   ],
   legal: [
     ['법률', 3], ['규제', 3], ['계약', 3], ['특허', 3], ['개인정보', 3],
+    [/legal/i, 3], [/regulat/i, 3], [/contract/i, 3], [/patent/i, 3], [/privacy/i, 3],
+    [/\bGDPR\b/i, 3],
   ],
   ux: [
-    [/UX/i, 3], [/UI/i, 3], ['사용자', 2], ['경험', 1], ['인터페이스', 2],
+    [/\bUX\b/i, 3], [/\bUI\b/i, 3], ['사용자', 2], ['경험', 1], ['인터페이스', 2],
     ['프로토타입', 3], ['사용성', 3],
+    [/user/i, 2], [/experience/i, 1], [/interface/i, 2], [/prototype/i, 3], [/usability/i, 3],
   ],
   ops: [
     ['운영', 2], ['프로세스', 2], ['인력', 2], ['채용', 2], ['조직', 2],
     ['효율', 1], ['자동화', 2],
+    [/operation/i, 2], [/process/i, 2], [/hiring/i, 2], [/recruit/i, 2],
+    [/automation/i, 2], [/staff/i, 2], [/headcount/i, 2], [/organization/i, 2],
+    [/efficien/i, 1], [/workflow/i, 2],
   ],
   product: [
-    ['제품', 2], ['기능', 1], ['서비스', 1], ['출시', 2], ['MVP', 3],
+    ['제품', 2], ['기능', 1], ['서비스', 1], ['출시', 2],
     ['로드맵', 2], ['피처', 2],
+    [/product/i, 2], [/feature/i, 1], [/service/i, 1], [/roadmap/i, 2],
+    [/\bMVP\b/i, 3], [/launch/i, 2], [/release/i, 2],
   ],
   brand: [
-    ['브랜드', 3], ['마케팅', 3], ['홍보', 2], ['PR', 3], ['캠페인', 3],
+    ['브랜드', 3], ['마케팅', 3], ['홍보', 2], ['캠페인', 3],
     ['메시지', 2], ['광고', 2], ['커뮤니케이션', 2],
+    [/brand/i, 3], [/marketing/i, 3], [/campaign/i, 3], [/messaging/i, 2],
+    [/advertis/i, 2], [/communication/i, 2],
+    [/\bPR\b/, 3], [/announce/i, 2],
   ],
 };
 
 const OUTPUT_PATTERNS: Record<OutputType, PatternRule[]> = {
   report: [
     ['보고서', 3], ['리포트', 3], ['조사 결과', 3], ['분석 결과', 3], [/report/i, 3],
+    [/findings/i, 3], [/analysis\s+result/i, 3],
   ],
   document: [
     ['기획안', 3], ['제안서', 3], ['기획서', 3], ['문서', 2], ['메모', 2],
     ['슬라이드', 2], ['발표', 2],
+    [/proposal/i, 3], [/document/i, 2], [/memo/i, 2], [/slide/i, 2], [/deck/i, 3],
+    [/presentation/i, 2],
   ],
   numbers: [
     ['재무', 2], ['수치', 3], ['모델', 2], ['표', 1], ['스프레드시트', 3],
     ['산출', 2], [/excel/i, 2],
+    [/spreadsheet/i, 3], [/financial\s+model/i, 3], [/figures/i, 2], [/table/i, 1],
+    [/metrics/i, 2], [/dashboard/i, 2], [/numbers/i, 2], [/financials/i, 2],
   ],
   checklist: [
     ['체크리스트', 3], ['액션', 2], ['할 일', 2], ['TODO', 3], ['점검', 2],
+    [/checklist/i, 3], [/action\s+item/i, 2], [/to-?do/i, 2],
   ],
   risk_assessment: [
     ['리스크', 3], ['위험', 2], ['실패', 2], ['시나리오', 2], ['대응', 2],
+    [/risk/i, 3], [/failure/i, 2], [/scenario/i, 2], [/mitigation/i, 2],
   ],
   comparison: [
     ['비교', 3], ['매트릭스', 3], ['대조', 2], ['벤치마크', 2], ['순위', 2],
+    [/comparison/i, 3], [/matrix/i, 3], [/benchmark/i, 2], [/ranking/i, 2],
   ],
   plan: [
     ['계획', 2], ['일정', 3], ['로드맵', 3], ['타임라인', 3], ['실행', 1],
     ['마일스톤', 3],
+    [/plan/i, 2], [/schedule/i, 3], [/roadmap/i, 3], [/timeline/i, 3], [/milestone/i, 3],
   ],
 };
 

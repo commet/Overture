@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: '현재 서비스를 이용할 수 없습니다. 설정에서 직접 API 키를 입력해주세요.' },
+      { error: 'Service unavailable. Please enter your own API key in Settings.' },
       { status: 503 }
     );
   }
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     const allowed = await checkRateLimit(auth.userId, auth.token);
     if (!allowed) {
       return NextResponse.json(
-        { error: '오늘의 무료 사용량(10회)을 모두 사용했습니다. 설정에서 직접 API 키를 입력하면 제한 없이 사용할 수 있어요.' },
+        { error: "Today's free quota (10 calls) is used up. Enter your own API key in Settings for unlimited use." },
         { status: 429 }
       );
     }
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     const allowed = await checkAnonRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
-        { error: '무료 체험을 모두 사용했습니다. 로그인하면 하루 10회까지 무료로 계속 사용할 수 있어요!', needsLogin: true },
+        { error: 'Free trial quota exhausted. Log in to keep using up to 10 free calls per day!', needsLogin: true },
         { status: 429 }
       );
     }
@@ -136,11 +136,11 @@ export async function POST(req: NextRequest) {
     const maxTokens = normalizeMaxTokens(body.maxTokens);
 
     if (!validateSystemPrompt(system)) {
-      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
 
     if (!validateMessages(messages)) {
-      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
 
     const client = new Anthropic({ apiKey });
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     const MODEL_MAP: Record<string, string> = {
       fast: 'claude-haiku-4-5-20251001',
       default: 'claude-sonnet-4-20250514',
-      strong: 'claude-sonnet-4-20250514', // Opus 사용 시 비용 주의
+      strong: 'claude-sonnet-4-20250514', // Note: using Opus here would raise costs significantly
     };
     const modelId = MODEL_MAP[body.model as string] || MODEL_MAP.default;
 
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     return res;
   } catch {
     return NextResponse.json(
-      { error: 'LLM 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+      { error: 'LLM call failed. Please try again in a moment.' },
       { status: 500 }
     );
   }

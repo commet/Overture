@@ -11,6 +11,7 @@
 
 import type { RecastStep, ReviewFinding, WorkflowReview } from '@/stores/types';
 import { callLLMJson } from '@/lib/llm';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 /* ────────────────────────────────────
    Review Lens Definitions
@@ -39,10 +40,8 @@ interface ReviewOutput {
   }[];
 }
 
-const SKEPTIC_LENS: ReviewLens = {
-  id: 'skeptic',
-  label: '비판적 검토',
-  buildPrompt: (ctx) => `당신은 전략 계획의 약점을 찾는 비판적 리뷰어입니다.
+function skepticPromptKo(ctx: ReviewContext): string {
+  return `당신은 전략 계획의 약점을 찾는 비판적 리뷰어입니다.
 
 아래 워크플로우의 가장 큰 약점과 빈틈을 찾으세요.
 
@@ -58,7 +57,7 @@ ${ctx.key_assumptions_text}
 - 검증되지 않은 가정이 계획에 어떤 영향을 미치는가?
 - 빠진 단계나 고려하지 못한 것은?
 
-JSON으로만 응답하세요:
+JSON으로만 응답하세요 (모든 문자열은 한국어):
 {
   "findings": [
     {
@@ -69,13 +68,50 @@ JSON으로만 응답하세요:
     }
   ]
 }
-findings는 3-5개. 반드시 JSON만 응답하세요.`,
-};
+findings는 3-5개. 반드시 JSON만 응답하세요.`;
+}
 
-const OPTIMIZER_LENS: ReviewLens = {
-  id: 'optimizer',
-  label: '효율성 검토',
-  buildPrompt: (ctx) => `당신은 워크플로우 효율성 전문가입니다.
+function skepticPromptEn(ctx: ReviewContext): string {
+  return `You are a critical reviewer looking for weaknesses in strategic plans.
+
+Find the biggest weaknesses and gaps in the workflow below.
+
+[Core direction] ${ctx.governing_idea}
+[Goal] ${ctx.goal_summary}
+[Workflow]
+${ctx.steps.map((s, i) => `${i + 1}. [${s.actor}] ${s.task} → Output: ${s.expected_output}`).join('\n')}
+[Key assumptions]
+${ctx.key_assumptions_text}
+
+Review from these angles:
+- If this plan fails, what's the most likely reason?
+- How do unverified assumptions affect the plan?
+- Any missing steps or overlooked considerations?
+
+Respond in JSON only (all strings in English):
+{
+  "findings": [
+    {
+      "type": "gap" or "risk",
+      "severity": "high" or "medium" or "low",
+      "text": "specific weakness (one sentence)",
+      "affected_steps": [step numbers]
+    }
+  ]
+}
+3-5 findings. JSON only.`;
+}
+
+function getSkepticLens(): ReviewLens {
+  return {
+    id: 'skeptic',
+    label: getCurrentLanguage() === 'ko' ? '비판적 검토' : 'Critical Review',
+    buildPrompt: (ctx) => getCurrentLanguage() === 'ko' ? skepticPromptKo(ctx) : skepticPromptEn(ctx),
+  };
+}
+
+function optimizerPromptKo(ctx: ReviewContext): string {
+  return `당신은 워크플로우 효율성 전문가입니다.
 
 아래 계획에서 불필요하거나 비효율적인 부분, 또는 더 좋은 방법을 찾으세요.
 
@@ -89,7 +125,7 @@ ${ctx.steps.map((s, i) => `${i + 1}. [${s.actor}] ${s.task} (${s.estimated_time 
 - AI에게 더 위임할 수 있는 단계는?
 - 순서를 바꾸면 더 효율적인 부분은?
 
-JSON으로만 응답하세요:
+JSON으로만 응답하세요 (모든 문자열은 한국어):
 {
   "findings": [
     {
@@ -100,8 +136,45 @@ JSON으로만 응답하세요:
     }
   ]
 }
-findings는 2-4개. 반드시 JSON만 응답하세요.`,
-};
+findings는 2-4개. 반드시 JSON만 응답하세요.`;
+}
+
+function optimizerPromptEn(ctx: ReviewContext): string {
+  return `You are a workflow efficiency specialist.
+
+Find unnecessary or inefficient parts, or better approaches, in the plan below.
+
+[Core direction] ${ctx.governing_idea}
+[Workflow]
+${ctx.steps.map((s, i) => `${i + 1}. [${s.actor}] ${s.task} (${s.estimated_time || '?'}) → ${s.expected_output}`).join('\n')}
+
+Review from these angles:
+- Which steps can be parallelized?
+- Which steps are unnecessary or redundant?
+- Which steps could be delegated more to AI?
+- Where would reordering improve efficiency?
+
+Respond in JSON only (all strings in English):
+{
+  "findings": [
+    {
+      "type": "suggestion" or "opportunity",
+      "severity": "high" or "medium" or "low",
+      "text": "specific improvement (one sentence)",
+      "affected_steps": [step numbers]
+    }
+  ]
+}
+2-4 findings. JSON only.`;
+}
+
+function getOptimizerLens(): ReviewLens {
+  return {
+    id: 'optimizer',
+    label: getCurrentLanguage() === 'ko' ? '효율성 검토' : 'Efficiency Review',
+    buildPrompt: (ctx) => getCurrentLanguage() === 'ko' ? optimizerPromptKo(ctx) : optimizerPromptEn(ctx),
+  };
+}
 
 /* ────────────────────────────────────
    Domain Reviewer Selection (BMAD)
@@ -109,18 +182,24 @@ findings는 2-4개. 반드시 JSON만 응답하세요.`,
 
 type DomainType = 'market' | 'tech' | 'organization' | 'general';
 
-const DOMAIN_LABELS: Record<DomainType, string> = {
-  market: '시장 진출 리스크',
-  tech: '기술 실현 가능성',
-  organization: '조직 변화 관리',
-  general: '전략적 리스크',
-};
+function getDomainLabels(): Record<DomainType, string> {
+  const ko = getCurrentLanguage() === 'ko';
+  return {
+    market: ko ? '시장 진출 리스크' : 'Market Entry Risk',
+    tech: ko ? '기술 실현 가능성' : 'Technical Feasibility',
+    organization: ko ? '조직 변화 관리' : 'Organizational Change',
+    general: ko ? '전략적 리스크' : 'Strategic Risk',
+  };
+}
 
 function selectDomainType(text: string): DomainType {
   const lower = text.toLowerCase();
-  const marketKeywords = ['시장', '진출', '고객', '매출', '마케팅', '경쟁', 'gtm', 'go-to-market', '세일즈', '가격', '시장조사'];
-  const techKeywords = ['개발', '시스템', '기술', '아키텍처', '구현', '인프라', 'api', '마이그레이션', '플랫폼', '서버'];
-  const orgKeywords = ['조직', '팀', '프로세스', '채용', '문화', '교육', '온보딩', '변화관리', '리더십'];
+  const marketKeywords = ['시장', '진출', '고객', '매출', '마케팅', '경쟁', 'gtm', 'go-to-market', '세일즈', '가격', '시장조사',
+    'market', 'customer', 'revenue', 'sales', 'pricing', 'competitor'];
+  const techKeywords = ['개발', '시스템', '기술', '아키텍처', '구현', '인프라', 'api', '마이그레이션', '플랫폼', '서버',
+    'development', 'system', 'tech', 'architecture', 'implementation', 'infrastructure', 'migration', 'platform', 'server'];
+  const orgKeywords = ['조직', '팀', '프로세스', '채용', '문화', '교육', '온보딩', '변화관리', '리더십',
+    'organization', 'team', 'process', 'hiring', 'culture', 'training', 'onboarding', 'change management', 'leadership'];
 
   const marketScore = marketKeywords.filter(k => lower.includes(k)).length;
   const techScore = techKeywords.filter(k => lower.includes(k)).length;
@@ -133,25 +212,24 @@ function selectDomainType(text: string): DomainType {
 }
 
 function buildDomainLens(domainType: DomainType): ReviewLens {
-  const domainPrompts: Record<DomainType, string> = {
+  const ko = getCurrentLanguage() === 'ko';
+
+  const domainPromptsKo: Record<DomainType, string> = {
     market: `당신은 시장 진출 리스크 전문가입니다.
 이 계획에서 시장/고객/경쟁 관점에서 놓치고 있는 것을 찾으세요.
 - 시장 규모나 타이밍에 대한 가정이 검증되지 않은 부분은?
 - 경쟁사 대응이 고려되지 않은 부분은?
 - 고객 니즈에 대한 검증이 빠진 부분은?`,
-
     tech: `당신은 기술 실현 가능성 전문가입니다.
 이 계획에서 기술적으로 놓치고 있는 것을 찾으세요.
 - 기술적 복잡도가 과소평가된 부분은?
 - 의존성이나 통합 리스크가 빠진 부분은?
 - 확장성이나 유지보수가 고려되지 않은 부분은?`,
-
     organization: `당신은 조직 변화 관리 전문가입니다.
 이 계획에서 조직/사람 관점에서 놓치고 있는 것을 찾으세요.
 - 이해관계자 저항이 예상되는 부분은?
 - 역량 갭이 있는 부분은?
 - 커뮤니케이션이나 변화관리가 빠진 부분은?`,
-
     general: `당신은 전략적 리스크 전문가입니다.
 이 계획에서 전략적으로 놓치고 있는 것을 찾으세요.
 - 외부 환경 변화에 취약한 부분은?
@@ -159,10 +237,35 @@ function buildDomainLens(domainType: DomainType): ReviewLens {
 - 대안 시나리오가 고려되지 않은 부분은?`,
   };
 
+  const domainPromptsEn: Record<DomainType, string> = {
+    market: `You are a market-entry risk specialist.
+Find what's being overlooked from a market/customer/competition angle.
+- Unverified assumptions about market size or timing?
+- Competitor response not considered?
+- Missing validation of customer needs?`,
+    tech: `You are a technical feasibility specialist.
+Find what's being overlooked technically.
+- Technical complexity underestimated?
+- Missing dependencies or integration risks?
+- Scalability or maintenance not considered?`,
+    organization: `You are an organizational-change specialist.
+Find what's being overlooked from an org/people angle.
+- Expected stakeholder resistance not addressed?
+- Capability gaps?
+- Missing communication or change management?`,
+    general: `You are a strategic-risk specialist.
+Find what's being overlooked strategically.
+- Fragile to external environment shifts?
+- Inefficient resource allocation?
+- No alternative scenarios considered?`,
+  };
+
+  const labels = getDomainLabels();
   return {
     id: `domain_${domainType}`,
-    label: DOMAIN_LABELS[domainType],
-    buildPrompt: (ctx) => `${domainPrompts[domainType]}
+    label: labels[domainType],
+    buildPrompt: (ctx) => ko
+      ? `${domainPromptsKo[domainType]}
 
 [핵심 방향] ${ctx.governing_idea}
 [원래 과제] ${ctx.original_task}
@@ -171,7 +274,7 @@ ${ctx.steps.map((s, i) => `${i + 1}. [${s.actor}] ${s.task} → ${s.expected_out
 [핵심 가정]
 ${ctx.key_assumptions_text}
 
-JSON으로만 응답하세요:
+JSON으로만 응답하세요 (모든 문자열은 한국어):
 {
   "findings": [
     {
@@ -182,7 +285,28 @@ JSON으로만 응답하세요:
     }
   ]
 }
-findings는 2-4개. 반드시 JSON만 응답하세요.`,
+findings는 2-4개. 반드시 JSON만 응답하세요.`
+      : `${domainPromptsEn[domainType]}
+
+[Core direction] ${ctx.governing_idea}
+[Original task] ${ctx.original_task}
+[Workflow]
+${ctx.steps.map((s, i) => `${i + 1}. [${s.actor}] ${s.task} → ${s.expected_output}`).join('\n')}
+[Key assumptions]
+${ctx.key_assumptions_text}
+
+Respond in JSON only (all strings in English):
+{
+  "findings": [
+    {
+      "type": "risk" or "opportunity",
+      "severity": "high" or "medium" or "low",
+      "text": "specific domain risk or opportunity (one sentence)",
+      "affected_steps": [step numbers]
+    }
+  ]
+}
+2-4 findings. JSON only.`,
   };
 }
 
@@ -197,12 +321,13 @@ export async function runWorkflowReview(
   key_assumptions: { assumption: string; if_wrong: string }[],
   original_task: string,
 ): Promise<WorkflowReview[]> {
+  const ko = getCurrentLanguage() === 'ko';
   const ctx: ReviewContext = {
     governing_idea,
     goal_summary,
     steps,
     key_assumptions_text: key_assumptions
-      .map((ka, i) => `${i + 1}. ${ka.assumption}${ka.if_wrong ? ` (틀리면: ${ka.if_wrong})` : ''}`)
+      .map((ka, i) => `${i + 1}. ${ka.assumption}${ka.if_wrong ? (ko ? ` (틀리면: ${ka.if_wrong})` : ` (if wrong: ${ka.if_wrong})`) : ''}`)
       .join('\n'),
     original_task,
   };
@@ -211,14 +336,14 @@ export async function runWorkflowReview(
   const domainType = selectDomainType(`${original_task} ${governing_idea} ${goal_summary}`);
   const domainLens = buildDomainLens(domainType);
 
-  const lenses: ReviewLens[] = [SKEPTIC_LENS, OPTIMIZER_LENS, domainLens];
+  const lenses: ReviewLens[] = [getSkepticLens(), getOptimizerLens(), domainLens];
 
   // Run all 3 reviews in parallel
   const results = await Promise.allSettled(
     lenses.map(async (lens) => {
       const prompt = lens.buildPrompt(ctx);
       const output = await callLLMJson<ReviewOutput>(
-        [{ role: 'user', content: '위 워크플로우를 검토해주세요.' }],
+        [{ role: 'user', content: ko ? '위 워크플로우를 검토해주세요.' : 'Please review the workflow above.' }],
         { system: prompt, maxTokens: 1200, shape: { findings: 'array' } }
       );
       return {

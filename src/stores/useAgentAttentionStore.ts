@@ -15,7 +15,16 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 
-export type PingSource = 'answer' | 'chat' | 'retry' | 'deploy';
+export type PingSource =
+  | 'answer'
+  | 'chat'
+  | 'retry'
+  | 'deploy'
+  // Completion events — fire a toast so users notice new output below the fold.
+  | 'workers_done'
+  | 'mix_done'
+  | 'dm_ready'
+  | 'final_done';
 
 export type AttributionHover =
   | { kind: 'section'; sectionIndex: number; contributorIds: string[] }

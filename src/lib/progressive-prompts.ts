@@ -10,6 +10,7 @@
 
 import type { AnalysisSnapshot, FlowAnswer, FlowQuestion, WorkerPersona } from '@/stores/types';
 import { compactQAHistory, shouldCompact, compactSnapshots, getKeepRecent } from '@/lib/compact-context';
+import { localizePersona } from '@/lib/worker-personas';
 
 import { sanitizeForPrompt as sanitize } from './persona-prompt';
 
@@ -136,7 +137,7 @@ export function buildDeepeningPrompt(
   // Context compression: summarize older Q&A when it gets long (preserve more in later rounds)
   const keepRecent = getKeepRecent(round);
   const qaHistory = shouldCompact(questionsAndAnswers)
-    ? compactQAHistory(questionsAndAnswers, keepRecent)
+    ? compactQAHistory(questionsAndAnswers, keepRecent, locale)
     : questionsAndAnswers.map((qa, i) =>
         `Q${i + 1}: ${sanitize(qa.question.text)}\nA${i + 1}: ${sanitize(qa.answer.value)}`,
       ).join('\n\n');
@@ -262,16 +263,20 @@ export function buildWorkerTaskPrompt(
   const systemParts: string[] = [];
 
   // 1. Persona identity (agent first, persona fallback)
+  //    Localize persona fields so the LLM system prompt matches the target output language.
   if (agent) {
-    systemParts.push(`You are ${agent.name}, ${agent.role}.
+    const agentName = (locale === 'en' && agent.nameEn) ? agent.nameEn : agent.name;
+    const agentRole = (locale === 'en' && agent.roleEn) ? agent.roleEn : agent.role;
+    systemParts.push(`You are ${agentName}, ${agentRole}.
 ${agent.expertise || ''}
 ${agent.tone || ''}`);
     const agentCtx = buildAgentContext(agent);
     if (agentCtx) systemParts.push(agentCtx);
   } else if (persona) {
-    systemParts.push(`You are ${persona.name}, ${persona.role}.
-${persona.expertise}
-${persona.tone}`);
+    const p = localizePersona(persona, locale);
+    systemParts.push(`You are ${p.name}, ${p.role}.
+${p.expertise}
+${p.tone}`);
   }
 
   // 2. Skill frameworks — inject only the assigned framework in full;
@@ -361,10 +366,10 @@ export function buildMixPrompt(
   leadSynthesis?: LeadSynthesisResult | null,
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
-  const snapshotSummary = compactSnapshots(snapshots);
+  const snapshotSummary = compactSnapshots(snapshots, locale);
 
   const qaHistory = shouldCompact(questionsAndAnswers)
-    ? compactQAHistory(questionsAndAnswers, 2)
+    ? compactQAHistory(questionsAndAnswers, 2, locale)
     : questionsAndAnswers.map((qa, i) =>
         `Q${i + 1}: ${sanitize(qa.question.text)}\nA${i + 1}: ${sanitize(qa.answer.value)}`,
       ).join('\n\n');

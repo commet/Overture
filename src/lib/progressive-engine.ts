@@ -625,6 +625,7 @@ export async function runMix(
   signal?: AbortSignal,
   leadSynthesis?: LeadSynthesisResult | null,
   userNotes?: string | null,
+  onToken?: (text: string) => void,
 ): Promise<MixResult> {
   const locale = getCurrentLanguage();
   const { system, user: userPrompt } = buildMixPrompt(
@@ -635,10 +636,17 @@ export async function runMix(
     ? `${userPrompt}\n\n<user-notes>\n사용자가 직접 추가한 의견입니다. 초안에 반드시 반영하세요:\n${userNotes.trim()}\n</user-notes>`
     : userPrompt;
 
-  const result = await callLLMJson<MixResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array', key_assumptions: 'array', next_steps: 'array' } },
-  );
+  const shape = { title: 'string' as const, executive_summary: 'string' as const, sections: 'array' as const, key_assumptions: 'array' as const, next_steps: 'array' as const };
+  const result = onToken
+    ? await callLLMStreamThenParse<MixResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 4000, signal, shape },
+        onToken,
+      )
+    : await callLLMJson<MixResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 4000, signal, shape },
+      );
 
   // Build name → workerId lookup for attribution resolution.
   const nameToId = new Map<string, string>();
@@ -751,6 +759,7 @@ export async function runDMFeedback(
   problemContext: string,
   signal?: AbortSignal,
   mode: 'quick' | 'deep' = 'quick',
+  onToken?: (text: string) => void,
 ): Promise<DMFeedbackResult> {
   const locale = getCurrentLanguage();
   const docText = formatMixForReview(mix);
@@ -762,10 +771,17 @@ export async function runDMFeedback(
     { mode, locale },
   );
 
-  const result = await callLLMJson<DMFeedbackResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 2000, signal, shape: { first_reaction: 'string', good_parts: 'array', concerns: 'array', approval_condition: 'string' } },
-  );
+  const shape = { first_reaction: 'string' as const, good_parts: 'array' as const, concerns: 'array' as const, approval_condition: 'string' as const };
+  const result = onToken
+    ? await callLLMStreamThenParse<DMFeedbackResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000, signal, shape },
+        onToken,
+      )
+    : await callLLMJson<DMFeedbackResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000, signal, shape },
+      );
 
   return dmResponseToResult(result, decisionMaker, '', locale);
 }
@@ -779,6 +795,7 @@ export async function runBossDMFeedback(
   problemContext: string,
   signal?: AbortSignal,
   mode: 'quick' | 'deep' = 'quick',
+  onToken?: (text: string) => void,
 ): Promise<DMFeedbackResult> {
   const locale = getCurrentLanguage();
   const docText = formatMixForReview(mix);
@@ -790,10 +807,17 @@ export async function runBossDMFeedback(
     { mode, locale, agent },
   );
 
-  const result = await callLLMJson<DMFeedbackResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 2000, signal, shape: { first_reaction: 'string', good_parts: 'array', concerns: 'array', approval_condition: 'string' } },
-  );
+  const shape = { first_reaction: 'string' as const, good_parts: 'array' as const, concerns: 'array' as const, approval_condition: 'string' as const };
+  const result = onToken
+    ? await callLLMStreamThenParse<DMFeedbackResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000, signal, shape },
+        onToken,
+      )
+    : await callLLMJson<DMFeedbackResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 2000, signal, shape },
+      );
 
   return dmResponseToResult(result, agent.name, agent.role || (locale === 'ko' ? '팀장' : 'Team Lead'), locale);
 }
@@ -850,6 +874,7 @@ export async function runFinalDeliverable(
   dmFeedback: DMFeedbackResult,
   signal?: AbortSignal,
   workerSources?: WorkerSource[],
+  onToken?: (text: string) => void,
 ): Promise<{ markdown: string; finalMix: MixResult }> {
   const appliedFixes = dmFeedback.concerns
     .filter(c => c.applied)
@@ -865,10 +890,17 @@ export async function runFinalDeliverable(
 
   const { system, user } = buildFinalDeliverablePrompt(mix, appliedFixes, locale);
 
-  const result = await callLLMJson<FinalResponse>(
-    [{ role: 'user', content: user }],
-    { system, maxTokens: 4000, signal, shape: { title: 'string', executive_summary: 'string', sections: 'array' } },
-  );
+  const shape = { title: 'string' as const, executive_summary: 'string' as const, sections: 'array' as const };
+  const result = onToken
+    ? await callLLMStreamThenParse<FinalResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 4000, signal, shape },
+        onToken,
+      )
+    : await callLLMJson<FinalResponse>(
+        [{ role: 'user', content: user }],
+        { system, maxTokens: 4000, signal, shape },
+      );
 
   // Build heading → original section lookup for attribution transplant.
   const originalByHeading = new Map<string, MixResult['sections'][number]>();
@@ -1026,11 +1058,15 @@ export async function runDebate(
   const critic = agents.find(a => (a.keywords || []).some(kw => ['리스크', '위험', '비판', 'risk', 'danger', 'critique'].includes(kw)));
   if (!critic) return null;
 
+  const locale = getCurrentLanguage();
+  const criticName = (locale === 'en' && critic.nameEn) ? critic.nameEn : critic.name;
+  const criticRole = (locale === 'en' && critic.roleEn) ? critic.roleEn : critic.role;
   return runDebateRound({
     problemText,
     stage1Results: workerResults,
-    criticName: critic.name,
-    criticExpertise: critic.expertise || critic.role,
+    criticName,
+    criticExpertise: critic.expertise || criticRole,
+    locale,
   });
 }
 

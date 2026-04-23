@@ -12,14 +12,14 @@ export async function POST(req: NextRequest) {
 
   const cl = Number(req.headers.get('content-length') || 0);
   if (cl > MAX_BODY) {
-    return NextResponse.json({ error: '요청이 너무 큽니다.' }, { status: 413 });
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
   }
 
   try {
     const { year, month, day, hour, minute, gender } = await req.json();
 
     if (!year || !month || !gender) {
-      return NextResponse.json({ error: '연도, 월, 성별은 필수입니다.' }, { status: 400 });
+      return NextResponse.json({ error: 'year, month, and gender are required.' }, { status: 400 });
     }
 
     const profile = await interpretSaju({
@@ -33,6 +33,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(profile);
   } catch {
-    return NextResponse.json({ error: '사주 분석 중 오류가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json({ error: 'Saju analysis failed.' }, { status: 500 });
   }
 }

@@ -12,10 +12,39 @@
 
 import type { FlowQuestion, FlowAnswer, AnalysisSnapshot } from '@/stores/types';
 
+type Locale = 'ko' | 'en';
+
 interface QAPair {
   question: FlowQuestion;
   answer: FlowAnswer;
 }
+
+// ─── Locale-specific labels (injected into LLM context) ───
+
+const LABELS = {
+  ko: {
+    previousRounds: '[이전 라운드 요약]',
+    recentConversation: '[최근 대화]',
+    noAnalysis: '(분석 없음)',
+    insightFlow: '[인사이트 흐름]',
+    realQuestion: '진짜 질문',
+    hiddenAssumptions: '숨겨진 전제',
+    skeleton: '뼈대',
+    executionPlan: '실행계획',
+    latestInsight: '최신 인사이트',
+  },
+  en: {
+    previousRounds: '[Previous rounds — summarized]',
+    recentConversation: '[Recent conversation]',
+    noAnalysis: '(no analysis yet)',
+    insightFlow: '[Insight flow]',
+    realQuestion: 'Real question',
+    hiddenAssumptions: 'Hidden assumptions',
+    skeleton: 'Skeleton',
+    executionPlan: 'Execution plan',
+    latestInsight: 'Latest insight',
+  },
+};
 
 // ─── Caveat extraction ───
 
@@ -26,8 +55,8 @@ function extractCaveats(answer: string): string[] {
     /(?:단,|다만|단지|만약|다만,)\s*[^.!?\n]+/g,
     /(?:~인 경우|~일 때|~하면|~한다면)[^.!?\n]*/g,
     /(?:조건은|전제는|단서는)[^.!?\n]+/g,
-    // 영어 혼용
-    /(?:but |however |only if |unless )[^.!?\n]+/gi,
+    // 영어 조건절
+    /(?:but |however |only if |unless |provided that |as long as )[^.!?\n]+/gi,
   ];
 
   const caveats: string[] = [];
@@ -68,8 +97,10 @@ function summarizeBySentence(text: string, maxSentences = 2): string {
 /** 최근 N개를 제외한 Q&A를 시맨틱 압축하여 반환 */
 export function compactQAHistory(
   questionsAndAnswers: QAPair[],
-  keepRecent = 2
+  keepRecent = 2,
+  locale: Locale = 'ko',
 ): string {
+  const L = LABELS[locale];
   if (questionsAndAnswers.length <= keepRecent) {
     // 전부 원문 유지
     return questionsAndAnswers.map((qa, i) =>
@@ -100,7 +131,7 @@ export function compactQAHistory(
     return `Q${idx}: ${qa.question.text}\nA${idx}: ${qa.answer.value}`;
   }).join('\n\n');
 
-  return `[이전 라운드 요약]\n${compactedOlder}\n\n[최근 대화]\n${fullRecent}`;
+  return `${L.previousRounds}\n${compactedOlder}\n\n${L.recentConversation}\n${fullRecent}`;
 }
 
 /** 라운드에 따라 keepRecent를 결정 (후반일수록 더 많이 보존) */
@@ -110,12 +141,14 @@ export function getKeepRecent(round: number): number {
 
 /** 스냅샷 히스토리를 압축: 최신만 전체, 이전은 delta만 */
 export function compactSnapshots(
-  snapshots: AnalysisSnapshot[]
+  snapshots: AnalysisSnapshot[],
+  locale: Locale = 'ko',
 ): string {
+  const L = LABELS[locale];
   if (snapshots.length <= 1) {
     const s = snapshots[0];
-    if (!s) return '(분석 없음)';
-    return formatSnapshot(s);
+    if (!s) return L.noAnalysis;
+    return formatSnapshot(s, locale);
   }
 
   const latest = snapshots[snapshots.length - 1];
@@ -125,25 +158,26 @@ export function compactSnapshots(
     .map((s, i) => `v${i}: ${s.insight}`)
     .join(' → ');
 
-  const lines = [formatSnapshot(latest)];
+  const lines = [formatSnapshot(latest, locale)];
   if (previousInsights) {
-    lines.push(`[인사이트 흐름] ${previousInsights}`);
+    lines.push(`${L.insightFlow} ${previousInsights}`);
   }
 
   return lines.join('\n');
 }
 
-function formatSnapshot(s: AnalysisSnapshot): string {
+function formatSnapshot(s: AnalysisSnapshot, locale: Locale = 'ko'): string {
+  const L = LABELS[locale];
   const lines = [
-    `- 진짜 질문: ${s.real_question}`,
-    `- 숨겨진 전제: ${s.hidden_assumptions.join(' / ')}`,
-    `- 뼈대: ${s.skeleton.join(' → ')}`,
+    `- ${L.realQuestion}: ${s.real_question}`,
+    `- ${L.hiddenAssumptions}: ${s.hidden_assumptions.join(' / ')}`,
+    `- ${L.skeleton}: ${s.skeleton.join(' → ')}`,
   ];
   if (s.execution_plan) {
-    lines.push(`- 실행계획: ${s.execution_plan.steps.map(st => st.task).join(' → ')}`);
+    lines.push(`- ${L.executionPlan}: ${s.execution_plan.steps.map(st => st.task).join(' → ')}`);
   }
   if (s.insight) {
-    lines.push(`- 최신 인사이트: ${s.insight}`);
+    lines.push(`- ${L.latestInsight}: ${s.insight}`);
   }
   return lines.join('\n');
 }

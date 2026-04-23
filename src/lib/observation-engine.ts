@@ -10,6 +10,7 @@
 
 import { useAgentStore } from '@/stores/useAgentStore';
 import { callLLMJson } from '@/lib/llm';
+import { getCurrentLanguage } from '@/lib/i18n';
 import type { AgentObservation } from '@/stores/agent-types';
 
 // ─── 규칙 기반: 승인 시 ───
@@ -26,9 +27,12 @@ export function onTaskApproved(agentId: string, task: string, result: string): v
 
   // 3회째 승인: 선호도 observation 생성
   if (approvals === 3) {
+    const ko = getCurrentLanguage() === 'ko';
     store.addObservation(agentId, {
       category: 'preference',
-      observation: `이 사용자는 ${agent.role} 관점의 결과물에 만족하는 경향이 있다`,
+      observation: ko
+        ? `이 사용자는 ${agent.role} 관점의 결과물에 만족하는 경향이 있다`
+        : `This user tends to be satisfied with output from the ${agent.role} perspective`,
     });
   }
 
@@ -51,9 +55,9 @@ export function onTaskRejected(agentId: string, task: string): void {
   const agent = store.getAgent(agentId);
   if (!agent) return;
 
-  // 거부 시 기존 선호도 observation 약화
+  // 거부 시 기존 선호도 observation 약화 (match both Korean and English phrasing)
   const prefObs = agent.observations.find(
-    o => o.category === 'preference' && o.observation.includes('만족하는 경향'),
+    o => o.category === 'preference' && (o.observation.includes('만족하는 경향') || o.observation.includes('tends to be satisfied')),
   );
   if (prefObs) {
     // confidence 감소 (-0.2)
@@ -71,29 +75,64 @@ export function onTaskRejected(agentId: string, task: string): void {
   ).length;
 
   if (rejections === 2) {
+    const ko = getCurrentLanguage() === 'ko';
     store.addObservation(agentId, {
       category: 'communication_style',
-      observation: `이 사용자는 ${agent.role}의 결과물 톤이나 깊이를 조정해야 할 수 있다`,
+      observation: ko
+        ? `이 사용자는 ${agent.role}의 결과물 톤이나 깊이를 조정해야 할 수 있다`
+        : `This user may need the ${agent.role}'s output tone or depth adjusted`,
     });
   }
 }
 
 // ─── 도메인 패턴 추출 (규칙 기반) ───
 
-const DOMAIN_KEYWORDS: Record<string, string> = {
-  'B2B': 'B2B 비즈니스',
-  'SaaS': 'SaaS 제품',
-  '스타트업': '스타트업',
-  '투자': '투자/펀딩',
-  '마케팅': '마케팅',
-  '앱': '모바일 앱',
-  'AI': 'AI/ML',
-  '커머스': '이커머스',
-  '교육': '교육/에듀테크',
-  '헬스': '헬스케어',
-  '핀테크': '핀테크/금융',
-  '콘텐츠': '콘텐츠/미디어',
-};
+function getDomainKeywords(): Record<string, string> {
+  const ko = getCurrentLanguage() === 'ko';
+  return ko ? {
+    'B2B': 'B2B 비즈니스',
+    'SaaS': 'SaaS 제품',
+    '스타트업': '스타트업',
+    '투자': '투자/펀딩',
+    '마케팅': '마케팅',
+    '앱': '모바일 앱',
+    'AI': 'AI/ML',
+    '커머스': '이커머스',
+    '교육': '교육/에듀테크',
+    '헬스': '헬스케어',
+    '핀테크': '핀테크/금융',
+    '콘텐츠': '콘텐츠/미디어',
+    'startup': '스타트업',
+    'investment': '투자/펀딩',
+    'marketing': '마케팅',
+    'commerce': '이커머스',
+    'education': '교육/에듀테크',
+    'health': '헬스케어',
+    'fintech': '핀테크/금융',
+    'content': '콘텐츠/미디어',
+  } : {
+    'B2B': 'B2B business',
+    'SaaS': 'SaaS product',
+    '스타트업': 'startup',
+    '투자': 'investment/funding',
+    '마케팅': 'marketing',
+    '앱': 'mobile app',
+    'AI': 'AI/ML',
+    '커머스': 'e-commerce',
+    '교육': 'education/edtech',
+    '헬스': 'healthcare',
+    '핀테크': 'fintech',
+    '콘텐츠': 'content/media',
+    'startup': 'startup',
+    'investment': 'investment/funding',
+    'marketing': 'marketing',
+    'commerce': 'e-commerce',
+    'education': 'education/edtech',
+    'health': 'healthcare',
+    'fintech': 'fintech',
+    'content': 'content/media',
+  };
+}
 
 function extractDomainPattern(
   agentId: string,
@@ -103,17 +142,20 @@ function extractDomainPattern(
   const agent = store.getAgent(agentId);
   if (!agent) return null;
 
-  // 이미 도메인 observation이 있으면 스킵
-  if (agent.observations.some(o => o.category === 'work_pattern' && o.observation.includes('분야'))) {
+  // 이미 도메인 observation이 있으면 스킵 (match both Korean and English phrasing)
+  if (agent.observations.some(o => o.category === 'work_pattern' && (o.observation.includes('분야') || o.observation.includes('domain')))) {
     return null;
   }
 
+  const ko = getCurrentLanguage() === 'ko';
   const text = task.toLowerCase();
-  for (const [keyword, domain] of Object.entries(DOMAIN_KEYWORDS)) {
+  for (const [keyword, domain] of Object.entries(getDomainKeywords())) {
     if (text.includes(keyword.toLowerCase())) {
       return {
         category: 'work_pattern',
-        observation: `이 사용자의 프로젝트는 ${domain} 분야와 관련이 있다`,
+        observation: ko
+          ? `이 사용자의 프로젝트는 ${domain} 분야와 관련이 있다`
+          : `This user's project is related to the ${domain} domain`,
       };
     }
   }
@@ -135,8 +177,14 @@ async function runBatchAnalysis(agentId: string): Promise<void> {
 
   if (recent.length < 3) return;
 
+  const locale = getCurrentLanguage();
+  const agentName = (locale === 'en' && agent.nameEn) ? agent.nameEn : agent.name;
+  const agentRole = (locale === 'en' && agent.roleEn) ? agent.roleEn : agent.role;
+
   const taskSummary = recent.map(a => {
-    const status = a.type === 'task_rejected' ? '거부됨' : '승인됨';
+    const status = a.type === 'task_rejected'
+      ? (locale === 'ko' ? '거부됨' : 'rejected')
+      : (locale === 'ko' ? '승인됨' : 'approved');
     return `- ${a.context.slice(0, 80)} → ${status}`;
   }).join('\n');
 
@@ -144,26 +192,42 @@ async function runBatchAnalysis(agentId: string): Promise<void> {
     .map(o => o.observation)
     .join(', ');
 
+  const noneLabel = locale === 'ko' ? '없음' : 'none';
+
   try {
-    const result = await callLLMJson<{
-      observation: string | null;
-      category: 'preference' | 'skill_gap' | 'communication_style' | 'work_pattern';
-    }>(
-      [{
-        role: 'user',
-        content: `이 에이전트(${agent.name}, ${agent.role})의 최근 작업 기록:
+    const userPrompt = locale === 'ko'
+      ? `이 에이전트(${agentName}, ${agentRole})의 최근 작업 기록:
 ${taskSummary}
 
-기존 관찰: ${existingObs || '없음'}
+기존 관찰: ${existingObs || noneLabel}
 
 이 사용자에 대해 새로 파악할 수 있는 구체적인 것이 하나 있다면?
 기존 관찰과 중복되지 않는 새로운 인사이트만.
 없으면 observation: null.
 
-JSON: { "observation": "한 줄 관찰 또는 null", "category": "preference|skill_gap|communication_style|work_pattern" }`,
-      }],
+JSON: { "observation": "한 줄 관찰 또는 null", "category": "preference|skill_gap|communication_style|work_pattern" }`
+      : `This agent's (${agentName}, ${agentRole}) recent task history:
+${taskSummary}
+
+Existing observations: ${existingObs || noneLabel}
+
+Is there one new, specific thing we can learn about this user?
+Only surface insights that don't duplicate existing observations.
+If nothing new, return observation: null.
+
+JSON: { "observation": "one-line observation or null", "category": "preference|skill_gap|communication_style|work_pattern" }`;
+
+    const systemPrompt = locale === 'ko'
+      ? '사용자의 업무 패턴을 분석하는 관찰자. 구체적이고 실용적인 관찰만. 한국어로.'
+      : "You are an observer analyzing the user's work patterns. Only surface concrete, practical observations. Respond in English.";
+
+    const result = await callLLMJson<{
+      observation: string | null;
+      category: 'preference' | 'skill_gap' | 'communication_style' | 'work_pattern';
+    }>(
+      [{ role: 'user', content: userPrompt }],
       {
-        system: '사용자의 업무 패턴을 분석하는 관찰자. 구체적이고 실용적인 관찰만. Korean only.',
+        system: systemPrompt,
         maxTokens: 150,
         shape: { observation: 'string', category: 'string' },
       },
@@ -182,8 +246,12 @@ JSON: { "observation": "한 줄 관찰 또는 null", "category": "preference|ski
 
 // ─── Phase 3: Boss Chat 메타 관찰 추출 ───
 
+// Boss chat is Korean-domain by design; topic keywords stay Korean.
 const TOPIC_KEYWORDS: Record<string, string> = {
-  ...DOMAIN_KEYWORDS,
+  'B2B': 'B2B 비즈니스', 'SaaS': 'SaaS 제품', '스타트업': '스타트업',
+  '투자': '투자/펀딩', '마케팅': '마케팅', '앱': '모바일 앱', 'AI': 'AI/ML',
+  '커머스': '이커머스', '교육': '교육/에듀테크', '헬스': '헬스케어',
+  '핀테크': '핀테크/금융', '콘텐츠': '콘텐츠/미디어',
   '연봉': '연봉/보상', '협상': '협상', '승진': '승진/경력',
   '퇴사': '이직/퇴사', '피드백': '피드백', '평가': '성과 평가',
   '보고': '보고/발표', '기획': '기획안', '제안': '제안서',

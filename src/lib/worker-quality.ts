@@ -7,6 +7,7 @@
  */
 
 import { callLLMJson } from '@/lib/llm';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 export interface ValidationResult {
   score: number;           // 0-100
@@ -133,10 +134,19 @@ async function validateWithLLM(
     issues: string[];
   }
 
+  const locale = getCurrentLanguage();
+  const userPrompt = locale === 'ko'
+    ? `작업: ${task}\n기대 산출물: ${expectedOutput}\n\n실제 결과물:\n${actualOutput.slice(0, 3000)}\n\n이 결과물의 품질을 채점해줘. issues는 한국어로.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["문제점 목록"] }`
+    : `Task: ${task}\nExpected output: ${expectedOutput}\n\nActual output:\n${actualOutput.slice(0, 3000)}\n\nScore this output's quality. Write "issues" in English.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["list of problems"] }`;
+
+  const systemPrompt = locale === 'ko'
+    ? '작업 산출물 품질 게이트. 관련성(실제로 작업을 수행했는가?), 완전성(플레이스홀더가 아닌가?), 유용성(문서에 바로 쓸 수 있는가?)을 평가. 간결하게. issues는 한국어로.'
+    : 'Quality gate for task output. Score relevance (did it actually do the task?), completeness (not a placeholder?), usefulness (ready to use in a document?). Be concise. Write issues in English.';
+
   const result = await callLLMJson<LLMValidation>(
-    [{ role: 'user', content: `작업: ${task}\n기대 산출물: ${expectedOutput}\n\n실제 결과물:\n${actualOutput.slice(0, 3000)}\n\n이 결과물의 품질을 채점해줘.\nJSON: { "score": 0-100, "is_placeholder": bool, "is_relevant": bool, "issues": ["문제점 목록"] }` }],
+    [{ role: 'user', content: userPrompt }],
     {
-      system: 'Quality gate for task output. Score relevance (did it actually do the task?), completeness (not a placeholder?), usefulness (ready to use in a document?). Be concise.',
+      system: systemPrompt,
       maxTokens: 300,
       model: 'fast' as const,
       shape: { score: 'number', is_placeholder: 'boolean', is_relevant: 'boolean', issues: 'array' },
@@ -216,8 +226,8 @@ export function checkSpecificity(output: string, userInput: string): { score: nu
     score -= genericCount * 3;
   }
 
-  // 3. 수치 구체성
-  const numericPattern = /\d[\d,.]*\s*(%|만|억|조|원|달러|불|개월|년|명|건|개|배|\$|M|K|B)/g;
+  // 3. 수치 구체성 (한국어 + 영어 단위)
+  const numericPattern = /\d[\d,.]*\s*(%|만|억|조|원|달러|불|개월|년|명|건|개|배|\$|M|K|B|months?|years?|days?|weeks?|hours?|users?|customers?|cases|people|times|x|dollars?|USD|KRW|EUR)/gi;
   const numericCount = (output.match(numericPattern) || []).length;
   if (numericCount >= 3) score += 15;
   else if (numericCount >= 1) score += 5;

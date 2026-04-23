@@ -14,6 +14,9 @@
 
 import { callLLMJson } from '@/lib/llm';
 import { sanitizeForPrompt as sanitize } from '@/lib/persona-prompt';
+import { getCurrentLanguage } from '@/lib/i18n';
+
+type Locale = 'ko' | 'en';
 
 /* ─── Types ─── */
 
@@ -27,6 +30,7 @@ export interface DebateInput {
   }>;
   criticName: string;
   criticExpertise: string;
+  locale?: Locale;
 }
 
 export interface DebateResult {
@@ -39,7 +43,7 @@ export interface DebateResult {
 
 /* ─── Prompt ─── */
 
-function buildDebatePrompt(input: DebateInput): { system: string; user: string } {
+function buildDebatePromptKo(input: DebateInput): { system: string; user: string } {
   const system = `당신은 ${input.criticName}, ${input.criticExpertise}입니다.
 팀원들이 제출한 분석 결과를 읽고 가장 위험한 맹점을 찾으세요.
 
@@ -48,7 +52,7 @@ function buildDebatePrompt(input: DebateInput): { system: string; user: string }
 - 가장 취약한 주장 1개를 골라서 왜 위험한지 설명하세요.
 - 대안적 관점을 제시하세요.
 - severity: 이 문제가 계획을 망칠 수 있으면 critical, 수정하면 되면 important, 개선 수준이면 minor.
-- Korean only. 간결하게.
+- 한국어로 간결하게.
 
 JSON으로 응답:
 {
@@ -72,6 +76,46 @@ ${resultsText}
 이 분석들을 종합적으로 읽고, 가장 위험한 맹점을 찾아 반론을 제기하세요.`;
 
   return { system, user };
+}
+
+function buildDebatePromptEn(input: DebateInput): { system: string; user: string } {
+  const system = `You are ${input.criticName}, ${input.criticExpertise}.
+Read your teammates' analyses and find the most dangerous blind spot.
+
+Rules:
+- No generic critiques ("this could fail"). Find a specific weakness that applies ONLY to this plan.
+- Pick the single weakest claim and explain why it's dangerous.
+- Offer an alternative viewpoint.
+- severity: "critical" if this would break the plan, "important" if fixable, "minor" if cosmetic.
+- Respond in English, concisely.
+
+Respond with JSON only:
+{
+  "challenge": "Core counter-argument (≤ 3 lines)",
+  "target_agent": "Name of the teammate whose analysis is weakest",
+  "weakest_claim": "Their weakest specific claim",
+  "alternative_view": "An alternative view",
+  "severity": "critical | important | minor"
+}`;
+
+  const resultsText = input.stage1Results
+    .map(r => `[${r.agentName} (${r.agentRole})${r.framework ? ` — ${r.framework}` : ''}]\n${r.result.slice(0, 800)}`)
+    .join('\n\n---\n\n');
+
+  const user = `Project: <user-data>${sanitize(input.problemText)}</user-data>
+
+Teammates' analyses:
+
+${resultsText}
+
+Read these together and surface the single most dangerous blind spot.`;
+
+  return { system, user };
+}
+
+function buildDebatePrompt(input: DebateInput): { system: string; user: string } {
+  const locale = input.locale || getCurrentLanguage();
+  return locale === 'ko' ? buildDebatePromptKo(input) : buildDebatePromptEn(input);
 }
 
 /* ─── Main ─── */

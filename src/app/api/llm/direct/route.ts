@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
 
     const keyCheck = validateApiKey(apiKey, 'anthropic');
     if (!keyCheck.valid) return NextResponse.json({ error: keyCheck.error }, { status: 400 });
-    if (!validateSystemPrompt(system)) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
-    if (!validateMessages(messages)) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    if (!validateSystemPrompt(system)) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+    if (!validateMessages(messages)) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
 
     const client = new Anthropic({ apiKey });
     const stream = body.stream === true;
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     return res;
   } catch {
     return NextResponse.json(
-      { error: 'LLM 호출 중 오류가 발생했습니다. API 키를 확인해주세요.' },
+      { error: 'LLM call failed. Please check your API key.' },
       { status: 500 }
     );
   }

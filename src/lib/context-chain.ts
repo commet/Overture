@@ -16,6 +16,101 @@ import type {
   HiddenAssumption,
   KeyAssumption,
 } from '@/stores/types';
+import { getCurrentLanguage } from '@/lib/i18n';
+
+/** Locale-aware label map for injectReframeContext / injectRecastContext */
+function getContextLabels() {
+  const ko = getCurrentLanguage() === 'ko';
+  return ko ? {
+    reframeHeader: '## 악보 해석에서 도출된 맥락',
+    originalTask: '원래 과제', reframedQuestion: '재정의된 질문',
+    reframingReason: '리프레이밍 이유',
+    doubtedTitle: '### 의심된 전제 (key_assumptions 최우선 — 검증 단계 필수)',
+    doubtedTag: '(사용자 평가: 의심됨)', doubtedWhy: '의심 이유', ifWrong: '틀리면',
+    uncertainTitle: '### 불확실한 전제 (key_assumptions에 포함 — 검증 방법 제시)',
+    uncertainTag: '(사용자 평가: 불확실)', uncertainWhy: '불확실 이유',
+    confirmedTitleAsBasis: '### 확인된 전제 (계획의 근거로 활용하세요)',
+    confirmedTitleRef: '### 확인된 전제 (참고, 재검증 불필요)',
+    confirmedTag: '(확인됨)',
+    legacyAssumptionsTitle: '### 전제 (평가 미완료 — key_assumptions에 포함시키세요)',
+    legacyIfFalse: '만약 아니라면',
+    riskAwarenessTitle: '### 사용자 리스크 인식',
+    riskAwarenessLine: '- 사용자가 전제의 절반 이상을 의심합니다. 보수적으로 설계하고, 검증 단계를 앞쪽에 배치하세요.',
+    natureKnown: '이 과제는 검증된 방법이 있습니다. 실행의 구체성에 집중하세요.',
+    natureAnalysis: '분석이 필요한 과제입니다. 데이터와 전문성 기반으로 접근하세요.',
+    natureExplore: '탐색적 과제입니다. 작은 실험과 학습 루프를 설계하세요.',
+    natureFire: '긴급 상황입니다. 즉각 대응과 근본 해결을 구분하세요.',
+    goalClear: '목표가 명확합니다. 달성 경로에 집중하세요.',
+    goalDirection: '방향만 있고 구체적 목표가 없습니다. 목표를 구체화하는 단계를 포함하세요.',
+    goalCompeting: '목표가 충돌합니다. 이해관계자별 우선순위 정렬이 필요합니다.',
+    goalUnclear: '목표가 불분명합니다. goal_summary를 특히 구체적으로 작성해주세요.',
+    stakesIrreversible: '되돌리기 어려운 결정입니다. 검증 단계를 실행 전에 배치하세요.',
+    historyFailed: '과거에 비슷한 시도가 실패했습니다. "이번에는 다른 점"을 명확히 하세요.',
+    uncertaintyWhy: '사용자가 "왜 해야 하는지" 불확실해합니다. 목적과 가치를 명확히 해주세요.',
+    uncertaintyWhat: '사용자가 "무엇을 해야 하는지" 불확실해합니다. 범위를 구체적으로 정의해주세요.',
+    uncertaintyHow: '사용자가 "어떻게 해야 하는지" 불확실해합니다. 실행 방법론에 집중해주세요.',
+    uncertaintyNone: '사용자는 정리가 필요한 상태입니다. 구조화에 집중해주세요.',
+    successUnclear: '성공 기준이 불명확합니다. goal_summary를 특히 구체적으로 작성해주세요.',
+    contextSignalsTitle: '### 사용자 맥락 신호',
+    aiLimitTitle: '### AI 한계 (이 부분은 사람에게 배정하세요)',
+    recastHeader: '## 편곡에서 설계된 실행 계획',
+    governingIdea: '핵심 방향', situation: '상황', complication: '문제', resolution: '해결',
+    designRationale: '설계 근거',
+    executionFlowTitle: '### 실행 흐름 (⚑=체크포인트, ★=크리티컬패스)',
+    actorAi: 'AI', actorHuman: '사람', actorBoth: '협업',
+    keyAssumptionsTitle: '### 핵심 가정 (공격 대상)',
+    userDoubtedTitle: '### 사용자가 의심한 전제 (우선 검증 대상)',
+    reframeUnverifiedTitle: '### 악보 해석에서 미확인된 전제',
+    aiLimitPersonaTitle: '### AI 한계 (이 영역은 사람이 판단해야 함)',
+    originalDesignHeader: '## 원래 설계 맥락 (수정 시 위반하지 마세요)',
+    criticalPath: '크리티컬 패스', rootQuestion: '근본 질문', aiLimitShort: 'AI 한계',
+    impactUnknown: '영향 미확인',
+  } : {
+    reframeHeader: '## Context from Reframe stage',
+    originalTask: 'Original task', reframedQuestion: 'Reframed question',
+    reframingReason: 'Why reframed',
+    doubtedTitle: '### Doubted premises (top priority for key_assumptions — verification step required)',
+    doubtedTag: '(user evaluation: doubted)', doubtedWhy: 'Why doubted', ifWrong: 'If wrong',
+    uncertainTitle: '### Uncertain premises (include in key_assumptions — propose how to verify)',
+    uncertainTag: '(user evaluation: uncertain)', uncertainWhy: 'Why uncertain',
+    confirmedTitleAsBasis: '### Confirmed premises (use as basis for the plan)',
+    confirmedTitleRef: '### Confirmed premises (reference only, re-verification unnecessary)',
+    confirmedTag: '(confirmed)',
+    legacyAssumptionsTitle: '### Premises (not evaluated — include in key_assumptions)',
+    legacyIfFalse: 'If it\'s not',
+    riskAwarenessTitle: '### User risk awareness',
+    riskAwarenessLine: '- The user doubts more than half of the premises. Design conservatively and place verification steps early.',
+    natureKnown: 'This task has a proven approach. Focus on execution specifics.',
+    natureAnalysis: 'Analysis-heavy task. Lead with data and domain expertise.',
+    natureExplore: 'Exploratory task. Design small experiments and learning loops.',
+    natureFire: 'Urgent situation. Separate immediate response from root-cause fix.',
+    goalClear: 'Goal is clear. Focus on the path to achieving it.',
+    goalDirection: 'Direction only, no concrete goal. Include a step to concretize the goal.',
+    goalCompeting: 'Goals conflict. Stakeholder priority alignment is needed.',
+    goalUnclear: 'Goal is unclear. Be especially concrete in goal_summary.',
+    stakesIrreversible: 'Irreversible decision. Place verification before execution.',
+    historyFailed: 'A similar past attempt failed. Make it clear what\'s different this time.',
+    uncertaintyWhy: 'User is unsure "why to do this." Clarify purpose and value.',
+    uncertaintyWhat: 'User is unsure "what to do." Define scope concretely.',
+    uncertaintyHow: 'User is unsure "how to do this." Focus on execution methodology.',
+    uncertaintyNone: 'User needs to organize their thinking. Focus on structuring.',
+    successUnclear: 'Success criteria are unclear. Be especially concrete in goal_summary.',
+    contextSignalsTitle: '### User context signals',
+    aiLimitTitle: '### AI limitations (assign these to humans)',
+    recastHeader: '## Execution plan designed in Recast',
+    governingIdea: 'Governing idea', situation: 'Situation', complication: 'Complication', resolution: 'Resolution',
+    designRationale: 'Design rationale',
+    executionFlowTitle: '### Execution flow (⚑=checkpoint, ★=critical path)',
+    actorAi: 'AI', actorHuman: 'Human', actorBoth: 'Collab',
+    keyAssumptionsTitle: '### Key assumptions (attack targets)',
+    userDoubtedTitle: '### Premises user doubted (verify first)',
+    reframeUnverifiedTitle: '### Unverified premises from Reframe',
+    aiLimitPersonaTitle: '### AI limitations (humans must judge these areas)',
+    originalDesignHeader: '## Original design context (do not violate when editing)',
+    criticalPath: 'Critical path', rootQuestion: 'Root question', aiLimitShort: 'AI limits',
+    impactUnknown: 'impact unknown',
+  };
+}
 
 /* ────────────────────────────────────
    Reframe → typed context
@@ -131,13 +226,15 @@ export function injectReframeContext(
   const question = (ctx.selected_direction || ctx.reframed_question || '').trim();
   if (!question && !ctx.surface_task?.trim()) return basePrompt;
 
+  const L = getContextLabels();
+
   // Core direction from reframe
-  sections.push(`## 악보 해석에서 도출된 맥락`);
-  if (ctx.surface_task?.trim()) sections.push(`- 원래 과제: ${ctx.surface_task}`);
-  if (question) sections.push(`- 재정의된 질문: ${question}`);
+  sections.push(L.reframeHeader);
+  if (ctx.surface_task?.trim()) sections.push(`- ${L.originalTask}: ${ctx.surface_task}`);
+  if (question) sections.push(`- ${L.reframedQuestion}: ${question}`);
 
   if (ctx.why_reframing_matters) {
-    sections.push(`- 리프레이밍 이유: ${ctx.why_reframing_matters}`);
+    sections.push(`- ${L.reframingReason}: ${ctx.why_reframing_matters}`);
   }
 
   // Assumptions — grouped by user's evaluation state
@@ -149,42 +246,41 @@ export function injectReframeContext(
 
   if (doubtful.length > 0) {
     sections.push('');
-    sections.push('### 의심된 전제 (key_assumptions 최우선 — 검증 단계 필수)');
+    sections.push(L.doubtedTitle);
     doubtful.forEach((a, i) => {
-      sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 의심됨)`);
-      if (a.evaluation_reason) sections.push(`   의심 이유: ${a.evaluation_reason}`);
-      if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
+      sections.push(`${i + 1}. "${a.assumption}" ${L.doubtedTag}`);
+      if (a.evaluation_reason) sections.push(`   ${L.doubtedWhy}: ${a.evaluation_reason}`);
+      if (a.risk_if_false) sections.push(`   ${L.ifWrong}: ${a.risk_if_false}`);
     });
   }
 
   if (uncertain.length > 0) {
     sections.push('');
-    sections.push('### 불확실한 전제 (key_assumptions에 포함 — 검증 방법 제시)');
+    sections.push(L.uncertainTitle);
     uncertain.forEach((a, i) => {
-      sections.push(`${i + 1}. "${a.assumption}" (사용자 평가: 불확실)`);
-      if (a.evaluation_reason) sections.push(`   불확실 이유: ${a.evaluation_reason}`);
-      if (a.risk_if_false) sections.push(`   틀리면: ${a.risk_if_false}`);
+      sections.push(`${i + 1}. "${a.assumption}" ${L.uncertainTag}`);
+      if (a.evaluation_reason) sections.push(`   ${L.uncertainWhy}: ${a.evaluation_reason}`);
+      if (a.risk_if_false) sections.push(`   ${L.ifWrong}: ${a.risk_if_false}`);
     });
   }
 
   if (confirmed.length > 0) {
     sections.push('');
     if (doubtful.length === 0 && uncertain.length === 0) {
-      // 모든 전제 확인됨 → 방향 강화 근거로 활용
-      sections.push('### 확인된 전제 (계획의 근거로 활용하세요)');
+      sections.push(L.confirmedTitleAsBasis);
     } else {
-      sections.push('### 확인된 전제 (참고, 재검증 불필요)');
+      sections.push(L.confirmedTitleRef);
     }
-    confirmed.forEach(a => sections.push(`- ${a.assumption} (확인됨)`));
+    confirmed.forEach(a => sections.push(`- ${a.assumption} ${L.confirmedTag}`));
   }
 
-  // Legacy: 평가 없는 전제 (이전 데이터 호환)
+  // Legacy: unevaluated assumptions
   if (noEval.length > 0) {
     sections.push('');
-    sections.push('### 전제 (평가 미완료 — key_assumptions에 포함시키세요)');
+    sections.push(L.legacyAssumptionsTitle);
     noEval.forEach((a, i) => {
       sections.push(`${i + 1}. "${a.assumption}"`);
-      if (a.risk_if_false) sections.push(`   만약 아니라면: ${a.risk_if_false}`);
+      if (a.risk_if_false) sections.push(`   ${L.legacyIfFalse}: ${a.risk_if_false}`);
     });
   }
 
@@ -195,8 +291,8 @@ export function injectReframeContext(
     const doubtfulRatio = doubtful.length / evaluated.length;
     if (doubtfulRatio >= 0.5) {
       sections.push('');
-      sections.push('### 사용자 리스크 인식');
-      sections.push('- 사용자가 전제의 절반 이상을 의심합니다. 보수적으로 설계하고, 검증 단계를 앞쪽에 배치하세요.');
+      sections.push(L.riskAwarenessTitle);
+      sections.push(L.riskAwarenessLine);
     }
   }
 
@@ -205,54 +301,44 @@ export function injectReframeContext(
     const signals: string[] = [];
     const s = ctx.interview_signals;
 
-    // v2 signal handling
     if (s.nature) {
       const natureMap: Record<string, string> = {
-        known_path: '이 과제는 검증된 방법이 있습니다. 실행의 구체성에 집중하세요.',
-        needs_analysis: '분석이 필요한 과제입니다. 데이터와 전문성 기반으로 접근하세요.',
-        no_answer: '탐색적 과제입니다. 작은 실험과 학습 루프를 설계하세요.',
-        on_fire: '긴급 상황입니다. 즉각 대응과 근본 해결을 구분하세요.',
+        known_path: L.natureKnown,
+        needs_analysis: L.natureAnalysis,
+        no_answer: L.natureExplore,
+        on_fire: L.natureFire,
       };
       const hint = natureMap[s.nature];
       if (hint) signals.push(hint);
     }
     if (s.goal) {
       const goalMap: Record<string, string> = {
-        clear_goal: '목표가 명확합니다. 달성 경로에 집중하세요.',
-        direction_only: '방향만 있고 구체적 목표가 없습니다. 목표를 구체화하는 단계를 포함하세요.',
-        competing: '목표가 충돌합니다. 이해관계자별 우선순위 정렬이 필요합니다.',
-        unclear: '목표가 불분명합니다. goal_summary를 특히 구체적으로 작성해주세요.',
+        clear_goal: L.goalClear,
+        direction_only: L.goalDirection,
+        competing: L.goalCompeting,
+        unclear: L.goalUnclear,
       };
       const hint = goalMap[s.goal];
       if (hint) signals.push(hint);
     }
-    if (s.stakes === 'irreversible') {
-      signals.push('되돌리기 어려운 결정입니다. 검증 단계를 실행 전에 배치하세요.');
-    }
-    if (s.history === 'failed') {
-      signals.push('과거에 비슷한 시도가 실패했습니다. "이번에는 다른 점"을 명확히 하세요.');
-    }
+    if (s.stakes === 'irreversible') signals.push(L.stakesIrreversible);
+    if (s.history === 'failed') signals.push(L.historyFailed);
 
-    // v1 fallback (for legacy data without nature field)
+    // v1 fallback
     if (!s.nature) {
       if (s.uncertainty) {
         const uncertaintyMap: Record<string, string> = {
-          why: '사용자가 "왜 해야 하는지" 불확실해합니다. 목적과 가치를 명확히 해주세요.',
-          what: '사용자가 "무엇을 해야 하는지" 불확실해합니다. 범위를 구체적으로 정의해주세요.',
-          how: '사용자가 "어떻게 해야 하는지" 불확실해합니다. 실행 방법론에 집중해주세요.',
-          none: '사용자는 정리가 필요한 상태입니다. 구조화에 집중해주세요.',
+          why: L.uncertaintyWhy, what: L.uncertaintyWhat, how: L.uncertaintyHow, none: L.uncertaintyNone,
         };
         const hint = uncertaintyMap[s.uncertainty];
         if (hint) signals.push(hint);
       }
-      if (s.success === 'unclear') {
-        signals.push('성공 기준이 불명확합니다. goal_summary를 특히 구체적으로 작성해주세요.');
-      }
+      if (s.success === 'unclear') signals.push(L.successUnclear);
     }
 
     if (signals.length > 0) {
       sections.push('');
-      sections.push('### 사용자 맥락 신호');
+      sections.push(L.contextSignalsTitle);
       signals.forEach(sig => sections.push(`- ${sig}`));
     }
   }
@@ -260,7 +346,7 @@ export function injectReframeContext(
   // AI limitations → pass through as constraints
   if (ctx.ai_limitations.length > 0) {
     sections.push('');
-    sections.push('### AI 한계 (이 부분은 사람에게 배정하세요)');
+    sections.push(L.aiLimitTitle);
     ctx.ai_limitations.forEach(l => sections.push(`- ${l}`));
   }
 
@@ -278,26 +364,24 @@ export function injectRecastContext(
   reframeCtx?: ReframeContext
 ): string {
   const sections: string[] = [];
+  const L = getContextLabels();
 
-  sections.push('## 편곡에서 설계된 실행 계획');
-  sections.push(`- 핵심 방향: ${recastCtx.governing_idea}`);
+  sections.push(L.recastHeader);
+  sections.push(`- ${L.governingIdea}: ${recastCtx.governing_idea}`);
 
-  // Storyline — 왜 이 접근인지 구조적 맥락
   if (recastCtx.storyline) {
     const s = recastCtx.storyline;
-    sections.push(`- 상황: ${s.situation}`);
-    sections.push(`- 문제: ${s.complication}`);
-    sections.push(`- 해결: ${s.resolution}`);
+    sections.push(`- ${L.situation}: ${s.situation}`);
+    sections.push(`- ${L.complication}: ${s.complication}`);
+    sections.push(`- ${L.resolution}: ${s.resolution}`);
   }
 
-  // Design rationale
   if (recastCtx.design_rationale) {
-    sections.push(`- 설계 근거: ${recastCtx.design_rationale}`);
+    sections.push(`- ${L.designRationale}: ${recastCtx.design_rationale}`);
   }
 
-  // Step summary — 압축된 실행 흐름 (페르소나가 전체 그림을 볼 수 있도록)
   if (recastCtx.steps.length > 0) {
-    const actorLabel: Record<string, string> = { ai: 'AI', human: '사람', both: '협업' };
+    const actorLabel: Record<string, string> = { ai: L.actorAi, human: L.actorHuman, both: L.actorBoth };
     const stepSummary = recastCtx.steps
       .map((step, i) => {
         const num = i + 1;
@@ -307,40 +391,37 @@ export function injectRecastContext(
       })
       .join(' / ');
     sections.push('');
-    sections.push(`### 실행 흐름 (⚑=체크포인트, ★=크리티컬패스)`);
+    sections.push(L.executionFlowTitle);
     sections.push(stepSummary);
   }
 
-  // Key assumptions — 공격 대상
   if (recastCtx.key_assumptions.length > 0) {
     sections.push('');
-    sections.push('### 핵심 가정 (공격 대상)');
+    sections.push(L.keyAssumptionsTitle);
     recastCtx.key_assumptions.forEach((ka, i) => {
       sections.push(`${i + 1}. [${ka.importance}/${ka.certainty}] ${ka.assumption}`);
-      if (ka.if_wrong) sections.push(`   틀리면: ${ka.if_wrong}`);
+      if (ka.if_wrong) sections.push(`   ${L.ifWrong}: ${ka.if_wrong}`);
     });
   }
 
-  // Reframe unverified assumptions
   if (reframeCtx?.unverified_assumptions?.length) {
     const doubtful = reframeCtx.unverified_assumptions.filter(a => a.evaluation === 'doubtful');
     const others = reframeCtx.unverified_assumptions.filter(a => a.evaluation !== 'doubtful');
     if (doubtful.length > 0) {
       sections.push('');
-      sections.push('### 사용자가 의심한 전제 (우선 검증 대상)');
+      sections.push(L.userDoubtedTitle);
       doubtful.forEach(a => sections.push(`- "${a.assumption}"`));
     }
     if (others.length > 0) {
       sections.push('');
-      sections.push('### 악보 해석에서 미확인된 전제');
+      sections.push(L.reframeUnverifiedTitle);
       others.forEach(a => sections.push(`- "${a.assumption}"`));
     }
   }
 
-  // AI limitations from reframe
   if (reframeCtx?.ai_limitations?.length) {
     sections.push('');
-    sections.push('### AI 한계 (이 영역은 사람이 판단해야 함)');
+    sections.push(L.aiLimitPersonaTitle);
     reframeCtx.ai_limitations.forEach(l => sections.push(`- ${l}`));
   }
 
@@ -357,11 +438,12 @@ export function buildRefineContext(
 ): string {
   const sections: string[] = [];
 
-  sections.push('## 원래 설계 맥락 (수정 시 위반하지 마세요)');
-  sections.push(`- 핵심 방향: ${recastCtx.governing_idea}`);
+  const L = getContextLabels();
+  sections.push(L.originalDesignHeader);
+  sections.push(`- ${L.governingIdea}: ${recastCtx.governing_idea}`);
 
   if (recastCtx.design_rationale) {
-    sections.push(`- 설계 근거: ${recastCtx.design_rationale}`);
+    sections.push(`- ${L.designRationale}: ${recastCtx.design_rationale}`);
   }
 
   // Critical path awareness
@@ -370,17 +452,17 @@ export function buildRefineContext(
       .map(i => recastCtx.steps[i - 1]?.task)
       .filter(Boolean);
     if (cpSteps.length > 0) {
-      sections.push(`- 크리티컬 패스: ${cpSteps.join(' → ')}`);
+      sections.push(`- ${L.criticalPath}: ${cpSteps.join(' → ')}`);
     }
   }
 
   if (reframeCtx) {
     const question = reframeCtx.selected_direction || reframeCtx.reframed_question;
     if (question) {
-      sections.push(`- 근본 질문: ${question}`);
+      sections.push(`- ${L.rootQuestion}: ${question}`);
     }
     if (reframeCtx.ai_limitations?.length > 0) {
-      sections.push(`- AI 한계: ${reframeCtx.ai_limitations.join(', ')}`);
+      sections.push(`- ${L.aiLimitShort}: ${reframeCtx.ai_limitations.join(', ')}`);
     }
   }
 
@@ -436,7 +518,7 @@ export function mergeAssumptionsIntoKeyAssumptions(
       assumption: a.assumption,
       importance: 'high' as const,
       certainty: 'low' as const,
-      if_wrong: a.risk_if_false || '영향 미확인',
+      if_wrong: a.risk_if_false || (getCurrentLanguage() === 'ko' ? '영향 미확인' : 'impact unknown'),
     }));
 
   return [...recastAssumptions, ...inherited];

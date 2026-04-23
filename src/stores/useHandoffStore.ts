@@ -9,11 +9,11 @@ interface HandoffState {
 }
 
 const STEP_MAP: Record<string, string> = {
-  'reframe': '악보 해석',
-  'recast': '편곡',
-  'rehearse': '리허설',
-  'refine': '합주 연습',
-  'synthesize': '종합',
+  'reframe': 'Score Reading',
+  'recast': 'Arrangement',
+  'rehearse': 'Rehearsal',
+  'refine': 'Ensemble Practice',
+  'synthesize': 'Synthesis',
 };
 
 export const useHandoffStore = create<HandoffState>((set) => ({

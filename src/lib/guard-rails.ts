@@ -25,7 +25,7 @@ function countMatches(text: string, patterns: (string | RegExp)[]): number {
 }
 
 function countNumericValues(text: string): number {
-  const numericPattern = /\d[\d,.]*\s*(%|만|억|조|원|달러|불|개월|년|명|건|개|배|\$|M|K|B)/g;
+  const numericPattern = /\d[\d,.]*\s*(%|만|억|조|원|달러|불|개월|년|명|건|개|배|\$|M|K|B|months?|years?|days?|weeks?|hours?|users?|customers?|cases|people|times|dollars?|USD|KRW|EUR)/gi;
   return (text.match(numericPattern) || []).length;
 }
 

@@ -722,12 +722,16 @@ export interface AnalysisSnapshot {
 
 export interface WorkerPersona {
   id: string;
-  name: string;           // 한국 이름 (e.g., "수진")
-  role: string;           // 역할 (e.g., "리서치 애널리스트")
-  emoji: string;          // 아바타 이모지
-  expertise: string;      // 전문 영역 설명 (프롬프트용)
-  tone: string;           // 말투 특성 (프롬프트용)
-  color: string;          // UI 액센트 hex
+  name: string;           // Display name (Korean by default)
+  nameEn?: string;        // English override — used when locale='en'
+  role: string;           // Role label (Korean by default)
+  roleEn?: string;        // English override
+  emoji: string;          // Avatar emoji
+  expertise: string;      // Expertise summary (injected into LLM prompt)
+  expertiseEn?: string;   // English override
+  tone: string;           // Tone characterization (injected into LLM prompt)
+  toneEn?: string;        // English override
+  color: string;          // UI accent hex
 }
 
 export type WorkerStatus = 'pending' | 'running' | 'done' | 'error' | 'waiting_input' | 'ai_preparing' | 'sent' | 'waiting_response' | 'validation_failed';
@@ -823,10 +827,11 @@ export interface AgentPlan {
 // Pipeline stages (Phase 3)
 export interface PipelineStage {
   id: string;
-  label: string;                     // "리서치", "비판", "합성" 등
-  workerIds: string[];               // 이 스테이지에 속한 WorkerTask.id[]
+  label: string;                     // Korean label ("분석", "검증")
+  labelEn?: string;                  // English label
+  workerIds: string[];               // WorkerTask.id[] belonging to this stage
   status: 'pending' | 'running' | 'done' | 'failed';
-  dependsOnStageId?: string;         // 이전 스테이지 ID (결과를 입력으로 받음)
+  dependsOnStageId?: string;         // Prior stage id (feeds results forward)
 }
 
 // Workers 배치 단계
