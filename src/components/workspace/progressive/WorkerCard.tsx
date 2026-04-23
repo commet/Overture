@@ -10,6 +10,7 @@ import { WorkerAvatar } from './WorkerAvatar';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useLocale } from '@/hooks/useLocale';
+import { localizePersona } from '@/lib/worker-personas';
 import { recordHitReaction } from '@/lib/hit-rate';
 import { recordStrategyOutcome } from '@/lib/context-strategy';
 import { selectContextStrategy } from '@/lib/context-strategy';
@@ -87,10 +88,10 @@ function ResultModal({ worker, onClose, onApprove, onReject }: {
           <WorkerAvatar persona={worker.persona} size="lg" />
           <div className="flex-1 min-w-0">
             <p className="text-[15px] font-semibold text-[var(--text-primary)] truncate">
-              {worker.persona?.name || 'AI'}
+              {worker.persona ? localizePersona(worker.persona, locale).name : 'AI'}
             </p>
             <p className="text-[13px] text-[var(--text-secondary)] truncate">
-              {worker.persona?.role} · {worker.task}
+              {worker.persona ? localizePersona(worker.persona, locale).role : ''} · {worker.task}
             </p>
           </div>
           <button onClick={onClose} className="p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label={L('닫기', 'Close')}>
@@ -164,7 +165,7 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
     // AI task with draft (legacy both or new ai+self_scope): pre-fill with draft
     (worker.who === 'both' || (aTypeInit === 'ai' && worker.self_scope)) && worker.result ? worker.result : ''
   );
-  const persona = worker.persona;
+  const persona = worker.persona ? localizePersona(worker.persona, locale) : null;
 
   const statusLabel: string = ({
     pending: L('대기 중', 'Pending'),

@@ -7,24 +7,41 @@ import Link from 'next/link';
 import type { Agent, InnerMonologueArchiveEntry } from '@/stores/agent-types';
 import { getLevelProgress, AGENT_LEVELS } from '@/stores/agent-types';
 import { PersonaRefinementSection } from './PersonaRefinementSection';
+import { useLocale } from '@/hooks/useLocale';
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
-const GROUP_LABELS: Record<string, string> = {
-  research: '리서치',
-  strategy: '전략',
-  production: '실행',
-  validation: '검증',
-  special: '총괄',
-  people: '사람들',
-};
+function getGroupLabels(locale: 'ko' | 'en'): Record<string, string> {
+  return locale === 'ko' ? {
+    research: '리서치',
+    strategy: '전략',
+    production: '실행',
+    validation: '검증',
+    special: '총괄',
+    people: '사람들',
+  } : {
+    research: 'Research',
+    strategy: 'Strategy',
+    production: 'Execution',
+    validation: 'Validation',
+    special: 'Lead',
+    people: 'People',
+  };
+}
 
-const OBS_CATEGORY_LABELS: Record<string, string> = {
-  preference: '선호',
-  skill_gap: '약점',
-  communication_style: '소통 방식',
-  work_pattern: '업무 패턴',
-};
+function getObsCategoryLabels(locale: 'ko' | 'en'): Record<string, string> {
+  return locale === 'ko' ? {
+    preference: '선호',
+    skill_gap: '약점',
+    communication_style: '소통 방식',
+    work_pattern: '업무 패턴',
+  } : {
+    preference: 'Preference',
+    skill_gap: 'Skill gap',
+    communication_style: 'Comms style',
+    work_pattern: 'Work pattern',
+  };
+}
 
 interface AgentProfileProps {
   agent: Agent;
@@ -32,6 +49,14 @@ interface AgentProfileProps {
 }
 
 export function AgentProfile({ agent, onClose }: AgentProfileProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const GROUP_LABELS = getGroupLabels(locale);
+  const OBS_CATEGORY_LABELS = getObsCategoryLabels(locale);
+  const displayName = (locale === 'en' && agent.nameEn) ? agent.nameEn : agent.name;
+  const displayRole = (locale === 'en' && agent.roleEn) ? agent.roleEn : agent.role;
+  const displayExpertise = (locale === 'en' && agent.expertiseEn) ? agent.expertiseEn : agent.expertise;
+  const displayTone = (locale === 'en' && agent.toneEn) ? agent.toneEn : agent.tone;
   const { current, next, progress } = getLevelProgress(agent.xp);
   const levelData = AGENT_LEVELS.find(l => l.level === agent.level);
   const isMaxLevel = agent.level >= AGENT_LEVELS[AGENT_LEVELS.length - 1].level;
@@ -54,7 +79,7 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer transition-colors"
-            aria-label="닫기"
+            aria-label={L('닫기', 'Close')}
           >
             <X size={18} className="text-[var(--text-tertiary)]" />
           </button>
@@ -75,10 +100,10 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
             {/* Identity */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {agent.name}
+                {displayName}
               </p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-                {agent.role}
+                {displayRole}
                 <span style={{ color: 'var(--text-tertiary)', marginLeft: 8 }}>
                   {GROUP_LABELS[agent.group] || agent.group}
                 </span>
@@ -109,16 +134,16 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
           {/* Expertise & Tone */}
-          {(agent.expertise || agent.tone) && (
+          {(displayExpertise || displayTone) && (
             <section>
-              {agent.expertise && (
+              {displayExpertise && (
                 <p style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 6 }}>
-                  {agent.expertise}
+                  {displayExpertise}
                 </p>
               )}
-              {agent.tone && (
+              {displayTone && (
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic' }}>
-                  {agent.tone}
+                  {displayTone}
                 </p>
               )}
             </section>
@@ -127,11 +152,11 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
           {/* Stakeholder info (for people agents) */}
           {agent.group === 'people' && agent.organization && (
             <section>
-              <SectionLabel>프로필</SectionLabel>
+              <SectionLabel>{L('프로필', 'Profile')}</SectionLabel>
               <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px 12px', fontSize: 12 }}>
-                {agent.organization && <><span style={{ color: 'var(--text-tertiary)' }}>소속</span><span style={{ color: 'var(--text-primary)' }}>{agent.organization}</span></>}
-                {agent.priorities && <><span style={{ color: 'var(--text-tertiary)' }}>우선</span><span style={{ color: 'var(--text-primary)' }}>{agent.priorities}</span></>}
-                {agent.known_concerns && <><span style={{ color: 'var(--text-tertiary)' }}>우려</span><span style={{ color: 'var(--text-primary)' }}>{agent.known_concerns}</span></>}
+                {agent.organization && <><span style={{ color: 'var(--text-tertiary)' }}>{L('소속', 'Org')}</span><span style={{ color: 'var(--text-primary)' }}>{agent.organization}</span></>}
+                {agent.priorities && <><span style={{ color: 'var(--text-tertiary)' }}>{L('우선', 'Priorities')}</span><span style={{ color: 'var(--text-primary)' }}>{agent.priorities}</span></>}
+                {agent.known_concerns && <><span style={{ color: 'var(--text-tertiary)' }}>{L('우려', 'Concerns')}</span><span style={{ color: 'var(--text-primary)' }}>{agent.known_concerns}</span></>}
               </div>
             </section>
           )}
@@ -139,11 +164,11 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
           {/* Boss personality (for boss agents) */}
           {agent.personality_code && (
             <section>
-              <SectionLabel>성격 프로필</SectionLabel>
+              <SectionLabel>{L('성격 프로필', 'Personality Profile')}</SectionLabel>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <InfoPill label="유형" value={agent.personality_code} />
+                <InfoPill label={L('유형', 'Type')} value={agent.personality_code} />
                 {agent.personality_profile?.bossVibe && (
-                  <InfoPill label="분위기" value={agent.personality_profile.bossVibe} />
+                  <InfoPill label={L('분위기', 'Vibe')} value={agent.personality_profile.bossVibe} />
                 )}
               </div>
             </section>
@@ -152,7 +177,7 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
           {/* Inner Monologue Archive — 이 팀장이 당신을 본 기록 */}
           {agent.origin === 'boss_sim' && agent.inner_monologue_archive && agent.inner_monologue_archive.length > 0 && (
             <section>
-              <SectionLabel>이 팀장이 당신을 본 기록 ({agent.inner_monologue_archive.length})</SectionLabel>
+              <SectionLabel>{L(`이 팀장이 당신을 본 기록 (${agent.inner_monologue_archive.length})`, `How this boss sees you (${agent.inner_monologue_archive.length})`)}</SectionLabel>
               <InnerMonologueArchiveList entries={agent.inner_monologue_archive} color={agent.color} />
             </section>
           )}
@@ -160,7 +185,7 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
           {/* Boss CTAs — 대화 이어가기 + 기획안 리뷰받기 */}
           {agent.origin === 'boss_sim' && (
             <section>
-              <SectionLabel>이 팀장과 계속</SectionLabel>
+              <SectionLabel>{L('이 팀장과 계속', 'Continue with this boss')}</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Link
                   href={`/boss?agent=${agent.id}`}
@@ -171,12 +196,12 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
                   <MessageCircle size={14} style={{ color: agent.color, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                      대화 이어가기
+                      {L('대화 이어가기', 'Continue the conversation')}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
                       {agent.chat_history && agent.chat_history.length > 0
-                        ? `지난 대화 ${agent.chat_history.length}턴이 이어집니다`
-                        : '새 대화를 시작합니다'}
+                        ? L(`지난 대화 ${agent.chat_history.length}턴이 이어집니다`, `Resumes ${agent.chat_history.length} prior turn${agent.chat_history.length === 1 ? '' : 's'}`)
+                        : L('새 대화를 시작합니다', 'Start a new conversation')}
                     </p>
                   </div>
                   <ArrowRight size={12} style={{ color: 'var(--text-tertiary)' }} />
@@ -190,10 +215,10 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
                   <PenSquare size={14} style={{ color: agent.color, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                      기획안 리뷰받기
+                      {L('기획안 리뷰받기', 'Get plan reviewed')}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
-                      이 팀장이 워크스페이스에서 피드백을 줍니다
+                      {L('이 팀장이 워크스페이스에서 피드백을 줍니다', 'This boss gives feedback in your workspace')}
                     </p>
                   </div>
                   <ArrowRight size={12} style={{ color: 'var(--text-tertiary)' }} />
@@ -207,7 +232,7 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
             <PersonaRefinementSection agent={agent} />
           ) : agent.observations.length > 0 ? (
             <section>
-              <SectionLabel>관찰 ({agent.observations.length})</SectionLabel>
+              <SectionLabel>{L(`관찰 (${agent.observations.length})`, `Observations (${agent.observations.length})`)}</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {agent.observations
                   .sort((a, b) => b.confidence - a.confidence)
@@ -239,21 +264,21 @@ export function AgentProfile({ agent, onClose }: AgentProfileProps) {
             </section>
           ) : (
             <section>
-              <SectionLabel>관찰</SectionLabel>
+              <SectionLabel>{L('관찰', 'Observations')}</SectionLabel>
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-                아직 축적된 관찰이 없습니다. 작업을 수행할수록 사용자에 대한 이해가 쌓입니다.
+                {L('아직 축적된 관찰이 없습니다. 작업을 수행할수록 사용자에 대한 이해가 쌓입니다.', 'No observations yet. Understanding accumulates as work is done.')}
               </p>
             </section>
           )}
 
           {/* Stats */}
           <section>
-            <SectionLabel>통계</SectionLabel>
+            <SectionLabel>{L('통계', 'Stats')}</SectionLabel>
             <div style={{ display: 'flex', gap: 16 }}>
               <Stat label="XP" value={agent.xp.toString()} />
-              <Stat label="관찰" value={agent.observations.length.toString()} />
+              <Stat label={L('관찰', 'Obs')} value={agent.observations.length.toString()} />
               {agent.last_used_at && (
-                <Stat label="마지막 사용" value={formatRelativeDate(agent.last_used_at)} />
+                <Stat label={L('마지막 사용', 'Last used')} value={formatRelativeDate(agent.last_used_at, locale)} />
               )}
             </div>
           </section>
@@ -456,14 +481,15 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, locale: 'ko' | 'en' = 'ko'): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '방금';
-  if (mins < 60) return `${mins}분 전`;
+  const ko = locale === 'ko';
+  if (mins < 1) return ko ? '방금' : 'just now';
+  if (mins < 60) return ko ? `${mins}분 전` : `${mins}m ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}시간 전`;
+  if (hours < 24) return ko ? `${hours}시간 전` : `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  if (days < 7) return ko ? `${days}일 전` : `${days}d ago`;
+  return new Date(iso).toLocaleDateString(ko ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
 }

@@ -16,6 +16,7 @@ import { OutputSelector } from '@/components/ui/OutputSelector';
 import { ExecutionReadiness } from '@/components/ui/ExecutionReadiness';
 import Link from 'next/link';
 import { Layers, Map, Users, FileText, RefreshCw, Check, Circle, ArrowRight, Download, Sparkles } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 interface StepStatus {
   tool: string;
@@ -29,6 +30,8 @@ interface StepStatus {
 }
 
 export default function ProjectPage() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const { projects, currentProjectId, loadProjects, setCurrentProjectId } = useProjectStore();
   const { items: reframeItems, loadItems: loadReframe } = useReframeStore();
   const { items: recastItems, loadItems: loadRecast } = useRecastStore();
@@ -61,7 +64,7 @@ export default function ProjectPage() {
     return [
       {
         tool: 'reframe',
-        label: '문제 재정의',
+        label: L('문제 재정의', 'Reframe'),
         icon: <Layers size={18} />,
         href: '/workspace?step=reframe',
         status: latestReframe?.status === 'done' ? 'done' : latestReframe ? 'in-progress' : 'not-started',
@@ -71,31 +74,37 @@ export default function ProjectPage() {
       },
       {
         tool: 'recast',
-        label: '실행 설계',
+        label: L('실행 설계', 'Recast'),
         icon: <Map size={18} />,
         href: '/workspace?step=recast',
         status: latestRecast?.status === 'done' ? 'done' : latestRecast ? 'in-progress' : 'not-started',
-        summary: latestRecast?.analysis ? `${latestRecast.steps.length}단계 워크플로우` : undefined,
+        summary: latestRecast?.analysis
+          ? L(`${latestRecast.steps.length}단계 워크플로우`, `${latestRecast.steps.length}-step workflow`)
+          : undefined,
         color: 'text-[#8b6914]',
         bgColor: 'bg-[var(--human)]',
       },
       {
         tool: 'rehearse',
-        label: '사전 검증',
+        label: L('사전 검증', 'Rehearse'),
         icon: <Users size={18} />,
         href: '/workspace?step=rehearse',
         status: latestFeedback ? 'done' : 'not-started',
-        summary: latestFeedback ? `${latestFeedback.results.length}명 피드백 완료` : undefined,
+        summary: latestFeedback
+          ? L(`${latestFeedback.results.length}명 피드백 완료`, `${latestFeedback.results.length} reviewer${latestFeedback.results.length === 1 ? '' : 's'} done`)
+          : undefined,
         color: 'text-purple-700',
         bgColor: 'bg-purple-50',
       },
       {
         tool: 'synthesize',
-        label: '종합',
+        label: L('종합', 'Synthesize'),
         icon: <Sparkles size={18} />,
         href: '/workspace?step=synthesize',
         status: projectSyntheses.length > 0 ? 'done' : 'not-started',
-        summary: projectSyntheses.length > 0 ? `${projectSyntheses.length}건 종합 완료` : undefined,
+        summary: projectSyntheses.length > 0
+          ? L(`${projectSyntheses.length}건 종합 완료`, `${projectSyntheses.length} synthesis${projectSyntheses.length === 1 ? '' : 'es'} done`)
+          : undefined,
         color: 'text-[#9b5de5]',
         bgColor: 'bg-[#f3ecff]',
       },
@@ -109,9 +118,9 @@ export default function ProjectPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">프로젝트 오버뷰</h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">{L('프로젝트 오버뷰', 'Project Overview')}</h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          사고 프로세스의 전체 여정을 한눈에 확인합니다.
+          {L('사고 프로세스의 전체 여정을 한눈에 확인합니다.', 'See your full thinking journey at a glance.')}
         </p>
       </div>
 
@@ -121,21 +130,22 @@ export default function ProjectPage() {
           {projects.length === 0 ? (
             <Card className="text-center py-12">
               <FileText size={24} className="mx-auto text-[var(--text-secondary)] mb-3" />
-              <p className="text-[14px] text-[var(--text-secondary)] font-medium">아직 프로젝트가 없습니다</p>
+              <p className="text-[14px] text-[var(--text-secondary)] font-medium">{L('아직 프로젝트가 없습니다', 'No projects yet')}</p>
               <p className="text-[12px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto">
-                워크스페이스에서 프로젝트를 만들면, 4단계 프로세스의 진행 상황을 여기서 한눈에 확인할 수 있습니다.
+                {L('워크스페이스에서 프로젝트를 만들면, 4단계 프로세스의 진행 상황을 여기서 한눈에 확인할 수 있습니다.', 'Create a project in your workspace and track the 4-stage process progress here at a glance.')}
               </p>
               <Link href="/workspace">
                 <button className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
-                  워크스페이스에서 시작하기 <ArrowRight size={14} />
+                  {L('워크스페이스에서 시작하기', 'Start in workspace')} <ArrowRight size={14} />
                 </button>
               </Link>
             </Card>
           ) : (
             <>
-              <p className="text-[13px] font-semibold text-[var(--text-secondary)]">프로젝트 선택</p>
+              <p className="text-[13px] font-semibold text-[var(--text-secondary)]">{L('프로젝트 선택', 'Select a project')}</p>
               {projects.map((project) => {
                 const itemCount = project.refs.length;
+                const dateStr = new Date(project.updated_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US');
                 return (
                   <Card
                     key={project.id}
@@ -146,7 +156,7 @@ export default function ProjectPage() {
                       <div>
                         <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{project.name}</h3>
                         <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                          {itemCount}개 항목 · {new Date(project.updated_at).toLocaleDateString('ko-KR')}
+                          {L(`${itemCount}개 항목`, `${itemCount} item${itemCount === 1 ? '' : 's'}`)} · {dateStr}
                         </p>
                       </div>
                       <ArrowRight size={16} className="text-[var(--text-secondary)]" />
@@ -164,10 +174,10 @@ export default function ProjectPage() {
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <button onClick={() => setCurrentProjectId(null)} className="text-[12px] text-[var(--accent)] hover:underline cursor-pointer">
-              ← 프로젝트 목록
+              {L('← 프로젝트 목록', '← Project list')}
             </button>
             <div className="flex gap-2">
-              <CopyButton getText={() => generateProjectBrief(currentProject)} label="브리프 복사" />
+              <CopyButton getText={() => generateProjectBrief(currentProject)} label={L('브리프 복사', 'Copy brief')} />
               <Button variant="secondary" size="sm" onClick={() => {
                 const brief = generateProjectBrief(currentProject);
                 const blob = new Blob([brief], { type: 'text/markdown' });
@@ -178,7 +188,7 @@ export default function ProjectPage() {
                 a.click();
                 URL.revokeObjectURL(url);
               }}>
-                <Download size={14} /> 다운로드
+                <Download size={14} /> {L('다운로드', 'Download')}
               </Button>
             </div>
           </div>
@@ -187,7 +197,7 @@ export default function ProjectPage() {
           <Card>
             <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{currentProject.name}</h2>
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-[12px] text-[var(--text-secondary)]">진행률</span>
+              <span className="text-[12px] text-[var(--text-secondary)]">{L('진행률', 'Progress')}</span>
               <div className="flex-1 h-2 bg-[var(--border)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent)] rounded-full transition-all"
@@ -233,13 +243,13 @@ export default function ProjectPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-[var(--text-secondary)]">STEP {i + 1}</span>
                         <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{step.label}</h3>
-                        {step.status === 'done' && <Badge variant="both">완료</Badge>}
-                        {step.status === 'in-progress' && <Badge variant="ai">진행 중</Badge>}
+                        {step.status === 'done' && <Badge variant="both">{L('완료', 'Done')}</Badge>}
+                        {step.status === 'in-progress' && <Badge variant="ai">{L('진행 중', 'In progress')}</Badge>}
                       </div>
                       {step.summary ? (
                         <p className="text-[13px] text-[var(--text-secondary)] mt-1 truncate">{step.summary}</p>
                       ) : step.status === 'not-started' ? (
-                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">아직 시작 전</p>
+                        <p className="text-[13px] text-[var(--text-secondary)] mt-1 italic">{L('아직 시작 전', 'Not started')}</p>
                       ) : null}
                     </div>
 
@@ -259,16 +269,36 @@ export default function ProjectPage() {
             const toAi = actorOverrides.filter(j => j.decision === 'ai');
             return (
               <Card className="!bg-[var(--bg)]">
-                <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">나의 판단 패턴</h3>
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-3">{L('나의 판단 패턴', 'Your judgment patterns')}</h3>
                 <div className="space-y-2 text-[12px] text-[var(--text-secondary)]">
-                  <p>지금까지 <span className="font-bold text-[var(--text-primary)]">{patterns.totalJudgments}건</span>의 판단을 기록했습니다.</p>
+                  <p>
+                    {locale === 'ko' ? (
+                      <>지금까지 <span className="font-bold text-[var(--text-primary)]">{patterns.totalJudgments}건</span>의 판단을 기록했습니다.</>
+                    ) : (
+                      <>You&apos;ve logged <span className="font-bold text-[var(--text-primary)]">{patterns.totalJudgments}</span> judgment{patterns.totalJudgments === 1 ? '' : 's'} so far.</>
+                    )}
+                  </p>
                   {patterns.overrideRate > 0 && (
-                    <p>AI 제안을 <span className="font-bold text-[var(--text-primary)]">{Math.round(patterns.overrideRate * 100)}%</span> 수정했습니다
-                      {toHuman.length > toAi.length ? ' — 주로 AI→사람으로 변경' : toAi.length > toHuman.length ? ' — 주로 사람→AI로 변경' : ''}.
+                    <p>
+                      {locale === 'ko' ? (
+                        <>AI 제안을 <span className="font-bold text-[var(--text-primary)]">{Math.round(patterns.overrideRate * 100)}%</span> 수정했습니다
+                          {toHuman.length > toAi.length ? ' — 주로 AI→사람으로 변경' : toAi.length > toHuman.length ? ' — 주로 사람→AI로 변경' : ''}.
+                        </>
+                      ) : (
+                        <>You&apos;ve modified AI suggestions <span className="font-bold text-[var(--text-primary)]">{Math.round(patterns.overrideRate * 100)}%</span> of the time
+                          {toHuman.length > toAi.length ? ' — mostly shifting AI→Human' : toAi.length > toHuman.length ? ' — mostly shifting Human→AI' : ''}.
+                        </>
+                      )}
                     </p>
                   )}
                   {projectJudgments.length > 0 && (
-                    <p>이 프로젝트에서 <span className="font-bold text-[var(--text-primary)]">{projectJudgments.length}건</span>의 판단을 내렸습니다.</p>
+                    <p>
+                      {locale === 'ko' ? (
+                        <>이 프로젝트에서 <span className="font-bold text-[var(--text-primary)]">{projectJudgments.length}건</span>의 판단을 내렸습니다.</>
+                      ) : (
+                        <>You&apos;ve made <span className="font-bold text-[var(--text-primary)]">{projectJudgments.length}</span> judgment{projectJudgments.length === 1 ? '' : 's'} in this project.</>
+                      )}
+                    </p>
                   )}
                 </div>
               </Card>
@@ -284,7 +314,12 @@ export default function ProjectPage() {
             return (
               <div className="text-[12px] text-[var(--text-secondary)]">
                 {otherProjects.length > 0 && (
-                  <p>이전 프로젝트 {otherProjects.length}건과 비교할 수 있습니다.</p>
+                  <p>
+                    {L(
+                      `이전 프로젝트 ${otherProjects.length}건과 비교할 수 있습니다.`,
+                      `You can compare against ${otherProjects.length} previous project${otherProjects.length === 1 ? '' : 's'}.`
+                    )}
+                  </p>
                 )}
               </div>
             );
@@ -304,16 +339,16 @@ export default function ProjectPage() {
                   <ArrowRight size={14} className="text-amber-700" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[13px] font-bold text-[var(--text-primary)]">다음 단계: {nextStep.label}</p>
+                  <p className="text-[13px] font-bold text-[var(--text-primary)]">{L(`다음 단계: ${nextStep.label}`, `Next step: ${nextStep.label}`)}</p>
                   <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                    {nextStep.tool === 'reframe' && '숨겨진 전제를 찾고 진짜 질문을 정의합니다.'}
-                    {nextStep.tool === 'recast' && 'AI와 사람의 역할을 설계합니다.'}
-                    {nextStep.tool === 'rehearse' && '판단자의 예상 반응을 시뮬레이션합니다.'}
-                    {nextStep.tool === 'refine' && '피드백을 반영하여 최종본을 완성합니다.'}
+                    {nextStep.tool === 'reframe' && L('숨겨진 전제를 찾고 진짜 질문을 정의합니다.', 'Find hidden assumptions and define the real question.')}
+                    {nextStep.tool === 'recast' && L('AI와 사람의 역할을 설계합니다.', 'Design the split between AI and human roles.')}
+                    {nextStep.tool === 'rehearse' && L('판단자의 예상 반응을 시뮬레이션합니다.', 'Simulate how decision-makers will react.')}
+                    {nextStep.tool === 'refine' && L('피드백을 반영하여 최종본을 완성합니다.', 'Apply feedback and finalize the draft.')}
                   </p>
                   <Link href={nextStep.href}>
                     <Button size="sm" className="mt-2">
-                      {nextStep.label} 시작 <ArrowRight size={12} />
+                      {L(`${nextStep.label} 시작`, `Start ${nextStep.label}`)} <ArrowRight size={12} />
                     </Button>
                   </Link>
                 </div>
@@ -325,10 +360,10 @@ export default function ProjectPage() {
           {completedSteps === steps.length && (
             <Card className="!bg-[var(--collab)] !border-green-200 text-center py-6">
               <Check size={24} className="mx-auto text-[var(--success)] mb-2" />
-              <p className="text-[15px] font-bold text-[var(--success)]">모든 단계를 완료했습니다</p>
-              <p className="text-[12px] text-[#2d6b2d] mt-1">프로젝트 브리프를 복사하거나 다운로드하세요.</p>
+              <p className="text-[15px] font-bold text-[var(--success)]">{L('모든 단계를 완료했습니다', 'All steps complete')}</p>
+              <p className="text-[12px] text-[#2d6b2d] mt-1">{L('프로젝트 브리프를 복사하거나 다운로드하세요.', 'Copy or download the project brief.')}</p>
               <div className="flex justify-center gap-2 mt-3">
-                <CopyButton getText={() => generateProjectBrief(currentProject)} label="브리프 복사" />
+                <CopyButton getText={() => generateProjectBrief(currentProject)} label={L('브리프 복사', 'Copy brief')} />
               </div>
             </Card>
           )}

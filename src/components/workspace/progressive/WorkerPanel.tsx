@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { Users, ChevronUp, X, Settings, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useShallow } from 'zustand/react/shallow';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { TypingDots } from './shared/AgentVisuals';
 import { AgentSidebar } from './AgentSidebar';
+import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import {
   getBuiltinPersonas,
   loadCustomization,
@@ -74,7 +75,7 @@ const COLOR_OPTIONS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#
 function PersonaSettings({ onClose }: { onClose: () => void }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
-  const builtins = getBuiltinPersonas();
+  const builtins = getBuiltinPersonas(locale);
   const [customization, setCustomization] = useState(loadCustomization);
   const [addMode, setAddMode] = useState(false);
   const [newPersona, setNewPersona] = useState<CustomPersonaInput>({
@@ -356,6 +357,38 @@ export function WorkerDrawer({ className }: { className?: string }) {
   const waitingCount = workers.filter(w => w.status === 'waiting_input').length;
   const runningCount = workers.filter(w => w.status === 'running').length;
 
+  // Imperative peek animation — mobile users don't see the workers_done toast
+  // unless they're looking up. This adds a bottom-bar bounce + brief ring so
+  // the cue is in peripheral vision near the drawer handle itself.
+  // Single effect so workers_done + waiting_input bounces never race each
+  // other on the same AnimationControls.
+  const peekControls = useAnimationControls();
+  const [celebrate, setCelebrate] = useState(false);
+  const lastPingAt = useAgentAttentionStore(s => s.lastPingAt);
+  const lastPingSource = useAgentAttentionStore(s => s.lastPingSource);
+  const prevWaitingRef = useRef(waitingCount);
+  useEffect(() => {
+    // Highest priority: workers_done celebration. Latches into `celebrate` for
+    // a brief glow; the bounce plays once per ping.
+    if (lastPingSource === 'workers_done' && lastPingAt > 0) {
+      peekControls.start({
+        y: [0, -14, 0, -6, 0],
+        transition: { duration: 0.95, delay: 0.1, ease: EASE },
+      });
+      setCelebrate(true);
+      const t = setTimeout(() => setCelebrate(false), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [lastPingAt, lastPingSource, peekControls]);
+  useEffect(() => {
+    // Lower priority: nudge only on the rising edge of waiting_input count.
+    // Initial mount doesn't bounce (prev == current).
+    if (waitingCount > prevWaitingRef.current && waitingCount > 0) {
+      peekControls.start({ y: [0, -3, 0], transition: { duration: 0.5, delay: 0.5 } });
+    }
+    prevWaitingRef.current = waitingCount;
+  }, [waitingCount, peekControls]);
+
   if (workers.length === 0) return null;
 
   return (
@@ -363,11 +396,14 @@ export function WorkerDrawer({ className }: { className?: string }) {
       {/* Sticky bottom bar — height: ~56px (py-3.5 × 2 + content) */}
       <motion.button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-0 inset-x-0 z-40 flex items-center justify-between px-4 py-3.5 bg-[var(--surface)] border-t border-[var(--border-subtle)] cursor-pointer min-h-[56px] ${
-          waitingCount > 0 ? 'border-t-[var(--accent)]/40' : ''
+        className={`fixed bottom-0 inset-x-0 z-40 flex items-center justify-between px-4 py-3.5 bg-[var(--surface)] border-t cursor-pointer min-h-[56px] transition-colors duration-500 ${
+          celebrate
+            ? 'border-t-[var(--accent)]/70 shadow-[0_-8px_24px_-6px_rgba(180,160,100,0.35)]'
+            : waitingCount > 0
+              ? 'border-t-[var(--accent)]/40 border-[var(--border-subtle)]'
+              : 'border-[var(--border-subtle)]'
         }`}
-        animate={waitingCount > 0 ? { y: [0, -3, 0] } : {}}
-        transition={waitingCount > 0 ? { duration: 0.5, delay: 0.5 } : {}}
+        animate={peekControls}
       >
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <AvatarRow personas={workers.map(w => w.persona)} maxShow={3} />

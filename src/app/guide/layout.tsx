@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 const META = {
-  ko: { title: '수정 반영 — Overture', description: '피드백을 반영하여 수렴합니다.' },
-  en: { title: 'Refine — Overture', description: 'Apply feedback and converge to the final draft.' },
+  ko: { title: '사용 가이드 — Overture', description: 'Overture의 사용 흐름과 각 도구의 목적.' },
+  en: { title: 'Guide — Overture', description: 'How to use Overture and what each tool is for.' },
 } as const;
 
 export async function generateMetadata(): Promise<Metadata> {

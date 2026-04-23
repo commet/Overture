@@ -39,7 +39,7 @@ const phaseGte = (current: DemoPhase, target: DemoPhase) => PHASE_ORDER.indexOf(
    TYPING INPUT — char-by-char animation
    ═══════════════════════════════════════════════════════════ */
 
-function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
+function TypingInput({ text, onDone, locale = 'ko' }: { text: string; onDone: () => void; locale?: 'ko' | 'en' }) {
   const [typed, setTyped] = useState(0);
   const doneRef = useRef(false);
   const typedRef = useRef(0);
@@ -73,7 +73,7 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
       className="flex items-start gap-3 px-5 py-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] w-full">
       <div className="w-6 h-6 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-[var(--bg)] text-[10px] font-bold">나</span>
+        <span className="text-[var(--bg)] text-[10px] font-bold">{locale === 'ko' ? '나' : 'Me'}</span>
       </div>
       <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
         {text.slice(0, typed)}
@@ -87,7 +87,7 @@ function TypingInput({ text, onDone }: { text: string; onDone: () => void }) {
    TEAM ENTRANCE — stagger avatars
    ═══════════════════════════════════════════════════════════ */
 
-function TeamEntrance({ scenario, onDone }: { scenario: DemoScenario; onDone: () => void }) {
+function TeamEntrance({ scenario, onDone, locale = 'ko' }: { scenario: DemoScenario; onDone: () => void; locale?: 'ko' | 'en' }) {
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   useEffect(() => {
@@ -109,7 +109,7 @@ function TeamEntrance({ scenario, onDone }: { scenario: DemoScenario; onDone: ()
       ))}
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.4 }}
         className="text-[11px] text-[var(--text-tertiary)] pt-1">
-        팀이 구성되었습니다. 상황을 분석합니다...
+        {locale === 'ko' ? '팀이 구성되었습니다. 상황을 분석합니다...' : 'Team assembled. Analyzing the situation...'}
       </motion.p>
     </motion.div>
   );
@@ -338,12 +338,14 @@ function AgentRow({ worker, status, expanded, onToggle }: {
   );
 }
 
-function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
+function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers, locale = 'ko' }: {
   scenario: DemoScenario;
   workers: DemoScenario['workers'];
   phase: DemoPhase;
   visibleWorkers: number;
+  locale?: 'ko' | 'en';
 }) {
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const total = workers.length;
   const statuses = getAgentStatuses(phase, visibleWorkers, total);
@@ -420,9 +422,9 @@ function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
               ?
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-semibold text-[var(--text-primary)]">? — 세 번째 동료</div>
+              <div className="text-[12px] font-semibold text-[var(--text-primary)]">{L('? — 세 번째 동료', '? — Third teammate')}</div>
               <p className="text-[10px] text-[var(--accent)] leading-snug mt-0.5">
-                당신의 Q1 답에 따라 누가 합류할지 정해져요
+                {L('당신의 Q1 답에 따라 누가 합류할지 정해져요', 'Your answer to Q1 decides who joins')}
               </p>
             </div>
           </motion.div>
@@ -442,7 +444,7 @@ function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
               className="flex items-center gap-2 px-3 pt-1 text-[10px] text-[var(--text-tertiary)]"
             >
               <span className="w-1 h-1 rounded-full bg-[var(--text-tertiary)]/40" />
-              <span>{pending}명 더 합류 예정</span>
+              <span>{L(`${pending}명 더 합류 예정`, `${pending} more joining`)}</span>
             </motion.div>
           );
         })()}
@@ -475,7 +477,7 @@ function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
               <div className="pt-1.5 border-t border-[var(--accent)]/10">
                 <p className="text-[10px] text-[var(--accent)]/70 flex items-center gap-1">
                   <ArrowRight size={8} />
-                  아래 기획안에 반영됨
+                  {L('아래 기획안에 반영됨', 'Reflected in the draft below')}
                 </p>
               </div>
             </div>
@@ -490,10 +492,11 @@ function DemoAgentSidebar({ scenario, workers, phase, visibleWorkers }: {
    MOBILE AGENT COMPACT BAR — shown below analysis on mobile
    ═══════════════════════════════════════════════════════════ */
 
-function DemoAgentCompactBar({ workers, phase, visibleWorkers }: {
+function DemoAgentCompactBar({ workers, phase, visibleWorkers, locale = 'ko' }: {
   workers: DemoScenario['workers'];
   phase: DemoPhase;
   visibleWorkers: number;
+  locale?: 'ko' | 'en';
 }) {
   if (!phaseGte(phase, 'analysis')) return null;
   const total = workers.length;
@@ -534,7 +537,7 @@ function DemoAgentCompactBar({ workers, phase, visibleWorkers }: {
         </AnimatePresence>
       </div>
       <span className="text-[10px] text-[var(--text-secondary)] flex-1 inline-flex items-center gap-1.5">
-        {allDone ? 'Analysis done' : <>{workingCount}명 분석 중 <TypingDots /></>}
+        {allDone ? 'Analysis done' : <>{locale === 'ko' ? `${workingCount}명 분석 중` : `${workingCount} analyzing`} <TypingDots /></>}
       </span>
       {workingCount > 0 && !allDone && (
         <Loader2 size={11} className="animate-spin text-[var(--accent)]" />
@@ -1451,13 +1454,13 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 1. Typing input */}
             {phaseGte(phase, 'typing') && (
-              <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} />
+              <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} locale={locale} />
             )}
 
             {/* 2. Team entrance — sidebar replaces this on desktop, keep for mobile timing */}
             <div className="lg:hidden">
               {phaseGte(phase, 'team') && (
-                <TeamEntrance scenario={scenario} onDone={() => setPhase('analysis')} />
+                <TeamEntrance scenario={scenario} onDone={() => setPhase('analysis')} locale={locale} />
               )}
             </div>
             {/* Desktop: invisible trigger for team→analysis transition */}
@@ -1475,7 +1478,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
             {/* Mobile: compact agent bar — hide after draft since sidebar summary / connector takes over */}
             <div className="lg:hidden">
               {!phaseGte(phase, 'draft') && (
-                <DemoAgentCompactBar workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} />
+                <DemoAgentCompactBar workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} locale={locale} />
               )}
             </div>
 
@@ -1709,7 +1712,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
             className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full"
           >
             <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
-              <DemoAgentSidebar scenario={scenario} workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} />
+              <DemoAgentSidebar scenario={scenario} workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} locale={locale} />
             </div>
           </motion.div>
         )}

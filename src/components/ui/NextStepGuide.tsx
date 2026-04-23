@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Card } from './Card';
-import { ArrowRight, Layers, Map, Users, RefreshCw, FileText } from 'lucide-react';
+import { ArrowRight, Map, Users, RefreshCw, FileText } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface NextStepOption {
   href: string;
@@ -25,63 +26,58 @@ export function NextStepGuide({
 }: NextStepGuideProps) {
   const options: NextStepOption[] = [];
 
-  // 악보 해석 → 편곡
   if (currentTool === 'reframe') {
     options.push({
       href: '/tools/recast',
       icon: <Map size={16} />,
-      label: '편곡으로',
-      reason: '숨겨진 질문을 찾았습니다. 이제 이 질문에 답하는 실행 계획을 설계하세요. 발견한 전제와 가설이 편곡의 기초가 됩니다.',
+      label: t('nextStep.toRecast.label'),
+      reason: t('nextStep.toRecast.reason'),
       primary: true,
     });
   }
 
-  // 편곡 → 리허설
   if (currentTool === 'recast') {
     options.push({
       href: '/tools/rehearse',
       icon: <Users size={16} />,
-      label: '리허설로',
-      reason: '실행 설계가 완성되었습니다. 이제 이해관계자 앞에서 연주해보세요. 핵심 가정이 맞는지, 놓친 리스크가 없는지 검증합니다.',
+      label: t('nextStep.toRehearse.label'),
+      reason: t('nextStep.toRehearse.reason'),
       primary: true,
     });
   }
 
-  // 리허설 → 합주 연습
   if (currentTool === 'rehearse') {
     options.push({
       href: '/tools/refine',
       icon: <RefreshCw size={16} />,
-      label: '합주 연습으로',
-      reason: '이해관계자의 반응을 확인했습니다. 지적 사항을 제약조건으로 변환하여, 하모니가 맞을 때까지 반복 개선하세요.',
+      label: t('nextStep.toRefine.label'),
+      reason: t('nextStep.toRefine.reason'),
       primary: true,
     });
   }
 
-  // 합주 연습 → 공연(산출물) 또는 다시 리허설
   if (currentTool === 'refine') {
     options.push({
       href: '/project',
       icon: <FileText size={16} />,
-      label: '공연 — 무대에 올리기',
-      reason: '하모니가 맞았습니다. 사고의 궤적이 담긴 산출물을 생성하세요.',
+      label: t('nextStep.toPerform.label'),
+      reason: t('nextStep.toPerform.reason'),
       primary: true,
     });
     options.push({
       href: '/tools/rehearse',
       icon: <Users size={16} />,
-      label: '리허설 다시',
-      reason: '수정한 내용이 이해관계자의 우려를 해소했는지 다시 검증합니다.',
+      label: t('nextStep.rehearseAgain.label'),
+      reason: t('nextStep.rehearseAgain.reason'),
     });
   }
 
-  // 항상 프로젝트 오버뷰 표시 (현재 도구가 refine이 아닐 때만)
   if (projectId && currentTool !== 'refine') {
     options.push({
       href: '/project',
       icon: <FileText size={16} />,
-      label: '프로젝트 오버뷰',
-      reason: '전체 사고 과정을 한눈에 확인하고 산출물을 생성하세요.',
+      label: t('nextStep.overview.label'),
+      reason: t('nextStep.overview.reason'),
     });
   }
 
@@ -89,7 +85,7 @@ export function NextStepGuide({
 
   return (
     <Card className="!bg-[var(--bg)] !border-[var(--border)]">
-      <p className="text-[12px] font-bold text-[var(--text-secondary)] mb-3">다음 단계</p>
+      <p className="text-[12px] font-bold text-[var(--text-secondary)] mb-3">{t('ui.nextStep')}</p>
       <div className="space-y-2">
         {options.map((option, i) => (
           <div
@@ -112,7 +108,7 @@ export function NextStepGuide({
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-bold text-[var(--text-primary)]">{option.label}</span>
                 {option.primary && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--bg)] font-semibold">추천</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--bg)] font-semibold">{t('ui.recommended')}</span>
                 )}
               </div>
               <p className="text-[12px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{option.reason}</p>

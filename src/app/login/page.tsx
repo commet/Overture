@@ -4,15 +4,26 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { useLocale } from '@/hooks/useLocale';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-const AUTH_ERRORS: Record<string, string> = {
-  auth_failed: '로그인에 실패했습니다. 다시 시도해주세요.',
-  oauth_denied: 'Google 로그인이 취소되었습니다.',
-};
+function getAuthErrors(locale: 'ko' | 'en'): Record<string, string> {
+  if (locale === 'ko') {
+    return {
+      auth_failed: '로그인에 실패했습니다. 다시 시도해주세요.',
+      oauth_denied: 'Google 로그인이 취소되었습니다.',
+    };
+  }
+  return {
+    auth_failed: 'Sign-in failed. Please try again.',
+    oauth_denied: 'Google sign-in was canceled.',
+  };
+}
 
 function LoginContent() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
@@ -31,10 +42,11 @@ function LoginContent() {
   // Handle error/redirect params from middleware or callback
   useEffect(() => {
     const errorParam = searchParams.get('error');
-    if (errorParam && AUTH_ERRORS[errorParam]) {
-      setError(AUTH_ERRORS[errorParam]);
+    const errors = getAuthErrors(locale);
+    if (errorParam && errors[errorParam]) {
+      setError(errors[errorParam]);
     }
-  }, [searchParams]);
+  }, [searchParams, locale]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -56,7 +68,7 @@ function LoginContent() {
       if (error) {
         setError(error);
       } else {
-        setMessage('비밀번호 재설정 링크를 보냈습니다. 이메일을 확인해주세요.');
+        setMessage(L('비밀번호 재설정 링크를 보냈습니다. 이메일을 확인해주세요.', 'Password reset link sent. Please check your email.'));
       }
     } else if (isSignUp) {
       const { error } = await signUpWithEmail(email, password, captchaToken || undefined);
@@ -65,7 +77,7 @@ function LoginContent() {
         turnstileRef.current?.reset();
         setCaptchaToken('');
       } else {
-        setMessage('확인 메일을 보냈습니다. 이메일을 확인해주세요.');
+        setMessage(L('확인 메일을 보냈습니다. 이메일을 확인해주세요.', 'Confirmation email sent. Please check your email.'));
       }
     } else {
       const { error } = await signInWithEmail(email, password);
@@ -89,7 +101,7 @@ function LoginContent() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[13px] text-[var(--text-secondary)]">워크스페이스로 이동 중...</p>
+          <p className="text-[13px] text-[var(--text-secondary)]">{L('워크스페이스로 이동 중...', 'Taking you to the workspace...')}</p>
         </div>
       </div>
     );
@@ -115,7 +127,7 @@ function LoginContent() {
             <span className="text-[22px] font-extrabold text-[var(--text-primary)] tracking-tight">Overture</span>
           </div>
           <p className="text-[14px] text-[var(--text-secondary)]">
-            과제를 해석하고, 실행을 설계하세요
+            {L('과제를 해석하고, 실행을 설계하세요', 'Reframe the problem. Design the execution.')}
           </p>
         </div>
 
@@ -134,16 +146,20 @@ function LoginContent() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Google로 시작하기
+            {L('Google로 시작하기', 'Continue with Google')}
           </button>
           <p className="text-[11px] text-[var(--text-tertiary)] text-center leading-relaxed">
-            시작하면 <a href="/terms" target="_blank" className="text-[var(--accent)] hover:underline">이용약관</a> 및 <a href="/privacy" target="_blank" className="text-[var(--accent)] hover:underline">개인정보처리방침</a>에 동의합니다
+            {locale === 'ko' ? (
+              <>시작하면 <a href="/terms" target="_blank" className="text-[var(--accent)] hover:underline">이용약관</a> 및 <a href="/privacy" target="_blank" className="text-[var(--accent)] hover:underline">개인정보처리방침</a>에 동의합니다</>
+            ) : (
+              <>By continuing you agree to our <a href="/terms" target="_blank" className="text-[var(--accent)] hover:underline">Terms</a> and <a href="/privacy" target="_blank" className="text-[var(--accent)] hover:underline">Privacy Policy</a></>
+            )}
           </p>
 
           {/* Divider */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-[12px] text-[var(--text-tertiary)]">또는</span>
+            <span className="text-[12px] text-[var(--text-tertiary)]">{L('또는', 'or')}</span>
             <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
 
@@ -155,7 +171,7 @@ function LoginContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일"
+                placeholder={L('이메일', 'Email')}
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)] transition-all"
               />
             </div>
@@ -167,7 +183,7 @@ function LoginContent() {
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="비밀번호 (8자 이상)"
+                  placeholder={L('비밀번호 (8자 이상)', 'Password (8+ characters)')}
                   className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--gold-muted),var(--glow-accent)] transition-all"
                 />
               </div>
@@ -180,7 +196,7 @@ function LoginContent() {
               <p className="text-[12px] text-[var(--success)] bg-green-50 rounded-lg px-3 py-2">{message}</p>
             )}
 
-            {/* 회원가입 시 약관 동의 */}
+            {/* Terms agreement on sign-up */}
             {isSignUp && (
               <div className="space-y-2 pt-1">
                 <label className="flex items-start gap-2.5 cursor-pointer">
@@ -191,8 +207,12 @@ function LoginContent() {
                     className="mt-0.5 w-4 h-4 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
                   />
                   <span className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-                    <span className="text-[var(--danger)]">[필수]</span>{' '}
-                    <a href="/terms" target="_blank" className="text-[var(--accent)] underline">서비스 이용약관</a>에 동의합니다
+                    <span className="text-[var(--danger)]">{L('[필수]', '[Required]')}</span>{' '}
+                    {locale === 'ko' ? (
+                      <><a href="/terms" target="_blank" className="text-[var(--accent)] underline">서비스 이용약관</a>에 동의합니다</>
+                    ) : (
+                      <>I agree to the <a href="/terms" target="_blank" className="text-[var(--accent)] underline">Terms of Service</a></>
+                    )}
                   </span>
                 </label>
                 <label className="flex items-start gap-2.5 cursor-pointer">
@@ -203,8 +223,12 @@ function LoginContent() {
                     className="mt-0.5 w-4 h-4 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
                   />
                   <span className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-                    <span className="text-[var(--danger)]">[필수]</span>{' '}
-                    <a href="/privacy" target="_blank" className="text-[var(--accent)] underline">개인정보처리방침</a>에 동의합니다
+                    <span className="text-[var(--danger)]">{L('[필수]', '[Required]')}</span>{' '}
+                    {locale === 'ko' ? (
+                      <><a href="/privacy" target="_blank" className="text-[var(--accent)] underline">개인정보처리방침</a>에 동의합니다</>
+                    ) : (
+                      <>I agree to the <a href="/privacy" target="_blank" className="text-[var(--accent)] underline">Privacy Policy</a></>
+                    )}
                   </span>
                 </label>
               </div>
@@ -227,7 +251,13 @@ function LoginContent() {
               disabled={submitting || (isSignUp && (!agreedTerms || !agreedPrivacy || (!!TURNSTILE_SITE_KEY && !captchaToken)))}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[14px] font-semibold hover:bg-[var(--primary-light)] disabled:opacity-50 transition-colors cursor-pointer"
             >
-              {submitting ? '처리 중...' : isReset ? '재설정 링크 보내기' : isSignUp ? '회원가입' : '로그인'}
+              {submitting
+                ? L('처리 중...', 'Working...')
+                : isReset
+                  ? L('재설정 링크 보내기', 'Send reset link')
+                  : isSignUp
+                    ? L('회원가입', 'Sign up')
+                    : L('로그인', 'Sign in')}
             </button>
           </form>
 
@@ -237,18 +267,26 @@ function LoginContent() {
               onClick={() => { setIsReset(true); setError(''); setMessage(''); }}
               className="w-full text-center text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
             >
-              비밀번호를 잊으셨나요?
+              {L('비밀번호를 잊으셨나요?', 'Forgot your password?')}
             </button>
           )}
 
           {/* Toggle Sign Up / Sign In / Reset */}
           <p className="text-center text-[13px] text-[var(--text-secondary)]">
-            {isReset ? '비밀번호가 기억나셨나요?' : isSignUp ? '이미 계정이 있으신가요?' : '처음이신가요?'}
+            {isReset
+              ? L('비밀번호가 기억나셨나요?', 'Remembered your password?')
+              : isSignUp
+                ? L('이미 계정이 있으신가요?', 'Already have an account?')
+                : L('처음이신가요?', 'New here?')}
             <button
               onClick={() => { setIsSignUp(isReset ? false : !isSignUp); setIsReset(false); setError(''); setMessage(''); }}
               className="ml-1.5 text-[var(--accent)] font-semibold hover:underline cursor-pointer"
             >
-              {isReset ? '로그인' : isSignUp ? '로그인' : '회원가입'}
+              {isReset
+                ? L('로그인', 'Sign in')
+                : isSignUp
+                  ? L('로그인', 'Sign in')
+                  : L('회원가입', 'Sign up')}
             </button>
           </p>
           </div>

@@ -5,12 +5,13 @@ import { Music2, X, Lightbulb, BarChart3, TrendingUp, AlertTriangle, Target, Eye
 import { useWorkspaceStore } from '@/stores/useWorkspaceStore';
 import { buildConcertmasterProfile, buildConcertmasterInsights, buildLearningCurve } from '@/lib/concertmaster';
 import type { ConcertmasterInsight, LearningCurve } from '@/lib/concertmaster';
+import { t } from '@/lib/i18n';
 
-const STRATEGY_DISPLAY: Record<string, string> = {
-  challenge_existence: '존재 의심',
-  narrow_scope: '범위 집중',
-  diagnose_root: '원인 진단',
-  redirect_angle: '관점 전환',
+const STRATEGY_KEYS: Record<string, Parameters<typeof t>[0]> = {
+  challenge_existence: 'strategy.challengeExistence',
+  narrow_scope: 'strategy.narrowScope',
+  diagnose_root: 'strategy.diagnoseRoot',
+  redirect_angle: 'strategy.redirectAngle',
 };
 
 const CATEGORY_ICON: Record<ConcertmasterInsight['category'], typeof Lightbulb> = {
@@ -20,11 +21,18 @@ const CATEGORY_ICON: Record<ConcertmasterInsight['category'], typeof Lightbulb> 
   warning: AlertTriangle,
 };
 
-const TREND_LABEL: Record<string, { text: string; color: string }> = {
-  improving: { text: '향상', color: 'text-emerald-500' },
-  stable: { text: '안정', color: 'text-[var(--text-secondary)]' },
-  declining: { text: '하락', color: 'text-amber-500' },
-  not_enough_data: { text: '데이터 수집 중', color: 'text-[var(--text-tertiary)]' },
+const TREND_COLOR: Record<string, string> = {
+  improving: 'text-emerald-500',
+  stable: 'text-[var(--text-secondary)]',
+  declining: 'text-amber-500',
+  not_enough_data: 'text-[var(--text-tertiary)]',
+};
+
+const TREND_KEY: Record<string, Parameters<typeof t>[0]> = {
+  improving: 'learning.trendImproving',
+  stable: 'learning.trendStable',
+  declining: 'learning.trendDeclining',
+  not_enough_data: 'learning.trendNoData',
 };
 
 /* ────────────────────────────────────
@@ -154,8 +162,8 @@ function AxisCoverageBar({ coverage, gap }: { coverage: Record<string, number>; 
    ──────────────────────────────────── */
 
 function TierProgress({ tier, progress }: { tier: 1 | 2 | 3; progress: number }) {
-  const tierLabels = ['', '초보', '숙련', '마스터'];
-  const nextTierLabels = ['', '숙련', '마스터', ''];
+  const tierLabels = ['', t('learning.tierBeginner'), t('learning.tierSkilled'), t('learning.tierMaster')];
+  const nextTierLabels = ['', t('learning.tierSkilled'), t('learning.tierMaster'), ''];
 
   return (
     <div className="flex items-center gap-2">
@@ -205,7 +213,7 @@ export function ConcertmasterStrip() {
         className={`hidden lg:flex shrink-0 w-12 flex-col items-center justify-start pt-4 gap-2 border-l border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:bg-[var(--ai)] transition-colors relative ${
           hasNewInsights ? 'animate-subtle-pulse' : ''
         }`}
-        title="악장 열기"
+        title={t('concertmaster.open')}
       >
         <div className="absolute inset-y-0 left-0 w-[2px]" style={{ background: 'var(--gradient-gold)' }} />
         <Music2 size={18} className="text-[var(--gold)]" />
@@ -225,7 +233,7 @@ export function ConcertmasterStrip() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <Music2 size={16} className="text-[var(--gold)]" />
-          <span className="text-[14px] font-bold text-[var(--text-primary)]">악장</span>
+          <span className="text-[14px] font-bold text-[var(--text-primary)]">{t('concertmaster.title')}</span>
         </div>
         <button
           onClick={toggleConcertmaster}
@@ -238,17 +246,17 @@ export function ConcertmasterStrip() {
       {/* Profile summary */}
       <div className="px-4 py-3 border-b border-[var(--border-subtle)] space-y-1">
         <p className="text-[13px] text-[var(--text-primary)]">
-          {profile.sessionCount}회 분석
-          {profile.projectCount > 0 && ` · ${profile.projectCount}개 프로젝트`}
+          {t('concertmaster.sessions', { count: profile.sessionCount })}
+          {profile.projectCount > 0 && ` · ${t('concertmaster.projects', { count: profile.projectCount })}`}
         </p>
         {profile.dominantStrategy && (
           <p className="text-[12px] text-[var(--text-secondary)]">
-            선호 전략: {STRATEGY_DISPLAY[profile.dominantStrategy] || profile.dominantStrategy}
+            {t('concertmaster.preferredStrategy', { strategy: STRATEGY_KEYS[profile.dominantStrategy] ? t(STRATEGY_KEYS[profile.dominantStrategy]) : profile.dominantStrategy })}
           </p>
         )}
         {profile.totalJudgments >= 3 && (
           <p className="text-[12px] text-[var(--text-secondary)]">
-            AI 수정률: {Math.round(profile.overrideRate * 100)}%
+            {t('concertmaster.overrideRate', { rate: Math.round(profile.overrideRate * 100) })}
           </p>
         )}
         {/* Tier progress */}
@@ -261,7 +269,7 @@ export function ConcertmasterStrip() {
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] space-y-2">
             <div className="flex items-center gap-1.5">
               <TrendingUp size={12} className="text-[var(--gold)]" />
-              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">판단 품질 추이</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{t('learning.dqTrend')}</span>
             </div>
 
             {/* DQ Sparkline */}
@@ -269,9 +277,9 @@ export function ConcertmasterStrip() {
 
             {/* Trend + Most improved */}
             <div className="flex items-center justify-between">
-              <span className={`text-[11px] ${TREND_LABEL[learningCurve.trend].color}`}>
-                {TREND_LABEL[learningCurve.trend].text}
-                {learningCurve.avg_dq > 0 && ` · 평균 ${learningCurve.avg_dq}`}
+              <span className={`text-[11px] ${TREND_COLOR[learningCurve.trend]}`}>
+                {t(TREND_KEY[learningCurve.trend])}
+                {learningCurve.avg_dq > 0 && ` · ${t('concertmaster.avgSuffix', { n: learningCurve.avg_dq })}`}
               </span>
               {learningCurve.most_improved_element && learningCurve.improvement_delta > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px]">
@@ -287,7 +295,7 @@ export function ConcertmasterStrip() {
         {learningCurve.has_data && learningCurve.dq_points.length === 1 && (
           <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-[var(--text-secondary)]">판단 품질</span>
+              <span className="text-[11px] text-[var(--text-secondary)]">{t('concertmaster.dqScore')}</span>
               <span className="text-[14px] font-bold text-[var(--gold)]">
                 {learningCurve.dq_points[0].overall_dq}
                 <span className="text-[10px] font-normal text-[var(--text-tertiary)]">/100</span>
@@ -301,12 +309,12 @@ export function ConcertmasterStrip() {
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] space-y-2">
             <div className="flex items-center gap-1.5">
               <Eye size={12} className="text-[var(--gold)]" />
-              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">탐색된 관점</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{t('learning.exploredAxes')}</span>
             </div>
             <AxisCoverageBar coverage={learningCurve.axis_coverage} gap={learningCurve.axis_gap} />
             {learningCurve.axis_gap && (
               <p className="text-[10px] text-amber-500">
-                {learningCurve.axis_gap} 관점이 아직 탐색되지 않았습니다
+                {t('learning.axisGap', { axis: learningCurve.axis_gap })}
               </p>
             )}
           </div>
@@ -317,8 +325,8 @@ export function ConcertmasterStrip() {
           {insights.length === 0 && !learningCurve.has_data && (
             <p className="text-[12px] text-[var(--text-secondary)] text-center py-4">
               {profile.sessionCount === 0
-                ? '첫 분석을 시작하면 인사이트가 쌓입니다.'
-                : '새로운 인사이트가 없습니다.'}
+                ? t('concertmaster.firstSession')
+                : t('concertmaster.noInsights')}
             </p>
           )}
           {insights.map((insight) => {
@@ -343,7 +351,7 @@ export function ConcertmasterStrip() {
                   <button
                     onClick={() => setDismissed((prev) => new Set(prev).add(insight.id))}
                     className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-opacity"
-                    title="닫기"
+                    title={t('concertmaster.close')}
                   >
                     <X size={12} />
                   </button>

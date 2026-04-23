@@ -32,6 +32,7 @@ import type { DemoScenario } from '@/lib/demo-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
+import { parsePartialAnalysis } from '@/lib/partial-analysis';
 
 /* ─── Step-level error fallback ─── */
 function StepErrorFallback() {
@@ -99,61 +100,6 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
 
 /* EASE — imported from shared/constants */
 
-/* ─── Partial JSON parser for streaming InitialAnalysisResponse ─── */
-type PartialStage = 'reading' | 'question' | 'assumptions' | 'skeleton';
-interface PartialAnalysis {
-  real_question: string;
-  real_question_complete: boolean;
-  hidden_assumptions: string[];
-  skeleton: string[];
-  stage: PartialStage;
-}
-
-function unescapeJsonString(s: string): string {
-  return s.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
-}
-
-function extractCompleteStrings(text: string, key: string): string[] {
-  const m = text.match(new RegExp(`"${key}"\\s*:\\s*\\[`));
-  if (!m || m.index === undefined) return [];
-  const start = m.index + m[0].length;
-  const items: string[] = [];
-  let i = start;
-  while (i < text.length) {
-    while (i < text.length && /[\s,]/.test(text[i])) i++;
-    if (i >= text.length || text[i] === ']') break;
-    if (text[i] !== '"') break;
-    i++;
-    let s = '';
-    let completed = false;
-    while (i < text.length) {
-      const c = text[i];
-      if (c === '\\' && i + 1 < text.length) {
-        const nx = text[i + 1];
-        s += nx === 'n' ? '\n' : nx === 't' ? '\t' : nx === '"' ? '"' : nx === '\\' ? '\\' : nx;
-        i += 2;
-      } else if (c === '"') { completed = true; i++; break; }
-      else { s += c; i++; }
-    }
-    if (completed) items.push(s);
-    else break;
-  }
-  return items;
-}
-
-function parsePartialAnalysis(text: string): PartialAnalysis {
-  const rqMatch = text.match(/"real_question"\s*:\s*"((?:[^"\\]|\\.)*)("?)/);
-  const real_question = rqMatch ? unescapeJsonString(rqMatch[1]) : '';
-  const real_question_complete = rqMatch ? rqMatch[2] === '"' : false;
-  const hidden_assumptions = extractCompleteStrings(text, 'hidden_assumptions');
-  const skeleton = extractCompleteStrings(text, 'skeleton');
-  let stage: PartialStage = 'reading';
-  if (text.includes('"skeleton"')) stage = 'skeleton';
-  else if (text.includes('"hidden_assumptions"')) stage = 'assumptions';
-  else if (real_question) stage = 'question';
-  return { real_question, real_question_complete, hidden_assumptions, skeleton, stage };
-}
-
 /* ─── HeroFlow: idle → assembling → analyzing → ready ─── */
 type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
 
@@ -218,7 +164,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
     // 1. idle → assembling: 팀 등장 (store 미동기 — HeroFlow가 언마운트되면 안 됨)
     setPhase('assembling');
     setError(null);
-    const pool = getPersonaPool();
+    const pool = getPersonaPool(locale);
     setPreviewPersonas(pool.slice(0, 4));
     track('workspace_problem_submit', { text_length: text.length, source: 'hero_flow' });
 

@@ -33,6 +33,7 @@ const lazyEvalEngine = () => import('@/lib/eval-engine');
 const lazyVitality = () => import('@/lib/judgment-vitality');
 import { recommendBlindSpotPersona } from '@/lib/auto-persona';
 import type { BlindSpotRecommendation } from '@/lib/auto-persona';
+import { useLocale } from '@/hooks/useLocale';
 
 /// Unified review prompt (shared with web app)
 function buildPersonaReview(persona: Persona, documentText: string, contextText: string, perspective?: string, intensity?: string): { system: string; user: string } {
@@ -78,6 +79,8 @@ interface RehearseStepProps {
 }
 
 export function RehearseStep({ onNavigate }: RehearseStepProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const { personas, feedbackHistory, loadData, createPersona, updatePersona, deletePersona, addFeedbackRecord, updateFeedbackRecord, getPersona, seedDefaultPersonas } = usePersonaStore();
   const { loadSettings } = useSettingsStore();
   const { loadRatings } = useAccuracyStore();
@@ -135,7 +138,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
   useEffect(() => {
     if (handoff) {
       setHandoffContent(handoff.content || '');
-      setHandoffTitle(`${handoff.from === 'reframe' ? '악보 해석' : handoff.from === 'recast' ? '편곡' : '리허설'} 결과물`);
+      setHandoffTitle(`${handoff.from === 'reframe' ? L('악보 해석', 'Reframe') : handoff.from === 'recast' ? L('편곡', 'Recast') : L('리허설', 'Rehearse')} ${L('결과물', 'result')}`);
       setPendingProjectId(handoff.projectId);
       if (handoff.autoPersonaIds && handoff.autoPersonaIds.length > 0) {
         setAutoPersonaIds(handoff.autoPersonaIds);
@@ -217,7 +220,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       }
 
       if (results.length === 0) {
-        throw new Error('모든 페르소나 피드백이 실패했습니다. 다시 시도해주세요.');
+        throw new Error(L('모든 페르소나 피드백이 실패했습니다. 다시 시도해주세요.', 'All persona feedback failed. Please try again.'));
       }
 
       let synthesis = '';
@@ -271,7 +274,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       }
 
       const recordId = addFeedbackRecord({
-        document_title: data.documentTitle || '제목 없음',
+        document_title: data.documentTitle || L('제목 없음', 'Untitled'),
         document_text: data.documentText,
         persona_ids: data.personaIds,
         feedback_perspective: data.perspective,
@@ -398,7 +401,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       track('discussion_complete', { message_count: discussionResult.messages.length });
     } catch (err) {
       const de = toDisplayError(err);
-      alert('토론을 생성할 수 없었습니다. ' + de.message);
+      alert(L('토론을 생성할 수 없었습니다. ', 'Could not generate discussion. ') + de.message);
     } finally {
       setDiscussionLoading(false);
     }
@@ -407,9 +410,9 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>리허설 <span className="text-[16px] font-normal text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-display)' }}>| 사전 검증</span></h1>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{L('리허설', 'Rehearse')} <span className="text-[16px] font-normal text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-display)' }}>| {L('사전 검증', 'Pre-validation')}</span></h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          보내기 전에, 보고 대상의 시점에서 미리 피드백을 받습니다.
+          {L('보내기 전에, 보고 대상의 시점에서 미리 피드백을 받습니다.', 'Get feedback in advance from your audience\'s perspective before sending.')}
         </p>
         <div className="mt-2">
           <ConcertmasterInline step="rehearse" />
@@ -424,7 +427,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
               onClick={() => { setPhase('setup'); setLatestFeedback(null); }}
               className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium border border-dashed border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer transition-colors flex items-center gap-1.5"
             >
-              <RotateCcw size={11} /> 새 리허설
+              <RotateCcw size={11} /> {L('새 리허설', 'New Rehearsal')}
             </button>
           )}
           {[...feedbackHistory].reverse().slice(0, 5).map((record) => (
@@ -437,8 +440,8 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                   : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)]'
               }`}
             >
-              {record.document_title || '제목 없음'}
-              <span className="text-[var(--text-tertiary)] ml-1.5">{record.results.length}명</span>
+              {record.document_title || L('제목 없음', 'Untitled')}
+              <span className="text-[var(--text-tertiary)] ml-1.5">{record.results.length}{L('명', '')}</span>
             </button>
           ))}
         </div>
@@ -450,7 +453,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
           {/* Handoff context confirmation */}
           {handoffContent && (
             <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)]">
-              <Check size={12} /> {handoffTitle || '이전 단계'} 맥락이 연결되어 있습니다
+              <Check size={12} /> {handoffTitle || L('이전 단계', 'Previous step')} {L('맥락이 연결되어 있습니다', 'context is connected')}
             </div>
           )}
 
@@ -459,9 +462,9 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users size={14} className="text-[var(--text-secondary)]" />
-                <span className="text-[13px] font-semibold text-[var(--text-primary)]">{personas.length}명의 이해관계자</span>
+                <span className="text-[13px] font-semibold text-[var(--text-primary)]">{L(`${personas.length}명의 이해관계자`, `${personas.length} stakeholder${personas.length === 1 ? '' : 's'}`)}</span>
                 {personas.some(p => p.is_example) && (
-                  <span className="text-[10px] text-[var(--text-tertiary)]">예시 포함</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">{L('예시 포함', 'Examples included')}</span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
@@ -470,13 +473,13 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                   className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border)] cursor-pointer transition-colors"
                 >
                   <Pencil size={10} className="inline mr-1" />
-                  {managingPersonas ? '접기' : '편집'}
+                  {managingPersonas ? L('접기', 'Collapse') : L('편집', 'Edit')}
                 </button>
                 <button
                   onClick={() => { setEditingPersona(null); setShowPersonaForm(true); setManagingPersonas(true); }}
                   className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--ai)] cursor-pointer transition-colors"
                 >
-                  <Plus size={10} className="inline mr-1" /> 새 페르소나
+                  <Plus size={10} className="inline mr-1" /> {L('새 페르소나', 'New Persona')}
                 </button>
               </div>
             </div>
@@ -484,7 +487,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
           {autoPersonaIds.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--ai)]">
               <Check size={14} className="text-[var(--accent)]" />
-              <span className="text-[12px] font-medium text-[#2d4a7c]">편곡에서 찾은 이해관계자 {autoPersonaIds.length}명이 선택되었습니다</span>
+              <span className="text-[12px] font-medium text-[#2d4a7c]">{L(`편곡에서 찾은 이해관계자 ${autoPersonaIds.length}명이 선택되었습니다`, `${autoPersonaIds.length} stakeholder${autoPersonaIds.length === 1 ? '' : 's'} from Recast selected`)}</span>
             </div>
           )}
 
@@ -496,7 +499,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                   <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-[12px] font-medium text-[var(--text-primary)]">
-                      {blindSpotRec.axis_label} 관점이 아직 탐색되지 않았습니다
+                      {L(`${blindSpotRec.axis_label} 관점이 아직 탐색되지 않았습니다`, `${blindSpotRec.axis_label} perspective has not been explored yet`)}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                       {blindSpotRec.why}
@@ -513,7 +516,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                       }}
                       className="mt-2 px-3 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 cursor-pointer transition-colors"
                     >
-                      + {blindSpotRec.name} ({blindSpotRec.role}) 추가
+                      + {L(`${blindSpotRec.name} (${blindSpotRec.role}) 추가`, `Add ${blindSpotRec.name} (${blindSpotRec.role})`)}
                     </button>
                   </div>
                 </div>
@@ -545,14 +548,14 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                 <div key={p.id} className="relative group">
                   <PersonaCard persona={p} onClick={() => { setEditingPersona(p); setShowPersonaForm(true); }} />
                   {p.is_example && (
-                    <span className="absolute top-2 left-3 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--ai)] text-[var(--accent)]">예시</span>
+                    <span className="absolute top-2 left-3 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--ai)] text-[var(--accent)]">{L('예시', 'Example')}</span>
                   )}
                   <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button onClick={() => { setEditingPersona(p); setShowPersonaForm(true); }}
                       className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors">
                       <Pencil size={11} />
                     </button>
-                    <button onClick={() => { if (confirm('정말 삭제할까요?')) deletePersona(p.id); }}
+                    <button onClick={() => { if (confirm(L('정말 삭제할까요?', 'Really delete?'))) deletePersona(p.id); }}
                       className="p-1.5 bg-[var(--surface)]/90 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-500 cursor-pointer transition-colors">
                       <Trash2 size={11} />
                     </button>
@@ -569,7 +572,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
                 <AlertTriangle size={14} /> <span>{feedbackError}</span>
               </div>
               <button onClick={() => { if (feedbackLoading) return; setFeedbackError(''); if (lastFeedbackData) handleFeedbackSubmit(lastFeedbackData); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
-                다시 시도
+                {L('다시 시도', 'Retry')}
               </button>
             </div>
           )}
@@ -590,9 +593,9 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
       {phase === 'running' && (
         <Card>
           <LoadingSteps steps={[
-            '이해관계자가 문서를 읽고 있습니다...',
-            '잘한 점과 고칠 점을 정리하고 있습니다...',
-            '통과 조건을 확인하고 있습니다...',
+            L('이해관계자가 문서를 읽고 있습니다...', 'Stakeholders are reading the document...'),
+            L('잘한 점과 고칠 점을 정리하고 있습니다...', 'Organizing strengths and areas to improve...'),
+            L('통과 조건을 확인하고 있습니다...', 'Checking approval conditions...'),
           ]} />
         </Card>
       )}
@@ -610,7 +613,7 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             const items = [];
             if (reframe?.analysis?.hidden_assumptions && reframe.analysis.hidden_assumptions.length > 0) {
               items.push({
-                label: '검증되지 않은 가정',
+                label: L('검증되지 않은 가정', 'Unverified assumptions'),
                 count: reframe.analysis.hidden_assumptions.length,
                 details: reframe.analysis.hidden_assumptions.map((a: HiddenAssumption | string) =>
                   typeof a === 'string' ? a : a.assumption + (a.risk_if_false ? ` → ${a.risk_if_false}` : '')
@@ -620,14 +623,14 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
             }
             if (recast?.analysis?.key_assumptions && recast.analysis.key_assumptions.length > 0) {
               items.push({
-                label: '편곡의 핵심 가정',
+                label: L('편곡의 핵심 가정', 'Key assumptions from Recast'),
                 count: recast.analysis.key_assumptions.length,
                 details: recast.analysis.key_assumptions.map(ka => ka.assumption),
               });
             }
             const summary = reframe?.analysis
-              ? `악보 해석에서 발견한 핵심 질문: ${reframe.selected_question || reframe.analysis.surface_task}`
-              : `편곡의 핵심 가정 ${recast?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`;
+              ? L(`악보 해석에서 발견한 핵심 질문: ${reframe.selected_question || reframe.analysis.surface_task}`, `Key question found in Reframe: ${reframe.selected_question || reframe.analysis.surface_task}`)
+              : L(`편곡의 핵심 가정 ${recast?.analysis?.key_assumptions?.length || 0}건을 이 리허설에서 검증합니다.`, `Validating ${recast?.analysis?.key_assumptions?.length || 0} key assumption${(recast?.analysis?.key_assumptions?.length || 0) === 1 ? '' : 's'} from Recast in this rehearsal.`);
             return <ContextChainBlock summary={summary} items={items} />;
           })()}
 
@@ -646,22 +649,22 @@ export function RehearseStep({ onNavigate }: RehearseStepProps) {
 
             return (
               <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--ai)] p-4 reward-entrance">
-                <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">{personaCount}명의 이해관계자가 검토했습니다</p>
+                <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">{L(`${personaCount}명의 이해관계자가 검토했습니다`, `${personaCount} stakeholder${personaCount === 1 ? '' : 's'} reviewed`)}</p>
 
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {praiseCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 font-medium">긍정 평가 {praiseCount}건</span>}
-                  {critical > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 font-semibold">핵심 리스크 {critical}건</span>}
-                  {manageable > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">관리 가능 {manageable}건</span>}
-                  {unspoken > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-600 font-semibold">침묵의 리스크 {unspoken}건</span>}
-                  {approvalCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 font-medium">승인 조건 {approvalCount}건</span>}
+                  {praiseCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 font-medium">{L(`긍정 평가 ${praiseCount}건`, `${praiseCount} positive${praiseCount === 1 ? '' : 's'}`)}</span>}
+                  {critical > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 font-semibold">{L(`핵심 리스크 ${critical}건`, `${critical} critical risk${critical === 1 ? '' : 's'}`)}</span>}
+                  {manageable > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">{L(`관리 가능 ${manageable}건`, `${manageable} manageable`)}</span>}
+                  {unspoken > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-600 font-semibold">{L(`침묵의 리스크 ${unspoken}건`, `${unspoken} unspoken risk${unspoken === 1 ? '' : 's'}`)}</span>}
+                  {approvalCount > 0 && <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 font-medium">{L(`승인 조건 ${approvalCount}건`, `${approvalCount} approval condition${approvalCount === 1 ? '' : 's'}`)}</span>}
                 </div>
                 {(critical > 0 || unspoken > 0) && (
                   <p className="text-[11px] text-[var(--text-secondary)] mt-1">
-                    아래에서 각 이해관계자의 의견을 확인하고, 반영할 부분을 골라보세요.
+                    {L('아래에서 각 이해관계자의 의견을 확인하고, 반영할 부분을 골라보세요.', 'Review each stakeholder\'s feedback below and choose what to incorporate.')}
                   </p>
                 )}
                 {critical === 0 && unspoken === 0 && (
-                  <p className="text-[11px] text-[var(--success)] font-medium">큰 위협 없이 통과했습니다. 실행 준비가 되었습니다.</p>
+                  <p className="text-[11px] text-[var(--success)] font-medium">{L('큰 위협 없이 통과했습니다. 실행 준비가 되었습니다.', 'Passed without major threats. Ready to execute.')}</p>
                 )}
               </div>
             );

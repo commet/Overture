@@ -43,8 +43,17 @@ import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
 import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2 } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
+import { t } from '@/lib/i18n';
+import { localizePersona } from '@/lib/worker-personas';
+import type { WorkerPersona } from '@/stores/types';
+
+const personaName = (p: WorkerPersona | null | undefined, locale: 'ko' | 'en'): string =>
+  p ? localizePersona(p, locale).name : '';
+const personaRole = (p: WorkerPersona | null | undefined, locale: 'ko' | 'en'): string =>
+  p ? localizePersona(p, locale).role : '';
 import { EASE, SPRING } from './shared/constants';
 import { diffItems } from './shared/diffItems';
+import { parsePartialAnalysis, parsePartialDoc, parsePartialFeedback } from '@/lib/partial-analysis';
 import { renderInline, renderMd } from './shared/renderMd';
 import { AnalysisCard } from './shared/AnalysisCard';
 import { QuestionCard } from './shared/QuestionCard';
@@ -53,6 +62,8 @@ import { ShareBar } from '@/components/ui/ShareBar';
 /* Reviewer 배지 — 저장된 팀장이 있으면 세션 내내 노출 */
 function ReviewerBadge({ reviewerId }: { reviewerId: string | null }) {
   const agent = useAgentStore(s => reviewerId ? s.agents.find(a => a.id === reviewerId) : undefined);
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   if (!agent) return null;
   const code = agent.personality_code;
   return (
@@ -65,7 +76,7 @@ function ReviewerBadge({ reviewerId }: { reviewerId: string | null }) {
         background: 'linear-gradient(135deg, rgba(91,33,182,0.06) 0%, rgba(30,58,138,0.06) 100%)',
         border: '1px dashed rgba(91,33,182,0.25)',
       }}
-      title={agent.personality_profile?.bossVibe || '저장된 팀장이 이 기획을 리뷰합니다'}
+      title={agent.personality_profile?.bossVibe || L('저장된 팀장이 이 기획을 리뷰합니다', 'Your saved manager will review this plan')}
     >
       <motion.span
         className="text-[14px] leading-none"
@@ -83,7 +94,7 @@ function ReviewerBadge({ reviewerId }: { reviewerId: string | null }) {
         </span>
       )}
       <span className="text-[10px] text-[var(--text-tertiary)] hidden sm:inline">
-        · 이 기획을 봅니다
+        {L('· 이 기획을 봅니다', '· will review this plan')}
       </span>
     </motion.div>
   );
@@ -255,7 +266,7 @@ function AttributedSection({ section, index }: {
                 key={w.id}
                 className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 border-[var(--surface)]"
                 style={{ backgroundColor: (w.persona?.color || 'var(--accent)') + '25', color: w.persona?.color }}
-                title={w.persona?.name}
+                title={personaName(w.persona, locale)}
               >
                 {w.persona?.emoji}
               </div>
@@ -274,7 +285,7 @@ function AttributedSection({ section, index }: {
         <p className="mt-2 text-[10px] text-[var(--text-tertiary)] flex items-center gap-1.5">
           <span className="opacity-60">{L('기여', 'By')}</span>
           <span className="truncate">
-            {contributors.map(w => w.persona?.name).filter(Boolean).join(' · ')}
+            {contributors.map(w => personaName(w.persona, locale)).filter(Boolean).join(' · ')}
           </span>
         </p>
       )}
@@ -288,6 +299,7 @@ function SentenceStream({ section, sectionIndex, workers }: {
   sectionIndex: number;
   workers: ReturnType<typeof useWorkers>;
 }) {
+  const locale = useLocale();
   const hovered = useAgentAttentionStore(s => s.hovered);
   const setHovered = useAgentAttentionStore(s => s.setHovered);
   const clearHovered = useAgentAttentionStore(s => s.clearHovered);
@@ -336,7 +348,7 @@ function SentenceStream({ section, sectionIndex, workers }: {
                     transition={{ duration: 0.2, ease: EASE }}
                     className="inline-block w-[4px] h-[4px] rounded-full"
                     style={{ backgroundColor: d.persona?.color || 'var(--accent)' }}
-                    title={d.persona?.name}
+                    title={personaName(d.persona, locale)}
                   />
                 ))}
               </span>
@@ -457,6 +469,19 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const initial = (fb.persona_name || '?').charAt(0).toUpperCase();
+  // Snapshot the initial applied[] once on mount — parent remounts this
+  // component via `key` when a new review arrives, so we don't need to
+  // watch fb identity here. toggleFix rebuilds dm_feedback on every toggle,
+  // so watching object identity would reset on each click.
+  const baselineRef = useRef<boolean[] | null>(null);
+  if (baselineRef.current === null) {
+    baselineRef.current = fb.concerns.map(c => c.applied);
+  }
+  const changedCount = fb.concerns.reduce(
+    (n, c, i) => n + (c.applied !== (baselineRef.current![i] ?? c.applied) ? 1 : 0),
+    0,
+  );
+  const hasChanges = changedCount > 0;
   return (
     <div className="space-y-5">
       {/* Transition divider — personalized */}
@@ -537,9 +562,27 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
 
             {/* Actions — primary + secondary path */}
             <div className="space-y-3">
-              <motion.button onClick={onFinalize} disabled={busy} whileTap={{ scale: 0.98 }}
+              {hasChanges && !busy && (
+                <motion.p
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="text-center text-[12px] text-[var(--accent)] font-medium"
+                >
+                  {locale === 'ko'
+                    ? `변경 ${changedCount}건 — 아래 버튼을 눌러 최종본에 반영하세요`
+                    : `${changedCount} pending change${changedCount === 1 ? '' : 's'} — press below to apply to the final doc`}
+                </motion.p>
+              )}
+              <motion.button
+                onClick={onFinalize}
+                disabled={busy}
+                whileTap={{ scale: 0.98 }}
+                animate={hasChanges && !busy ? { boxShadow: ['0 0 0px rgba(180,160,100,0)', '0 0 18px rgba(180,160,100,0.45)', '0 0 0px rgba(180,160,100,0)'] } : { boxShadow: '0 0 0px rgba(180,160,100,0)' }}
+                transition={hasChanges && !busy ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.4 }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white rounded-2xl text-[14px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-50"
-                style={{ background: 'var(--gradient-gold)' }}>
+                style={{ background: 'var(--gradient-gold)' }}
+              >
                 {busy ? <><Loader2 size={16} className="animate-spin" /> {L('최종본 작성 중...', 'Finalizing...')}</> : <>{L('반영하고 완성', 'Apply and Finalize')} <ChevronRight size={14} /></>}
               </motion.button>
               {fb.would_ask.length === 0 && onDeepen && (
@@ -647,10 +690,17 @@ function FinalCard({
 type StatusMode = 'ai_working' | 'your_turn' | 'phase_done';
 
 function PhaseStatusBar({
-  phase, busy, hasQuestion, deployReady, shouldMix, workersRunning, workersDone, workersTotal, elapsedLabel, leadAgentName,
+  phase, busy, hasQuestion, deployReady, shouldMix, workersRunning, workersDone, workersTotal, elapsedLabel, leadAgentName, substage, isLongWait, onCancel,
 }: {
   phase: string; busy: boolean; hasQuestion: boolean; deployReady: boolean; shouldMix: boolean;
   workersRunning: number; workersDone: number; workersTotal: number; elapsedLabel: string; leadAgentName?: string;
+  // Optional fine-grained step for long async work (e.g. mix pipeline has 4
+  // serial LLM calls — surface which one is running now, not just "Drafting…").
+  substage?: string | null;
+  // True once the current LLM call has been running ≥30s — triggers a softer
+  // reassurance message and reveals the cancel button.
+  isLongWait?: boolean;
+  onCancel?: () => void;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
@@ -694,20 +744,23 @@ function PhaseStatusBar({
     return null;
   }
 
+  const showLongWait = mode === 'ai_working' && isLongWait;
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       className={`sticky top-14 z-30 mx-auto mb-6 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm transition-colors duration-500 ${
         mode === 'ai_working'
-          ? 'bg-[var(--surface)]/90 border-[var(--accent)]/15'
+          ? showLongWait
+            ? 'bg-amber-50/70 dark:bg-amber-900/15 border-amber-300/30'
+            : 'bg-[var(--surface)]/90 border-[var(--accent)]/15'
           : 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-300/30'
       }`}
     >
       {mode === 'ai_working' ? (
         <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
-          <div className="absolute inset-0 rounded-full bg-[var(--accent)]/20 animate-ping" />
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
+          <div className={`absolute inset-0 rounded-full animate-ping ${showLongWait ? 'bg-amber-400/30' : 'bg-[var(--accent)]/20'}`} />
+          <div className={`w-2.5 h-2.5 rounded-full ${showLongWait ? 'bg-amber-500' : 'bg-[var(--accent)]'}`} />
         </div>
       ) : (
         <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
@@ -715,13 +768,136 @@ function PhaseStatusBar({
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <span className={`text-[13px] font-semibold ${mode === 'ai_working' ? 'text-[var(--text-primary)]' : 'text-amber-700 dark:text-amber-300'}`}>
-          {label}
+        <span className={`text-[13px] font-semibold ${
+          mode === 'ai_working'
+            ? showLongWait ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-primary)]'
+            : 'text-amber-700 dark:text-amber-300'
+        }`}>
+          {showLongWait ? L('오래 걸리고 있어요 — 계속 진행 중', 'Taking longer than usual — still working') : label}
         </span>
-        {sub && <span className="text-[12px] text-[var(--text-tertiary)] ml-2">{sub}</span>}
+        {!showLongWait && sub && <span className="text-[12px] text-[var(--text-tertiary)] ml-2">{sub}</span>}
+        {mode === 'ai_working' && substage && (
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={substage}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -3 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              className="text-[11px] text-[var(--text-tertiary)] ml-2 italic"
+            >
+              · {substage}
+            </motion.span>
+          </AnimatePresence>
+        )}
       </div>
       {mode === 'ai_working' && elapsedLabel && (
-        <span className="text-[11px] text-[var(--text-tertiary)] tabular-nums shrink-0">{elapsedLabel}</span>
+        <span className={`text-[11px] tabular-nums shrink-0 ${showLongWait ? 'text-amber-700 dark:text-amber-300 font-semibold' : 'text-[var(--text-tertiary)]'}`}>{elapsedLabel}</span>
+      )}
+      {showLongWait && onCancel && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={onCancel}
+          className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-amber-700 dark:text-amber-300 border border-amber-300/50 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors cursor-pointer"
+          aria-label={L('취소', 'Cancel')}
+        >
+          <XIcon size={10} />
+          {L('취소', 'Cancel')}
+        </motion.button>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══ StreamSnippet — live preview of any in-progress JSON stream ═══
+ * LLM calls during analysis/mix/DM/final all stream tokens. Rather than a
+ * silent spinner, we surface one focal line (real_question / title /
+ * first_reaction) plus a few compact counts. Enough signal to feel alive,
+ * not so much to compete with the eventual output.
+ * `kind` picks the parser so we don't mis-extract fields between response
+ * shapes.
+ */
+type StreamKind = 'analysis' | 'doc' | 'feedback';
+
+function StreamSnippet({ text, kind }: { text: string | null; kind: StreamKind }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  if (!text) return null;
+
+  let headline = '';
+  let headlineComplete = true;
+  const counts: Array<{ label: string; value: number }> = [];
+  let stageLabel = '';
+
+  if (kind === 'analysis') {
+    const p = parsePartialAnalysis(text);
+    headline = p.real_question;
+    headlineComplete = p.real_question_complete;
+    if (p.hidden_assumptions.length > 0) counts.push({ label: L('가정', 'assumptions'), value: p.hidden_assumptions.length });
+    if (p.skeleton.length > 0) counts.push({ label: L('뼈대', 'sections'), value: p.skeleton.length });
+    stageLabel =
+      p.stage === 'skeleton' ? L('뼈대를 잡는 중', 'Drafting skeleton')
+      : p.stage === 'assumptions' ? L('가정을 점검하는 중', 'Checking assumptions')
+      : p.stage === 'question' ? L('진짜 질문을 다듬는 중', 'Sharpening the real question')
+      : L('상황을 읽는 중', 'Reading the situation');
+  } else if (kind === 'doc') {
+    const p = parsePartialDoc(text);
+    // Prefer the summary line once it starts; fall back to title.
+    headline = p.executive_summary || p.title;
+    headlineComplete = p.executive_summary ? p.summary_complete : !!p.title;
+    if (p.sections_count > 0) counts.push({ label: L('섹션', 'sections'), value: p.sections_count });
+    stageLabel = p.executive_summary
+      ? L('요약 작성 중', 'Writing summary')
+      : p.title
+        ? L('제목 잡는 중', 'Finding the title')
+        : L('구조 잡는 중', 'Shaping structure');
+  } else {
+    const p = parsePartialFeedback(text);
+    headline = p.first_reaction;
+    headlineComplete = p.reaction_complete;
+    if (p.good_parts_count > 0) counts.push({ label: L('잘된 점', 'strengths'), value: p.good_parts_count });
+    if (p.concerns_count > 0) counts.push({ label: L('우려', 'concerns'), value: p.concerns_count });
+    stageLabel = p.first_reaction
+      ? L('반응 쓰는 중', 'Drafting reaction')
+      : L('문서 읽는 중', 'Reading the document');
+  }
+
+  const hasAny = !!headline || counts.length > 0;
+  if (!hasAny) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="mb-6 px-4 py-3 rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.04]"
+    >
+      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+        <motion.span
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+          className="flex"
+        >
+          <Sparkles size={11} className="text-[var(--accent)]" />
+        </motion.span>
+        <span className="text-[11px] font-semibold text-[var(--accent)] uppercase tracking-[0.12em]">
+          {stageLabel}
+        </span>
+        {counts.map(c => (
+          <span key={c.label} className="text-[10px] text-[var(--text-tertiary)]">
+            · {c.label} {c.value}
+          </span>
+        ))}
+      </div>
+      {headline && (
+        <div className="text-[13px] leading-[1.55] text-[var(--text-primary)] whitespace-pre-wrap break-words line-clamp-2">
+          {headline}
+          {!headlineComplete && (
+            <span className="inline-block w-[2px] h-[14px] bg-[var(--accent)] ml-0.5 animate-pulse align-middle" />
+          )}
+        </div>
       )}
     </motion.div>
   );
@@ -842,10 +1018,10 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
           <span className="text-[14px] font-medium text-[var(--text-primary)]">
             {w.agent_type === 'human' ? (w.contact?.name || w.question_to_human?.slice(0, 15) || L('외부 확인', 'External'))
               : w.agent_type === 'self' ? L('내 판단', 'My decision')
-              : (w.persona?.name || 'AI')}
+              : (personaName(w.persona, locale) || 'AI')}
           </span>
           {w.persona?.role && w.agent_type !== 'self' && w.agent_type !== 'human' && (
-            <span className="text-[11px] text-[var(--text-tertiary)]">{w.persona.role}</span>
+            <span className="text-[11px] text-[var(--text-tertiary)]">{personaRole(w.persona, locale)}</span>
           )}
         </div>
         <p className="text-[12px] text-[var(--text-secondary)] line-clamp-1 mt-0.5">{w.task}</p>
@@ -1067,6 +1243,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  // Which response shape the current stream represents. Handlers set this
+  // because phase alone isn't enough — e.g. onFinalize streams while
+  // phase === 'refining', but the stream is a doc, not feedback.
+  const [streamKind, setStreamKind] = useState<'analysis' | 'doc' | 'feedback'>('analysis');
+  // Fine-grained stage inside long async pipelines (mix, final) — feeds
+  // PhaseStatusBar's substage so the user sees "gathering → debate → drafting"
+  // instead of 30s of "Drafting the document".
+  const [substage, setSubstage] = useState<string | null>(null);
   const [cmReview, setCmReview] = useState<ConcertmasterReview | null>(null);
   const debateResult = session?.debate_result as DebateResult | null ?? null;
   // ── Post-complete draft tree UI state ──
@@ -1088,17 +1272,22 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const dmFeedbackRef = useRef<HTMLDivElement>(null);
   const finalRef = useRef<HTMLDivElement>(null);
 
+  // Double rAF: frame 1 lets React commit pending state, frame 2 ensures the
+  // new element is laid out before we scroll to it. Previous 200/250ms timers
+  // lost races when the user was scrolling themselves.
   const scroll = useCallback((mode: 'bottom' | 'top' = 'bottom') => {
-    setTimeout(() => window.scrollTo({ top: mode === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' }), 200);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.scrollTo({ top: mode === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' });
+    }));
   }, []);
   const scrollToRef = useCallback((ref: React.RefObject<HTMLElement | null>, fallback: 'top' | 'bottom' = 'bottom') => {
-    setTimeout(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       if (ref.current) {
         ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
         window.scrollTo({ top: fallback === 'top' ? 0 : document.body.scrollHeight, behavior: 'smooth' });
       }
-    }, 250);
+    }));
   }, []);
 
   // Cleanup: abort all in-flight requests on unmount
@@ -1179,25 +1368,30 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const round = session?.round ?? 0;
   const maxR = session?.max_rounds ?? 3;
 
-  // Elapsed timer for PhaseStatusBar
+  // Elapsed timer for PhaseStatusBar — tracks seconds rather than formatting
+  // inline so the same value can derive isLongWait (30s threshold) for the
+  // cancel affordance.
   const [phaseStartTime, setPhaseStartTime] = useState<number | null>(null);
-  const [elapsedLabel, setElapsedLabel] = useState('');
+  const [elapsedSec, setElapsedSec] = useState(0);
   useEffect(() => {
     if (busy || phase === 'analyzing' || phase === 'mixing' || phase === 'lead_synthesizing') {
       if (!phaseStartTime) setPhaseStartTime(Date.now());
     } else {
       setPhaseStartTime(null);
-      setElapsedLabel('');
+      setElapsedSec(0);
     }
   }, [busy, phase]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!phaseStartTime) return;
     const t = setInterval(() => {
-      const sec = Math.floor((Date.now() - phaseStartTime) / 1000);
-      setElapsedLabel(sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`);
+      setElapsedSec(Math.floor((Date.now() - phaseStartTime) / 1000));
     }, 1000);
     return () => clearInterval(t);
   }, [phaseStartTime]);
+  const elapsedLabel = phaseStartTime
+    ? (elapsedSec < 60 ? `${elapsedSec}s` : `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`)
+    : '';
+  const isLongWait = elapsedSec >= 30;
 
   // ── Post-complete draft tree derivations ──
   const drafts = useMemo<Draft[]>(() => session?.drafts ?? [], [session?.drafts]);
@@ -1248,6 +1442,33 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const revealedIds = useStaggeredReveal(workers, session?.id ?? null);
   const revealedWorkers = completedWorkers.filter(w => revealedIds.has(w.id));
 
+  // Ping the user when every deployed worker reaches a terminal state so they
+  // notice the transition — especially on mobile where the worker drawer is
+  // closed by default. We only ping if we've actually *seen* workers in a
+  // non-terminal state first; otherwise a resumed session with all workers
+  // already done would fire the toast on mount.
+  const workersPingedRef = useRef(false);
+  const sawWorkingRef = useRef(false);
+  useEffect(() => {
+    if (workers.length === 0 || deployPhase !== 'deployed') {
+      workersPingedRef.current = false;
+      sawWorkingRef.current = false;
+      return;
+    }
+    const isTerminal = (s: WorkerTask['status']) =>
+      s === 'done' || s === 'error' || s === 'waiting_input';
+    const stillWorking = workers.some(w => !isTerminal(w.status));
+    if (stillWorking) {
+      sawWorkingRef.current = true;
+      workersPingedRef.current = false;
+      return;
+    }
+    if (sawWorkingRef.current && !workersPingedRef.current) {
+      workersPingedRef.current = true;
+      useAgentAttentionStore.getState().ping('workers_done');
+    }
+  }, [workers, deployPhase]);
+
   if (!session) return null;
 
   /* Shared worker execution — used by both deploy and resume */
@@ -1270,7 +1491,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         const w = store.currentSession()?.workers.find(ww => ww.id === id);
         const persona = w?.persona;
         const note = persona
-          ? getCompletionNote(persona.id)
+          ? getCompletionNote(persona.id, locale)
           : null;
         const validationFields = validation
           ? { validation_score: validation.score, validation_passed: validation.passed, validation_feedback: validation.issues.join('; ') }
@@ -1325,20 +1546,22 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           const headers = { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' };
           for (const hw of humanWorkers) {
             const endpoint = hw.contact?.channel === 'slack' ? '/api/slack/send' : '/api/email/send-question';
+            const qTitle = t('progressive.humanQTitle', { task: hw.task });
+            const qContext = hw.ai_preliminary ? t('progressive.humanQContext', { ai: hw.ai_preliminary }) : '';
             const body = hw.contact?.channel === 'slack'
-              ? { userId: hw.contact.address, title: `질문: ${hw.task}`, content: `${hw.question_to_human || hw.task}\n\n${hw.ai_preliminary ? `참고:\n${hw.ai_preliminary}` : ''}`, sessionId: session.id, workerId: hw.id }
-              : { to: hw.contact!.address, subject: `질문: ${hw.task}`, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
+              ? { userId: hw.contact.address, title: qTitle, content: `${hw.question_to_human || hw.task}${qContext ? `\n\n${qContext}` : ''}`, sessionId: session.id, workerId: hw.id }
+              : { to: hw.contact!.address, subject: qTitle, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
             fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
               .then(r => r.json())
               .then(r => {
                 if (r.ok) {
                   store.updateWorker(hw.id, { status: 'sent', sent_at: new Date().toISOString() });
                 } else {
-                  store.updateWorker(hw.id, { status: 'error', error: `발송 실패: ${r.error || '알 수 없는 오류'}` });
+                  store.updateWorker(hw.id, { status: 'error', error: t('progressive.sendFailed', { reason: r.error || t('progressive.unknownError') }) });
                 }
               })
               .catch(() => {
-                store.updateWorker(hw.id, { status: 'error', error: '네트워크 오류로 발송하지 못했습니다' });
+                store.updateWorker(hw.id, { status: 'error', error: t('progressive.networkError') });
               });
           }
         });
@@ -1379,8 +1602,16 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       qa.push({ question: curQ, answer: ans });
-      if (!dm && round === 0) { const g = value.includes('대표') ? '대표님' : value.includes('팀장') ? '팀장님' : value.includes('투자') ? '투자자' : null; if (g) store.setDecisionMaker(g); }
+      if (!dm && round === 0) {
+        const v = value.toLowerCase();
+        const g = value.includes('대표') || v.includes('ceo') || v.includes('founder') ? (locale === 'ko' ? '대표님' : 'CEO')
+          : value.includes('팀장') || v.includes('manager') || v.includes('lead') ? (locale === 'ko' ? '팀장님' : 'Manager')
+          : value.includes('투자') || v.includes('investor') || v.includes('vc') ? (locale === 'ko' ? '투자자' : 'Investor')
+          : null;
+        if (g) store.setDecisionMaker(g);
+      }
       abortRef.current = new AbortController();
+      setStreamKind('analysis');
       setStreamingText('');
       // Lead context: inject lead agent persona into deepening prompt
       let leadCtx: string | undefined;
@@ -1439,16 +1670,21 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       }
       if (r.readyForMix || !r.question) {
         setShowMix(true); store.setPhase('conversing');
+        // Team analysis done — MixTrigger is mounting below. Scroll there so
+        // users see the next CTA, not the phase bar above.
+        scroll();
       } else {
         store.addQuestion(r.question); store.setPhase('conversing');
         scrollToRef(questionRef);
       }
-    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
-    finally { setBusy(false); abortRef.current = null; scroll(); }
+    } catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
+    finally { setBusy(false); abortRef.current = null; }
   };
 
   const onMix = async () => {
     setBusy(true); setError(null); store.setPhase('mixing'); scroll();
+    setSubstage(L('팀 결과 모으는 중', 'Gathering team results'));
+    abortRef.current = new AbortController();
     try {
       // Wait for any running AI workers to finish before collecting results
       if (workersRef.current) {
@@ -1469,7 +1705,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       if (workerResults.length > 0) {
         const cmWorkers = session!.workers
           .filter(w => w.approved !== false && w.result)
-          .map(w => ({ agentName: w.persona?.name || L('에이전트', 'Agent'), agentRole: w.persona?.role || '', task: w.task, result: w.result || '' }));
+          .map(w => ({ agentName: personaName(w.persona, locale) || L('에이전트', 'Agent'), agentRole: personaRole(w.persona, locale), task: w.task, result: w.result || '' }));
         runConcertmasterReview(session!.problem_text, cmWorkers)
           .then(r => { if (r && mountedRef.current) setCmReview(r); })
           .catch(() => {});
@@ -1477,6 +1713,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         // Critical stakes: Cross-Agent Debate (mix 전에 실행하여 결과를 반영)
         const stages = session?.stages;
         if (stages && stages.length > 1) {
+          setSubstage(L('팀 내 반론 검토 중', 'Running team-internal debate'));
           const debateWorkers = cmWorkers.map(w => ({ ...w, framework: session!.workers.find(ww => ww.persona?.name === w.agentName)?.framework || null }));
           try {
             const debateRes = await runDebate(session!.problem_text, debateWorkers);
@@ -1532,45 +1769,82 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       // Lead synthesis 완료 대기 (짧은 타임아웃) — 끝났으면 Mix에 포함, 아니면 null로 진행
       store.setPhase('mixing'); scrollToRef(statusBarRef);
+      setSubstage(L('문서 구조 잡는 중', 'Building document structure'));
       leadSynthesis = await Promise.race([
         leadPromise,
         new Promise<null>(resolve => setTimeout(() => resolve(null), 4000)),
       ]);
 
-      const m = await runMix(session!.problem_text, snapshots, qa, dm, workerResults.length > 0 ? workerResults : undefined, undefined, leadSynthesis, session?.user_notes);
+      setSubstage(L('초안 본문 작성 중', 'Writing draft body'));
+      setStreamKind('doc');
+      setStreamingText('');
+      const m = await runMix(
+        session!.problem_text, snapshots, qa, dm,
+        workerResults.length > 0 ? workerResults : undefined,
+        abortRef.current.signal, leadSynthesis, session?.user_notes,
+        (text) => setStreamingText(text),
+      );
+      setStreamingText(null);
       // Lead가 Mix보다 늦게 끝났으면 비동기로 저장 (Mix에는 미포함이지만 UI에는 표시)
       if (!leadSynthesis) leadPromise.then(late => { if (late) store.setLeadSynthesis(late); });
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round, has_lead: !!leadSynthesis });
 
       // Phase 6: Boss reviewer가 있으면 자동 DM 피드백
+      let autoDMFired = false;
       if (session?.reviewer_agent_id) {
         const reviewerAgent = useAgentStore.getState().getAgent(session.reviewer_agent_id);
         if (reviewerAgent) {
-          const f = await runBossDMFeedback(m, reviewerAgent, session.problem_text);
+          setSubstage(L(`${reviewerAgent.name}이(가) 검토 중`, `${reviewerAgent.name} is reviewing`));
+          setStreamKind('feedback');
+          setStreamingText('');
+          const f = await runBossDMFeedback(m, reviewerAgent, session.problem_text, abortRef.current.signal, 'quick', (text) => setStreamingText(text));
+          setStreamingText(null);
           store.setDMFeedback(f);
+          autoDMFired = true;
           import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
             onBossReviewCompleted(reviewerAgent.id, f);
           }).catch(() => {});
           useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session.problem_text.slice(0, 100));
         }
       }
-    } catch (e) { setError(e instanceof Error ? e.message : L('초안 생성 실패', 'Draft creation failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
-    finally { setBusy(false); scrollToRef(mixPreviewRef); }
+      // Fire the most specific completion cue (DM > mix) and scroll to the
+      // card that will actually render. MixPreview hides when dmFb is set.
+      if (autoDMFired) {
+        useAgentAttentionStore.getState().ping('dm_ready');
+        scrollToRef(dmFeedbackRef, 'bottom');
+      } else {
+        useAgentAttentionStore.getState().ping('mix_done');
+        scrollToRef(mixPreviewRef, 'bottom');
+      }
+    } catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('초안 생성 실패', 'Draft creation failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
+    finally { setBusy(false); setSubstage(null); abortRef.current = null; }
   };
 
   const onDM = async () => {
     if (!mix) return; setBusy(true); setError(null); scroll();
+    abortRef.current = new AbortController();
     try {
       // Boss agent가 연결되어 있으면 Boss 성격 DM 피드백
       const reviewerAgent = session?.reviewer_agent_id
         ? useAgentStore.getState().getAgent(session.reviewer_agent_id)
         : undefined;
 
-      const f = reviewerAgent
-        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text)
-        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text);
+      setSubstage(
+        reviewerAgent
+          ? L(`${reviewerAgent.name}이(가) 읽는 중`, `${reviewerAgent.name} is reading`)
+          : L('초안을 검토하는 중', 'Reviewing the draft')
+      );
+      setStreamKind('feedback');
+      setStreamingText('');
 
+      const f = reviewerAgent
+        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text, abortRef.current.signal, 'quick', (text) => setStreamingText(text))
+        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text, abortRef.current.signal, 'quick', (text) => setStreamingText(text));
+
+      setStreamingText(null);
       store.setDMFeedback(f);
+      useAgentAttentionStore.getState().ping('dm_ready');
+      scrollToRef(dmFeedbackRef, 'bottom');
 
       // Boss 리뷰 후 observation 업데이트 + XP
       if (reviewerAgent && f) {
@@ -1580,34 +1854,43 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         useAgentStore.getState().recordActivity(reviewerAgent.id, 'review_given', session!.problem_text.slice(0, 100));
       }
     }
-    catch (e) { setError(e instanceof Error ? e.message : L('DM 피드백 실패', 'DM feedback failed')); }
-    finally { setBusy(false); scrollToRef(dmFeedbackRef, 'top'); }
+    catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('DM 피드백 실패', 'DM feedback failed')); scrollToRef(statusBarRef); }
+    finally { setBusy(false); setSubstage(null); abortRef.current = null; }
   };
 
   const onDeepen = async () => {
     if (!mix) return; setBusy(true); setError(null); scrollToRef(statusBarRef);
+    abortRef.current = new AbortController();
     try {
       const reviewerAgent = session?.reviewer_agent_id
         ? useAgentStore.getState().getAgent(session.reviewer_agent_id)
         : undefined;
 
-      const f = reviewerAgent
-        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text, undefined, 'deep')
-        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text, undefined, 'deep');
+      setSubstage(L('심화 검토 중 — 논리·근거 점검', 'Deep review — logic & evidence'));
+      setStreamKind('feedback');
+      setStreamingText('');
 
+      const f = reviewerAgent
+        ? await runBossDMFeedback(mix, reviewerAgent, session!.problem_text, abortRef.current.signal, 'deep', (text) => setStreamingText(text))
+        : await runDMFeedback(mix, dm || L('의사결정권자', 'Decision-Maker'), session!.problem_text, abortRef.current.signal, 'deep', (text) => setStreamingText(text));
+
+      setStreamingText(null);
       store.setDMFeedback(f);
+      useAgentAttentionStore.getState().ping('dm_ready');
+      scrollToRef(dmFeedbackRef, 'bottom');
       track('flow_deepen', { has_boss: !!reviewerAgent });
     }
-    catch (e) { setError(e instanceof Error ? e.message : L('심화 검토 실패', 'Deep review failed')); }
-    finally { setBusy(false); scroll('top'); }
+    catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('심화 검토 실패', 'Deep review failed')); scrollToRef(statusBarRef); }
+    finally { setBusy(false); setSubstage(null); abortRef.current = null; }
   };
 
   const onMore = async () => {
     if (!latest) return; setShowMix(false); setBusy(true); store.setPhase('analyzing'); scrollToRef(statusBarRef);
     try {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
-      qa.push({ question: { id: 's', text: '더?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: '한 가지 더 확인' } });
+      qa.push({ question: { id: 's', text: locale === 'ko' ? '더?' : 'More?', type: 'select', engine_phase: 'recast' }, answer: { question_id: 's', value: t('progressive.oneMore') } });
       abortRef.current = new AbortController();
+      setStreamKind('analysis');
       setStreamingText('');
       // Lead context for onMore deepening
       let moreLeadCtx: string | undefined;
@@ -1627,7 +1910,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const r = await runDeepening(session!.problem_text, latest, qa, round, round + 2, snapshots, (text) => setStreamingText(text), abortRef.current.signal, moreLeadCtx, personas2.length > 0 ? personas2 : undefined);
       setStreamingText(null);
       r.question ? (store.addQuestion(r.question), store.setPhase('conversing')) : (setShowMix(true), store.setPhase('conversing'));
-    } catch (e) { setStreamingText(null); setError(e instanceof Error ? e.message : L('실패', 'Failed')); store.setPhase('conversing'); setShowMix(true); }
+    } catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('실패', 'Failed')); store.setPhase('conversing'); setShowMix(true); }
     finally { setBusy(false); abortRef.current = null; scroll(); }
   };
 
@@ -1639,23 +1922,31 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     // Skip keeps the original mix intact → attribution survives for FinalCard.
     store.setFinalDeliverable(md, mix);
     setError(null);
+    useAgentAttentionStore.getState().ping('final_done');
     scrollToRef(finalRef, 'top');
   };
 
   const onFinalize = async () => {
     if (!mix || !dmFb) return; setBusy(true); setError(null); scroll();
+    setSubstage(L('피드백 반영 + 최종본 다듬는 중', 'Applying feedback + polishing'));
+    setStreamKind('doc');
+    setStreamingText('');
+    abortRef.current = new AbortController();
     try {
       // Carry the original mixableWorkerResults forward so unmatched sections can still resolve via heuristic.
       const enrichedResults = store.mixableWorkerResults();
       const workerSources = enrichedResults
         .filter(w => !!w.workerId && !!(w.agentName || w.persona))
         .map(w => ({ workerId: w.workerId, name: (w.agentName || w.persona)!, result: w.result }));
-      const { markdown, finalMix } = await runFinalDeliverable(mix, dmFb, undefined, workerSources);
+      const { markdown, finalMix } = await runFinalDeliverable(mix, dmFb, abortRef.current.signal, workerSources, (text) => setStreamingText(text));
+      setStreamingText(null);
       store.setFinalDeliverable(markdown, finalMix);
+      useAgentAttentionStore.getState().ping('final_done');
+      scrollToRef(finalRef, 'top');
       track('flow_done', { project_id: projectId, rounds: round });
     }
-    catch (e) { setError(e instanceof Error ? e.message : L('최종본 실패', 'Finalization failed')); }
-    finally { setBusy(false); scroll(); }
+    catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('최종본 실패', 'Finalization failed')); scrollToRef(statusBarRef); }
+    finally { setBusy(false); setSubstage(null); abortRef.current = null; }
   };
 
   // ─── Post-complete iteration handlers ─────────────────────────────
@@ -1752,7 +2043,19 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             workersTotal={workers.length}
             elapsedLabel={elapsedLabel}
             leadAgentName={session?.lead_agent?.agent_name}
+            substage={substage}
+            isLongWait={isLongWait}
+            onCancel={busy ? () => abortRef.current?.abort() : undefined}
           />
+          {/* Live preview of the streaming response — makes the 15–45s LLM
+              waits (analysis / mix / DM review / final) visible instead of
+              silent spinners. Handlers set `streamKind` because phase alone
+              doesn't disambiguate (onFinalize runs while phase='refining'). */}
+          <AnimatePresence>
+            {streamingText !== null && (
+              <StreamSnippet key="stream" text={streamingText} kind={streamKind} />
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="space-y-8">
@@ -1814,7 +2117,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 <motion.div key={w.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--bg)]/40">
                   <WorkerAvatar persona={w.persona} size="sm" pulse />
-                  <span className="text-[13px] text-[var(--text-secondary)] flex-1 truncate">{w.persona?.name || 'AI'} — {w.task}</span>
+                  <span className="text-[13px] text-[var(--text-secondary)] flex-1 truncate">{personaName(w.persona, locale) || 'AI'} — {w.task}</span>
                   <Loader2 size={14} className="animate-spin text-[var(--accent)] shrink-0" />
                 </motion.div>
               ))}
@@ -1840,7 +2143,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           {/* Worker status summary before mix — with persona names */}
           {shouldMix && !busy && phase === 'conversing' && !curQ && workers.length > 0 && (() => {
             const items = workers.map(w => {
-              const name = w.persona?.name || 'AI';
+              const name = personaName(w.persona, locale) || 'AI';
               if (w.approved === true) return `${name} ✓`;
               if (w.approved === false) return `${name} ✗`;
               if (w.status === 'done') return `${name} ⏳`;
@@ -1925,6 +2228,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               onReject={async (reason) => {
                 setBusy(true); setError(null);
                 try {
+                  setStreamKind('analysis');
                   setStreamingText('');
                   const r = await refineInitialFraming(
                     session.problem_text, latest.real_question, reason,
@@ -1998,7 +2302,19 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             {mix && !dmFb && !final_ && phase !== 'mixing' && <MixPreview mix={mix} dm={dm} onDM={onDM} onSkip={onSkip} busy={busy} cmReview={cmReview} debateResult={debateResult} />}
           </div>
           <div ref={dmFeedbackRef}>
-            {dmFb && !final_ && <DMFeedback fb={dmFb} onToggle={(i) => store.toggleFix(i)} onFinalize={onFinalize} onDeepen={onDeepen} busy={busy} />}
+            {dmFb && !final_ && (
+              // Stable key per review — rebuilds the baseline snapshot only
+              // when a new review arrives, not when toggleFix rebuilds the
+              // fb object. first_reaction is effectively unique per review.
+              <DMFeedback
+                key={`${dmFb.persona_name}::${dmFb.first_reaction}`}
+                fb={dmFb}
+                onToggle={(i) => store.toggleFix(i)}
+                onFinalize={onFinalize}
+                onDeepen={onDeepen}
+                busy={busy}
+              />
+            )}
           </div>
 
           {final_ && <div ref={finalRef}>

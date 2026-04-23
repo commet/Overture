@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAccuracyStore } from '@/stores/useAccuracyStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
+import { useLocale } from '@/hooks/useLocale';
 
 interface FeedbackResultProps {
   record: FeedbackRecord;
@@ -25,6 +26,8 @@ interface FeedbackResultProps {
 type ViewMode = 'overview' | 'persona-detail' | 'discussion' | 'synthesis';
 
 export function FeedbackResult({ record, personas, onStartDiscussion, discussionLoading, onStartDebate }: FeedbackResultProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
 
@@ -81,22 +84,26 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
 
   // ── Copy helper ──
   const getFullText = () => {
-    let text = `## 리허설 결과\n\n**자료**: ${record.document_title}\n**관점**: ${record.feedback_perspective} | **강도**: ${record.feedback_intensity}\n\n`;
+    const heading = L('## 리허설 결과', '## Rehearsal Results');
+    const docLabel = L('자료', 'Document');
+    const persLabel = L('관점', 'Perspective');
+    const intLabel = L('강도', 'Intensity');
+    let text = `${heading}\n\n**${docLabel}**: ${record.document_title}\n**${persLabel}**: ${record.feedback_perspective} | **${intLabel}**: ${record.feedback_intensity}\n\n`;
     for (const result of record.results) {
       const p = personas.find((persona) => persona.id === result.persona_id);
-      text += `### ${p?.name || '페르소나'} (${p?.role || ''})\n\n`;
-      text += `**전반적 반응**: ${result.overall_reaction}\n\n`;
-      if (result.failure_scenario) text += `**이 계획이 실패한다면?**\n${result.failure_scenario}\n\n`;
+      text += `### ${p?.name || L('페르소나', 'Persona')} (${p?.role || ''})\n\n`;
+      text += `**${L('전반적 반응', 'Overall reaction')}**: ${result.overall_reaction}\n\n`;
+      if (result.failure_scenario) text += `**${L('이 계획이 실패한다면?', 'If this plan fails?')}**\n${result.failure_scenario}\n\n`;
       if (result.classified_risks?.length > 0) {
         for (const r of result.classified_risks) text += `**[${r.category}]** ${r.text}\n`;
         text += '\n';
       }
-      text += `**질문**\n${result.first_questions.map(q => `- ${q}`).join('\n')}\n\n`;
-      text += `**칭찬**\n${result.praise.map(p => `- ${p}`).join('\n')}\n\n`;
-      text += `**우려**\n${result.concerns.map(c => `- ${c}`).join('\n')}\n\n`;
-      if (result.approval_conditions?.length > 0) text += `**승인 조건**\n${result.approval_conditions.map(c => `- ${c}`).join('\n')}\n\n`;
+      text += `**${L('질문', 'Questions')}**\n${result.first_questions.map(q => `- ${q}`).join('\n')}\n\n`;
+      text += `**${L('칭찬', 'Praise')}**\n${result.praise.map(p => `- ${p}`).join('\n')}\n\n`;
+      text += `**${L('우려', 'Concerns')}**\n${result.concerns.map(c => `- ${c}`).join('\n')}\n\n`;
+      if (result.approval_conditions?.length > 0) text += `**${L('승인 조건', 'Approval conditions')}**\n${result.approval_conditions.map(c => `- ${c}`).join('\n')}\n\n`;
     }
-    if (record.synthesis) text += `### 종합 분석\n${record.synthesis}\n`;
+    if (record.synthesis) text += `### ${L('종합 분석', 'Synthesis')}\n${record.synthesis}\n`;
     return text;
   };
 
@@ -115,8 +122,8 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[16px] font-bold text-[var(--text-primary)]">피드백 결과</h3>
-        <ShareBar getText={getFullText} getTitle={() => '리허설 결과'} />
+        <h3 className="text-[16px] font-bold text-[var(--text-primary)]">{L('피드백 결과', 'Feedback results')}</h3>
+        <ShareBar getText={getFullText} getTitle={() => L('리허설 결과', 'Rehearsal Results')} />
       </div>
 
       {/* ══════════════ OVERVIEW ══════════════ */}
@@ -148,7 +155,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                         : persona.influence === 'medium' ? 'bg-amber-100 text-amber-700'
                         : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {persona.influence === 'high' ? '높음' : persona.influence === 'medium' ? '중간' : '낮음'}
+                        {persona.influence === 'high' ? L('높음', 'High') : persona.influence === 'medium' ? L('중간', 'Med') : L('낮음', 'Low')}
                       </span>
                     )}
                   </div>
@@ -161,7 +168,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                   {/* Risk indicators */}
                   {criticalCount > 0 && (
                     <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-[#E24B4A]">
-                      <ShieldAlert size={10} /> 핵심 위협 {criticalCount}건
+                      <ShieldAlert size={10} /> {L(`핵심 위협 ${criticalCount}건`, `${criticalCount} critical threat${criticalCount === 1 ? '' : 's'}`)}
                     </div>
                   )}
                 </button>
@@ -173,13 +180,13 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
           {(riskCounts.critical + riskCounts.manageable + riskCounts.unspoken) > 0 && (
             <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl bg-[var(--bg)] text-[12px] font-semibold">
               {riskCounts.critical > 0 && (
-                <span className="flex items-center gap-1 text-[#E24B4A]"><ShieldAlert size={12} /> 핵심 위협 {riskCounts.critical}</span>
+                <span className="flex items-center gap-1 text-[#E24B4A]"><ShieldAlert size={12} /> {L('핵심 위협', 'Critical')} {riskCounts.critical}</span>
               )}
               {riskCounts.manageable > 0 && (
-                <span className="flex items-center gap-1 text-[#EF9F27]"><Shield size={12} /> 관리 가능 {riskCounts.manageable}</span>
+                <span className="flex items-center gap-1 text-[#EF9F27]"><Shield size={12} /> {L('관리 가능', 'Manageable')} {riskCounts.manageable}</span>
               )}
               {riskCounts.unspoken > 0 && (
-                <span className="flex items-center gap-1 text-[#7F77DD]" title="모두 알지만 아무도 꺼내지 않는 리스크 (조직 정치, 역량 부족 등)"><EyeOff size={12} /> 침묵 {riskCounts.unspoken}</span>
+                <span className="flex items-center gap-1 text-[#7F77DD]" title={L('모두 알지만 아무도 꺼내지 않는 리스크 (조직 정치, 역량 부족 등)', 'Risks everyone sees but no one names (politics, capability gaps, etc.)')}><EyeOff size={12} /> {L('침묵', 'Unspoken')} {riskCounts.unspoken}</span>
               )}
             </div>
           )}
@@ -193,7 +200,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
             if (allConditions.length === 0) return null;
             return (
               <div className="px-4 py-3 rounded-xl border border-[var(--accent-light)]/20 bg-[var(--checkpoint)]">
-                <p className="text-[11px] font-bold text-[var(--accent)] mb-2">승인 조건 (고영향력)</p>
+                <p className="text-[11px] font-bold text-[var(--accent)] mb-2">{L('승인 조건 (고영향력)', 'Approval conditions (high-influence)')}</p>
                 <div className="space-y-1">
                   {allConditions.map((ac, i) => (
                     <div key={i} className="flex items-start gap-2 text-[12px]">
@@ -211,7 +218,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
           <div className="space-y-3">
             {record.results.length > 1 && (record.structured_synthesis || record.synthesis) && (
               <Button size="sm" variant="secondary" onClick={() => setViewMode('synthesis')}>
-                종합 분석 보기
+                {L('종합 분석 보기', 'View synthesis')}
               </Button>
             )}
 
@@ -224,19 +231,23 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-[var(--text-primary)]">
-                      {record.discussion ? '이해관계자 토론' : '이해관계자 토론 시뮬레이션'}
+                      {record.discussion ? L('이해관계자 토론', 'Stakeholder discussion') : L('이해관계자 토론 시뮬레이션', 'Simulate stakeholder discussion')}
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">
                       {record.discussion
-                        ? `${record.discussion.length}건의 발언${record.discussion_takeaway ? ` — "${record.discussion_takeaway}"` : ''}`
-                        : `${record.results.length}명의 이해관계자가 서로의 피드백에 반응하는 가상 토론을 생성합니다. 갈등 포인트와 합의점을 발견할 수 있습니다.`
+                        ? (locale === 'ko'
+                            ? `${record.discussion.length}건의 발언${record.discussion_takeaway ? ` — "${record.discussion_takeaway}"` : ''}`
+                            : `${record.discussion.length} message${record.discussion.length === 1 ? '' : 's'}${record.discussion_takeaway ? ` — "${record.discussion_takeaway}"` : ''}`)
+                        : (locale === 'ko'
+                            ? `${record.results.length}명의 이해관계자가 서로의 피드백에 반응하는 가상 토론을 생성합니다. 갈등 포인트와 합의점을 발견할 수 있습니다.`
+                            : `Generate a simulated discussion where ${record.results.length} stakeholders react to each other's feedback. Surfaces points of conflict and agreement.`)
                       }
                     </p>
                     <Button size="sm" className="mt-2.5"
                       onClick={() => record.discussion ? setViewMode('discussion') : onStartDiscussion()}
                       disabled={discussionLoading}>
                       {discussionLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      {record.discussion ? '토론 보기' : discussionLoading ? '토론 생성 중...' : '토론 시작'}
+                      {record.discussion ? L('토론 보기', 'View discussion') : discussionLoading ? L('토론 생성 중...', 'Generating discussion…') : L('토론 시작', 'Start discussion')}
                     </Button>
                   </div>
                 </div>
@@ -251,7 +262,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
         <div className="space-y-3 animate-fade-in">
           <button onClick={() => { setViewMode('overview'); setSelectedPersonaId(null); setShowDeepDetails(false); }}
             className="flex items-center gap-1 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">
-            <ArrowLeft size={14} /> 전체 결과로
+            <ArrowLeft size={14} /> {L('전체 결과로', 'Back to results')}
           </button>
 
           {/* ── Persona header (1회만) ── */}
@@ -275,7 +286,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
             <Card className="!border-l-4 !border-l-[var(--success)]">
               <div className="flex items-center gap-2 mb-2">
                 <ThumbsUp size={14} className="text-[var(--success)]" />
-                <span className="text-[13px] font-bold text-[var(--success)]">잘한 부분</span>
+                <span className="text-[13px] font-bold text-[var(--success)]">{L('잘한 부분', 'What works')}</span>
               </div>
               <ul className="space-y-1">
                 {selectedResult.praise.map((p, i) => (
@@ -288,7 +299,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
           {/* ── 이것만 고치면 (concerns — pulled out, prominent) ── */}
           {(selectedResult.concerns || []).length > 0 && (
             <div>
-              <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">이것만 고치면</p>
+              <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">{L('이것만 고치면', 'Just fix this')}</p>
               <div className="space-y-2">
                 {selectedResult.concerns.map((c, i) => (
                   <div key={i} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg)] px-3.5 py-2.5">
@@ -302,7 +313,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
           {/* ── OK 조건 (highlighted, like web app) ── */}
           {(selectedResult.approval_conditions?.length ?? 0) > 0 && (
             <div className="rounded-xl bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 px-4 py-3.5">
-              <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider mb-2">통과 조건</p>
+              <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider mb-2">{L('통과 조건', 'Approval conditions')}</p>
               <ul className="space-y-1">
                 {selectedResult.approval_conditions!.map((c, i) => (
                   <li key={i} className="text-[14px] text-[var(--text-primary)] font-medium leading-relaxed flex items-start gap-2">
@@ -328,14 +339,14 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                   className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
                 >
                   <Search size={11} />
-                  {showDeepDetails ? '간략히 보기' : '더 자세히 보기'}
+                  {showDeepDetails ? L('간략히 보기', 'Show less') : L('더 자세히 보기', 'Show more')}
                 </button>
                 {showDeepDetails && (
                   <div className="mt-3 space-y-3 animate-fade-in">
                     {/* 질문 */}
                     {(selectedResult.first_questions || []).length > 0 && (
                       <div>
-                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">물어볼 질문</p>
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1.5">{L('물어볼 질문', 'Questions they would ask')}</p>
                         <ul className="space-y-1.5">
                           {selectedResult.first_questions.map((q, i) => (
                             <li key={i} className="text-[13px] text-[var(--text-primary)] px-3 py-2 rounded-lg bg-[var(--bg)]">{q}</li>
@@ -347,7 +358,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                     {/* 실패 시나리오 */}
                     {selectedResult.failure_scenario && (
                       <div>
-                        <p className="text-[11px] font-bold text-amber-600 mb-1">실패 시나리오</p>
+                        <p className="text-[11px] font-bold text-amber-600 mb-1">{L('실패 시나리오', 'Failure scenario')}</p>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{selectedResult.failure_scenario}</p>
                       </div>
                     )}
@@ -355,7 +366,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                     {/* 검증 안 된 가정 */}
                     {(selectedResult.untested_assumptions?.length ?? 0) > 0 && (
                       <div>
-                        <p className="text-[11px] font-bold text-amber-600 mb-1">검증되지 않은 가정</p>
+                        <p className="text-[11px] font-bold text-amber-600 mb-1">{L('검증되지 않은 가정', 'Untested assumptions')}</p>
                         <ul className="space-y-1">
                           {selectedResult.untested_assumptions!.map((a, i) => (
                             <li key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-1.5">
@@ -369,11 +380,11 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                     {/* 리스크 분류 */}
                     {(selectedResult.classified_risks?.length ?? 0) > 0 && (
                       <div className="space-y-2">
-                        <p className="text-[11px] font-bold text-[var(--text-secondary)]">리스크 분류</p>
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)]">{L('리스크 분류', 'Risk categorization')}</p>
                         {selectedResult.classified_risks!.map((risk, i) => (
                           <div key={i} className="flex items-start gap-2.5 text-[13px]">
                             <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${risk.category === 'critical' ? 'bg-red-100 text-red-700' : risk.category === 'manageable' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
-                              {risk.category === 'critical' ? '위협' : risk.category === 'manageable' ? '관리' : '침묵'}
+                              {risk.category === 'critical' ? L('위협', 'Threat') : risk.category === 'manageable' ? L('관리', 'Manage') : L('침묵', 'Unspoken')}
                             </span>
                             <span className="text-[var(--text-primary)] leading-relaxed">{risk.text}</span>
                           </div>
@@ -384,7 +395,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                     {/* 추가 요청 */}
                     {(selectedResult.wants_more?.length ?? 0) > 0 && (
                       <div>
-                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1">추가로 보고 싶은 것</p>
+                        <p className="text-[11px] font-bold text-[var(--text-secondary)] mb-1">{L('추가로 보고 싶은 것', 'What they want to see more of')}</p>
                         <ul className="space-y-1">
                           {selectedResult.wants_more!.map((w, i) => (
                             <li key={i} className="text-[13px] text-[var(--text-primary)]">{w}</li>
@@ -401,7 +412,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
           {/* Accuracy Rating */}
           {!ratingState[selectedPersona.id]?.saved ? (
             <Card className="!bg-[var(--bg)] !border-dashed mt-4">
-              <p className="text-[13px] font-bold text-[var(--text-primary)] mb-3">이 피드백의 정확도를 평가해주세요</p>
+              <p className="text-[13px] font-bold text-[var(--text-primary)] mb-3">{L('이 피드백의 정확도를 평가해주세요', 'Rate the accuracy of this feedback')}</p>
               <div className="flex items-center gap-1 mb-3">
                 {[1, 2, 3, 4, 5].map((score) => (
                   <button key={score} onClick={() => setRatingScore(selectedPersona.id, score)} className="cursor-pointer p-0.5">
@@ -413,9 +424,12 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                 )}
               </div>
               <div className="space-y-2 mb-3">
-                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">어떤 부분이 정확했나요?</p>
+                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">{L('어떤 부분이 정확했나요?', 'What was accurate?')}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {['질문 예측', '칭찬 포인트', '우려/지적', '추가 요구'].map((aspect) => {
+                  {(locale === 'ko'
+                    ? ['질문 예측', '칭찬 포인트', '우려/지적', '추가 요구']
+                    : ['Predicted questions', 'Praise points', 'Concerns', 'Requests']
+                  ).map((aspect) => {
                     const isAccurate = ratingState[selectedPersona.id]?.accurateAspects?.includes(aspect);
                     const isInaccurate = ratingState[selectedPersona.id]?.inaccurateAspects?.includes(aspect);
                     return (
@@ -434,12 +448,12 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                 </div>
               </div>
               <Button size="sm" onClick={() => saveRating(selectedPersona.id)} disabled={!ratingState[selectedPersona.id]?.score}>
-                평가 저장
+                {L('평가 저장', 'Save rating')}
               </Button>
             </Card>
           ) : (
             <div className="flex items-center gap-2 text-[var(--success)] text-[12px] font-medium py-2">
-              <Check size={14} /> 정확도 평가가 저장되었습니다
+              <Check size={14} /> {L('정확도 평가가 저장되었습니다', 'Accuracy rating saved')}
             </div>
           )}
         </div>
@@ -450,7 +464,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
         <div className="space-y-4 animate-fade-in">
           <button onClick={() => setViewMode('overview')}
             className="flex items-center gap-1 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">
-            <ArrowLeft size={14} /> 전체 결과로
+            <ArrowLeft size={14} /> {L('전체 결과로', 'Back to results')}
           </button>
           {record.discussion ? (
             <Card>
@@ -462,7 +476,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
             </Card>
           ) : (
             <Card className="text-center py-8">
-              <p className="text-[var(--text-secondary)]">토론이 아직 생성되지 않았습니다.</p>
+              <p className="text-[var(--text-secondary)]">{L('토론이 아직 생성되지 않았습니다.', 'Discussion has not been generated yet.')}</p>
             </Card>
           )}
 
@@ -474,7 +488,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
         <div className="space-y-4 animate-fade-in">
           <button onClick={() => setViewMode('overview')}
             className="flex items-center gap-1 text-[13px] text-[var(--accent)] hover:underline cursor-pointer">
-            <ArrowLeft size={14} /> 전체 결과로
+            <ArrowLeft size={14} /> {L('전체 결과로', 'Back to results')}
           </button>
 
           {record.structured_synthesis ? (
@@ -482,7 +496,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
               {/* Common agreements */}
               {record.structured_synthesis.common_agreements.length > 0 && (
                 <Card className="!border-l-4 !border-l-[var(--success)]">
-                  <p className="text-[13px] font-bold text-[var(--success)] mb-2">&#x2705; 공통 합의</p>
+                  <p className="text-[13px] font-bold text-[var(--success)] mb-2">&#x2705; {L('공통 합의', 'Common agreements')}</p>
                   <ul className="space-y-1.5">
                     {record.structured_synthesis.common_agreements.map((a, i) => (
                       <li key={i} className="text-[13px] text-[var(--text-primary)]">&#x2022; {a}</li>
@@ -494,7 +508,7 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
               {/* Key conflicts */}
               {record.structured_synthesis.key_conflicts.length > 0 && (
                 <Card className="!border-l-4 !border-l-amber-400">
-                  <p className="text-[13px] font-bold text-amber-700 mb-3">&#x26A1; 핵심 갈등</p>
+                  <p className="text-[13px] font-bold text-amber-700 mb-3">&#x26A1; {L('핵심 갈등', 'Key conflicts')}</p>
                   <div className="space-y-3">
                     {record.structured_synthesis.key_conflicts.map((conflict, i) => (
                       <div key={i} className="rounded-lg bg-[var(--bg)] p-3">
@@ -521,14 +535,14 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
               {/* Priority actions */}
               {record.structured_synthesis.priority_actions.length > 0 && (
                 <Card className="!border-l-4 !border-l-[var(--accent)]">
-                  <p className="text-[13px] font-bold text-[var(--accent)] mb-2">&#x1F3AF; 우선 수정 권고</p>
+                  <p className="text-[13px] font-bold text-[var(--accent)] mb-2">&#x1F3AF; {L('우선 수정 권고', 'Priority actions')}</p>
                   <div className="space-y-2">
                     {record.structured_synthesis.priority_actions.map((action, i) => (
                       <div key={i} className="flex items-start gap-2 text-[13px]">
                         <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
                           action.priority === 'high' ? 'bg-[var(--danger)]/10 text-[var(--danger)]' : 'bg-[var(--checkpoint)] text-[var(--risk-manageable)]'
                         }`}>
-                          {action.priority === 'high' ? '긴급' : '권고'}
+                          {action.priority === 'high' ? L('긴급', 'Urgent') : L('권고', 'Recommended')}
                         </span>
                         <div>
                           <span className="text-[var(--text-primary)]">{action.action}</span>
@@ -555,16 +569,16 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
         <div className="space-y-3 mt-2">
           <div className="flex items-center gap-2">
             <div className="h-px flex-1 bg-[var(--border)]" />
-            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider shrink-0">다음 단계</span>
+            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider shrink-0">{L('다음 단계', 'Next step')}</span>
             <div className="h-px flex-1 bg-[var(--border)]" />
           </div>
 
           {/* Issue summary */}
           <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 rounded-xl bg-[var(--bg)] text-[12px]">
-            <span className="text-[var(--text-secondary)] font-medium">추출된 이슈</span>
-            {riskCounts.critical > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-50 text-red-700 font-bold border border-red-200">차단 {riskCounts.critical}</span>}
-            {(() => { const c = record.results.reduce((s, r) => s + (r.concerns || []).length, 0); return c > 0 ? <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200">우려 {c}</span> : null; })()}
-            {(() => { const w = record.results.reduce((s, r) => s + (r.wants_more || []).length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">추가 요청 {w}</span> : null; })()}
+            <span className="text-[var(--text-secondary)] font-medium">{L('추출된 이슈', 'Extracted issues')}</span>
+            {riskCounts.critical > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-50 text-red-700 font-bold border border-red-200">{L('차단', 'Blockers')} {riskCounts.critical}</span>}
+            {(() => { const c = record.results.reduce((s, r) => s + (r.concerns || []).length, 0); return c > 0 ? <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200">{L('우려', 'Concerns')} {c}</span> : null; })()}
+            {(() => { const w = record.results.reduce((s, r) => s + (r.wants_more || []).length, 0); return w > 0 ? <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 font-bold border border-blue-200">{L('추가 요청', 'Requests')} {w}</span> : null; })()}
           </div>
 
           {onStartDebate && (
@@ -574,8 +588,8 @@ export function FeedbackResult({ record, personas, onStartDiscussion, discussion
                 <MessageSquare size={16} className="text-[var(--accent)]" />
               </div>
               <div className="flex-1">
-                <p className="text-[13px] font-bold text-[var(--text-primary)]">이슈 정리</p>
-                <p className="text-[11px] text-[var(--text-secondary)]">반영할 이슈를 선별하고 추가합니다</p>
+                <p className="text-[13px] font-bold text-[var(--text-primary)]">{L('이슈 정리', 'Triage issues')}</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">{L('반영할 이슈를 선별하고 추가합니다', 'Select which issues to incorporate and add more')}</p>
               </div>
               <ArrowRight size={14} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
             </button>

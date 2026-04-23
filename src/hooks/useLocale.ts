@@ -6,39 +6,59 @@ import type { Settings } from '@/stores/types';
 
 export type Locale = 'ko' | 'en';
 
+function detectBrowserLocale(): Locale {
+  if (typeof navigator === 'undefined') return 'en';
+  return (navigator.language || '').startsWith('ko') ? 'ko' : 'en';
+}
+
+function detectUrlLocale(): Locale | null {
+  if (typeof window === 'undefined') return null;
+  const param = new URLSearchParams(window.location.search).get('lang');
+  return param === 'ko' || param === 'en' ? param : null;
+}
+
 /**
- * 브라우저 언어 자동 감지 + localStorage 캐시.
- * 첫 방문 시 navigator.language가 ko가 아니면 영어로 설정.
- * settings에서 수동 변경한 경우 그걸 우선.
+ * Resolves the user's locale.
+ *
+ * Priority (highest first):
+ *   1. URL param (?lang=ko | ?lang=en) — transient; for shareable marketing links
+ *   2. Explicit user setting — persisted in Settings (set via Settings UI)
+ *   3. Browser Accept-Language on first visit — auto-persisted so next visit is stable
+ *   4. Default: 'en' — matches SSR to avoid hydration flash for English-speaking users
+ *
+ * A Korean browser user will see English for ~1 frame on first visit before the
+ * useEffect switches to Korean (acceptable, given the product's English-first focus).
  */
 export function useLocale(): Locale {
-  const [locale, setLocale] = useState<Locale>('ko');
+  const [locale, setLocale] = useState<Locale>('en');
 
   useEffect(() => {
-    const settings = getStorage<Settings>(STORAGE_KEYS.SETTINGS, {} as Settings);
+    // 1. URL param wins (does NOT persist — URL is the source of truth for that session)
+    const urlLocale = detectUrlLocale();
+    if (urlLocale) {
+      setLocale(urlLocale);
+      return;
+    }
 
-    // 사용자가 settings에서 명시적으로 설정한 적 있으면 그걸 우선
+    // 2. Explicit user setting (previously chosen in Settings)
+    const settings = getStorage<Settings>(STORAGE_KEYS.SETTINGS, {} as Settings);
     if (settings.language) {
       setLocale(settings.language as Locale);
       return;
     }
 
-    // 첫 방문: 브라우저 언어 감지
-    const browserLang = navigator.language || '';
-    const isKorean = browserLang.startsWith('ko');
-    const detected: Locale = isKorean ? 'ko' : 'en';
-
-    // localStorage에 저장하여 다음 방문 시 바로 적용
-    setStorage(STORAGE_KEYS.SETTINGS, { ...settings, language: detected });
-    setLocale(detected);
+    // 3. First visit: detect from browser, persist so subsequent visits are stable
+    const browserLocale = detectBrowserLocale();
+    setStorage(STORAGE_KEYS.SETTINGS, { ...settings, language: browserLocale });
+    setLocale(browserLocale);
   }, []);
 
   return locale;
 }
 
 /**
- * 이중 언어 텍스트 헬퍼.
- * 사용법: const L = useLanding();  L('제목', 'Title')
+ * Dual-language text helper.
+ * Usage: const L = useLandingText(locale); L('제목', 'Title')
  */
 export function useLandingText(locale: Locale) {
   return (ko: string, en: string) => locale === 'ko' ? ko : en;

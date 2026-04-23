@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAgentStore } from '@/stores/useAgentStore';
 import type { Agent } from '@/stores/agent-types';
+import { useLocale } from '@/hooks/useLocale';
 
 const TOAST_DURATION = 5000;
 
 export function UnlockToast() {
+  const locale = useLocale();
   const lastUnlockedIds = useAgentStore(s => s.lastUnlockedIds);
   const clearUnlocked = useAgentStore(s => s.clearUnlocked);
   const agents = useAgentStore(s => s.agents);
@@ -39,24 +41,29 @@ export function UnlockToast() {
   return (
     <div className="unlock-toast-container">
       <AnimatePresence>
-        {queue.map((agent, i) => (
-          <motion.button
-            key={agent.id}
-            initial={{ opacity: 0, y: 60, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30, delay: i * 0.12 }}
-            className="unlock-toast"
-            onClick={dismiss}
-          >
-            <div className="unlock-toast-glow" />
-            <span className="unlock-toast-emoji">{agent.emoji}</span>
-            <div className="unlock-toast-body">
-              <p className="unlock-toast-name">{agent.name}</p>
-              <p className="unlock-toast-role">{agent.role} 해금!</p>
-            </div>
-          </motion.button>
-        ))}
+        {queue.map((agent, i) => {
+          const displayName = locale === 'en' && agent.nameEn ? agent.nameEn : agent.name;
+          const displayRole = locale === 'en' && agent.roleEn ? agent.roleEn : agent.role;
+          const unlockLine = locale === 'ko' ? `${displayRole} 해금!` : `${displayRole} unlocked!`;
+          return (
+            <motion.button
+              key={agent.id}
+              initial={{ opacity: 0, y: 60, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30, delay: i * 0.12 }}
+              className="unlock-toast"
+              onClick={dismiss}
+            >
+              <div className="unlock-toast-glow" />
+              <span className="unlock-toast-emoji">{agent.emoji}</span>
+              <div className="unlock-toast-body">
+                <p className="unlock-toast-name">{displayName}</p>
+                <p className="unlock-toast-role">{unlockLine}</p>
+              </div>
+            </motion.button>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

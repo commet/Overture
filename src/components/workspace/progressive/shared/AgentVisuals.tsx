@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 // Rotating live activity per persona id — gives "alive" feel while working
-export const ACTIVITY_TICKERS: Record<string, string[]> = {
+const ACTIVITY_TICKERS_KO: Record<string, string[]> = {
   researcher: ['데이터 수집 중', '경쟁사 사례 분석', '리뷰 정리 중', '시장 신호 추출'],
   strategist: ['옵션 탐색 중', '구조 설계 중', '인력 배치 검토', '리스크 점검'],
   numbers: ['수치 검산 중', '비용 모델링', 'ROI 계산 중', '손익분기 추정'],
@@ -13,12 +14,25 @@ export const ACTIVITY_TICKERS: Record<string, string[]> = {
   copywriter: ['핵심 문장 추출', '논리 흐름 구조화', '독자 관점 검토', '문장 다듬는 중'],
 };
 
-const GENERIC_TICKER = ['생각 정리 중', '컨텍스트 읽는 중', '결과 작성 중', '핵심 추출 중'];
+const ACTIVITY_TICKERS_EN: Record<string, string[]> = {
+  researcher: ['Gathering data', 'Analyzing competitor cases', 'Organizing reviews', 'Extracting market signals'],
+  strategist: ['Exploring options', 'Designing structure', 'Reviewing staffing', 'Checking risks'],
+  numbers: ['Verifying numbers', 'Modeling costs', 'Calculating ROI', 'Estimating breakeven'],
+  critic: ['Finding weak spots', 'Compiling counterarguments', 'Reviewing failure scenarios', 'Testing assumptions'],
+  copywriter: ['Extracting key sentences', 'Structuring logic flow', 'Checking reader perspective', 'Polishing prose'],
+};
+
+export const ACTIVITY_TICKERS: Record<string, string[]> = ACTIVITY_TICKERS_KO; // back-compat
+
+const GENERIC_TICKER_KO = ['생각 정리 중', '컨텍스트 읽는 중', '결과 작성 중', '핵심 추출 중'];
+const GENERIC_TICKER_EN = ['Thinking', 'Reading context', 'Writing result', 'Extracting key points'];
 
 export function tickersFor(personaId: string | undefined | null, fallback?: string): string[] {
-  if (personaId && ACTIVITY_TICKERS[personaId]) return ACTIVITY_TICKERS[personaId];
-  if (fallback) return [fallback, ...GENERIC_TICKER];
-  return GENERIC_TICKER;
+  const tickers = getCurrentLanguage() === 'ko' ? ACTIVITY_TICKERS_KO : ACTIVITY_TICKERS_EN;
+  const generic = getCurrentLanguage() === 'ko' ? GENERIC_TICKER_KO : GENERIC_TICKER_EN;
+  if (personaId && tickers[personaId]) return tickers[personaId];
+  if (fallback) return [fallback, ...generic];
+  return generic;
 }
 
 export function TypingDots({ color }: { color?: string }) {

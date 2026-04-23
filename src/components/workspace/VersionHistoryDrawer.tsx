@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { GitBranch, Check, Crown, X, Eye } from 'lucide-react';
 import { isPreRelease } from '@/lib/version-numbering';
 import { buildTree, type TreeHierarchyNode, type VersionNode } from '@/lib/version-tree';
+import { useLocale } from '@/hooks/useLocale';
 
 /**
  * Generic tree-view drawer for version histories.
@@ -36,17 +37,17 @@ interface VersionHistoryDrawerProps {
   onPromote: (nodeId: string) => void;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, locale: 'ko' | 'en'): string {
   try {
     const diffMs = Date.now() - new Date(iso).getTime();
     const s = Math.floor(diffMs / 1000);
-    if (s < 60) return '방금';
+    if (s < 60) return locale === 'ko' ? '방금' : 'just now';
     const m = Math.floor(s / 60);
-    if (m < 60) return `${m}분 전`;
+    if (m < 60) return locale === 'ko' ? `${m}분 전` : `${m}m ago`;
     const h = Math.floor(m / 60);
-    if (h < 24) return `${h}시간 전`;
+    if (h < 24) return locale === 'ko' ? `${h}시간 전` : `${h}h ago`;
     const d = Math.floor(h / 24);
-    return `${d}일 전`;
+    return locale === 'ko' ? `${d}일 전` : `${d}d ago`;
   } catch {
     return '';
   }
@@ -57,13 +58,17 @@ export function VersionHistoryDrawer({
   activeLeafId,
   activePathIds,
   previewNodeId,
-  rootLabel = 'v0 (초안)',
-  rootSummary = '원본',
+  rootLabel,
+  rootSummary,
   onClose,
   onPreview,
   onBranch,
   onPromote,
 }: VersionHistoryDrawerProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const resolvedRootLabel = rootLabel ?? L('v0 (초안)', 'v0 (draft)');
+  const resolvedRootSummary = rootSummary ?? L('원본', 'Original');
   const tree = useMemo(() => buildTree(nodes), [nodes]);
 
   const renderNode = (node: TreeHierarchyNode<VersionTreeItem>, depth: number) => {
@@ -99,7 +104,7 @@ export function VersionHistoryDrawer({
             <span className="text-[13px] font-semibold text-[var(--text-primary)]">{label}</span>
             {isActiveLeaf && (
               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)] text-white">
-                <Check className="w-2.5 h-2.5" /> 현재
+                <Check className="w-2.5 h-2.5" /> {L('현재', 'current')}
               </span>
             )}
             {isReleased && (
@@ -108,13 +113,13 @@ export function VersionHistoryDrawer({
               </span>
             )}
             <span className="ml-auto text-[10px] text-[var(--text-tertiary)]">
-              {item.created_at ? relativeTime(item.created_at) : ''}
+              {item.created_at ? relativeTime(item.created_at, locale) : ''}
             </span>
           </div>
           <p
             className="text-[12px] text-[var(--text-secondary)] leading-snug line-clamp-2 mb-2 cursor-pointer hover:text-[var(--text-primary)]"
             onClick={() => onPreview(nodeId)}
-            title="클릭하면 이 버전의 본문을 미리 봅니다"
+            title={L('클릭하면 이 버전의 본문을 미리 봅니다', 'Click to preview this version')}
           >
             {summary}
           </p>
@@ -123,23 +128,23 @@ export function VersionHistoryDrawer({
               className="inline-flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
               onClick={() => onPreview(nodeId)}
             >
-              <Eye className="w-3 h-3" /> 보기
+              <Eye className="w-3 h-3" /> {L('보기', 'View')}
             </button>
             {!isActiveLeaf && (
               <button
                 className="inline-flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
                 onClick={() => onBranch(nodeId)}
               >
-                <GitBranch className="w-3 h-3" /> 여기서 분기
+                <GitBranch className="w-3 h-3" /> {L('여기서 분기', 'Branch here')}
               </button>
             )}
             {canPromote && (
               <button
                 className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-900 transition-colors ml-auto"
                 onClick={() => onPromote(nodeId)}
-                title="이 버전을 v1.0으로 승격합니다"
+                title={L('이 버전을 v1.0으로 승격합니다', 'Promote this version to v1.0')}
               >
-                <Crown className="w-3 h-3" /> v1으로 승격
+                <Crown className="w-3 h-3" /> {L('v1으로 승격', 'Promote to v1')}
               </button>
             )}
           </div>
@@ -162,25 +167,25 @@ export function VersionHistoryDrawer({
       <aside className="absolute right-0 top-0 h-full w-[360px] bg-[var(--bg)] border-l border-[var(--border)] shadow-[var(--shadow-lg)] pointer-events-auto flex flex-col">
         <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
-            <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">버전 히스토리</h3>
+            <h3 className="text-[14px] font-semibold text-[var(--text-primary)]">{L('버전 히스토리', 'Version History')}</h3>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-              클릭으로 돌아가거나 새 분기를 시작하세요
+              {L('클릭으로 돌아가거나 새 분기를 시작하세요', 'Click to go back or start a new branch')}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="닫기">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={L('닫기', 'Close')}>
             <X className="w-4 h-4" />
           </Button>
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {tree.length === 0 ? (
             <div className="text-[12px] text-[var(--text-tertiary)] text-center py-8">
-              아직 저장된 버전이 없습니다.
+              {L('아직 저장된 버전이 없습니다.', 'No saved versions yet.')}
             </div>
           ) : (
             <div>
               <div className="mb-3 pb-2 border-b border-dashed border-[var(--border)]">
-                <div className="text-[11px] text-[var(--text-tertiary)] mb-0.5">{rootLabel}</div>
-                <div className="text-[12px] text-[var(--text-secondary)] italic">{rootSummary}</div>
+                <div className="text-[11px] text-[var(--text-tertiary)] mb-0.5">{resolvedRootLabel}</div>
+                <div className="text-[12px] text-[var(--text-secondary)] italic">{resolvedRootSummary}</div>
               </div>
               {tree.map((node) => renderNode(node, 0))}
             </div>

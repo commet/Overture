@@ -400,7 +400,7 @@ export default function SettingsPage() {
           ))}
         </div>
         <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
-          {settings.language === 'en' ? 'Partial English support. Some UI text may still appear in Korean.' : '일부 UI 텍스트는 아직 한국어로만 제공됩니다.'}
+          {L('일부 UI 텍스트는 아직 한국어로만 제공됩니다.', 'Partial English support. Some UI text may still appear in Korean.')}
         </p>
 
         {/* Sound */}

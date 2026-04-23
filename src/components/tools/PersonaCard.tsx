@@ -2,6 +2,7 @@
 
 import type { Persona } from '@/stores/types';
 import { MessageSquare, Crown, Shield, User } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 interface PersonaCardProps {
   persona: Persona;
@@ -11,14 +12,18 @@ interface PersonaCardProps {
   onSelect?: (selected: boolean) => void;
 }
 
-const INFLUENCE_CONFIG = {
-  high: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', label: '높음', Icon: Crown },
-  medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: '중간', Icon: Shield },
-  low: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', label: '낮음', Icon: User },
-};
+function getInfluenceConfig(locale: 'ko' | 'en') {
+  const ko = locale === 'ko';
+  return {
+    high: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', label: ko ? '높음' : 'High', Icon: Crown },
+    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: ko ? '중간' : 'Med', Icon: Shield },
+    low: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', label: ko ? '낮음' : 'Low', Icon: User },
+  } as const;
+}
 
 export function PersonaCard({ persona, onClick, selected, selectable, onSelect }: PersonaCardProps) {
-  const inf = INFLUENCE_CONFIG[persona.influence || 'medium'];
+  const locale = useLocale();
+  const inf = getInfluenceConfig(locale)[persona.influence || 'medium'];
   const InfIcon = inf.Icon;
 
   return (

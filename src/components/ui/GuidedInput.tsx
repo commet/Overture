@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from './Button';
 import { AnimatedPlaceholder } from './AnimatedPlaceholder';
 import { Sparkles } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface ChipOption {
   value: string;
@@ -35,10 +36,11 @@ export function GuidedInput({
   textPlaceholder,
   textHint,
   animatedPlaceholders,
-  submitLabel = 'AI 분석 시작',
+  submitLabel,
   onSubmit,
   disabled,
 }: GuidedInputProps) {
+  const effectiveSubmitLabel = submitLabel ?? t('ui.submitAnalysis');
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [text, setText] = useState('');
 
@@ -130,7 +132,7 @@ export function GuidedInput({
       {/* Submit */}
       <div className="flex justify-end">
         <Button onClick={handleSubmit} disabled={!text.trim() || disabled}>
-          <Sparkles size={14} /> {submitLabel}
+          <Sparkles size={14} /> {effectiveSubmitLabel}
         </Button>
       </div>
     </div>
@@ -151,7 +153,7 @@ export function buildContextPrompt(
     });
 
   if (contextParts.length > 0) {
-    return `[맥락]\n${contextParts.join('\n')}\n\n[과제]\n${text}`;
+    return `[${t('ui.contextLabel')}]\n${contextParts.join('\n')}\n\n[${t('ui.taskLabel')}]\n${text}`;
   }
   return text;
 }

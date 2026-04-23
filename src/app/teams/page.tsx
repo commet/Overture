@@ -8,8 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Plus, Users, Mail, Check, X, Crown, Shield, User, Trash2, Copy, ArrowRight } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function TeamsPage() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const {
     teams, members, invites, currentTeamId,
     loadTeams, createTeam, setCurrentTeam,
@@ -61,7 +64,7 @@ export default function TeamsPage() {
       setInviteEmail('');
       setTimeout(() => setInviteSuccess(''), 3000);
     } else {
-      setInviteError('초대를 보내지 못했습니다. 이메일을 확인해주세요.');
+      setInviteError(L('초대를 보내지 못했습니다. 이메일을 확인해주세요.', "Couldn't send the invite. Please check the email address."));
       setTimeout(() => setInviteError(''), 4000);
     }
   };
@@ -88,29 +91,31 @@ export default function TeamsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
       <div>
-        <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">팀</h1>
+        <h1 className="text-[22px] font-bold tracking-tight text-[var(--text-primary)]">{L('팀', 'Teams')}</h1>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          팀원들과 함께 전략적 판단을 내릴 수 있습니다.
+          {L('팀원들과 함께 전략적 판단을 내릴 수 있습니다.', 'Make strategic decisions together with your teammates.')}
         </p>
       </div>
 
-      {/* ── 받은 초대 ── */}
+      {/* ── Incoming invites ── */}
       {myInvites.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[12px] font-semibold text-[var(--accent)]">받은 초대 {myInvites.length}건</p>
+          <p className="text-[12px] font-semibold text-[var(--accent)]">
+            {L(`받은 초대 ${myInvites.length}건`, `${myInvites.length} invite${myInvites.length === 1 ? '' : 's'}`)}
+          </p>
           {myInvites.map((invite) => (
             <div key={invite.id} className="flex items-center justify-between p-3 rounded-xl border border-[var(--accent)] bg-[var(--ai)]">
               <div>
                 <p className="text-[13px] font-medium text-[var(--text-primary)]">
-                  팀 초대
+                  {L('팀 초대', 'Team invite')}
                 </p>
                 <p className="text-[12px] text-[var(--text-secondary)]">
-                  {invite.role === 'admin' ? 'Admin' : 'Member'}으로 초대됨
+                  {L(`${invite.role === 'admin' ? 'Admin' : 'Member'}으로 초대됨`, `Invited as ${invite.role === 'admin' ? 'Admin' : 'Member'}`)}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => handleAcceptInvite(invite.id)}>
-                  <Check size={12} /> 수락
+                  <Check size={12} /> {L('수락', 'Accept')}
                 </Button>
                 <Button variant="secondary" size="sm" onClick={async () => {
                   const ok = await declineInvite(invite.id);
@@ -124,25 +129,25 @@ export default function TeamsPage() {
         </div>
       )}
 
-      {/* ── 팀 목록 ── */}
+      {/* ── Team list ── */}
       <div className="space-y-3">
         {teams.length === 0 && !showCreate ? (
           <Card className="text-center py-16">
             <Users size={28} className="mx-auto text-[var(--text-tertiary)] mb-4" />
-            <p className="text-[15px] font-semibold text-[var(--text-primary)] mb-1">아직 팀이 없습니다</p>
+            <p className="text-[15px] font-semibold text-[var(--text-primary)] mb-1">{L('아직 팀이 없습니다', 'No teams yet')}</p>
             <p className="text-[13px] text-[var(--text-secondary)] max-w-xs mx-auto mb-6">
-              팀을 만들면 프로젝트를 공유하고, 팀원들의 구조화된 피드백을 받을 수 있습니다.
+              {L('팀을 만들면 프로젝트를 공유하고, 팀원들의 구조화된 피드백을 받을 수 있습니다.', 'Create a team to share projects and get structured feedback from your teammates.')}
             </p>
             <Button onClick={() => setShowCreate(true)}>
-              <Plus size={14} /> 첫 팀 만들기
+              <Plus size={14} /> {L('첫 팀 만들기', 'Create your first team')}
             </Button>
           </Card>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-[var(--text-secondary)]">내 팀</p>
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)]">{L('내 팀', 'My teams')}</p>
               <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)}>
-                <Plus size={12} /> 새 팀
+                <Plus size={12} /> {L('새 팀', 'New team')}
               </Button>
             </div>
             {teams.map((team) => (
@@ -168,7 +173,7 @@ export default function TeamsPage() {
                     </div>
                   </div>
                   {currentTeamId === team.id && (
-                    <Badge variant="ai">선택됨</Badge>
+                    <Badge variant="ai">{L('선택됨', 'Selected')}</Badge>
                   )}
                 </div>
               </div>
@@ -177,16 +182,16 @@ export default function TeamsPage() {
         )}
       </div>
 
-      {/* ── 팀 생성 모달 ── */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="새 팀 만들기">
+      {/* ── Team create modal ── */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={L('새 팀 만들기', 'Create a new team')}>
         <div className="space-y-4">
           <div>
-            <label className="block text-[12px] font-medium text-[var(--text-secondary)] mb-1.5">팀 이름</label>
+            <label className="block text-[12px] font-medium text-[var(--text-secondary)] mb-1.5">{L('팀 이름', 'Team name')}</label>
             <input
               type="text"
               value={newTeamName}
               onChange={(e) => setNewTeamName(e.target.value)}
-              placeholder="전략기획팀"
+              placeholder={L('전략기획팀', 'Strategy team')}
               maxLength={50}
               className="w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]"
               autoFocus
@@ -194,22 +199,24 @@ export default function TeamsPage() {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowCreate(false)}>취소</Button>
+            <Button variant="secondary" onClick={() => setShowCreate(false)}>{L('취소', 'Cancel')}</Button>
             <Button onClick={handleCreateTeam} disabled={!newTeamName.trim() || creating}>
-              {creating ? '생성 중...' : '팀 만들기'}
+              {creating ? L('생성 중...', 'Creating...') : L('팀 만들기', 'Create team')}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* ── 선택된 팀 상세 ── */}
+      {/* ── Selected team detail ── */}
       {currentTeam && (
         <div className="space-y-6 animate-fade-in">
-          {/* 멤버 목록 */}
+          {/* Members */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[14px] font-bold text-[var(--text-primary)]">멤버</p>
-              <span className="text-[12px] text-[var(--text-tertiary)]">{members.length}명</span>
+              <p className="text-[14px] font-bold text-[var(--text-primary)]">{L('멤버', 'Members')}</p>
+              <span className="text-[12px] text-[var(--text-tertiary)]">
+                {L(`${members.length}명`, `${members.length} member${members.length === 1 ? '' : 's'}`)}
+              </span>
             </div>
             <div className="space-y-1.5">
               {members.map((member) => (
@@ -220,7 +227,7 @@ export default function TeamsPage() {
                     </div>
                     <div>
                       <p className="text-[13px] font-medium text-[var(--text-primary)]">
-                        {member.email || '멤버 (초대됨)'}
+                        {member.email || L('멤버 (초대됨)', 'Member (invited)')}
                       </p>
                       <p className="text-[11px] text-[var(--text-tertiary)]">{roleLabel(member.role)}</p>
                     </div>
@@ -238,9 +245,9 @@ export default function TeamsPage() {
             </div>
           </div>
 
-          {/* 초대 */}
+          {/* Invite */}
           <div>
-            <p className="text-[14px] font-bold text-[var(--text-primary)] mb-3">팀원 초대</p>
+            <p className="text-[14px] font-bold text-[var(--text-primary)] mb-3">{L('팀원 초대', 'Invite teammates')}</p>
             <div className="flex gap-2">
               <input
                 type="email"
@@ -260,12 +267,12 @@ export default function TeamsPage() {
                 <option value="admin">Admin</option>
               </select>
               <Button onClick={handleInvite} disabled={inviteLoading || !inviteEmail.trim()}>
-                <Mail size={14} /> 초대
+                <Mail size={14} /> {L('초대', 'Invite')}
               </Button>
             </div>
             {inviteSuccess && (
               <p className="text-[12px] text-[var(--success)] mt-2 flex items-center gap-1">
-                <Check size={12} /> {inviteSuccess}에게 초대를 보냈습니다
+                <Check size={12} /> {L(`${inviteSuccess}에게 초대를 보냈습니다`, `Invite sent to ${inviteSuccess}`)}
               </p>
             )}
             {inviteError && (
@@ -275,10 +282,10 @@ export default function TeamsPage() {
             )}
           </div>
 
-          {/* 대기 중인 초대 */}
+          {/* Pending invites */}
           {invites.filter(i => i.status === 'pending').length > 0 && (
             <div>
-              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">대기 중인 초대</p>
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">{L('대기 중인 초대', 'Pending invites')}</p>
               <div className="space-y-1.5">
                 {invites.filter(i => i.status === 'pending').map((invite) => (
                   <div key={invite.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-dashed border-[var(--border)] text-[12px]">
@@ -287,7 +294,7 @@ export default function TeamsPage() {
                       <span className="text-[var(--text-primary)]">{invite.email}</span>
                       <Badge variant="default">{invite.role}</Badge>
                     </div>
-                    <span className="text-[var(--text-tertiary)]">대기 중</span>
+                    <span className="text-[var(--text-tertiary)]">{L('대기 중', 'Pending')}</span>
                   </div>
                 ))}
               </div>

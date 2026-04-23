@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { callLLMJson } from '@/lib/llm';
+import { useLocale } from '@/hooks/useLocale';
 import type { Persona } from '@/stores/types';
 import { Sparkles, Loader2, Check, Pencil, Upload, ChevronRight, ChevronLeft, FileText, UserCircle } from 'lucide-react';
 
@@ -29,59 +30,197 @@ interface RolePreset {
   };
 }
 
-const ROLE_PRESETS: RolePreset[] = [
+const buildRolePresets = (L: (ko: string, en: string) => string): RolePreset[] => [
   {
-    emoji: '👔', label: 'CEO / 대표', role: 'CEO',
+    emoji: '👔', label: L('CEO / 대표', 'CEO / Founder'), role: 'CEO',
     traitDefaults: {
-      priorities: ['시장 기회와 성장', '비전과 전략 방향', '투자자/이사회 관리', '경쟁 포지셔닝', '팀 빌딩과 문화'],
-      styles: ['큰 그림부터 듣고 싶어함', '한 페이지 요약 선호', '임팩트 중심 소통', '빠른 판단을 선호', '비유와 스토리에 반응'],
-      concerns: ['매출 성장률 둔화', '경쟁사 동향', '핵심 인재 이탈', '시장 타이밍', '브랜드 이미지'],
-      traits: ['비전 중심', '빠른 판단', '임팩트 지향', '직관적'],
+      priorities: [
+        L('시장 기회와 성장', 'Market opportunity & growth'),
+        L('비전과 전략 방향', 'Vision & strategic direction'),
+        L('투자자/이사회 관리', 'Investor / board management'),
+        L('경쟁 포지셔닝', 'Competitive positioning'),
+        L('팀 빌딩과 문화', 'Team building & culture'),
+      ],
+      styles: [
+        L('큰 그림부터 듣고 싶어함', 'Wants the big picture first'),
+        L('한 페이지 요약 선호', 'Prefers one-page summaries'),
+        L('임팩트 중심 소통', 'Impact-driven communication'),
+        L('빠른 판단을 선호', 'Prefers quick decisions'),
+        L('비유와 스토리에 반응', 'Responds to analogies & stories'),
+      ],
+      concerns: [
+        L('매출 성장률 둔화', 'Slowing revenue growth'),
+        L('경쟁사 동향', 'Competitor moves'),
+        L('핵심 인재 이탈', 'Key talent leaving'),
+        L('시장 타이밍', 'Market timing'),
+        L('브랜드 이미지', 'Brand image'),
+      ],
+      traits: [
+        L('비전 중심', 'Vision-driven'),
+        L('빠른 판단', 'Fast decisions'),
+        L('임팩트 지향', 'Impact-oriented'),
+        L('직관적', 'Intuitive'),
+      ],
     },
   },
   {
-    emoji: '📊', label: 'CFO / 재무', role: 'CFO',
+    emoji: '📊', label: L('CFO / 재무', 'CFO / Finance'), role: 'CFO',
     traitDefaults: {
-      priorities: ['ROI와 비용 효율', '정량적 근거', '리스크 관리', '현금 흐름', '재무 모델링'],
-      styles: ['숫자로 말하기', '결론부터', '3페이지 이상 안 읽음', '근거 출처 요구', '테이블/차트 선호'],
-      concerns: ['비용 초과', '투자 대비 수익', '현금 흐름 압박', '규제/컴플라이언스', '예산 삭감 압력'],
-      traits: ['숫자 중심', '보수적', '근거 요구', '리스크 민감'],
+      priorities: [
+        L('ROI와 비용 효율', 'ROI & cost efficiency'),
+        L('정량적 근거', 'Quantitative evidence'),
+        L('리스크 관리', 'Risk management'),
+        L('현금 흐름', 'Cash flow'),
+        L('재무 모델링', 'Financial modeling'),
+      ],
+      styles: [
+        L('숫자로 말하기', 'Speaks in numbers'),
+        L('결론부터', 'Conclusion first'),
+        L('3페이지 이상 안 읽음', "Won't read past 3 pages"),
+        L('근거 출처 요구', 'Requires source citations'),
+        L('테이블/차트 선호', 'Prefers tables / charts'),
+      ],
+      concerns: [
+        L('비용 초과', 'Cost overruns'),
+        L('투자 대비 수익', 'Return on investment'),
+        L('현금 흐름 압박', 'Cash flow pressure'),
+        L('규제/컴플라이언스', 'Regulation / compliance'),
+        L('예산 삭감 압력', 'Budget cut pressure'),
+      ],
+      traits: [
+        L('숫자 중심', 'Numbers-driven'),
+        L('보수적', 'Conservative'),
+        L('근거 요구', 'Demands evidence'),
+        L('리스크 민감', 'Risk-sensitive'),
+      ],
     },
   },
   {
-    emoji: '⚙️', label: 'CTO / 기술', role: 'CTO',
+    emoji: '⚙️', label: L('CTO / 기술', 'CTO / Tech'), role: 'CTO',
     traitDefaults: {
-      priorities: ['기술 실현 가능성', '확장성/유지보수', '기술 부채 관리', '보안', '팀 생산성'],
-      styles: ['구체적 스펙 기반', '아키텍처 다이어그램', '트레이드오프 분석', 'POC 먼저', '비동기 소통 선호'],
-      concerns: ['기술 부채 누적', '시스템 안정성', '채용 난이도', '레거시 마이그레이션', '보안 취약점'],
-      traits: ['기술 깊이', '시스템 사고', '리스크 민감', '실용적'],
+      priorities: [
+        L('기술 실현 가능성', 'Technical feasibility'),
+        L('확장성/유지보수', 'Scalability / maintainability'),
+        L('기술 부채 관리', 'Tech debt management'),
+        L('보안', 'Security'),
+        L('팀 생산성', 'Team productivity'),
+      ],
+      styles: [
+        L('구체적 스펙 기반', 'Spec-based'),
+        L('아키텍처 다이어그램', 'Architecture diagrams'),
+        L('트레이드오프 분석', 'Tradeoff analysis'),
+        L('POC 먼저', 'POC first'),
+        L('비동기 소통 선호', 'Prefers async communication'),
+      ],
+      concerns: [
+        L('기술 부채 누적', 'Accumulating tech debt'),
+        L('시스템 안정성', 'System stability'),
+        L('채용 난이도', 'Hiring difficulty'),
+        L('레거시 마이그레이션', 'Legacy migration'),
+        L('보안 취약점', 'Security vulnerabilities'),
+      ],
+      traits: [
+        L('기술 깊이', 'Technical depth'),
+        L('시스템 사고', 'Systems thinking'),
+        L('리스크 민감', 'Risk-sensitive'),
+        L('실용적', 'Pragmatic'),
+      ],
     },
   },
   {
-    emoji: '📢', label: '마케팅 리드', role: '마케팅 디렉터',
+    emoji: '📢', label: L('마케팅 리드', 'Marketing Lead'), role: L('마케팅 디렉터', 'Marketing Director'),
     traitDefaults: {
-      priorities: ['고객 관점', '브랜드 일관성', '채널별 ROI', '시장 트렌드', '경쟁사 분석'],
-      styles: ['데이터 + 스토리', '시각적 자료 선호', '고객 사례 기반', '트렌드 레퍼런스', 'A/B 테스트 지향'],
-      concerns: ['CAC 상승', '전환율 하락', '브랜드 인지도', '채널 포화', '경쟁사 공격적 마케팅'],
-      traits: ['고객 중심', '데이터 드리븐', '트렌드 민감', '크리에이티브'],
+      priorities: [
+        L('고객 관점', 'Customer perspective'),
+        L('브랜드 일관성', 'Brand consistency'),
+        L('채널별 ROI', 'Channel-level ROI'),
+        L('시장 트렌드', 'Market trends'),
+        L('경쟁사 분석', 'Competitor analysis'),
+      ],
+      styles: [
+        L('데이터 + 스토리', 'Data + story'),
+        L('시각적 자료 선호', 'Prefers visual assets'),
+        L('고객 사례 기반', 'Customer-case-based'),
+        L('트렌드 레퍼런스', 'Trend references'),
+        L('A/B 테스트 지향', 'A/B test oriented'),
+      ],
+      concerns: [
+        L('CAC 상승', 'Rising CAC'),
+        L('전환율 하락', 'Dropping conversion'),
+        L('브랜드 인지도', 'Brand awareness'),
+        L('채널 포화', 'Channel saturation'),
+        L('경쟁사 공격적 마케팅', 'Aggressive competitor marketing'),
+      ],
+      traits: [
+        L('고객 중심', 'Customer-centric'),
+        L('데이터 드리븐', 'Data-driven'),
+        L('트렌드 민감', 'Trend-sensitive'),
+        L('크리에이티브', 'Creative'),
+      ],
     },
   },
   {
-    emoji: '💰', label: '투자자 / VC', role: '투자자',
+    emoji: '💰', label: L('투자자 / VC', 'Investor / VC'), role: L('투자자', 'Investor'),
     traitDefaults: {
-      priorities: ['시장 규모 (TAM/SAM)', '성장 지표', 'Exit 전략', '팀 역량', '유닛 이코노믹스'],
-      styles: ['핵심 지표 위주', '벤치마크 비교', '간결한 덱', '포트폴리오 시너지', '레퍼런스 체크'],
-      concerns: ['번레이트', '경쟁 우위 지속성', '시장 타이밍', '팀 실행력', '규제 리스크'],
-      traits: ['지표 중심', '비교 분석', '스케일 지향', '패턴 매칭'],
+      priorities: [
+        L('시장 규모 (TAM/SAM)', 'Market size (TAM/SAM)'),
+        L('성장 지표', 'Growth metrics'),
+        L('Exit 전략', 'Exit strategy'),
+        L('팀 역량', 'Team capability'),
+        L('유닛 이코노믹스', 'Unit economics'),
+      ],
+      styles: [
+        L('핵심 지표 위주', 'Key-metric focused'),
+        L('벤치마크 비교', 'Benchmark comparison'),
+        L('간결한 덱', 'Concise decks'),
+        L('포트폴리오 시너지', 'Portfolio synergy'),
+        L('레퍼런스 체크', 'Reference checks'),
+      ],
+      concerns: [
+        L('번레이트', 'Burn rate'),
+        L('경쟁 우위 지속성', 'Defensibility'),
+        L('시장 타이밍', 'Market timing'),
+        L('팀 실행력', 'Team execution'),
+        L('규제 리스크', 'Regulatory risk'),
+      ],
+      traits: [
+        L('지표 중심', 'Metrics-focused'),
+        L('비교 분석', 'Comparative analysis'),
+        L('스케일 지향', 'Scale-oriented'),
+        L('패턴 매칭', 'Pattern matching'),
+      ],
     },
   },
   {
-    emoji: '🤝', label: '클라이언트', role: '클라이언트 담당자',
+    emoji: '🤝', label: L('클라이언트', 'Client'), role: L('클라이언트 담당자', 'Client contact'),
     traitDefaults: {
-      priorities: ['납기와 품질', '비용 대비 가치', '소통 투명성', '리스크 사전 공유', '실무적 산출물'],
-      styles: ['정기 진행 업데이트', '리스크 사전 공유', '실무적 언어', '문서화 중시', '마일스톤 기반'],
-      concerns: ['일정 지연', '스코프 크리프', '품질 이슈', '담당자 교체', '예산 초과'],
-      traits: ['실용적', '일정 민감', '신뢰 중시', '결과 지향'],
+      priorities: [
+        L('납기와 품질', 'Deadline & quality'),
+        L('비용 대비 가치', 'Value for money'),
+        L('소통 투명성', 'Communication transparency'),
+        L('리스크 사전 공유', 'Early risk disclosure'),
+        L('실무적 산출물', 'Practical deliverables'),
+      ],
+      styles: [
+        L('정기 진행 업데이트', 'Regular progress updates'),
+        L('리스크 사전 공유', 'Share risks early'),
+        L('실무적 언어', 'Practical language'),
+        L('문서화 중시', 'Values documentation'),
+        L('마일스톤 기반', 'Milestone-based'),
+      ],
+      concerns: [
+        L('일정 지연', 'Schedule delays'),
+        L('스코프 크리프', 'Scope creep'),
+        L('품질 이슈', 'Quality issues'),
+        L('담당자 교체', 'Contact changes'),
+        L('예산 초과', 'Budget overrun'),
+      ],
+      traits: [
+        L('실용적', 'Practical'),
+        L('일정 민감', 'Schedule-sensitive'),
+        L('신뢰 중시', 'Trust-focused'),
+        L('결과 지향', 'Results-oriented'),
+      ],
     },
   },
 ];
@@ -123,6 +262,7 @@ function ChipSelector({
   onToggle,
   customValue,
   onCustomChange,
+  customPlaceholder,
 }: {
   label: string;
   options: string[];
@@ -130,6 +270,7 @@ function ChipSelector({
   onToggle: (option: string) => void;
   customValue: string;
   onCustomChange: (val: string) => void;
+  customPlaceholder: string;
 }) {
   return (
     <div>
@@ -157,7 +298,7 @@ function ChipSelector({
         type="text"
         value={customValue}
         onChange={(e) => onCustomChange(e.target.value)}
-        placeholder="+ 직접 추가..."
+        placeholder={customPlaceholder}
         className="w-full bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-lg px-3 py-2 text-[12px] text-[var(--text-secondary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
       />
     </div>
@@ -169,6 +310,10 @@ function ChipSelector({
 type Step = 'method' | 'preset' | 'configurator' | 'freetext' | 'structuring' | 'review';
 
 export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const ROLE_PRESETS = buildRolePresets(L);
+
   const [step, setStep] = useState<Step>(persona?.name ? 'review' : 'method');
   const [selectedPreset, setSelectedPreset] = useState<RolePreset | null>(null);
 
@@ -272,7 +417,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       });
       setStep('review');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 구조화에 실패했습니다.');
+      setError(err instanceof Error ? err.message : L('AI 구조화에 실패했습니다.', 'AI structuring failed.'));
       setStep('freetext');
     } finally {
       setLoading(false);
@@ -308,7 +453,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       });
       setStep('review');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '파일 분석에 실패했습니다.');
+      setError(err instanceof Error ? err.message : L('파일 분석에 실패했습니다.', 'File analysis failed.'));
       setStep('method');
     } finally {
       setLoading(false);
@@ -322,8 +467,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
   const configSteps = selectedPreset
     ? [
         {
-          label: '우선순위',
-          desc: `이 ${selectedPreset.label}이 가장 중요하게 보는 것은?`,
+          label: L('우선순위', 'Priorities'),
+          desc: L(`이 ${selectedPreset.label}이 가장 중요하게 보는 것은?`, `What does this ${selectedPreset.label} care about most?`),
           options: selectedPreset.traitDefaults.priorities,
           selected: selectedPriorities,
           onToggle: (item: string) => toggleItem(selectedPriorities, setSelectedPriorities, item),
@@ -331,8 +476,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           onCustom: setCustomPriority,
         },
         {
-          label: '커뮤니케이션 스타일',
-          desc: '어떻게 소통하는 것을 선호하나요?',
+          label: L('커뮤니케이션 스타일', 'Communication style'),
+          desc: L('어떻게 소통하는 것을 선호하나요?', 'How do they prefer to communicate?'),
           options: selectedPreset.traitDefaults.styles,
           selected: selectedStyles,
           onToggle: (item: string) => toggleItem(selectedStyles, setSelectedStyles, item),
@@ -340,8 +485,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           onCustom: setCustomStyle,
         },
         {
-          label: '최근 관심사/우려',
-          desc: '요즘 이 사람이 신경 쓰는 것은?',
+          label: L('최근 관심사/우려', 'Recent concerns'),
+          desc: L('요즘 이 사람이 신경 쓰는 것은?', "What's on their mind lately?"),
           options: selectedPreset.traitDefaults.concerns,
           selected: selectedConcerns,
           onToggle: (item: string) => toggleItem(selectedConcerns, setSelectedConcerns, item),
@@ -349,8 +494,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           onCustom: setCustomConcern,
         },
         {
-          label: '핵심 성향',
-          desc: '이 사람을 한마디로 표현하면?',
+          label: L('핵심 성향', 'Core traits'),
+          desc: L('이 사람을 한마디로 표현하면?', 'How would you describe them in a word?'),
           options: selectedPreset.traitDefaults.traits,
           selected: selectedTraits,
           onToggle: (item: string) => toggleItem(selectedTraits, setSelectedTraits, item),
@@ -366,7 +511,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       {/* ── METHOD SELECTION ── */}
       {step === 'method' && (
         <div className="space-y-3">
-          <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 방법으로 만드시겠어요?</h3>
+          <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{L('어떤 방법으로 만드시겠어요?', 'How would you like to create it?')}</h3>
 
           <button onClick={() => setStep('preset')}
             className="w-full flex items-center gap-3 p-4 rounded-xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--ai)]/30 transition-all text-left cursor-pointer group">
@@ -374,8 +519,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               <UserCircle size={20} className="text-purple-600" />
             </div>
             <div className="flex-1">
-              <p className="text-[14px] font-semibold text-[var(--text-primary)]">유형에서 시작</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">CEO, CFO 등 선택 후 성향을 클릭으로 조합</p>
+              <p className="text-[14px] font-semibold text-[var(--text-primary)]">{L('유형에서 시작', 'Start from a role')}</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">{L('CEO, CFO 등 선택 후 성향을 클릭으로 조합', 'Pick CEO, CFO, etc. and compose traits by clicking')}</p>
             </div>
             <ChevronRight size={16} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)]" />
           </button>
@@ -386,8 +531,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               <Sparkles size={20} className="text-[#2d4a7c]" />
             </div>
             <div className="flex-1">
-              <p className="text-[14px] font-semibold text-[var(--text-primary)]">자유롭게 설명</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">아는 것을 적으면 프로필로 구조화됩니다</p>
+              <p className="text-[14px] font-semibold text-[var(--text-primary)]">{L('자유롭게 설명', 'Describe freely')}</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">{L('아는 것을 적으면 프로필로 구조화됩니다', 'Write what you know — we structure it into a profile')}</p>
             </div>
             <ChevronRight size={16} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)]" />
           </button>
@@ -398,8 +543,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               <FileText size={20} className="text-[#8b6914]" />
             </div>
             <div className="flex-1">
-              <p className="text-[14px] font-semibold text-[var(--text-primary)]">파일에서 분석</p>
-              <p className="text-[12px] text-[var(--text-secondary)]">회의록, 이메일, 채팅에서 자동 추출</p>
+              <p className="text-[14px] font-semibold text-[var(--text-primary)]">{L('파일에서 분석', 'Analyze from file')}</p>
+              <p className="text-[12px] text-[var(--text-secondary)]">{L('회의록, 이메일, 채팅에서 자동 추출', 'Auto-extract from meeting notes, emails, chats')}</p>
             </div>
             <ChevronRight size={16} className="text-[var(--text-secondary)] group-hover:text-[var(--accent)]" />
           </button>
@@ -407,7 +552,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
 
           <button onClick={() => setStep('review')}
             className="w-full flex items-center gap-3 p-3 text-[13px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
-            <Pencil size={14} /> 직접 입력하기
+            <Pencil size={14} /> {L('직접 입력하기', 'Enter manually')}
           </button>
         </div>
       )}
@@ -416,8 +561,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       {step === 'preset' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">어떤 유형인가요?</h3>
-            <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">뒤로</button>
+            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{L('어떤 유형인가요?', 'Which role?')}</h3>
+            <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">{L('뒤로', 'Back')}</button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {ROLE_PRESETS.map((preset) => (
@@ -439,9 +584,9 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         <div className="space-y-4 animate-fade-in">
           <div className="flex items-center justify-between">
             <h3 className="text-[15px] font-bold text-[var(--text-primary)]">
-              {selectedPreset.emoji} {selectedPreset.label} 페르소나 설정
+              {selectedPreset.emoji} {L(`${selectedPreset.label} 페르소나 설정`, `Configure ${selectedPreset.label} persona`)}
             </h3>
-            <button onClick={() => setStep('preset')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">유형 변경</button>
+            <button onClick={() => setStep('preset')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">{L('유형 변경', 'Change role')}</button>
           </div>
 
           {/* Progress dots */}
@@ -468,6 +613,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               onToggle={configSteps[configStep].onToggle}
               customValue={configSteps[configStep].custom}
               onCustomChange={configSteps[configStep].onCustom}
+              customPlaceholder={L('+ 직접 추가...', '+ Add your own...')}
             />
           </div>
 
@@ -479,15 +625,15 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
               onClick={() => setConfigStep(Math.max(0, configStep - 1))}
               disabled={configStep === 0}
             >
-              <ChevronLeft size={14} /> 이전
+              <ChevronLeft size={14} /> {L('이전', 'Previous')}
             </Button>
             {configStep < configSteps.length - 1 ? (
               <Button size="sm" onClick={() => setConfigStep(configStep + 1)}>
-                다음 <ChevronRight size={14} />
+                {L('다음', 'Next')} <ChevronRight size={14} />
               </Button>
             ) : (
               <Button size="sm" onClick={finishConfigurator}>
-                <Check size={14} /> 완료
+                <Check size={14} /> {L('완료', 'Done')}
               </Button>
             )}
           </div>
@@ -498,10 +644,10 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       {step === 'freetext' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">이 사람에 대해 자유롭게 적어주세요</h3>
-            <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">뒤로</button>
+            <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{L('이 사람에 대해 자유롭게 적어주세요', 'Describe this person freely')}</h3>
+            <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">{L('뒤로', 'Back')}</button>
           </div>
-          <p className="text-[12px] text-[var(--text-secondary)]">이름, 직책, 성격, 의사결정 스타일, 최근 관심사 — 무엇이든.</p>
+          <p className="text-[12px] text-[var(--text-secondary)]">{L('이름, 직책, 성격, 의사결정 스타일, 최근 관심사 — 무엇이든.', 'Name, role, personality, decision style, recent concerns — anything.')}</p>
           <div className="relative">
             <AnimatedPlaceholder
               texts={[
@@ -526,7 +672,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           <div className="flex justify-end">
             <Button onClick={handleFreeTextStructure} disabled={!freeText.trim() || loading}>
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              AI로 정리하기
+              {L('AI로 정리하기', 'Structure with AI')}
             </Button>
           </div>
         </div>
@@ -536,7 +682,7 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       {step === 'structuring' && (
         <div className="text-center py-8 space-y-3">
           <Loader2 size={28} className="mx-auto animate-spin text-[var(--accent)]" />
-          <p className="text-[14px] text-[var(--text-secondary)]">페르소나를 구조화하고 있습니다...</p>
+          <p className="text-[14px] text-[var(--text-secondary)]">{L('페르소나를 구조화하고 있습니다...', 'Structuring persona...')}</p>
         </div>
       )}
 
@@ -545,8 +691,8 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
         <div className="space-y-3 animate-fade-in">
           {!persona?.name && (
             <div className="flex items-center justify-between">
-              <h3 className="text-[15px] font-bold text-[var(--text-primary)]">프로필 확인 및 수정</h3>
-              <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">다른 방법으로</button>
+              <h3 className="text-[15px] font-bold text-[var(--text-primary)]">{L('프로필 확인 및 수정', 'Review & edit profile')}</h3>
+              <button onClick={() => setStep('method')} className="text-[12px] text-[var(--accent)] cursor-pointer hover:underline">{L('다른 방법으로', 'Try another method')}</button>
             </div>
           )}
           {form.extracted_traits.length > 0 && (
@@ -558,57 +704,57 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-[13px] font-semibold">이름 *</label>
-              <input type="text" value={form.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder="실명 또는 별칭" maxLength={50}
+              <label className="text-[13px] font-semibold">{L('이름 *', 'Name *')}</label>
+              <input type="text" value={form.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder={L('실명 또는 별칭', 'Real name or alias')} maxLength={50}
                 className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[13px] font-semibold">역할 *</label>
-              <input type="text" value={form.role} onChange={(e) => handleFieldChange('role', e.target.value)} placeholder="직책/역할" maxLength={80}
+              <label className="text-[13px] font-semibold">{L('역할 *', 'Role *')}</label>
+              <input type="text" value={form.role} onChange={(e) => handleFieldChange('role', e.target.value)} placeholder={L('직책/역할', 'Title / role')} maxLength={80}
                 className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[13px] font-semibold">소속</label>
-            <input type="text" value={form.organization} onChange={(e) => handleFieldChange('organization', e.target.value)} placeholder="우리 회사 / 투자사 / 고객사" maxLength={80}
+            <label className="text-[13px] font-semibold">{L('소속', 'Organization')}</label>
+            <input type="text" value={form.organization} onChange={(e) => handleFieldChange('organization', e.target.value)} placeholder={L('우리 회사 / 투자사 / 고객사', 'Our company / investor / client')} maxLength={80}
               className="bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--accent)]" />
           </div>
-          <Field label="우선순위 *" placeholder="이 사람이 가장 중요하게 보는 것" maxLength={300}
+          <Field label={L('우선순위 *', 'Priorities *')} placeholder={L('이 사람이 가장 중요하게 보는 것', 'What this person cares about most')} maxLength={300}
             value={form.priorities} onChange={(e) => handleFieldChange('priorities', e.target.value)} />
-          <Field label="커뮤니케이션 스타일" placeholder="선호하는 보고/소통 방식" maxLength={300}
+          <Field label={L('커뮤니케이션 스타일', 'Communication style')} placeholder={L('선호하는 보고/소통 방식', 'Preferred reporting / communication')} maxLength={300}
             value={form.communication_style} onChange={(e) => handleFieldChange('communication_style', e.target.value)} />
-          <Field label="최근 관심사/우려" placeholder="요즘 신경 쓰는 것" maxLength={300}
+          <Field label={L('최근 관심사/우려', 'Recent concerns')} placeholder={L('요즘 신경 쓰는 것', "What's on their mind lately")} maxLength={300}
             value={form.known_concerns} onChange={(e) => handleFieldChange('known_concerns', e.target.value)} />
-          <Field label="관계 메모" placeholder="나와의 관계, 보고 빈도 등" maxLength={300}
+          <Field label={L('관계 메모', 'Relationship notes')} placeholder={L('나와의 관계, 보고 빈도 등', 'Relationship, reporting frequency, etc.')} maxLength={300}
             value={form.relationship_notes} onChange={(e) => handleFieldChange('relationship_notes', e.target.value)} />
 
           {/* Contact — for human agent integration */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
-            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">연락처 <span className="font-normal text-[var(--text-tertiary)]">(선택 — 실제 질문 발송용)</span></p>
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">{L('연락처', 'Contact')} <span className="font-normal text-[var(--text-tertiary)]">{L('(선택 — 실제 질문 발송용)', '(optional — for sending real questions)')}</span></p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">📧 이메일</label>
+                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">{L('📧 이메일', '📧 Email')}</label>
                 <input type="email" value={form.contact?.email || ''} onChange={(e) => setForm(f => ({ ...f, contact: { ...f.contact, email: e.target.value || undefined } }))} placeholder="name@company.com" maxLength={120}
                   className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div>
-                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">💬 Slack ID</label>
+                <label className="text-[11px] text-[var(--text-tertiary)] mb-0.5 block">{L('💬 Slack ID', '💬 Slack ID')}</label>
                 <input type="text" value={form.contact?.slack_id || ''} onChange={(e) => setForm(f => ({ ...f, contact: { ...f.contact, slack_id: e.target.value || undefined } }))} placeholder="U0123ABCDEF" maxLength={30}
                   className="w-full bg-[var(--bg)] border-[1.5px] border-[var(--border)] rounded-[10px] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             </div>
-            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">입력하면 기획 과정에서 이 사람에게 직접 질문을 보낼 수 있습니다.</p>
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{L('입력하면 기획 과정에서 이 사람에게 직접 질문을 보낼 수 있습니다.', "If filled, you can send direct questions to this person during planning.")}</p>
           </div>
 
           {/* Structured persona fields */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
-            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">의사결정 성향 (선택)</p>
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">{L('의사결정 성향 (선택)', 'Decision style (optional)')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3">
               {[
-                { value: 'analytical', label: '데이터 중심' },
-                { value: 'intuitive', label: '직관/경험' },
-                { value: 'consensus', label: '합의 중시' },
-                { value: 'directive', label: '빠른 결정' },
+                { value: 'analytical', label: L('데이터 중심', 'Data-driven') },
+                { value: 'intuitive', label: L('직관/경험', 'Intuitive / experiential') },
+                { value: 'consensus', label: L('합의 중시', 'Consensus-oriented') },
+                { value: 'directive', label: L('빠른 결정', 'Fast decisions') },
               ].map(opt => (
                 <button key={opt.value} type="button"
                   onClick={() => setForm(f => ({ ...f, decision_style: (f.decision_style === opt.value ? undefined : opt.value) as Persona['decision_style'] }))}
@@ -618,12 +764,12 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
                 >{opt.label}</button>
               ))}
             </div>
-            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">리스크 수용도</p>
+            <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">{L('리스크 수용도', 'Risk tolerance')}</p>
             <div className="grid grid-cols-3 gap-1.5 mb-3">
               {[
-                { value: 'low', label: '안전 우선' },
-                { value: 'medium', label: '균형' },
-                { value: 'high', label: '도전적' },
+                { value: 'low', label: L('안전 우선', 'Safety first') },
+                { value: 'medium', label: L('균형', 'Balanced') },
+                { value: 'high', label: L('도전적', 'Aggressive') },
               ].map(opt => (
                 <button key={opt.value} type="button"
                   onClick={() => setForm(f => ({ ...f, risk_tolerance: (f.risk_tolerance === opt.value ? undefined : opt.value) as Persona['risk_tolerance'] }))}
@@ -633,14 +779,14 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
                 >{opt.label}</button>
               ))}
             </div>
-            <Field label="OK 조건" placeholder="이 사람이 승인하려면 보여줘야 할 것 (예: ROI 데이터)" maxLength={300}
+            <Field label={L('OK 조건', 'Approval criteria')} placeholder={L('이 사람이 승인하려면 보여줘야 할 것 (예: ROI 데이터)', 'What you need to show for their approval (e.g. ROI data)')} maxLength={300}
               value={form.success_metric} onChange={(e) => handleFieldChange('success_metric', e.target.value)} />
           </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button variant="secondary" onClick={onCancel}>{L('취소', 'Cancel')}</Button>
             <Button onClick={() => onSave(form)} disabled={!form.name || !form.role || !form.priorities}>
-              <Check size={14} /> 저장
+              <Check size={14} /> {L('저장', 'Save')}
             </Button>
           </div>
         </div>

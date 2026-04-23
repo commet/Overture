@@ -6,6 +6,7 @@ import { useRecastStore } from '@/stores/useRecastStore';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useJudgmentStore } from '@/stores/useJudgmentStore';
 import { Check, AlertTriangle, Circle, Shield } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface Props {
   projectId: string;
@@ -46,39 +47,41 @@ export function ExecutionReadiness({ projectId }: Props) {
   const personaCount = latestFb?.results?.length || 0;
   const criticalRisks = latestFb?.results?.flatMap((r) => r.classified_risks?.filter((cr) => cr.category === 'critical') || []) || [];
 
+  const empty = t('exec.empty');
+
   const checks: ReadinessCheck[] = [
     {
-      label: '숨겨진 전제 발견',
+      label: t('exec.hiddenPremise'),
       status: assumptions.length >= 2 ? 'done' : assumptions.length >= 1 ? 'partial' : 'missing',
-      detail: assumptions.length > 0 ? `${assumptions.length}건` : '—',
+      detail: assumptions.length > 0 ? t('exec.count', { n: assumptions.length }) : empty,
       weight: 20,
-      action: assumptions.length < 2 ? '악보 해석에서 과제를 분석하세요' : undefined,
+      action: assumptions.length < 2 ? t('exec.action.analyzeReframe') : undefined,
     },
     {
-      label: '진짜 질문 재정의',
+      label: t('exec.realQuestion'),
       status: latestD?.selected_question ? 'done' : latestD?.analysis ? 'partial' : 'missing',
-      detail: latestD?.selected_question ? '완료' : latestD?.analysis ? '미선택' : '—',
+      detail: latestD?.selected_question ? t('exec.done') : latestD?.analysis ? t('exec.unselected') : empty,
       weight: 20,
-      action: !latestD?.selected_question && latestD?.analysis ? '질문을 선택하고 확정하세요' : !latestD?.analysis ? '악보 해석을 먼저 실행하세요' : undefined,
+      action: !latestD?.selected_question && latestD?.analysis ? t('exec.action.pickQuestion') : !latestD?.analysis ? t('exec.action.runReframe') : undefined,
     },
     {
-      label: 'AI/사람 역할 설계',
+      label: t('exec.aiHumanDesign'),
       status: steps.length >= 3 ? 'done' : steps.length > 0 ? 'partial' : 'missing',
-      detail: steps.length > 0 ? `${steps.length}단계` : '—',
+      detail: steps.length > 0 ? t('exec.steps', { n: steps.length }) : empty,
       weight: 20,
-      action: steps.length === 0 ? '편곡에서 워크플로우를 설계하세요' : undefined,
+      action: steps.length === 0 ? t('exec.action.designRecast') : undefined,
     },
     {
-      label: '이해관계자 검증',
+      label: t('exec.stakeholderReview'),
       status: personaCount >= 2 ? 'done' : personaCount >= 1 ? 'partial' : 'missing',
-      detail: personaCount > 0 ? `${personaCount}명` : '—',
+      detail: personaCount > 0 ? t('exec.people', { n: personaCount }) : empty,
       weight: 20,
-      action: personaCount === 0 ? '리허설에서 페르소나를 등록하고 피드백을 받으세요' : personaCount === 1 ? '이해관계자 1명 추가를 권장합니다' : undefined,
+      action: personaCount === 0 ? t('exec.action.addPersona') : personaCount === 1 ? t('exec.action.addOneMorePersona') : undefined,
     },
     {
-      label: '리스크 식별',
+      label: t('exec.riskIdentification'),
       status: criticalRisks.length > 0 ? 'done' : personaCount > 0 ? 'partial' : 'missing',
-      detail: criticalRisks.length > 0 ? `핵심 ${criticalRisks.length}건` : personaCount > 0 ? '위협 없음' : '—',
+      detail: criticalRisks.length > 0 ? t('exec.criticalCount', { n: criticalRisks.length }) : personaCount > 0 ? t('exec.noThreat') : empty,
       weight: 20,
     },
   ];
@@ -92,7 +95,7 @@ export function ExecutionReadiness({ projectId }: Props) {
     return sum;
   }, 0);
 
-  const label = score >= 80 ? '실행 준비 완료' : score >= 50 ? '추가 검증 권장' : '분석 진행 중';
+  const label = score >= 80 ? t('exec.readyToRun') : score >= 50 ? t('exec.moreReview') : t('exec.inProgress');
   const color = score >= 80 ? 'var(--success)' : score >= 50 ? '#d97706' : 'var(--accent)';
 
   return (
@@ -102,7 +105,7 @@ export function ExecutionReadiness({ projectId }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield size={16} style={{ color }} />
-            <h3 className="text-[14px] font-bold text-[var(--text-primary)]">실행 준비도</h3>
+            <h3 className="text-[14px] font-bold text-[var(--text-primary)]">{t('exec.readiness')}</h3>
           </div>
           <span className="text-[22px] font-extrabold tabular-nums" style={{ color }}>{score}%</span>
         </div>

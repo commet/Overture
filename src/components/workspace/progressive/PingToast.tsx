@@ -13,26 +13,36 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { useAgentAttentionStore, type PingSource } from '@/stores/useAgentAttentionStore';
 import { useLocale } from '@/hooks/useLocale';
 import { EASE } from './shared/constants';
 
 const VISIBLE_MS = 2100;
 
-function messageFor(source: PingSource | null, locale: string): string {
+type ToastKind = 'input' | 'output';
+
+function messageFor(source: PingSource | null, locale: string): { text: string; kind: ToastKind } {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   switch (source) {
     case 'answer':
-      return L('답변을 팀에 전달했어요', 'Sent to the team');
+      return { text: L('답변을 팀에 전달했어요', 'Sent to the team'), kind: 'input' };
     case 'chat':
-      return L('요청을 팀에 전달했어요', 'Request sent to the team');
+      return { text: L('요청을 팀에 전달했어요', 'Request sent to the team'), kind: 'input' };
     case 'retry':
-      return L('다시 분석 시작', 'Re-analysis started');
+      return { text: L('다시 분석 시작', 'Re-analysis started'), kind: 'input' };
     case 'deploy':
-      return L('팀이 작업을 시작했어요', 'Team started working');
+      return { text: L('팀이 작업을 시작했어요', 'Team started working'), kind: 'input' };
+    case 'workers_done':
+      return { text: L('팀 분석 완료 — 아래에서 확인', 'Team analysis ready — scroll down'), kind: 'output' };
+    case 'mix_done':
+      return { text: L('초안이 준비됐어요', 'Draft ready'), kind: 'output' };
+    case 'dm_ready':
+      return { text: L('리뷰 피드백 도착', 'Review feedback in'), kind: 'output' };
+    case 'final_done':
+      return { text: L('최종 문서 완성', 'Final document ready'), kind: 'output' };
     default:
-      return L('팀에 전달했어요', 'Sent to the team');
+      return { text: L('팀에 전달했어요', 'Sent to the team'), kind: 'input' };
   }
 }
 
@@ -53,27 +63,44 @@ export function PingToast() {
     };
   }, [lastPingAt, lastSource]);
 
+  const msg = visiblePing ? messageFor(visiblePing.source, locale) : null;
+  // Output toasts travel leftward (from sidebar back to the user) and sit a bit
+  // larger/brighter so the "new content below" cue reads without motion sickness.
+  const isOutput = msg?.kind === 'output';
+
   return (
     <div className="absolute top-4 right-4 z-20 pointer-events-none">
       <AnimatePresence>
-        {visiblePing && (
+        {visiblePing && msg && (
           <motion.div
             key={visiblePing.at}
-            initial={{ opacity: 0, x: -12, scale: 0.94 }}
-            animate={{ opacity: [0, 1, 1, 0], x: [-12, 0, 18, 36], scale: [0.94, 1, 1, 0.96] }}
+            initial={{ opacity: 0, x: isOutput ? 12 : -12, scale: 0.94 }}
+            animate={
+              isOutput
+                ? { opacity: [0, 1, 1, 0], x: [12, 0, -6, -18], scale: [0.94, 1, 1, 0.96] }
+                : { opacity: [0, 1, 1, 0], x: [-12, 0, 18, 36], scale: [0.94, 1, 1, 0.96] }
+            }
             exit={{ opacity: 0 }}
             transition={{ duration: VISIBLE_MS / 1000, ease: EASE, times: [0, 0.12, 0.78, 1] }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/12 backdrop-blur-sm border border-[var(--accent)]/25 shadow-[0_0_14px_-4px_rgba(180,160,100,0.4)]"
+            className={
+              isOutput
+                ? 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--accent)]/18 backdrop-blur-sm border border-[var(--accent)]/35 shadow-[0_0_18px_-4px_rgba(180,160,100,0.55)]'
+                : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent)]/12 backdrop-blur-sm border border-[var(--accent)]/25 shadow-[0_0_14px_-4px_rgba(180,160,100,0.4)]'
+            }
           >
             <motion.span
-              animate={{ x: [0, 2, 0] }}
+              animate={isOutput ? { y: [0, 2, 0] } : { x: [0, 2, 0] }}
               transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
               className="flex"
             >
-              <ArrowRight size={11} className="text-[var(--accent)]" />
+              {isOutput
+                ? (visiblePing.source === 'final_done'
+                    ? <CheckCircle2 size={12} className="text-[var(--accent)]" />
+                    : <ArrowDown size={12} className="text-[var(--accent)]" />)
+                : <ArrowRight size={11} className="text-[var(--accent)]" />}
             </motion.span>
-            <span className="text-[11px] font-semibold text-[var(--accent)] whitespace-nowrap">
-              {messageFor(visiblePing.source, locale)}
+            <span className={`${isOutput ? 'text-[12px]' : 'text-[11px]'} font-semibold text-[var(--accent)] whitespace-nowrap`}>
+              {msg.text}
             </span>
           </motion.div>
         )}

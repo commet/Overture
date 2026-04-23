@@ -197,7 +197,7 @@ const scenario1: DemoScenario = {
     hidden_assumptions: [
       'A 2-week deadline probably isn\'t "bring me a perfect report." It\'s closer to "help me decide, fast." 50 pages won\'t get written in time, and the CEO won\'t read them all anyway.',
       'The CEO only saw the news article, but your dev team can sign up for the competitor\'s product and see the weaknesses in an hour. That information gap is actually on your side.',
-      '"First time planning" isn\'t a weakness — it\'s a weapon. "This timeline is doable" carries totally different weight when the people building it say it versus when a planner says it. The line the CEO most wants to hear is one only you can write.',
+      '"First time planning" isn\'t a weakness — it\'s a weapon. "This timeline is doable" carries totally different weight when the people building it say it versus when a strategy person says it. The line the CEO most wants to hear is one only you can write.',
     ],
     skeleton: [
       'First — why is the CEO asking *now*? Competitor? Revenue? Personal conviction? Without this, any amount of pages is wasted paper.',
@@ -215,7 +215,7 @@ const scenario1: DemoScenario = {
       id: 'demo-q1',
       text: 'Why do you think the CEO assigned this?',
       subtext: 'This single answer completely changes the plan\'s structure.',
-      options: ['A competitor beat us to the punch', 'Revenue growth has stalled', 'The CEO has a personal conviction', 'I\'m not sure'],
+      options: ['A competitor beat us to the punch', 'Revenue growth has stalled', 'The CEO has already decided', 'I\'m not sure'],
       type: 'select',
       engine_phase: 'reframe',
     },
@@ -254,7 +254,7 @@ const scenario1: DemoScenario = {
           persona: DOHYUN,
           task: 'Existing vs new venture comparison simulation',
           completionNote: 'Existing +12% vs new +35%. New venture wins after 6 months.',
-          joinMessage: 'When revenue is flat, comparison is the body of the plan. 📈 Owen joined.',
+          joinMessage: 'When revenue is flat, the plan IS the comparison. 📈 Owen joined.',
           result: '**Took Nathan\'s structure (2 dedicated devs) and ran a 6-month simulation comparing it to improving the existing business.**\n\n| 6 months out | Improve existing | New venture (AI support) |\n|---|---|---|\n| Revenue impact | +12% (gradual) | **+35%** (new revenue stream) |\n| Risk | Low | Medium (2-person reallocation impact) |\n| Initial investment | $0 | $15,000 |\n| Downside | None | -8% (sunk if it fails) |\n\n**Reading the table:**\n- Improving the existing product is safe but **doesn\'t solve the underlying reason revenue isn\'t growing.**\n- The new venture has higher expected value, but the real risk is the 2-person reallocation.\n- **Nathan\'s "2 dedicated + 3 maintenance" structure caps the downside at -8% instead of -20%.**\n\n**Synergy line:** About 20% of our existing customer base are e-commerce sellers. Some of the first 25 can come straight from there.',
         },
         snapshotPatch: {
@@ -274,14 +274,14 @@ const scenario1: DemoScenario = {
           insight: 'The strongest single page is "this is a better bet than improving what we already have." Numbers in that table move leadership.',
         },
       },
-      'The CEO has a personal conviction': {
+      'The CEO has already decided': {
         dmKey: 'ceo',
         decisionLine: 'Week 1-4 milestones — proving "this actually works" in 4 weeks.',
         thirdWorker: {
           persona: JIYUN,
           task: 'First 4-week execution milestones + Go/No-Go criteria',
           completionNote: 'Week 4 demo to one seller is the Go/No-Go.',
-          joinMessage: 'When the decision is already made, the execution roadmap is the body. 🛠 Riley joined.',
+          joinMessage: 'When the decision is already made, the plan IS the execution roadmap. 🛠 Riley joined.',
           result: '**Took Nathan\'s structure (2 dedicated devs / 4-week MVP) and broke it into the first 4 weeks of milestones.**\n\n| Week | What we do | Check | Output |\n|---|---|---|---|\n| Week 1 | Pre-training PoC (50 industry terms) | Working in a day? | One demo video |\n| Week 2 | API + templates | 5 categories complete? | Postman tests |\n| Week 3 | Simple dashboard | Auto-response rate 70%? | Demo recording |\n| Week 4 | **Beta demo to 1 seller** | Does the customer say "I\'d use this"? | One-page CEO report |\n\n**Go/No-Go in one line:**\n- ✅ Week 4 seller says "I\'d use this" → continue\n- ❌ Pre-training PoC fails by Week 2 → stop, write off sunk cost\n\n**Risk mitigation:** Week 2 PoC might not work. Have a Plan B ready in advance so Weeks 3-4 don\'t become wasted time.',
         },
         snapshotPatch: {
@@ -312,7 +312,7 @@ const scenario1: DemoScenario = {
           result: '**Even with Nathan\'s structure (2 dedicated / 4-week MVP), two conversations need to happen first.**\n\n**① One line to the CEO (one Slack message)**\n\n> "Is this because of the competitor news, or revenue, or something else?"\n\nThis one line turns 3 days into 3 hours. A 15-minute conversation saves 2 weeks.\n\n**② 3 sellers, 3 core questions (15-minute calls each)**\n\n1. "How do you handle customer support today?" (current state)\n2. "If an AI handled 80% of replies for $290/month, would you use it?" (price + function)\n3. "What\'s the most frustrating CS task right now?" (opportunity)\n\n**Output:** Map responses on two axes — price sensitivity / feature priority — onto one page → CEO mid-check.\n\n**Time:** Direction locked within 3 days → remaining 11 days are actual planning time.',
         },
         snapshotPatch: {
-          real_question: 'There\'s only one question to answer — "Why is the CEO asking *now*?" Without that, 30 pages goes off-direction and gets rewritten. One Slack message resolves it.',
+          real_question: 'There\'s only one question to answer — "Why is the CEO asking *now*?" Without that, 30 pages drifts off-course and gets rewritten. One Slack message resolves it.',
           hidden_assumptions: [
             'Asking "why are we doing this?" isn\'t pushy — it\'s the normal first step. The CEO probably finds it easier too.',
             'Right after competitor news, it\'s probably a competitive response. Still, confirm before assuming.',
@@ -349,7 +349,7 @@ const scenario1: DemoScenario = {
     effects: {
       'Call 5 e-commerce sellers directly': {
         snapshotPatch: {
-          insight: 'Talking is the fastest and most honest validation. Even a high rejection rate, you get real answers.',
+          insight: 'Talking is the fastest and most honest validation. Even with a high rejection rate, you get real answers.',
         },
         weakestAssumption: {
           assumption: 'Will sellers actually pick up a cold call?',
@@ -367,7 +367,7 @@ const scenario1: DemoScenario = {
           insight: 'Action beats words. Show one seller a working version and you don\'t need to convince anyone.',
         },
         weakestAssumption: {
-          assumption: 'Can we actually get something working in 4 weeks with a tech we\'ve never used?',
+          assumption: 'Can we actually get something working in 4 weeks with tech we\'ve never used?',
           explanation: 'Pre-trained models are new territory for the team. If the timeline slips, the demo doesn\'t happen.',
         },
         nextThreeDays: [
@@ -405,7 +405,7 @@ const scenario1: DemoScenario = {
           'If any — call 1-2 immediately, leverage the existing relationship',
           'If none — switch immediately to the "5 cold calls" strategy',
         ],
-        dmFirstReaction: 'Five-minute DB check, do that first. But if there are none, what then?',
+        dmFirstReaction: 'Five-minute DB check — do that first. But if there are none, then what?',
       },
     },
   },
@@ -422,7 +422,7 @@ const scenario1: DemoScenario = {
       persona: HYUNWOO,
       task: '4-week MVP structure + headcount allocation',
       completionNote: 'Took Sophie\'s 3 weaknesses and built a structure that works in 4 weeks.',
-      result: '**Took the e-commerce sellers + 3 weaknesses Sophie identified, and laid out a 4-week MVP.**\n\n| Competitor weakness | Our direction |\n|---|---|\n| 2-week setup | E-commerce pre-training → **1-day setup** |\n| Misses industry terms | Built-in industry templates, "return request" recognized instantly |\n| $800/month | 1/3 or less. → Pricing model handled by whoever joins next. |\n\n**Headcount allocation (this is the core of approval):**\n- **2 dedicated** (1 senior + 1 junior) — pre-training model + API\n- **3 stay on existing maintenance.** If something breaks, 1 of the dedicated 2 returns immediately.\n\n**4-week MVP scope:** Auto-response + e-commerce templates + simple dashboard.\n\nThis structure protects the existing product *while* putting something working in front of the CEO in 4 weeks.',
+      result: '**Took the e-commerce seller focus + 3 weaknesses Sophie identified, and laid out a 4-week MVP.**\n\n| Competitor weakness | Our direction |\n|---|---|\n| 2-week setup | E-commerce pre-training → **1-day setup** |\n| Misses industry terms | Built-in industry templates, "return request" recognized instantly |\n| $800/month | 1/3 or less. → Pricing model handled by whoever joins next. |\n\n**Headcount allocation (this is the core of approval):**\n- **2 dedicated** (1 senior + 1 junior) — pre-training model + API\n- **3 stay on existing maintenance.** If something breaks, 1 of the dedicated 2 returns immediately.\n\n**4-week MVP scope:** Auto-response + e-commerce templates + simple dashboard.\n\nThis structure protects the existing product *while* putting something working in front of the CEO in 4 weeks.',
     },
   ],
 
@@ -450,7 +450,7 @@ const scenario1: DemoScenario = {
   // ─── Draft V2 (condensed card — Q1 decisionLine/thirdWorker + Q2 weakestAssumption/nextThreeDays override at runtime) ───
   draftV2: {
     title: 'AI Customer Support — E-commerce Sellers (First Entry)',
-    decisionLineDefault: 'In 4 weeks, I\'ll show you a working beta in front of one e-commerce seller.',
+    decisionLineDefault: 'In 4 weeks, I\'ll demo a working beta to one e-commerce seller.',
     workerSummariesDefault: [
       {
         personaId: 'researcher', // SUJIN — Sophie
@@ -833,7 +833,7 @@ const scenario2: DemoScenario = {
       },
       'Build a working mini-prototype in 4 days': {
         snapshotPatch: {
-          insight: '100 words beat by 1 working screen. But shipping something that actually runs in 4 days is a gamble.',
+          insight: 'One working screen beats a hundred words. But shipping something that actually runs in 4 days is a gamble.',
         },
         weakestAssumption: {
           assumption: 'Can we really build something that runs in 4 days?',
@@ -1116,7 +1116,7 @@ const scenario3: DemoScenario = {
       'This week — figure out why Company T cut. Recent Series B → probably burning cash.',
       'Friday report — 3 options (match / differentiate / selective discount) + side-by-side 6-month outcomes.',
     ],
-    insight: '3 customers asking is real. But 3 out of 80 is real too. The more dangerous risk than fear is overreaction — a blanket cut stops churn but kills margin.',
+    insight: '3 customers asking is real. But 3 out of 80 is real too. The bigger risk isn\'t fear — it\'s overreaction. A blanket cut stops churn but kills margin.',
   },
 
   // ─── Q1: Gut instinct (strategy dimension — third worker validates the instinct) ───
@@ -1170,7 +1170,7 @@ const scenario3: DemoScenario = {
           task: 'Simulate whether the value script actually lands in sales conversations',
           completionNote: 'The script alone isn\'t enough. It needs a discount-authority matrix alongside.',
           joinMessage: 'Whether the instinct survives in the field is what matters. 🛠 Riley joined.',
-          result: '**Pressure-tested Nathan\'s Scenario B (value defense) from a sales-floor angle.**\n\n**"Why we\'re worth more" value script (3 lines):**\n> 1. "We respond within 4 hours. Company T averages 24."\n> 2. "We come pre-configured for your industry. Company T needs template customization."\n> 3. "At Company T\'s price, getting our level of service ends up costing extra anyway."\n\n**Field simulation (sales rep A roleplay):**\n- Customer: "Company T is 30% cheaper."\n- Rep: *delivers lines 1-3*\n- Customer: "Okay, I hear that, but 30% is still a lot."\n- Rep: *stuck* → **the discount request repeats because the rep has no authority.**\n\n**🔍 What the instinct missed:**\n> The value script alone isn\'t enough. **"What do we do when the customer still wants a discount after hearing the script three times?"** isn\'t defined. If the rep ends with "I\'m sorry" and no discount authority, that customer leaves in the room. **A discount-authority matrix has to ride with the script.**\n\n**Recommended reinforcement — 3-tier matrix:**\n\n| Tier | Customer count | Revenue share | Response |\n|---|---|---|---|\n| **Top** | 20 | 60% | Value script + **15% selective discount if churn risk** (sales lead approval) |\n| **Mid** | 40 | 35% | Value script only, no discount |\n| **Bottom** | 20 | 5% | Allow natural churn (revenue impact under 1%) |\n\nWithout this matrix, "I want a discount too" spreads to all 80 and the strategy degenerates into Scenario A. The matrix is how the instinct survives in the field.',
+          result: '**Pressure-tested Nathan\'s Scenario B (value defense) from a sales-floor angle.**\n\n**"Why we\'re worth more" value script (3 lines):**\n> 1. "We respond within 4 hours. Company T averages 24."\n> 2. "We come pre-configured for your industry. Company T needs template customization."\n> 3. "At Company T\'s price, getting our level of service ends up costing extra anyway."\n\n**Field simulation (sales rep A roleplay):**\n- Customer: "Company T is 30% cheaper."\n- Rep: *delivers lines 1-3*\n- Customer: "Okay, I hear that, but 30% is still a lot."\n- Rep: *stuck* → **the discount request repeats because the rep has no authority.**\n\n**🔍 What the instinct missed:**\n> The value script alone isn\'t enough. **"What do we do when the customer still wants a discount after hearing the script three times?"** isn\'t defined. If the rep ends with "I\'m sorry" and no discount authority, that customer walks out of the room. **A discount-authority matrix has to ride with the script.**\n\n**Recommended reinforcement — 3-tier matrix:**\n\n| Tier | Customer count | Revenue share | Response |\n|---|---|---|---|\n| **Top** | 20 | 60% | Value script + **15% selective discount if churn risk** (sales lead approval) |\n| **Mid** | 40 | 35% | Value script only, no discount |\n| **Bottom** | 20 | 5% | Allow natural churn (revenue impact under 1%) |\n\nWithout this matrix, "I want a discount too" spreads to all 80 and the strategy degenerates into Scenario A. The matrix is how the instinct survives in the field.',
         },
         snapshotPatch: {
           real_question: 'The "protect the value" instinct is right. The real question is — "How does the sales team actually execute it in the field?" Riley built the matrix.',
@@ -1196,7 +1196,7 @@ const scenario3: DemoScenario = {
           persona: DOHYUN,
           task: 'Company T vs our long-term endurance',
           completionNote: 'Company T: 12-18 months. Us: 24+ months. But with a condition.',
-          joinMessage: 'The wait strategy needs long-term outlook to back it. 📈 Owen joined.',
+          joinMessage: 'The wait strategy needs a long-term view to back it up. 📈 Owen joined.',
           result: '**Rechecked Nathan\'s Scenario C (wait) from a Company T vs us endurance angle.**\n\n**Company T endurance estimate** (based on public info Sophie collected):\n- Series B ~$20M raised (2 months ago)\n- Monthly burn estimate: payroll + marketing + discount absorption = $1.5-2M/month\n- **Runway: roughly 12-18 months**\n- After that, if they can\'t raise again → price normalization or shrinking operations\n\n**Our endurance** (current structure):\n- Monthly revenue $100K, monthly profit $30K (at 30% margin, estimated)\n- With 6+ months of cash reserves, **we can handle churn up to 15% for 18+ months.**\n- But above 25% churn, fixed costs ($70K) start threatening the whole structure.\n\n**Three conditions for winning the endurance war:**\n1. **Churn defended under 15%** (don\'t let 3.75% escalate)\n2. **Top 20 customers (60% of revenue) stay locked** — if they move, the structure collapses\n3. **Maintain 6+ months cash reserves** — operational runway in an emergency\n\n**🔍 What the instinct missed:**\n> "Wait" turning into "do nothing" is dangerous. **You have to wait *while* actively defending the top 20.** By the time they start moving, it\'s already too late. Waiting is "no blanket response" — it\'s not "no monitoring."\n\n**Recommended reinforcement:**\n- Wait strategy = "no blanket price cut" + "**dedicated manager regular contact with top 20, intensified**"\n- Monthly churn dashboard. If it goes over 5%, trigger partial response.\n- Pre-book the 12-month reassessment meeting on the calendar.\n\n*Estimate caveat: Company T\'s monthly burn rate is based on industry averages, not precise numbers. Flag it as "estimated" in the report.*',
         },
         snapshotPatch: {
@@ -1320,7 +1320,7 @@ const scenario3: DemoScenario = {
           'Tomorrow — build a 4-scenario sim table (current / 15% / 20% / 30% cuts)',
           'Day before the meeting — get finance sign-off. Confirmed twice, these numbers become weapons in the room',
         ],
-        dmFirstReaction: 'Finance numbers are the core of what goes to the meeting. Get them double-checked. Walking in with a wrong number gets you broken on the spot.',
+        dmFirstReaction: 'Finance numbers are the core of what goes to the meeting. Get them double-checked. Walk in with a wrong number and you\'ll get torn apart on the spot.',
       },
     },
   },
@@ -1385,7 +1385,7 @@ const scenario3: DemoScenario = {
     ],
     weakestAssumptionDefault: {
       assumption: 'Are those 3 customers actually churning, or just price-shopping?',
-      explanation: 'There may be a gap between sales\'s "crisis" signal and the actual words. Checking the exact wording one more time is the first line.',
+      explanation: 'There may be a gap between sales\'s "crisis" signal and the actual words. Checking the exact wording one more time is the first move.',
     },
     nextThreeDaysDefault: [
       'Sales 1:1 — exact wording from the 3 customers',

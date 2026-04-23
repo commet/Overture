@@ -5,6 +5,7 @@ import { Hash, Lock, Search, Check, Loader2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { useSlackStore } from '@/stores/useSlackStore';
+import { t } from '@/lib/i18n';
 
 interface SlackChannelPickerProps {
   open: boolean;
@@ -39,19 +40,19 @@ export function SlackChannelPicker({ open, onClose, title, content }: SlackChann
       setSent(true);
       setTimeout(() => onClose(), 1500);
     } else {
-      setError(result.error || '전송에 실패했습니다.');
+      setError(result.error || t('slack.sendFailed'));
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Slack 채널 선택">
+    <Modal open={open} onClose={onClose} title={t('slack.pickerTitle')}>
       {sent ? (
         <div className="text-center py-8">
           <div className="w-12 h-12 rounded-full bg-[var(--collab)] flex items-center justify-center mx-auto mb-3">
             <Check size={24} className="text-[var(--success)]" />
           </div>
-          <p className="text-[16px] font-bold text-[var(--text-primary)]">전송 완료!</p>
-          <p className="text-[13px] text-[var(--text-secondary)] mt-1">Slack에서 확인하세요.</p>
+          <p className="text-[16px] font-bold text-[var(--text-primary)]">{t('slack.sentTitle')}</p>
+          <p className="text-[13px] text-[var(--text-secondary)] mt-1">{t('slack.sentHint')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -62,7 +63,7 @@ export function SlackChannelPicker({ open, onClose, title, content }: SlackChann
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="채널 검색..."
+              placeholder={t('slack.searchPlaceholder')}
               maxLength={100}
               className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]"
             />
@@ -80,7 +81,7 @@ export function SlackChannelPicker({ open, onClose, title, content }: SlackChann
               </div>
             ) : filtered.length === 0 ? (
               <p className="text-center text-[13px] text-[var(--text-tertiary)] py-8">
-                {search ? '검색 결과 없음' : '채널을 찾을 수 없습니다'}
+                {search ? t('slack.searchNoResult') : t('slack.channelsNotFound')}
               </p>
             ) : (
               filtered.map(ch => (
@@ -105,7 +106,7 @@ export function SlackChannelPicker({ open, onClose, title, content }: SlackChann
           </div>
 
           <div className="flex justify-end pt-2 border-t border-[var(--border-subtle)]">
-            <Button variant="secondary" size="sm" onClick={onClose}>취소</Button>
+            <Button variant="secondary" size="sm" onClick={onClose}>{t('common.cancel')}</Button>
           </div>
         </div>
       )}

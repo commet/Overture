@@ -14,6 +14,7 @@ import { renderMd } from './shared/renderMd';
 import { TypingDots, AvatarRipple, ShimmerBar, tickersFor, useAttentionPulse, AttentionFlash } from './shared/AgentVisuals';
 import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
+import { localizePersona } from '@/lib/worker-personas';
 
 // ─── Status helpers ───
 
@@ -188,7 +189,7 @@ function AgentRow({ worker, expanded, onToggle, enterIndex, onRetry }: {
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-              {worker.persona?.name || 'AI'}
+              {worker.persona ? localizePersona(worker.persona, locale).name : 'AI'}
             </span>
             {lv != null && lv >= 2 && (
               <span className="agent-lv" style={{ fontSize: 9, padding: '0px 5px' }} data-level={lv}>
@@ -355,7 +356,7 @@ function StageDivider({ stage, index, isFirst, allStageDone, locale }: {
       <span className={`text-[9px] font-bold tracking-[0.12em] uppercase shrink-0 ${
         allStageDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--accent)]'
       }`}>
-        Stage {romanIdx} — {stage.label}
+        Stage {romanIdx} — {locale === 'en' ? (stage.labelEn || stage.label) : stage.label}
       </span>
       <div className="flex-1 h-px bg-gradient-to-r from-[var(--accent)]/25 to-transparent" />
       {allStageDone && (
@@ -502,7 +503,7 @@ export function AgentSidebar({ className }: { className?: string }) {
           <div key={group.stage?.id || 'all'} className="space-y-2">
             {hasStages && group.stage && celebratingNextStageId === group.stage.id && (
               <StageTransitionBanner
-                nextStageLabel={group.stage.label}
+                nextStageLabel={locale === 'en' ? (group.stage.labelEn || group.stage.label) : group.stage.label}
                 previousStageLabel={groupedByStage[groupIdx - 1]?.stage?.label || ''}
                 locale={locale}
               />

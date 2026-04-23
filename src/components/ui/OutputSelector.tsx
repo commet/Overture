@@ -14,6 +14,7 @@ import { generateChecklist } from '@/lib/checklist';
 import { generateDecisionRationale } from '@/lib/decision-rationale';
 import { track } from '@/lib/analytics';
 import { Scale } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 interface OutputSelectorProps {
   project: Project;
@@ -28,50 +29,66 @@ interface OutputFormat {
   fileExt: string;
 }
 
-const formats: OutputFormat[] = [
-  {
-    key: 'brief',
-    icon: <FileText size={18} />,
-    label: '프로그램 노트 · Project Brief',
-    description: '경영진이나 팀에 공유하는 의사결정 기록. 가장 먼저 만드세요.',
-    generator: generateProjectBrief,
-    fileExt: 'md',
-  },
-  {
-    key: 'prompt-chain',
-    icon: <MessageSquare size={18} />,
-    label: '파트보 · Prompt Chain',
-    description: 'Claude/ChatGPT에 순서대로 입력할 프롬프트 세트. AI 실행 시 사용.',
-    generator: generatePromptChain,
-    fileExt: 'md',
-  },
-  {
-    key: 'agent-spec',
-    icon: <Code size={18} />,
-    label: '총보 · Agent Spec',
-    description: 'LangGraph/CrewAI 구현의 출발점이 되는 설계서.',
-    generator: generateAgentSpec,
-    fileExt: 'yaml',
-  },
-  {
-    key: 'checklist',
-    icon: <CheckSquare size={18} />,
-    label: '셋리스트 · Execution Checklist',
-    description: '각 단계를 하나씩 확인하며 실행하는 체크리스트.',
-    generator: generateChecklist,
-    fileExt: 'md',
-  },
-  {
-    key: 'rationale',
-    icon: <Scale size={18} />,
-    label: '판단 근거서 · Decision Rationale',
-    description: '각 단계에서 왜 이렇게 판단했는지, 설계 세계관을 공유합니다.',
-    generator: generateDecisionRationale,
-    fileExt: 'md',
-  },
-];
+function getFormats(locale: 'ko' | 'en'): OutputFormat[] {
+  const ko = locale === 'ko';
+  return [
+    {
+      key: 'brief',
+      icon: <FileText size={18} />,
+      label: ko ? '프로그램 노트 · Project Brief' : 'Project Brief · 프로그램 노트',
+      description: ko
+        ? '경영진이나 팀에 공유하는 의사결정 기록. 가장 먼저 만드세요.'
+        : 'Decision record to share with leadership or the team. Start here.',
+      generator: generateProjectBrief,
+      fileExt: 'md',
+    },
+    {
+      key: 'prompt-chain',
+      icon: <MessageSquare size={18} />,
+      label: ko ? '파트보 · Prompt Chain' : 'Prompt Chain · 파트보',
+      description: ko
+        ? 'Claude/ChatGPT에 순서대로 입력할 프롬프트 세트. AI 실행 시 사용.'
+        : 'A sequenced prompt set to paste into Claude/ChatGPT. For AI execution.',
+      generator: generatePromptChain,
+      fileExt: 'md',
+    },
+    {
+      key: 'agent-spec',
+      icon: <Code size={18} />,
+      label: ko ? '총보 · Agent Spec' : 'Agent Spec · 총보',
+      description: ko
+        ? 'LangGraph/CrewAI 구현의 출발점이 되는 설계서.'
+        : 'Starting spec for LangGraph / CrewAI implementations.',
+      generator: generateAgentSpec,
+      fileExt: 'yaml',
+    },
+    {
+      key: 'checklist',
+      icon: <CheckSquare size={18} />,
+      label: ko ? '셋리스트 · Execution Checklist' : 'Execution Checklist · 셋리스트',
+      description: ko
+        ? '각 단계를 하나씩 확인하며 실행하는 체크리스트.'
+        : 'Step-by-step checklist to verify as you execute.',
+      generator: generateChecklist,
+      fileExt: 'md',
+    },
+    {
+      key: 'rationale',
+      icon: <Scale size={18} />,
+      label: ko ? '판단 근거서 · Decision Rationale' : 'Decision Rationale · 판단 근거서',
+      description: ko
+        ? '각 단계에서 왜 이렇게 판단했는지, 설계 세계관을 공유합니다.'
+        : 'Shares the reasoning and worldview behind each decision.',
+      generator: generateDecisionRationale,
+      fileExt: 'md',
+    },
+  ];
+}
 
 export function OutputSelector({ project }: OutputSelectorProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const formats = getFormats(locale);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [codaOpen, setCodaOpen] = useState(false);
@@ -121,8 +138,8 @@ export function OutputSelector({ project }: OutputSelectorProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-[14px] font-bold text-[var(--text-primary)]">공연 — 산출물 선택</h3>
-      <p className="text-[12px] text-[var(--text-secondary)]">같은 서곡에서 무대 위 목적에 맞는 형식으로 내보냅니다.</p>
+      <h3 className="text-[14px] font-bold text-[var(--text-primary)]">{L('공연 — 산출물 선택', 'Performance — Choose output')}</h3>
+      <p className="text-[12px] text-[var(--text-secondary)]">{L('같은 서곡에서 무대 위 목적에 맞는 형식으로 내보냅니다.', 'From the same overture, export in the format that fits your stage.')}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {formats.map((format) => (
@@ -150,11 +167,11 @@ export function OutputSelector({ project }: OutputSelectorProps) {
       {selectedKey && preview && (
         <div className="animate-fade-in">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-semibold text-[var(--text-secondary)]">미리보기</span>
+            <span className="text-[12px] font-semibold text-[var(--text-secondary)]">{L('미리보기', 'Preview')}</span>
             <div className="flex gap-2">
-              <CopyButton getText={() => preview} label="복사" />
+              <CopyButton getText={() => preview} label={L('복사', 'Copy')} />
               <Button variant="secondary" size="sm" onClick={handleDownload}>
-                <Download size={12} /> 다운로드
+                <Download size={12} /> {L('다운로드', 'Download')}
               </Button>
             </div>
           </div>
@@ -171,65 +188,92 @@ export function OutputSelector({ project }: OutputSelectorProps) {
           className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors w-full"
         >
           {codaOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          코다 · 되돌아보기
-          {codaSaved && <span className="text-[10px] text-[var(--success)] font-medium ml-1">저장됨</span>}
+          {L('코다 · 되돌아보기', 'Coda · Reflect')}
+          {codaSaved && <span className="text-[10px] text-[var(--success)] font-medium ml-1">{L('저장됨', 'Saved')}</span>}
         </button>
         {codaOpen && (
           <div className="mt-4 space-y-4 animate-fade-in">
             <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-              공연이 끝났습니다. 이 과정을 되돌아보는 것은 다음 무대를 위한 가장 좋은 준비입니다.
+              {L(
+                '공연이 끝났습니다. 이 과정을 되돌아보는 것은 다음 무대를 위한 가장 좋은 준비입니다.',
+                "The performance has ended. Reflecting on the process is the best preparation for the next stage.",
+              )}
             </p>
             <div className="space-y-3">
               <div>
                 <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
-                  1. 처음 악보를 받았을 때의 이해와 지금의 이해가 어떻게 달라졌습니까?
+                  {L(
+                    '1. 처음 악보를 받았을 때의 이해와 지금의 이해가 어떻게 달라졌습니까?',
+                    '1. How has your understanding shifted from when you first received the score?',
+                  )}
                 </label>
                 <Field
                   value={codaForm.understanding_change || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, understanding_change: e.target.value }))}
                   rows={2}
-                  animatedPlaceholders={[
+                  animatedPlaceholders={locale === 'ko' ? [
                     '처음에는 단순한 과제라고 생각했지만...',
                     '핵심 이해관계자의 관점이 완전히 달라 보이기 시작했다',
                     '문제의 범위가 예상보다 넓다는 것을 알게 되었다',
                     '기술적 해결이 아닌 조직적 문제라는 걸 깨달았다',
+                  ] : [
+                    "At first I thought it was a simple task, but...",
+                    "A key stakeholder's perspective started to look completely different",
+                    'The scope turned out to be wider than expected',
+                    'I realized it was an organizational problem, not a technical one',
                   ]}
                 />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
-                  2. 이 과정에서 가장 놀라운 발견은 무엇이었습니까?
+                  {L(
+                    '2. 이 과정에서 가장 놀라운 발견은 무엇이었습니까?',
+                    '2. What was the most surprising discovery along the way?',
+                  )}
                 </label>
                 <Field
                   value={codaForm.surprising_discovery || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, surprising_discovery: e.target.value }))}
                   rows={2}
-                  animatedPlaceholders={[
+                  animatedPlaceholders={locale === 'ko' ? [
                     '예상하지 못했던 리스크나 새로운 관점...',
                     '이해관계자가 실제로는 다른 것을 원하고 있었다',
                     '가정이 틀렸다는 걸 데이터가 보여줬다',
                     '가장 작은 단계가 가장 큰 영향을 줄 수 있었다',
+                  ] : [
+                    'An unexpected risk or a new angle...',
+                    'The stakeholder actually wanted something different',
+                    'The data showed my assumption was wrong',
+                    'The smallest step could make the biggest impact',
                   ]}
                 />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-[var(--text-primary)] block mb-1">
-                  3. 다음에 비슷한 과제를 만나면 무엇을 다르게 하겠습니까?
+                  {L(
+                    '3. 다음에 비슷한 과제를 만나면 무엇을 다르게 하겠습니까?',
+                    '3. What would you do differently next time?',
+                  )}
                 </label>
                 <Field
                   value={codaForm.next_time_differently || ''}
                   onChange={(e) => setCodaForm(prev => ({ ...prev, next_time_differently: e.target.value }))}
                   rows={2}
-                  animatedPlaceholders={[
+                  animatedPlaceholders={locale === 'ko' ? [
                     '이해관계자를 더 일찍 참여시키거나...',
                     '가정 검증을 첫 단계에서 했을 것이다',
                     '리스크를 미리 시뮬레이션해 봤을 것이다',
                     '작은 파일럿으로 먼저 검증했을 것이다',
+                  ] : [
+                    "Bring stakeholders in earlier, or...",
+                    'Validate assumptions in the first step',
+                    'Simulate the risks up front',
+                    'Run a small pilot to verify first',
                   ]}
                 />
               </div>
               <Button size="sm" onClick={handleSaveCoda}>
-                {codaSaved ? '업데이트' : '성찰 저장'}
+                {codaSaved ? L('업데이트', 'Update') : L('성찰 저장', 'Save reflection')}
               </Button>
             </div>
           </div>

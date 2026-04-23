@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Button } from './Button';
 import { AnimatedPlaceholder } from './AnimatedPlaceholder';
 import { Sparkles, ArrowRight, ArrowLeft, Check, SkipForward } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface ChipOption {
   value: string;
@@ -34,10 +35,11 @@ interface InterviewInputProps {
 
 export function InterviewInput({
   steps,
-  submitLabel = 'AI 분석 시작',
+  submitLabel,
   onSubmit,
   disabled,
 }: InterviewInputProps) {
+  const effectiveSubmitLabel = submitLabel ?? t('ui.submitAnalysis');
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showSummary, setShowSummary] = useState(false);
@@ -115,10 +117,10 @@ export function InterviewInput({
       <div className="space-y-4 animate-fade-in">
         <div className="space-y-1">
           <h3 className="text-[15px] font-bold text-[var(--text-primary)]">
-            입력 내용 확인
+            {t('ui.reviewInput')}
           </h3>
           <p className="text-[12px] text-[var(--text-secondary)]">
-            내용을 확인하고 분석을 시작하세요.
+            {t('ui.reviewInputHint')}
           </p>
         </div>
 
@@ -151,7 +153,7 @@ export function InterviewInput({
                   onClick={() => goToStep(i)}
                   className="text-[12px] text-[var(--accent)] hover:underline cursor-pointer shrink-0"
                 >
-                  수정
+                  {t('ui.edit')}
                 </button>
               </div>
             );
@@ -160,10 +162,10 @@ export function InterviewInput({
 
         <div className="flex justify-between pt-2">
           <Button variant="secondary" size="sm" onClick={goBack}>
-            <ArrowLeft size={14} /> 이전
+            <ArrowLeft size={14} /> {t('ui.previous')}
           </Button>
           <Button onClick={handleSubmit} disabled={disabled}>
-            <Sparkles size={14} /> {submitLabel}
+            <Sparkles size={14} /> {effectiveSubmitLabel}
           </Button>
         </div>
       </div>
@@ -181,7 +183,7 @@ export function InterviewInput({
           </span>
           {!step.required && (
             <span className="text-[11px] text-[var(--text-secondary)]">
-              선택사항
+              {t('ui.optional')}
             </span>
           )}
         </div>
@@ -261,14 +263,14 @@ export function InterviewInput({
         <div>
           {currentStep > 0 && (
             <Button variant="secondary" size="sm" onClick={goBack}>
-              <ArrowLeft size={14} /> 이전
+              <ArrowLeft size={14} /> {t('ui.previous')}
             </Button>
           )}
         </div>
         <div className="flex gap-2">
           {!step.required && (
             <Button variant="ghost" size="sm" onClick={goNext}>
-              건너뛰기 <SkipForward size={12} />
+              {t('ui.skip')} <SkipForward size={12} />
             </Button>
           )}
           <Button
@@ -278,11 +280,11 @@ export function InterviewInput({
           >
             {isLast ? (
               <>
-                확인 <Check size={14} />
+                {t('ui.confirm')} <Check size={14} />
               </>
             ) : (
               <>
-                다음 <ArrowRight size={14} />
+                {t('ui.next')} <ArrowRight size={14} />
               </>
             )}
           </Button>
@@ -319,7 +321,7 @@ export function buildInterviewPrompt(
   });
 
   if (contextParts.length > 0 && mainText) {
-    return `[맥락]\n${contextParts.join('\n')}\n\n[과제]\n${mainText}`;
+    return `[${t('ui.contextLabel')}]\n${contextParts.join('\n')}\n\n[${t('ui.taskLabel')}]\n${mainText}`;
   }
   return mainText;
 }

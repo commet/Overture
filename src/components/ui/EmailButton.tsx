@@ -3,6 +3,7 @@
 import { Mail } from 'lucide-react';
 import { Button } from './Button';
 import { composeMailtoLink } from '@/lib/export';
+import { useLocale } from '@/hooks/useLocale';
 
 interface EmailButtonProps {
   getSubject: () => string;
@@ -10,7 +11,9 @@ interface EmailButtonProps {
   label?: string;
 }
 
-export function EmailButton({ getSubject, getBody, label = '이메일' }: EmailButtonProps) {
+export function EmailButton({ getSubject, getBody, label }: EmailButtonProps) {
+  const locale = useLocale();
+  const resolvedLabel = label ?? (locale === 'ko' ? '이메일' : 'Email');
   const handleClick = () => {
     window.open(composeMailtoLink(getSubject(), getBody()), '_self');
   };
@@ -18,7 +21,7 @@ export function EmailButton({ getSubject, getBody, label = '이메일' }: EmailB
   return (
     <Button variant="secondary" onClick={handleClick}>
       <Mail size={14} />
-      {label}
+      {resolvedLabel}
     </Button>
   );
 }

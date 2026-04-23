@@ -7,17 +7,35 @@ import { useAgentStore } from '@/stores/useAgentStore';
 import type { Agent, AgentChain } from '@/stores/agent-types';
 import { AgentCard } from './AgentCard';
 import { AgentProfile } from './AgentProfile';
+import { useLocale } from '@/hooks/useLocale';
 
-const GROUP_META: Record<string, { label: string; emoji: string }> = {
-  research: { label: '리서치', emoji: '🔍' },
-  strategy: { label: '전략', emoji: '🎯' },
-  production: { label: '실행', emoji: '⚡' },
-  validation: { label: '검증', emoji: '🛡️' },
-  people: { label: '사람들', emoji: '👥' },
-  special: { label: '총괄', emoji: '🎻' },
-};
+type Locale = 'ko' | 'en';
+
+function getGroupMeta(locale: Locale): Record<string, { label: string; emoji: string }> {
+  if (locale === 'ko') {
+    return {
+      research: { label: '리서치', emoji: '🔍' },
+      strategy: { label: '전략', emoji: '🎯' },
+      production: { label: '실행', emoji: '⚡' },
+      validation: { label: '검증', emoji: '🛡️' },
+      people: { label: '사람들', emoji: '👥' },
+      special: { label: '총괄', emoji: '🎻' },
+    };
+  }
+  return {
+    research: { label: 'Research', emoji: '🔍' },
+    strategy: { label: 'Strategy', emoji: '🎯' },
+    production: { label: 'Execution', emoji: '⚡' },
+    validation: { label: 'Validation', emoji: '🛡️' },
+    people: { label: 'People', emoji: '👥' },
+    special: { label: 'Lead', emoji: '🎻' },
+  };
+}
 
 export function AgentHub() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const GROUP_META = getGroupMeta(locale);
   const agents = useAgentStore(s => s.agents);
   const chains = useAgentStore(s => s.chains);
   const loadAgents = useAgentStore(s => s.loadAgents);
@@ -48,9 +66,9 @@ export function AgentHub() {
 
   return (
     <div className="agent-hub">
-      <h1 className="agent-hub-title">에이전트</h1>
+      <h1 className="agent-hub-title">{L('에이전트', 'Agents')}</h1>
       <p className="agent-hub-subtitle">
-        당신의 팀입니다. 사용할수록 성장합니다.
+        {L('당신의 팀입니다. 사용할수록 성장합니다.', 'Your team. They grow as you work with them.')}
       </p>
 
       {/* 체인 에이전트: 리서치 */}
@@ -96,14 +114,14 @@ export function AgentHub() {
           ))}
           <Link href="/boss" className="agent-card agent-card-boss-cta" style={{ textDecoration: 'none' }}>
             <div className="agent-card-emoji">👔</div>
-            <div className="agent-card-role">팀장 시뮬레이터</div>
-            <div className="agent-card-name">내 팀장은 뭐라고 할까?</div>
+            <div className="agent-card-role">{L('팀장 시뮬레이터', 'Boss Simulator')}</div>
+            <div className="agent-card-name">{L('내 팀장은 뭐라고 할까?', 'What would my boss say?')}</div>
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 600, color: 'var(--accent)',
               marginTop: 6,
             }}>
-              시작하기 →
+              {L('시작하기 →', 'Start →')}
             </span>
           </Link>
         </div>
@@ -147,13 +165,16 @@ function ChainSection({ chain, agents, meta, onSelect }: {
   meta: { label: string; emoji: string };
   onSelect: (agent: Agent) => void;
 }) {
-  // 다음 해금까지 진행도
+  const locale = useLocale();
   const nextThreshold = agents.find(a => !a.unlocked)
     ? agents.find(a => !a.unlocked)!.unlock_condition.required
     : chain.total_tasks;
   const progress = nextThreshold > 0
     ? Math.min(1, chain.total_tasks / nextThreshold)
     : 1;
+  const badge = locale === 'ko'
+    ? `${chain.total_tasks}회 작업`
+    : `${chain.total_tasks} task${chain.total_tasks === 1 ? '' : 's'}`;
 
   return (
     <section className="agent-section">
@@ -165,7 +186,7 @@ function ChainSection({ chain, agents, meta, onSelect }: {
               <div className="chain-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
             </div>
             <span className="agent-section-badge">
-              {chain.total_tasks}회 작업
+              {badge}
             </span>
           </>
         }

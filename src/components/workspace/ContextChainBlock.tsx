@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 export interface ContextChainItem {
   label: string;
@@ -17,6 +18,8 @@ interface ContextChainBlockProps {
 }
 
 export function ContextChainBlock({ summary, items }: ContextChainBlockProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   const toggle = (idx: number) => {
@@ -25,7 +28,7 @@ export function ContextChainBlock({ summary, items }: ContextChainBlockProps) {
 
   return (
     <Card className="!bg-[var(--checkpoint)] !p-3">
-      <p className="text-[11px] font-bold text-amber-700 mb-2">이전 단계에서</p>
+      <p className="text-[11px] font-bold text-amber-700 mb-2">{L('이전 단계에서', 'From the previous step')}</p>
       <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{summary}</p>
       {items.length > 0 && (
         <div className="mt-2 space-y-1.5">
@@ -35,7 +38,7 @@ export function ContextChainBlock({ summary, items }: ContextChainBlockProps) {
                 onClick={() => toggle(i)}
                 className={`flex items-center gap-1.5 text-[12px] cursor-pointer hover:underline ${item.color || 'text-amber-700'}`}
               >
-                {item.label} <span className="font-bold">{item.count}건</span>
+                {item.label} <span className="font-bold">{item.count}{L('건', '')}</span>
                 {item.details.length > 0 && (
                   expanded[i]
                     ? <ChevronUp size={11} />

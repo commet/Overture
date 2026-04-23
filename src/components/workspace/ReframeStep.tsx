@@ -33,6 +33,7 @@ import { applyPromptMutations } from '@/lib/prompt-mutation';
 import { ConcertmasterInline } from '@/components/workspace/ConcertmasterInline';
 import { t } from '@/lib/i18n';
 import { recordSignal } from '@/lib/signal-recorder';
+import { useLocale } from '@/hooks/useLocale';
 
 /* ───────────────────────────────────────────
    System Prompt
@@ -150,77 +151,79 @@ ${STRATEGIC_THINKING_FRAME}
    Interview entry steps (v2 — Cynefin/Thompson-Tuden)
    ─────────────────────────────────────────── */
 
-const CORE_STEPS: EntryStep[] = [
+const buildCoreSteps = (L: (ko: string, en: string) => string): EntryStep[] => [
   {
     key: 'nature',
-    question: '이 과제를 가장 잘 설명하는 것은?',
+    question: L('이 과제를 가장 잘 설명하는 것은?', 'Which best describes this task?'),
     options: [
-      { value: 'known_path', emoji: '📋', label: '정해진 방법이 있다', description: '선례가 있고 절차가 알려져 있다' },
-      { value: 'needs_analysis', emoji: '🔬', label: '분석하면 답이 나온다', description: '전문가나 데이터가 있으면 풀 수 있다' },
-      { value: 'no_answer', emoji: '🌊', label: '아무도 답을 모른다', description: '시도해보면서 답을 찾아야 한다' },
-      { value: 'on_fire', emoji: '🔥', label: '지금 당장 대응해야 한다', description: '생각할 시간이 부족한 긴급 상황' },
+      { value: 'known_path', emoji: '📋', label: L('정해진 방법이 있다', 'There is a known path'), description: L('선례가 있고 절차가 알려져 있다', 'Precedents exist and the procedure is known') },
+      { value: 'needs_analysis', emoji: '🔬', label: L('분석하면 답이 나온다', 'Analysis yields the answer'), description: L('전문가나 데이터가 있으면 풀 수 있다', 'Solvable with experts or data') },
+      { value: 'no_answer', emoji: '🌊', label: L('아무도 답을 모른다', 'Nobody knows the answer'), description: L('시도해보면서 답을 찾아야 한다', 'The answer has to be discovered by trying') },
+      { value: 'on_fire', emoji: '🔥', label: L('지금 당장 대응해야 한다', 'Must act right now'), description: L('생각할 시간이 부족한 긴급 상황', 'Urgent — no time to deliberate') },
     ],
   },
   {
     key: 'goal',
-    question: '이 과제의 목표는?',
+    question: L('이 과제의 목표는?', 'What is the goal?'),
     options: [
-      { value: 'clear_goal', emoji: '🎯', label: '뚜렷하다', description: '달성 기준이 명확하다' },
-      { value: 'direction_only', emoji: '🧭', label: '방향만 있다', description: '구체적 목표는 정해지지 않았다' },
-      { value: 'competing', emoji: '⚔️', label: '여러 개가 충돌한다', description: '이해관계자마다 다른 것을 원한다' },
-      { value: 'unclear', emoji: '❓', label: '아직 모르겠다', description: '무엇이 성공인지 모른다' },
+      { value: 'clear_goal', emoji: '🎯', label: L('뚜렷하다', 'Clear'), description: L('달성 기준이 명확하다', 'Success criteria are explicit') },
+      { value: 'direction_only', emoji: '🧭', label: L('방향만 있다', 'Direction only'), description: L('구체적 목표는 정해지지 않았다', 'Specific targets are not set yet') },
+      { value: 'competing', emoji: '⚔️', label: L('여러 개가 충돌한다', 'Multiple goals conflict'), description: L('이해관계자마다 다른 것을 원한다', 'Stakeholders want different things') },
+      { value: 'unclear', emoji: '❓', label: L('아직 모르겠다', 'Not sure yet'), description: L('무엇이 성공인지 모른다', "Don't know what success looks like") },
     ],
   },
   {
     key: 'stakes',
-    question: '이 결정의 무게는?',
+    question: L('이 결정의 무게는?', 'How weighty is this decision?'),
     options: [
-      { value: 'irreversible', emoji: '⚖️', label: '되돌리기 어려운 결정', description: '한번 결정하면 번복이 어렵다' },
-      { value: 'important', emoji: '📌', label: '중요하지만 수정 가능', description: '방향을 잡되 조정할 수 있다' },
-      { value: 'experiment', emoji: '🧪', label: '작은 시도', description: '실패해도 비용이 적다' },
-      { value: 'unknown_stakes', emoji: '❓', label: '아직 가늠이 안 된다', description: '가볍진 않을 것 같지만 확신이 없다' },
+      { value: 'irreversible', emoji: '⚖️', label: L('되돌리기 어려운 결정', 'Hard to reverse'), description: L('한번 결정하면 번복이 어렵다', 'Once made, reversal is costly') },
+      { value: 'important', emoji: '📌', label: L('중요하지만 수정 가능', 'Important but adjustable'), description: L('방향을 잡되 조정할 수 있다', 'Direction matters but can be tuned') },
+      { value: 'experiment', emoji: '🧪', label: L('작은 시도', 'Small experiment'), description: L('실패해도 비용이 적다', 'Low cost of failure') },
+      { value: 'unknown_stakes', emoji: '❓', label: L('아직 가늠이 안 된다', 'Not sure yet'), description: L('가볍진 않을 것 같지만 확신이 없다', 'Probably not light but not certain') },
     ],
   },
 ];
 
-const ADAPTIVE_STEPS: Record<string, EntryStep> = {
+const buildAdaptiveSteps = (L: (ko: string, en: string) => string): Record<string, EntryStep> => ({
   trigger: {
     key: 'trigger',
-    question: '이 과제가 지금 중요해진 이유는?',
+    question: L('이 과제가 지금 중요해진 이유는?', 'Why did this become important now?'),
     adaptive: true,
     options: [
-      { value: 'external_pressure', emoji: '🌊', label: '외부 압력', description: '경쟁사, 시장 변화, 규제 등' },
-      { value: 'internal_request', emoji: '👔', label: '내부 요청', description: '상사, 경영진, 다른 팀의 요청' },
-      { value: 'opportunity', emoji: '💡', label: '기회 발견', description: '새로운 가능성을 발견했다' },
-      { value: 'recurring', emoji: '🔄', label: '반복되는 문제', description: '계속 나타나는 문제를 이번에 해결하려 한다' },
+      { value: 'external_pressure', emoji: '🌊', label: L('외부 압력', 'External pressure'), description: L('경쟁사, 시장 변화, 규제 등', 'Competitors, market shifts, regulations') },
+      { value: 'internal_request', emoji: '👔', label: L('내부 요청', 'Internal request'), description: L('상사, 경영진, 다른 팀의 요청', 'From your manager, execs, or another team') },
+      { value: 'opportunity', emoji: '💡', label: L('기회 발견', 'Opportunity found'), description: L('새로운 가능성을 발견했다', 'Spotted a new possibility') },
+      { value: 'recurring', emoji: '🔄', label: L('반복되는 문제', 'Recurring problem'), description: L('계속 나타나는 문제를 이번에 해결하려 한다', 'Trying to finally solve a persistent issue') },
     ],
   },
   history: {
     key: 'history',
-    question: '이전에 비슷한 시도가 있었나요?',
+    question: L('이전에 비슷한 시도가 있었나요?', 'Have there been similar attempts?'),
     adaptive: true,
     options: [
-      { value: 'failed', emoji: '❌', label: '시도했지만 실패', description: '비슷한 접근이 있었지만 성과가 없었다' },
-      { value: 'partial', emoji: '🔶', label: '부분적 성공', description: '일부 성과가 있었지만 완전하지 않았다' },
-      { value: 'first', emoji: '🆕', label: '처음 시도', description: '이런 종류의 과제는 처음이다' },
-      { value: 'unknown', emoji: '❓', label: '잘 모르겠음', description: '조직 내 이력을 모른다' },
+      { value: 'failed', emoji: '❌', label: L('시도했지만 실패', 'Tried and failed'), description: L('비슷한 접근이 있었지만 성과가 없었다', 'Similar approaches yielded no results') },
+      { value: 'partial', emoji: '🔶', label: L('부분적 성공', 'Partial success'), description: L('일부 성과가 있었지만 완전하지 않았다', 'Some results but not complete') },
+      { value: 'first', emoji: '🆕', label: L('처음 시도', 'First attempt'), description: L('이런 종류의 과제는 처음이다', 'First time tackling this') },
+      { value: 'unknown', emoji: '❓', label: L('잘 모르겠음', 'Not sure'), description: L('조직 내 이력을 모른다', "Don't know the org's history") },
     ],
   },
   stakeholder: {
     key: 'stakeholder',
-    question: '이 과제에 가장 큰 영향을 주는 사람은?',
+    question: L('이 과제에 가장 큰 영향을 주는 사람은?', 'Who has the most influence on this?'),
     adaptive: true,
     options: [
-      { value: 'executive', emoji: '👔', label: '경영진/의사결정자', description: '최종 결정권자에게 보고한다' },
-      { value: 'team', emoji: '👥', label: '팀원/동료', description: '함께 실행할 사람들과 공유한다' },
-      { value: 'client', emoji: '🤝', label: '고객/외부', description: '외부 이해관계자에게 제안한다' },
-      { value: 'self', emoji: '💡', label: '나 자신', description: '내 판단을 정리하는 것이 목적이다' },
+      { value: 'executive', emoji: '👔', label: L('경영진/의사결정자', 'Execs / decision-makers'), description: L('최종 결정권자에게 보고한다', 'Reporting to final decision-makers') },
+      { value: 'team', emoji: '👥', label: L('팀원/동료', 'Teammates / peers'), description: L('함께 실행할 사람들과 공유한다', 'Sharing with those who will execute it') },
+      { value: 'client', emoji: '🤝', label: L('고객/외부', 'Customers / external'), description: L('외부 이해관계자에게 제안한다', 'Pitching to external stakeholders') },
+      { value: 'self', emoji: '💡', label: L('나 자신', 'Myself'), description: L('내 판단을 정리하는 것이 목적이다', 'Goal is to clarify my own thinking') },
     ],
   },
-};
+});
 
 /** Compute the interview steps array based on current selections (adaptive branching) */
-function computeInterviewSteps(selections: Record<string, string>): EntryStep[] {
+function computeInterviewSteps(selections: Record<string, string>, L: (ko: string, en: string) => string): EntryStep[] {
+  const CORE_STEPS = buildCoreSteps(L);
+  const ADAPTIVE_STEPS = buildAdaptiveSteps(L);
   const steps = [...CORE_STEPS];
   const nature = selections['nature'];
   const goal = selections['goal'];
@@ -296,55 +299,55 @@ function getPremiseExtractionGuidance(signals: InterviewSignals): string | null 
 }
 
 /** Dynamic placeholder — nature × trigger/history 조합으로 구체적인 예시 제공 */
-function getInterviewPlaceholder(selections: Record<string, string>): string {
+function getInterviewPlaceholder(selections: Record<string, string>, L: (ko: string, en: string) => string): string {
   const nature = selections['nature'];
   const trigger = selections['trigger'];
   const history = selections['history'];
 
   // nature + trigger 조합 (needs_analysis / known_path 경로)
   if (nature === 'needs_analysis' && trigger === 'internal_request') {
-    return '예: 대표가 AI 활용 계획을 다음 달까지 만들라고 지시. 팀원 50명 중 실무 경험자 2명, 예산은 미정.';
+    return L('예: 대표가 AI 활용 계획을 다음 달까지 만들라고 지시. 팀원 50명 중 실무 경험자 2명, 예산은 미정.', 'e.g., CEO wants an AI adoption plan by next month. 50 team members, only 2 with hands-on experience, budget TBD.');
   }
   if (nature === 'needs_analysis' && trigger === 'external_pressure') {
-    return '예: 경쟁사가 AI 도입으로 보고서 시간 50% 줄였다는 뉴스. 우리도 대응 전략을 2주 내 수립해야 함.';
+    return L('예: 경쟁사가 AI 도입으로 보고서 시간 50% 줄였다는 뉴스. 우리도 대응 전략을 2주 내 수립해야 함.', 'e.g., A competitor reportedly cut report time by 50% with AI. We need a response strategy within 2 weeks.');
   }
   if (nature === 'needs_analysis' && trigger === 'recurring') {
-    return '예: 매 분기 반복되는 고객 이탈 문제. 지금까지 할인 위주 대응이었지만 근본 원인을 분석하고 싶음.';
+    return L('예: 매 분기 반복되는 고객 이탈 문제. 지금까지 할인 위주 대응이었지만 근본 원인을 분석하고 싶음.', 'e.g., Customer churn recurring every quarter. Past response was discounting — want to analyze root cause this time.');
   }
   if (nature === 'needs_analysis' && trigger === 'opportunity') {
-    return '예: 기존 고객 데이터를 활용한 구독형 부가 서비스 가능성 발견. 사업성을 검증하고 싶음.';
+    return L('예: 기존 고객 데이터를 활용한 구독형 부가 서비스 가능성 발견. 사업성을 검증하고 싶음.', 'e.g., Spotted a potential subscription add-on using existing customer data. Want to validate viability.');
   }
   if (nature === 'known_path' && trigger === 'internal_request') {
-    return '예: 경영진에게 분기 실적 보고. 데이터는 있는데 스토리와 프레이밍을 잡아야 함.';
+    return L('예: 경영진에게 분기 실적 보고. 데이터는 있는데 스토리와 프레이밍을 잡아야 함.', 'e.g., Quarterly results review to execs. Have the data — need to build the story and framing.');
   }
   if (nature === 'known_path' && trigger === 'external_pressure') {
-    return '예: 규제 변경에 맞춰 기존 프로세스 업데이트 필요. 기한은 다음 달, 범위 확인 중.';
+    return L('예: 규제 변경에 맞춰 기존 프로세스 업데이트 필요. 기한은 다음 달, 범위 확인 중.', 'e.g., Need to update processes for a regulation change. Deadline next month, still scoping.');
   }
   if (nature === 'known_path') {
-    return '예: 분기별 보고서 작성 / 프로젝트 킥오프 체크리스트 / 공급업체 평가 진행';
+    return L('예: 분기별 보고서 작성 / 프로젝트 킥오프 체크리스트 / 공급업체 평가 진행', 'e.g., Quarterly report / project kickoff checklist / vendor evaluation');
   }
   if (nature === 'needs_analysis') {
-    return '예: 시장 진출 전략 수립 / AI 도입 ROI 분석 / 고객 이탈 원인 분석';
+    return L('예: 시장 진출 전략 수립 / AI 도입 ROI 분석 / 고객 이탈 원인 분석', 'e.g., Market entry strategy / AI adoption ROI analysis / customer churn root cause');
   }
 
   // nature + history 조합 (no_answer / on_fire 경로)
   if (nature === 'no_answer' && history === 'failed') {
-    return '예: 작년에 신사업 제안했지만 탈락. 이번엔 다른 접근으로 재도전하려 함. 기존 실패 원인은 시장 검증 부족.';
+    return L('예: 작년에 신사업 제안했지만 탈락. 이번엔 다른 접근으로 재도전하려 함. 기존 실패 원인은 시장 검증 부족.', 'e.g., New-business pitch rejected last year. Retrying with a different approach — prior failure was lack of market validation.');
   }
   if (nature === 'no_answer' && history === 'first') {
-    return '예: 조직 내 처음으로 AI 기반 서비스 방향을 탐색. 어디서 시작할지부터 잡아야 함.';
+    return L('예: 조직 내 처음으로 AI 기반 서비스 방향을 탐색. 어디서 시작할지부터 잡아야 함.', 'e.g., First time exploring AI-based service direction in our org. Need to figure out where to even start.');
   }
   if (nature === 'no_answer') {
-    return '예: 신사업 방향 탐색 / 조직 혁신 방안 / 제품 피벗 검토. 배경과 제약 조건을 써주세요.';
+    return L('예: 신사업 방향 탐색 / 조직 혁신 방안 / 제품 피벗 검토. 배경과 제약 조건을 써주세요.', 'e.g., New business direction / org innovation / product pivot. Share your context and constraints.');
   }
   if (nature === 'on_fire' && history === 'failed') {
-    return '예: 주요 고객이 또 이탈 조짐. 지난번 대응(할인)이 효과 없었음. 2주 내 근본 대책 필요.';
+    return L('예: 주요 고객이 또 이탈 조짐. 지난번 대응(할인)이 효과 없었음. 2주 내 근본 대책 필요.', 'e.g., Major customer showing churn signs again. Last response (discounts) did not work. Need a root-cause fix in 2 weeks.');
   }
   if (nature === 'on_fire') {
-    return '예: 경쟁사 가격 30% 인하로 영업팀 긴급 보고. 2주 내 대응 방안 필요. 현재 파악된 상황은...';
+    return L('예: 경쟁사 가격 30% 인하로 영업팀 긴급 보고. 2주 내 대응 방안 필요. 현재 파악된 상황은...', 'e.g., Competitor dropped price 30% — urgent report from sales. Need a response in 2 weeks. Situation so far is...');
   }
 
-  return '예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안';
+  return L('예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안', 'e.g., China market entry / AI adoption results / competitor response');
 }
 
 /* ───────────────────────────────────────────
@@ -376,6 +379,9 @@ interface ReframeStepProps {
 }
 
 export function ReframeStep({ onNavigate }: ReframeStepProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const CORE_STEPS = buildCoreSteps(L);
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem } = useReframeStore();
   const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
   const { handoff, setHandoff, clearHandoff } = useHandoffStore();
@@ -392,7 +398,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [interviewSelections, setInterviewSelections] = useState<Record<string, string>>({});
-  const dynamicSteps = computeInterviewSteps(interviewSelections);
+  const dynamicSteps = computeInterviewSteps(interviewSelections, L);
 
   useEffect(() => {
     loadItems();
@@ -539,7 +545,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       if (isAuthError(err)) {
         setError('LOGIN_REQUIRED');
       } else {
-        setError(de.message || '악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
+        setError(de.message || L('악보를 읽을 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.', 'Could not read the score. Try again or be more specific.'));
       }
       updateItem(id, { status: 'input' });
     }
@@ -678,7 +684,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       if (isAuthError(err)) {
         setError('LOGIN_REQUIRED');
       } else {
-        setError(de.message || '질문을 재정의할 수 없었습니다.');
+        setError(de.message || L('질문을 재정의할 수 없었습니다.', 'Could not reframe the question.'));
       }
     } finally {
       setReframing(false);
@@ -753,7 +759,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       if (isAuthError(err)) {
         setError('LOGIN_REQUIRED');
       } else {
-        setError(de.message || '악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.');
+        setError(de.message || L('악보를 다시 읽을 수 없었습니다. 다시 시도해보세요.', 'Could not re-read the score. Try again.'));
       }
       updateItem(currentId, { status: 'review' });
     }
@@ -803,12 +809,12 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
           <span className="text-[14px] text-[var(--text-secondary)]">{t('tool.reframe.subtitle')}</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-          전략기획의 핵심 — 숨은 가정을 찾고, 진짜 질문을 재정의합니다.
+          {L('전략기획의 핵심 — 숨은 가정을 찾고, 진짜 질문을 재정의합니다.', 'The core of strategy — find hidden assumptions, redefine the real question.')}
         </p>
         {hasLearning && (
           <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-tertiary)] mt-2">
             <Brain size={12} />
-            <span>이전 {judgments.length}건의 판단이 반영되고 있습니다</span>
+            <span>{L(`이전 ${judgments.length}건의 판단이 반영되고 있습니다`, `${judgments.length} prior judgments are being applied`)}</span>
           </div>
         )}
       </div>
@@ -827,7 +833,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
               }`}
             >
               <FileText size={14} />
-              {(item.analysis?.surface_task || item.input_text || '').slice(0, 25) || '분석 중...'}
+              {(item.analysis?.surface_task || item.input_text || '').slice(0, 25) || L('분석 중...', 'Analyzing...')}
               <span
                 onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
                 className="ml-1 p-0.5 hover:text-red-500 cursor-pointer"
@@ -851,11 +857,11 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
         <>
         {/* Example tasks */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-[12px] text-[var(--text-secondary)] shrink-0">예시 과제로 체험:</span>
+          <span className="text-[12px] text-[var(--text-secondary)] shrink-0">{L('예시 과제로 체험:', 'Try an example:')}</span>
           {[
-            { label: '경영진 보고', nature: 'needs_analysis' as const, goal: 'clear_goal' as const, stakes: 'important' as const, text: '팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.' },
-            { label: '신규 사업 제안', nature: 'no_answer' as const, goal: 'direction_only' as const, stakes: 'experiment' as const, text: '사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.' },
-            { label: '위기 대응', nature: 'on_fire' as const, goal: 'clear_goal' as const, stakes: 'irreversible' as const, text: '주요 경쟁사가 핵심 제품의 가격을 30% 인하했습니다. 영업팀에서 고객 이탈 조짐이 보고되고 있고, 2주 안에 대응 방안을 만들어야 합니다.' },
+            { label: L('경영진 보고', 'Executive report'), nature: 'needs_analysis' as const, goal: 'clear_goal' as const, stakes: 'important' as const, text: L('팀의 AI 도입 3개월 시범 운영 결과를 경영진에게 보고해야 합니다. 비용 절감 30%를 달성했지만 품질 이슈가 있었습니다. 다음 주 임원 회의에서 확대 도입 여부를 결정합니다.', "Need to report the 3-month AI pilot results to execs. Achieved 30% cost savings but had quality issues. Next week's exec meeting will decide whether to expand adoption.") },
+            { label: L('신규 사업 제안', 'New business pitch'), nature: 'no_answer' as const, goal: 'direction_only' as const, stakes: 'experiment' as const, text: L('사내 벤처 프로그램에 지원할 사업 아이디어를 정리해야 합니다. 기존 고객 데이터를 활용한 구독형 부가 서비스이고, 2주 안에 사업계획서를 제출해야 합니다.', 'Need to shape a business idea for the internal venture program. A subscription add-on leveraging existing customer data — business plan due in 2 weeks.') },
+            { label: L('위기 대응', 'Crisis response'), nature: 'on_fire' as const, goal: 'clear_goal' as const, stakes: 'irreversible' as const, text: L('주요 경쟁사가 핵심 제품의 가격을 30% 인하했습니다. 영업팀에서 고객 이탈 조짐이 보고되고 있고, 2주 안에 대응 방안을 만들어야 합니다.', 'A major competitor cut the price of our core product by 30%. Sales is reporting early churn signs — we need a response plan in 2 weeks.') },
           ].map((ex) => {
             const natureOpt = CORE_STEPS[0].options.find(o => o.value === ex.nature);
             const goalOpt = CORE_STEPS[1].options.find(o => o.value === ex.goal);
@@ -879,24 +885,24 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
             steps={dynamicSteps}
             onSelectionChange={(newSelections) => {
               // Clean up selections for steps that were removed by branching
-              const validKeys = new Set(computeInterviewSteps(newSelections).map(s => s.key));
+              const validKeys = new Set(computeInterviewSteps(newSelections, L).map(s => s.key));
               const cleaned = Object.fromEntries(
                 Object.entries(newSelections).filter(([k]) => validKeys.has(k))
               );
               setInterviewSelections(cleaned);
             }}
-            textLabel="뭘 해야 하나요? (짧게도 OK)"
-            textPlaceholder="예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안"
+            textLabel={L('뭘 해야 하나요? (짧게도 OK)', "What do you need to do? (Short is fine)")}
+            textPlaceholder={L('예: 중국 시장 진출 전략 / AI 도입 성과 보고서 / 경쟁사 대응 방안', 'e.g., China market entry / AI adoption results / competitor response')}
             animatedPlaceholders={[
-              '예: 중국 시장 진출 전략 수립',
-              '예: AI 도입 ROI 분석 보고서',
-              '예: 경쟁사 가격 인하 대응 방안',
-              '예: 고객 이탈 원인 분석과 개선안',
-              '예: 신사업 아이템 사업성 검증',
-              '예: 분기 실적 프레젠테이션 준비',
+              L('예: 중국 시장 진출 전략 수립', 'e.g., Build a China market entry strategy'),
+              L('예: AI 도입 ROI 분석 보고서', 'e.g., AI adoption ROI analysis report'),
+              L('예: 경쟁사 가격 인하 대응 방안', 'e.g., Response plan for competitor price cuts'),
+              L('예: 고객 이탈 원인 분석과 개선안', 'e.g., Customer churn root-cause analysis and fixes'),
+              L('예: 신사업 아이템 사업성 검증', 'e.g., Validate new business idea viability'),
+              L('예: 분기 실적 프레젠테이션 준비', 'e.g., Prep the quarterly results presentation'),
             ]}
-            dynamicPlaceholderFn={getInterviewPlaceholder}
-            textHint="위에서 선택한 맥락이 반영됩니다. 구체적일수록 정확합니다."
+            dynamicPlaceholderFn={(s) => getInterviewPlaceholder(s, L)}
+            textHint={L('위에서 선택한 맥락이 반영됩니다. 구체적일수록 정확합니다.', 'The selections above are applied. More specific = more accurate.')}
             onSubmit={(selections, text) => {
               // Build v2 structured signals directly
               const signals: InterviewSignals = {
@@ -910,7 +916,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
               };
 
               // Build readable context for LLM
-              const allSteps = computeInterviewSteps(selections);
+              const allSteps = computeInterviewSteps(selections, L);
               const context = Object.entries(selections)
                 .map(([k, v]) => {
                   const step = allSteps.find(s => s.key === k);
@@ -926,7 +932,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
           />
           {similarItems.length > 0 && (
             <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
-              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">유사한 이전 분석</p>
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)] mb-2">{L('유사한 이전 분석', 'Similar past analyses')}</p>
               <div className="space-y-1.5">
                 {similarItems.map((item) => (
                   <div
@@ -939,7 +945,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                         {item.analysis?.surface_task || item.input_text.slice(0, 40)}
                       </p>
                       <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                        유사도 {Math.round(item.similarity * 100)}%
+                        {L('유사도', 'Similarity')} {Math.round(item.similarity * 100)}%
                       </p>
                     </div>
                     <ArrowRight size={12} className="text-[var(--text-tertiary)] shrink-0" />
@@ -951,10 +957,10 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
           {error && (
             error === 'LOGIN_REQUIRED' ? (
               <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4 mt-3">
-                <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험을 모두 사용했어요</p>
-                <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.</p>
+                <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Your free trial is used up')}</p>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-3">{L('로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.', 'Sign in to keep using it free — up to 10 times a day.')}</p>
                 <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all">
-                  로그인 / 회원가입
+                  {L('로그인 / 회원가입', 'Sign in / Sign up')}
                 </Link>
               </div>
             ) : (
@@ -963,7 +969,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                   <AlertTriangle size={14} /> <span>{error}</span>
                 </div>
                 <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
-                  다시 시도
+                  {L('다시 시도', 'Retry')}
                 </button>
               </div>
             )
@@ -978,9 +984,9 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
       {current?.status === 'analyzing' && (
         <Card>
           <LoadingSteps steps={[
-            '과제의 가정을 점검하고 있습니다',
-            '숨은 질문을 찾고 있습니다',
-            '진짜 주제를 읽어내고 있습니다',
+            L('과제의 가정을 점검하고 있습니다', 'Checking the task\'s assumptions'),
+            L('숨은 질문을 찾고 있습니다', 'Finding the hidden question'),
+            L('진짜 주제를 읽어내고 있습니다', 'Reading the real subject'),
           ]} />
         </Card>
       )}
@@ -999,7 +1005,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 {/* 과제 요약 */}
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide">STEP 1 — 가정 점검</p>
+                    <p className="text-[11px] font-semibold text-[var(--text-tertiary)] tracking-wide">{L('STEP 1 — 가정 점검', 'STEP 1 — Assumption check')}</p>
                     {currentStrategy && (
                       <span className="text-[10px] text-[var(--text-tertiary)] bg-[var(--bg)] px-2 py-0.5 rounded-full">
                         {STRATEGY_LABELS[currentStrategy].label}
@@ -1019,9 +1025,9 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 {/* 전제 평가 */}
                 <div>
                   <div className="mb-3">
-                    <p className="text-[14px] font-bold text-[var(--text-primary)]">이 과제의 숨은 가정</p>
+                    <p className="text-[14px] font-bold text-[var(--text-primary)]">{L('이 과제의 숨은 가정', "This task's hidden assumptions")}</p>
                     <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                      이것이 맞아야 과제가 성립합니다. 당신의 경험으로 판단해주세요.
+                      {L('이것이 맞아야 과제가 성립합니다. 당신의 경험으로 판단해주세요.', 'These must hold for the task to make sense. Judge with your experience.')}
                     </p>
                   </div>
                   <div className="space-y-2.5">
@@ -1034,15 +1040,15 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                           </p>
                           {a.risk_if_false && (
                             <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-                              만약 아니라면 &rarr; {a.risk_if_false}
+                              {L('만약 아니라면', 'If not')} &rarr; {a.risk_if_false}
                             </p>
                           )}
                           {/* 3-way evaluation toggle */}
                           <div className="flex gap-1.5">
                             {([
-                              { value: 'likely_true', label: '맞을 가능성 높음', color: 'emerald' },
-                              { value: 'uncertain', label: '확실하지 않음', color: 'amber' },
-                              { value: 'doubtful', label: '의심됨', color: 'red' },
+                              { value: 'likely_true', label: L('맞을 가능성 높음', 'Likely true'), color: 'emerald' },
+                              { value: 'uncertain', label: L('확실하지 않음', 'Uncertain'), color: 'amber' },
+                              { value: 'doubtful', label: L('의심됨', 'Doubtful'), color: 'red' },
                             ] as const).map(({ value, label, color }) => (
                               <button
                                 key={value}
@@ -1066,7 +1072,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                           {(ev === 'doubtful' || ev === 'uncertain') && (
                             <input
                               type="text"
-                              placeholder={ev === 'doubtful' ? '왜 의심하나요? (선택)' : '왜 불확실한가요? (선택)'}
+                              placeholder={ev === 'doubtful' ? L('왜 의심하나요? (선택)', 'Why doubtful? (optional)') : L('왜 불확실한가요? (선택)', 'Why uncertain? (optional)')}
                               value={a.evaluation_reason || ''}
                               onChange={(e) => handleEvaluationReason(i, e.target.value)}
                               className="mt-2 w-full px-3 py-1.5 rounded-lg text-[12px] border border-[var(--border-subtle)] bg-[var(--bg)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
@@ -1084,9 +1090,9 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 {reframing && (
                   <Card>
                     <LoadingSteps steps={[
-                      '당신의 가정 평가를 분석하고 있습니다',
-                      '의심된 가정을 기반으로 질문을 재구성합니다',
-                      '새로운 방향을 도출하고 있습니다',
+                      L('당신의 가정 평가를 분석하고 있습니다', 'Analyzing your assumption evaluations'),
+                      L('의심된 가정을 기반으로 질문을 재구성합니다', 'Restructuring the question around doubtful assumptions'),
+                      L('새로운 방향을 도출하고 있습니다', 'Deriving a new direction'),
                     ]} />
                   </Card>
                 )}
@@ -1094,11 +1100,11 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 {!reframing && (
                   <div className="pt-2 space-y-2">
                     <p className="text-[11px] text-[var(--text-tertiary)] text-right">
-                      당신의 평가를 바탕으로 질문을 재정의합니다
+                      {L('당신의 평가를 바탕으로 질문을 재정의합니다', 'Redefining the question based on your evaluation')}
                     </p>
                     <div className="flex items-center justify-between">
                       <Button variant="secondary" onClick={handleReanalyze} size="sm">
-                        <RotateCcw size={14} /> 가정 재분석
+                        <RotateCcw size={14} /> {L('가정 재분석', 'Re-analyze assumptions')}
                       </Button>
                       <Button onClick={handleReframe}>
                         {t('reframe.reframe')} &rarr;
@@ -1114,9 +1120,9 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
               const dCount = analysis.hidden_assumptions.filter(a => a.evaluation === 'doubtful').length;
               const uCount = analysis.hidden_assumptions.filter(a => a.evaluation === 'uncertain').length;
               const allConfirmed = dCount === 0 && uCount === 0;
-              const questionLabel = allConfirmed ? '구체화된 핵심 질문' : '재정의된 질문';
-              const rationaleLabel = allConfirmed ? '왜 이렇게 구체화했는가' : '왜 이렇게 재정의했는가';
-              const directionLabel = allConfirmed ? '실행의 핵심 갈림길' : t('reframe.direction');
+              const questionLabel = allConfirmed ? L('구체화된 핵심 질문', 'Sharpened core question') : L('재정의된 질문', 'Reframed question');
+              const rationaleLabel = allConfirmed ? L('왜 이렇게 구체화했는가', 'Why this sharpening') : L('왜 이렇게 재정의했는가', 'Why this reframing');
+              const directionLabel = allConfirmed ? L('실행의 핵심 갈림길', 'Key execution forks') : t('reframe.direction');
               return (
               <>
                 {/* 재정의된 질문 — 통합 카드 */}
@@ -1124,13 +1130,13 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                   <div className="rounded-[20px] overflow-hidden border border-[var(--border-subtle)]">
                     {/* 전제 평가 요약 — 상단 */}
                     <div className="px-5 py-3 bg-[var(--bg)] border-b border-[var(--border-subtle)]">
-                      <p className="text-[12px] font-medium text-[var(--text-secondary)] mb-2">당신의 가정 평가 결과</p>
+                      <p className="text-[12px] font-medium text-[var(--text-secondary)] mb-2">{L('당신의 가정 평가 결과', 'Your assumption evaluations')}</p>
                       <div className="space-y-1">
                         {analysis.hidden_assumptions.map((a, i) => {
                           const ev = a.evaluation || 'uncertain';
                           const dotColor = ev === 'doubtful' ? 'bg-red-500' : ev === 'likely_true' ? 'bg-emerald-500' : 'bg-amber-500';
                           const textColor = ev === 'doubtful' ? 'text-red-700' : ev === 'likely_true' ? 'text-emerald-700' : 'text-amber-700';
-                          const label = ev === 'doubtful' ? '의심' : ev === 'likely_true' ? '맞음' : '불확실';
+                          const label = ev === 'doubtful' ? L('의심', 'Doubt') : ev === 'likely_true' ? L('맞음', 'True') : L('불확실', 'Uncertain');
                           return (
                             <div key={i} className="flex items-start gap-2">
                               <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${dotColor}`} />
@@ -1146,7 +1152,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                     {/* 연결선 */}
                     <div className="flex items-center gap-2 px-5 py-1.5 bg-[var(--surface)]">
                       <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                      <span className="text-[10px] text-[var(--text-tertiary)] font-medium">이 평가를 바탕으로</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] font-medium">{L('이 평가를 바탕으로', 'Based on this evaluation')}</span>
                       <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                     </div>
 
@@ -1161,8 +1167,8 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                     {/* 리프레이밍 근거 — 하단 */}
                     {analysis.why_reframing_matters && (
                       <div className="px-5 py-4 bg-[var(--surface)] border-t border-[var(--border-subtle)]">
-                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">분석 근거</p>
-                        <p className="text-[10px] text-[var(--text-tertiary)] mb-2">가정 · 목적 · 시간 · 범위 · 문제 성격을 종합</p>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">{L('분석 근거', 'Rationale')}</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mb-2">{L('가정 · 목적 · 시간 · 범위 · 문제 성격을 종합', 'Integrating assumptions, purpose, time, scope, and problem type')}</p>
                         <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">
                           {analysis.why_reframing_matters}
                         </p>
@@ -1225,12 +1231,12 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                             {editingQuestion ? (
                               <input type="text" autoFocus value={customQuestion}
                                 onChange={(e) => { setCustomQuestion(e.target.value); handleSelectQuestion(e.target.value); }}
-                                placeholder="직접 질문을 작성하세요..."
+                                placeholder={L('직접 질문을 작성하세요...', 'Write your own question...')}
                                 className="w-full bg-transparent text-[14px] font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
                                 maxLength={500}
                               />
                             ) : (
-                              <p className="text-[14px] text-[var(--text-tertiary)]">직접 질문 작성하기...</p>
+                              <p className="text-[14px] text-[var(--text-tertiary)]">{L('직접 질문 작성하기...', 'Write your own question...')}</p>
                             )}
                           </div>
                         </div>
@@ -1254,10 +1260,10 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
             {error && (
               error === 'LOGIN_REQUIRED' ? (
                 <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4">
-                  <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험을 모두 사용했어요</p>
-                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.</p>
+                  <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Your free trial is used up')}</p>
+                  <p className="text-[13px] text-[var(--text-secondary)] mb-3">{L('로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.', 'Sign in to keep using it free — up to 10 times a day.')}</p>
                   <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all">
-                    로그인 / 회원가입
+                    {L('로그인 / 회원가입', 'Sign in / Sign up')}
                   </Link>
                 </div>
               ) : (
@@ -1266,7 +1272,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                     <AlertTriangle size={14} /> <span>{error}</span>
                   </div>
                   <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
-                    다시 시도
+                    {L('다시 시도', 'Retry')}
                   </button>
                 </div>
               )
@@ -1276,10 +1282,10 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
             {reviewStage === 'reframe' && (
               <div className="flex items-center justify-between pt-1">
                 <Button variant="secondary" onClick={() => setReviewStage('evaluate')} size="sm">
-                  <RotateCcw size={14} /> 가정 다시 평가
+                  <RotateCcw size={14} /> {L('가정 다시 평가', 'Re-evaluate assumptions')}
                 </Button>
                 <div className="flex gap-2">
-                  <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => '악보 해석 | ' + (current.analysis?.surface_task || '')} />
+                  <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => L('악보 해석 | ', 'Reframe | ') + (current.analysis?.surface_task || '')} />
                   <Button onClick={handleConfirm} disabled={!current.selected_question}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -1302,13 +1308,13 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
               <div className="relative z-10 p-6">
                 <div className="flex items-center gap-2 text-[var(--success)] text-[13px] font-bold mb-5">
                   <Check size={14} />
-                  <span>악보 해석 완료</span>
+                  <span>{L('악보 해석 완료', 'Reframe complete')}</span>
                   <BarLine type="final" height={16} className="ml-2" />
-                  <span className="text-[var(--text-tertiary)] font-normal ml-1">핵심 질문이 정의되었습니다</span>
+                  <span className="text-[var(--text-tertiary)] font-normal ml-1">{L('핵심 질문이 정의되었습니다', 'Core question defined')}</span>
                 </div>
 
                 <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--text-tertiary)] mb-1.5">
-                  재정의된 질문
+                  {L('재정의된 질문', 'Reframed question')}
                 </p>
                 <p className="text-[17px] font-bold text-[var(--text-primary)] leading-snug tracking-tight">
                   {current.selected_question || analysis.reframed_question}
@@ -1322,7 +1328,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                 {/* ── Reward: 질문의 변화 ── */}
                 {analysis.surface_task && (current.selected_question || analysis.reframed_question) !== analysis.surface_task && (
                   <div className="mt-5 pt-4 border-t border-[var(--success)]/20 reward-entrance">
-                    <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-2.5">당신의 질문이 바뀌었습니다</p>
+                    <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-2.5">{L('당신의 질문이 바뀌었습니다', 'Your question has changed')}</p>
                     <div className="space-y-2">
                       <p className="text-[13px] text-[var(--text-tertiary)] line-through decoration-[var(--text-tertiary)]/30">
                         {analysis.surface_task}
@@ -1339,7 +1345,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                       if (risky === 0) return null;
                       return (
                         <p className="mt-2.5 text-[11px] text-[var(--accent)]">
-                          숨은 가정 {assumptions.length}건 중 {risky}건이 불확실 — 다음 단계에서 검증됩니다
+                          {L(`숨은 가정 ${assumptions.length}건 중 ${risky}건이 불확실 — 다음 단계에서 검증됩니다`, `${risky} of ${assumptions.length} hidden assumptions are uncertain — verified in the next step`)}
                         </p>
                       );
                     })()}
@@ -1350,7 +1356,7 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
 
             <div className="flex items-center justify-between">
               <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); }}>
-                <ArrowRight size={14} /> 새 악보 해석
+                <ArrowRight size={14} /> {L('새 악보 해석', 'New reframe')}
               </Button>
               <div className="flex gap-2">
                 <Button
@@ -1367,9 +1373,9 @@ export function ReframeStep({ onNavigate }: ReframeStepProps) {
                     onNavigate('recast');
                   }}
                 >
-                  <Send size={14} /> 편곡으로 보내기
+                  <Send size={14} /> {L('편곡으로 보내기', 'Send to Recast')}
                 </Button>
-                <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => '악보 해석 | ' + (current.analysis?.surface_task || '')} />
+                <ShareBar getText={() => reframeToMarkdown(current)} getTitle={() => L('악보 해석 | ', 'Reframe | ') + (current.analysis?.surface_task || '')} />
               </div>
             </div>
 

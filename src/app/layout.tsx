@@ -9,34 +9,74 @@ import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
 const SITE_URL = 'https://overture-zeta.vercel.app';
 
-export const metadata: Metadata = {
-  title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
-  description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다. 인지과학 + 전략기획 실무 기반.',
-  metadataBase: new URL(SITE_URL),
-  openGraph: {
+type Lang = 'ko' | 'en';
+
+const META_STRINGS: Record<Lang, { title: string; description: string; descriptionShort: string; descriptionTwitter: string; ogLocale: string }> = {
+  ko: {
     title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
-    description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다.',
-    url: SITE_URL,
-    siteName: 'Overture',
-    locale: 'ko_KR',
-    type: 'website',
+    description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다. 인지과학 + 전략기획 실무 기반.',
+    descriptionShort: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다. 채울수록 날카로워집니다.',
+    descriptionTwitter: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다.',
+    ogLocale: 'ko_KR',
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Overture — 내 전문 분야가 아닌 걸 해야 할 때',
-    description: '질문 하나 던지면, 30초 안에 기획안 뼈대가 나옵니다.',
+  en: {
+    title: 'Overture — For work outside your expertise',
+    description: 'Drop a question, get a draft proposal skeleton in 30 seconds. It sharpens as you fill it in. Built on cognitive science and strategic planning practice.',
+    descriptionShort: 'Drop a question, get a draft proposal skeleton in 30 seconds. It sharpens as you fill it in.',
+    descriptionTwitter: 'Drop a question, get a draft proposal skeleton in 30 seconds.',
+    ogLocale: 'en_US',
   },
 };
+
+function pickLangFromAcceptLanguage(header: string | null): Lang {
+  if (!header) return 'en';
+  const first = header.split(',')[0]?.toLowerCase() ?? '';
+  return first.startsWith('ko') ? 'ko' : 'en';
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  const lang = pickLangFromAcceptLanguage(h.get('accept-language'));
+  const m = META_STRINGS[lang];
+
+  return {
+    title: m.title,
+    description: m.description,
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: SITE_URL,
+      languages: {
+        ko: `${SITE_URL}?lang=ko`,
+        en: `${SITE_URL}?lang=en`,
+      },
+    },
+    openGraph: {
+      title: m.title,
+      description: m.descriptionShort,
+      url: SITE_URL,
+      siteName: 'Overture',
+      locale: m.ogLocale,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: m.title,
+      description: m.descriptionTwitter,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get('x-nonce') || '';
+  const h = await headers();
+  const nonce = h.get('x-nonce') || '';
+  const lang = pickLangFromAcceptLanguage(h.get('accept-language'));
 
   return (
-    <html lang="ko">
+    <html lang={lang}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

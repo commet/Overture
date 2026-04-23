@@ -1,6 +1,7 @@
 'use client';
 
 import { Pencil, MessageCircle } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 export type InputMode = 'direct' | 'interview';
 
@@ -10,6 +11,8 @@ interface ModeToggleProps {
 }
 
 export function ModeToggle({ mode, onChange }: ModeToggleProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <div className="flex items-center gap-1 p-1 bg-[var(--bg)] rounded-lg border border-[var(--border)] w-fit">
       <button
@@ -21,7 +24,7 @@ export function ModeToggle({ mode, onChange }: ModeToggleProps) {
         }`}
       >
         <Pencil size={12} />
-        직접
+        {L('직접', 'Direct')}
       </button>
       <button
         onClick={() => onChange('interview')}
@@ -32,7 +35,7 @@ export function ModeToggle({ mode, onChange }: ModeToggleProps) {
         }`}
       >
         <MessageCircle size={12} />
-        대화형
+        {L('대화형', 'Interview')}
       </button>
     </div>
   );

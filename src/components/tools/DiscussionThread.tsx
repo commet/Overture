@@ -4,6 +4,7 @@ import type { DiscussionMessage, Persona } from '@/stores/types';
 import { PersonaAvatar } from './FeedbackMessage';
 import { StaffLines } from '@/components/ui/MusicalElements';
 import { Handshake, GitBranch, Lightbulb, HelpCircle } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 interface DiscussionThreadProps {
   messages: DiscussionMessage[];
@@ -12,13 +13,15 @@ interface DiscussionThreadProps {
 }
 
 const TYPE_CONFIG = {
-  agreement: { icon: Handshake, label: '동의', color: 'text-[var(--success)]' },
-  disagreement: { icon: GitBranch, label: '반박', color: 'text-[#E24B4A]' },
-  elaboration: { icon: Lightbulb, label: '보충', color: 'text-[var(--accent)]' },
-  question: { icon: HelpCircle, label: '질문', color: 'text-amber-600' },
+  agreement: { icon: Handshake, labelKo: '동의', labelEn: 'agrees with', color: 'text-[var(--success)]' },
+  disagreement: { icon: GitBranch, labelKo: '반박', labelEn: 'disagrees with', color: 'text-[#E24B4A]' },
+  elaboration: { icon: Lightbulb, labelKo: '보충', labelEn: 'builds on', color: 'text-[var(--accent)]' },
+  question: { icon: HelpCircle, labelKo: '질문', labelEn: 'asks', color: 'text-amber-600' },
 };
 
 export function DiscussionThread({ messages, personas, keyTakeaway }: DiscussionThreadProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const getPersona = (id: string) => personas.find(p => p.id === id);
 
   return (
@@ -31,7 +34,7 @@ export function DiscussionThread({ messages, personas, keyTakeaway }: Discussion
             <PersonaAvatar key={p.id} name={p.name} personaId={p.id} size={28} />
           ))}
         </div>
-        <h4 className="text-[14px] font-bold text-[var(--text-primary)]">이해관계자 토론</h4>
+        <h4 className="text-[14px] font-bold text-[var(--text-primary)]">{L('이해관계자 토론', 'Stakeholder discussion')}</h4>
       </div>
 
       {/* Messages */}
@@ -60,7 +63,9 @@ export function DiscussionThread({ messages, personas, keyTakeaway }: Discussion
                   <div className="flex items-center gap-1 mb-1.5">
                     <TypeIcon size={11} className={config.color} />
                     <span className={`text-[10px] font-semibold ${config.color}`}>
-                      {reactingTo.name}에게 {config.label}
+                      {locale === 'ko'
+                        ? `${reactingTo.name}에게 ${config.labelKo}`
+                        : `${config.labelEn} ${reactingTo.name}`}
                     </span>
                   </div>
                 )}
@@ -78,7 +83,7 @@ export function DiscussionThread({ messages, personas, keyTakeaway }: Discussion
         <div className="mt-4 flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[var(--checkpoint)] border border-amber-200">
           <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-[11px] font-bold text-amber-700 mb-0.5">핵심 결론</p>
+            <p className="text-[11px] font-bold text-amber-700 mb-0.5">{L('핵심 결론', 'Key takeaway')}</p>
             <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{keyTakeaway}</p>
           </div>
         </div>

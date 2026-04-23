@@ -7,6 +7,7 @@ import { useReframeStore } from '@/stores/useReframeStore';
 import { useRecastStore } from '@/stores/useRecastStore';
 import { useAgentAttentionStore } from '@/stores/useAgentAttentionStore';
 import type { StepId } from '@/stores/useWorkspaceStore';
+import { t, getCurrentLanguage } from '@/lib/i18n';
 
 interface QuickChatBarProps {
   activeStep: StepId;
@@ -19,7 +20,7 @@ interface ChatAction {
   message: string;
 }
 
-const SYSTEM_PROMPT = `당신은 Overture 워크스페이스의 어시스턴트입니다. 사용자가 자연어로 요청하면 적절한 액션을 JSON으로 응답하세요.
+const SYSTEM_PROMPT_KO = `당신은 Overture 워크스페이스의 어시스턴트입니다. 사용자가 자연어로 요청하면 적절한 액션을 JSON으로 응답하세요.
 
 현재 단계: {step}
 
@@ -33,8 +34,29 @@ const SYSTEM_PROMPT = `당신은 Overture 워크스페이스의 어시스턴트�
 - reanalyze: 현재 단계 재분석. params: {}
 - message: 단순 응답 (액션 없음). params: {}
 
-반드시 JSON만 응답하세요:
+반드시 JSON만 응답하세요. message 필드는 반드시 한국어로 작성하세요:
 { "action": "...", "params": {...}, "message": "사용자에게 보여줄 확인 메시지" }`;
+
+const SYSTEM_PROMPT_EN = `You are the assistant for the Overture workspace. When the user asks in natural language, respond with the appropriate action as JSON.
+
+Current step: {step}
+
+Available actions:
+- navigate: Go to another step. params: { step: "reframe" | "recast" | "rehearse" }
+- update_actor: Change the owner of a step in Arrangement. params: { stepIndex: number, actor: "ai" | "human" | "both" }
+- add_step: Add a new step in Arrangement. params: { task: string }
+- remove_step: Remove a step in Arrangement. params: { stepIndex: number }
+- select_question: Select a question in Score Reading. params: { questionIndex: number }
+- confirm: Confirm the current step. params: {}
+- reanalyze: Re-analyze the current step. params: {}
+- message: Plain reply (no action). params: {}
+
+Respond with JSON only. The message field MUST be written in English:
+{ "action": "...", "params": {...}, "message": "confirmation message to show the user" }`;
+
+function getSystemPrompt(): string {
+  return getCurrentLanguage() === 'ko' ? SYSTEM_PROMPT_KO : SYSTEM_PROMPT_EN;
+}
 
 export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
   const [input, setInput] = useState('');
@@ -118,12 +140,17 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
 
     // Quick local commands first (no LLM needed)
     const lowerInput = input.trim().toLowerCase();
-    if (lowerInput === '다음' || lowerInput === '다음 단계' || lowerInput === '다음 단계로') {
+    const nextKeywords = [
+      t('quickChat.nextKeyword1').toLowerCase(),
+      t('quickChat.nextKeyword2').toLowerCase(),
+      t('quickChat.nextKeyword3').toLowerCase(),
+    ];
+    if (nextKeywords.includes(lowerInput)) {
       const stepOrder: StepId[] = ['reframe', 'recast', 'rehearse'];
       const currentIdx = stepOrder.indexOf(activeStep);
       if (currentIdx >= 0 && currentIdx < stepOrder.length - 1) {
         onNavigate(stepOrder[currentIdx + 1]);
-        setFeedback({ message: `${stepOrder[currentIdx + 1]} 단계로 이동했습니다.`, type: 'success' });
+        setFeedback({ message: t('quickChat.navDone', { step: stepOrder[currentIdx + 1] }), type: 'success' });
         setInput('');
         return;
       }
@@ -132,14 +159,14 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
     setLoading(true);
     useAgentAttentionStore.getState().ping('chat');
     try {
-      const systemPrompt = SYSTEM_PROMPT.replace('{step}', activeStep);
+      const systemPrompt = getSystemPrompt().replace('{step}', activeStep);
       const result = await callLLMJson<ChatAction>(
         [{ role: 'user', content: input }],
         { system: systemPrompt, maxTokens: 500 }
       );
       executeAction(result);
     } catch {
-      setFeedback({ message: '요청을 처리하지 못했습니다.', type: 'info' });
+      setFeedback({ message: t('quickChat.failure'), type: 'info' });
     } finally {
       setLoading(false);
       setInput('');
@@ -165,7 +192,7 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
           className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
         >
           <MessageSquare size={14} />
-          자연어로 수정 요청...
+          {t('quickChat.open')}
         </button>
       </div>
     );
@@ -195,9 +222,9 @@ export function QuickChatBar({ activeStep, onNavigate }: QuickChatBarProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              activeStep === 'recast' ? '"Step 3을 사람으로 바꿔줘" 또는 "리뷰 단계 추가해줘"' :
-              activeStep === 'reframe' ? '"2번 질문을 선택해줘" 또는 "다음 단계로"' :
-              '"다음 단계로" 또는 수정 요청...'
+              activeStep === 'recast' ? t('quickChat.placeholderRecast') :
+              activeStep === 'reframe' ? t('quickChat.placeholderReframe') :
+              t('quickChat.placeholderGeneric')
             }
             className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--text-secondary)]"
             disabled={loading}

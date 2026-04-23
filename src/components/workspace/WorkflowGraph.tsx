@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { RecastStep as StepType, RecastAnalysis, ActorRelationship } from '@/stores/types';
 import { Bot, Brain, Handshake, ArrowRight, Flag, Clock, Package, Zap, Trash2 } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 interface WorkflowGraphProps {
   steps: StepType[];
@@ -14,13 +15,19 @@ interface WorkflowGraphProps {
   onUpdateField?: (index: number, updates: Partial<StepType>) => void;
 }
 
-const ACTORS: Record<string, { label: string; color: string; bg: string; text: string; Icon: typeof Bot }> = {
-  ai: { label: 'AI', color: '#3b6dcc', bg: '#eaeff8', text: '#2d4a7c', Icon: Bot },
-  human: { label: '사람', color: '#b8860b', bg: '#fef4e4', text: '#8b6914', Icon: Brain },
-  both: { label: '협업', color: '#2d6b2d', bg: '#eaf5ea', text: '#2d6b2d', Icon: Handshake },
-  'human→ai': { label: '사람→AI', color: '#6b4fa0', bg: '#f3eef9', text: '#5a3d8a', Icon: ArrowRight },
-  'ai→human': { label: 'AI→사람', color: '#2d6b6b', bg: '#eaf5f5', text: '#1e5050', Icon: ArrowRight },
+const ACTORS: Record<string, { labelKo: string; labelEn: string; color: string; bg: string; text: string; Icon: typeof Bot }> = {
+  ai: { labelKo: 'AI', labelEn: 'AI', color: '#3b6dcc', bg: '#eaeff8', text: '#2d4a7c', Icon: Bot },
+  human: { labelKo: '사람', labelEn: 'Human', color: '#b8860b', bg: '#fef4e4', text: '#8b6914', Icon: Brain },
+  both: { labelKo: '협업', labelEn: 'Collab', color: '#2d6b2d', bg: '#eaf5ea', text: '#2d6b2d', Icon: Handshake },
+  'human→ai': { labelKo: '사람→AI', labelEn: 'Human→AI', color: '#6b4fa0', bg: '#f3eef9', text: '#5a3d8a', Icon: ArrowRight },
+  'ai→human': { labelKo: 'AI→사람', labelEn: 'AI→Human', color: '#2d6b6b', bg: '#eaf5f5', text: '#1e5050', Icon: ArrowRight },
 };
+
+function actorLabel(actor: string, locale: 'ko' | 'en'): string {
+  const a = ACTORS[actor];
+  if (!a) return actor;
+  return locale === 'ko' ? a.labelKo : a.labelEn;
+}
 
 import { extractOptions } from '@/lib/extract-options';
 
@@ -29,6 +36,8 @@ import { extractOptions } from '@/lib/extract-options';
    ──────────────────────────────────── */
 
 function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; checkpoints?: number; totalTime?: string }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const total = steps.length || 1;
   const counts: Record<string, number> = { ai: 0, human: 0, both: 0, 'human→ai': 0, 'ai→human': 0 };
   steps.forEach(s => { counts[s.actor] = (counts[s.actor] || 0) + 1; });
@@ -52,7 +61,7 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
             className="transition-all duration-500 flex items-center justify-center gap-1"
             style={{ width: `${(counts['ai→human'] / total) * 100}%`, backgroundColor: ACTORS['ai→human'].color }}
           >
-            AI→사람 {counts['ai→human']}
+            {L('AI→사람', 'AI→Human')} {counts['ai→human']}
           </div>
         )}
         {counts['human→ai'] > 0 && (
@@ -60,7 +69,7 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
             className="transition-all duration-500 flex items-center justify-center gap-1"
             style={{ width: `${(counts['human→ai'] / total) * 100}%`, backgroundColor: ACTORS['human→ai'].color }}
           >
-            사람→AI {counts['human→ai']}
+            {L('사람→AI', 'Human→AI')} {counts['human→ai']}
           </div>
         )}
         {counts.both > 0 && (
@@ -68,7 +77,7 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
             className="transition-all duration-500 flex items-center justify-center gap-1"
             style={{ width: `${(counts.both / total) * 100}%`, backgroundColor: ACTORS.both.color }}
           >
-            협업 {counts.both}
+            {L('협업', 'Collab')} {counts.both}
           </div>
         )}
         {counts.human > 0 && (
@@ -76,24 +85,24 @@ function RoleDashboard({ steps, checkpoints, totalTime }: { steps: StepType[]; c
             className="transition-all duration-500 flex items-center justify-center gap-1"
             style={{ width: `${(counts.human / total) * 100}%`, backgroundColor: ACTORS.human.color }}
           >
-            사람 {counts.human}
+            {L('사람', 'Human')} {counts.human}
           </div>
         )}
       </div>
 
       {/* Stats — compact */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
-        <span className="text-[var(--text-primary)] font-semibold">사람 개입 {humanPct}%</span>
+        <span className="text-[var(--text-primary)] font-semibold">{L(`사람 개입 ${humanPct}%`, `Human ${humanPct}%`)}</span>
         {checkpoints !== undefined && checkpoints > 0 && (
           <>
             <span className="text-[var(--text-tertiary)]">|</span>
-            <span className="text-amber-700 font-semibold"><Flag size={10} className="inline mr-0.5" />체크포인트 {checkpoints} <span className="font-normal text-[var(--text-secondary)]">(사람 확인 필수)</span></span>
+            <span className="text-amber-700 font-semibold"><Flag size={10} className="inline mr-0.5" />{L(`체크포인트 ${checkpoints}`, `${checkpoints} checkpoint${checkpoints === 1 ? '' : 's'}`)} <span className="font-normal text-[var(--text-secondary)]">{L('(사람 확인 필수)', '(human review required)')}</span></span>
           </>
         )}
         {totalTime && (
           <>
             <span className="text-[var(--text-tertiary)]">|</span>
-            <span className="text-[var(--text-secondary)]"><Clock size={10} className="inline mr-0.5" />총 {totalTime}</span>
+            <span className="text-[var(--text-secondary)]"><Clock size={10} className="inline mr-0.5" />{L(`총 ${totalTime}`, `Total ${totalTime}`)}</span>
           </>
         )}
       </div>
@@ -112,6 +121,7 @@ function ActorToggle({
   current: ActorRelationship;
   onChange: (actor: ActorRelationship) => void;
 }) {
+  const locale = useLocale();
   const options: ActorRelationship[] = ['ai', 'ai→human', 'human→ai', 'human'];
   // Legacy 'both' → highlight 'human→ai' as closest match
   const effectiveCurrent = current === 'both' ? 'human→ai' : current;
@@ -136,7 +146,7 @@ function ActorToggle({
             style={active ? { backgroundColor: a.color, color: '#fff' } : {}}
           >
             <AIcon size={11} />
-            {a.label}
+            {actorLabel(actor, locale)}
           </button>
         );
       })}
@@ -157,6 +167,8 @@ export function WorkflowGraph({
   onRemoveStep,
   onUpdateField,
 }: WorkflowGraphProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const rawCritical = new Set(analysis?.critical_path || []);
   // If more than half the steps are "critical", it's meaningless — suppress
   const criticalSet = rawCritical.size > Math.ceil(steps.length / 2) ? new Set<number>() : rawCritical;
@@ -180,11 +192,11 @@ export function WorkflowGraph({
       <div className="hidden md:grid grid-cols-2 gap-0 mb-4">
         <div className="flex items-center justify-center gap-2 py-2 rounded-l-lg" style={{ backgroundColor: `${ACTORS.ai.color}08` }}>
           <Bot size={16} style={{ color: ACTORS.ai.text }} />
-          <span className="text-[15px] font-bold" style={{ color: ACTORS.ai.text }}>AI 실행</span>
+          <span className="text-[15px] font-bold" style={{ color: ACTORS.ai.text }}>{L('AI 실행', 'AI Execution')}</span>
         </div>
         <div className="flex items-center justify-center gap-2 py-2 rounded-r-lg" style={{ backgroundColor: `${ACTORS.human.color}08` }}>
           <Brain size={16} style={{ color: ACTORS.human.text }} />
-          <span className="text-[15px] font-bold" style={{ color: ACTORS.human.text }}>사람 판단</span>
+          <span className="text-[15px] font-bold" style={{ color: ACTORS.human.text }}>{L('사람 판단', 'Human Judgment')}</span>
         </div>
       </div>
 
@@ -231,7 +243,7 @@ export function WorkflowGraph({
                           {String(i + 1).padStart(2, '0')}
                         </span>
                         {step.checkpoint && (
-                          <span title="이 단계는 반드시 사람이 확인해야 합니다"><Flag size={10} className="text-amber-600" /></span>
+                          <span title={L('이 단계는 반드시 사람이 확인해야 합니다', 'This step requires human review')}><Flag size={10} className="text-amber-600" /></span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -243,12 +255,12 @@ export function WorkflowGraph({
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold"
                               style={{ backgroundColor: a.color, color: '#fff' }}
                             >
-                              <AIcon size={11} /> {a.label}
+                              <AIcon size={11} /> {actorLabel(step.actor, locale)}
                             </span>
                           )}
                           {isCritical && (
                             <span className="text-[10px] text-red-600 font-bold flex items-center gap-0.5">
-                              <Zap size={10} /> 크리티컬
+                              <Zap size={10} /> {L('크리티컬', 'Critical')}
                             </span>
                           )}
                           {step.estimated_time && (
@@ -280,7 +292,7 @@ export function WorkflowGraph({
                             )}
                             {step.human_scope && (
                               <div className="flex items-start gap-1.5 text-[11px] px-2 py-1.5 rounded-md bg-[#8b6914]/5">
-                                <span className="font-bold text-[#8b6914] shrink-0">사람:</span>
+                                <span className="font-bold text-[#8b6914] shrink-0">{L('사람', 'Human')}:</span>
                                 <span className="text-[var(--text-secondary)]">{step.human_scope}</span>
                               </div>
                             )}
@@ -291,10 +303,10 @@ export function WorkflowGraph({
                         {!isExpanded && hasInput && (
                           <div className="flex gap-2 mt-2">
                             {step.user_ai_guide?.trim() && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai)] text-[#2d4a7c] font-medium">AI 가이드 입력됨</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai)] text-[#2d4a7c] font-medium">{L('AI 가이드 입력됨', 'AI guide entered')}</span>
                             )}
                             {step.user_decision?.trim() && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--human)] text-[#8b6914] font-medium">결정 입력됨</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--human)] text-[#8b6914] font-medium">{L('결정 입력됨', 'Decision entered')}</span>
                             )}
                           </div>
                         )}
@@ -302,7 +314,11 @@ export function WorkflowGraph({
                         {/* Expand hint */}
                         {!isExpanded && editable && (
                           <p className="text-[11px] text-[var(--text-secondary)] mt-2">
-                            {step.actor === 'ai' ? 'AI 방향 설정 ↓' : step.actor === 'human' ? '판단 입력 ↓' : '방향 설정 & 판단 ↓'}
+                            {step.actor === 'ai'
+                              ? L('AI 방향 설정 ↓', 'Set AI direction ↓')
+                              : step.actor === 'human'
+                              ? L('판단 입력 ↓', 'Enter judgment ↓')
+                              : L('방향 설정 & 판단 ↓', 'Set direction & judgment ↓')}
                           </p>
                         )}
                       </div>
@@ -325,7 +341,7 @@ export function WorkflowGraph({
                             <div className="rounded-lg p-3" style={{ backgroundColor: `${ACTORS.ai.color}06` }}>
                               <div className="flex items-center gap-1.5 mb-2.5">
                                 <Bot size={12} style={{ color: ACTORS.ai.text }} />
-                                <p className="text-[12px] font-semibold text-[#2d4a7c]">AI 실행 방향</p>
+                                <p className="text-[12px] font-semibold text-[#2d4a7c]">{L('AI 실행 방향', 'AI direction')}</p>
                               </div>
                               {step.ai_direction_options && step.ai_direction_options.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mb-2">
@@ -356,7 +372,7 @@ export function WorkflowGraph({
                                 type="text"
                                 value={step.user_ai_guide || ''}
                                 onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
-                                placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로'}
+                                placeholder={step.ai_direction_options?.length ? L('또는 직접 입력...', 'Or type your own...') : L('예: 국내 시장 중심으로', 'e.g., focus on the domestic market')}
                                 className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
                                 onClick={(e) => e.stopPropagation()}
                               />
@@ -365,7 +381,7 @@ export function WorkflowGraph({
                             <div className="rounded-lg p-3" style={{ backgroundColor: `${ACTORS.human.color}06` }}>
                               <div className="flex items-center gap-1.5 mb-2.5">
                                 <Brain size={12} style={{ color: ACTORS.human.text }} />
-                                <p className="text-[12px] font-semibold text-[#8b6914]">사람이 결정할 것</p>
+                                <p className="text-[12px] font-semibold text-[#8b6914]">{L('사람이 결정할 것', 'What the human decides')}</p>
                               </div>
                               {/* Show judgment only when no pills extracted (otherwise redundant) */}
                               {step.judgment?.trim() && options.length === 0 && (
@@ -394,7 +410,7 @@ export function WorkflowGraph({
                                     type="text"
                                     value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
                                     onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                    placeholder="또는 직접 입력..."
+                                    placeholder={L('또는 직접 입력...', 'Or type your own...')}
                                     className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
                                     onClick={(e) => e.stopPropagation()}
                                   />
@@ -403,7 +419,7 @@ export function WorkflowGraph({
                                 <textarea
                                   value={step.user_decision || ''}
                                   onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                  placeholder="이 단계에서의 판단을 입력하세요..."
+                                  placeholder={L('이 단계에서의 판단을 입력하세요...', 'Enter your judgment for this step...')}
                                   rows={2}
                                   className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
                                   onClick={(e) => e.stopPropagation()}
@@ -416,7 +432,7 @@ export function WorkflowGraph({
                             {/* AI guide input (ai-only steps) */}
                             {editable && step.actor === 'ai' && (
                               <div>
-                                <p className="text-[12px] font-semibold text-[#2d4a7c] mb-1.5">AI 실행 방향</p>
+                                <p className="text-[12px] font-semibold text-[#2d4a7c] mb-1.5">{L('AI 실행 방향', 'AI direction')}</p>
                                 {step.ai_direction_options && step.ai_direction_options.length > 0 && (
                                   <div className="flex flex-wrap gap-1.5 mb-2">
                                     {step.ai_direction_options.map((opt, j) => (
@@ -446,7 +462,7 @@ export function WorkflowGraph({
                                   type="text"
                                   value={step.user_ai_guide || ''}
                                   onChange={(e) => onUpdateField?.(i, { user_ai_guide: e.target.value })}
-                                  placeholder={step.ai_direction_options?.length ? '또는 직접 입력...' : '예: 국내 시장 중심으로, 최근 3년 데이터 기준으로'}
+                                  placeholder={step.ai_direction_options?.length ? L('또는 직접 입력...', 'Or type your own...') : L('예: 국내 시장 중심으로, 최근 3년 데이터 기준으로', 'e.g., focus on the domestic market, based on the last 3 years of data')}
                                   className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#3b6dcc] focus:outline-none"
                                   onClick={(e) => e.stopPropagation()}
                                 />
@@ -456,7 +472,7 @@ export function WorkflowGraph({
                             {/* Human judgment + decision (human-only steps) */}
                             {editable && step.actor === 'human' && (
                               <div>
-                                <p className="text-[12px] font-semibold text-[#8b6914] mb-1.5">여기서 결정할 것</p>
+                                <p className="text-[12px] font-semibold text-[#8b6914] mb-1.5">{L('여기서 결정할 것', 'What to decide here')}</p>
                                 {step.judgment?.trim() && options.length === 0 && (
                                   <p className="text-[12px] text-[var(--text-primary)] mb-2 leading-relaxed bg-[var(--bg)] rounded-lg px-3 py-2">
                                     {step.judgment.replace(/[:：]\s*$/, '')}
@@ -483,7 +499,7 @@ export function WorkflowGraph({
                                       type="text"
                                       value={options.includes(step.user_decision || '') ? '' : (step.user_decision || '')}
                                       onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                      placeholder="또는 직접 입력..."
+                                      placeholder={L('또는 직접 입력...', 'Or type your own...')}
                                       className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none"
                                       onClick={(e) => e.stopPropagation()}
                                     />
@@ -492,7 +508,7 @@ export function WorkflowGraph({
                                   <textarea
                                     value={step.user_decision || ''}
                                     onChange={(e) => onUpdateField?.(i, { user_decision: e.target.value })}
-                                    placeholder="이 단계에서의 판단을 입력하세요..."
+                                    placeholder={L('이 단계에서의 판단을 입력하세요...', 'Enter your judgment for this step...')}
                                     rows={2}
                                     className="w-full text-[12px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:border-[#8b6914] focus:outline-none resize-none"
                                     onClick={(e) => e.stopPropagation()}
@@ -506,13 +522,13 @@ export function WorkflowGraph({
                         {/* Read-only filled values */}
                         {!editable && step.user_ai_guide?.trim() && (
                           <div className="rounded-lg bg-[var(--ai)] px-3 py-2">
-                            <p className="text-[11px] font-bold text-[#2d4a7c] mb-0.5">AI 가이드</p>
+                            <p className="text-[11px] font-bold text-[#2d4a7c] mb-0.5">{L('AI 가이드', 'AI guide')}</p>
                             <p className="text-[12px] text-[var(--text-primary)]">{step.user_ai_guide}</p>
                           </div>
                         )}
                         {!editable && step.user_decision?.trim() && (
                           <div className="rounded-lg bg-[var(--human)] px-3 py-2">
-                            <p className="text-[11px] font-bold text-[#8b6914] mb-0.5">결정</p>
+                            <p className="text-[11px] font-bold text-[#8b6914] mb-0.5">{L('결정', 'Decision')}</p>
                             <p className="text-[12px] text-[var(--text-primary)]">{step.user_decision}</p>
                           </div>
                         )}
@@ -522,7 +538,7 @@ export function WorkflowGraph({
                         {step.checkpoint && step.checkpoint_reason && (
                           <div className="flex items-start gap-2 text-[11px] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                             <Flag size={11} className="text-amber-600 shrink-0 mt-0.5" />
-                            <p className="text-amber-700"><span className="font-bold">넘어가기 전 확인:</span> {step.checkpoint_reason}</p>
+                            <p className="text-amber-700"><span className="font-bold">{L('넘어가기 전 확인:', 'Verify before moving on:')}</span> {step.checkpoint_reason}</p>
                           </div>
                         )}
                       </div>
@@ -540,7 +556,7 @@ export function WorkflowGraph({
                             : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-amber-300'
                         }`}
                       >
-                        <Flag size={10} className="inline mr-1" /> {step.checkpoint ? '확인 필수 해제' : '확인 필수로 설정'}
+                        <Flag size={10} className="inline mr-1" /> {step.checkpoint ? L('확인 필수 해제', 'Remove required check') : L('확인 필수로 설정', 'Mark as required check')}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onRemoveStep?.(i); }}

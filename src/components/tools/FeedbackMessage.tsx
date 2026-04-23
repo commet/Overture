@@ -57,6 +57,7 @@ const VARIANT_STYLES: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
+  // Korean (original)
   '전반적 반응': 'text-[var(--accent)]',
   '실패 시나리오': 'text-red-600',
   '검증 안 된 전제': 'text-amber-700',
@@ -68,6 +69,18 @@ const CATEGORY_COLORS: Record<string, string> = {
   '우려/지적': 'text-amber-700',
   '추가 요청': 'text-[var(--accent)]',
   '승인 조건': 'text-[var(--success)]',
+  // English equivalents — caller may pass localized label
+  'Overall reaction': 'text-[var(--accent)]',
+  'Failure scenario': 'text-red-600',
+  'Unverified assumption': 'text-amber-700',
+  'Core threat': 'text-[#E24B4A]',
+  'Manageable': 'text-[#EF9F27]',
+  'Unspoken risk': 'text-[#7F77DD]',
+  'Question': 'text-[var(--accent)]',
+  'Praise': 'text-[var(--success)]',
+  'Concern': 'text-amber-700',
+  'Request': 'text-[var(--accent)]',
+  'Approval condition': 'text-[var(--success)]',
 };
 
 export function FeedbackMessage({

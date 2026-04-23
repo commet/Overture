@@ -32,6 +32,7 @@ import { autoPersonaToFull } from '@/lib/auto-persona';
 const lazyEvalEngine = () => import('@/lib/eval-engine');
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { Users } from 'lucide-react';
+import { useLocale } from '@/hooks/useLocale';
 
 const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 목록이 아니라, 의사결정자를 설득할 수 있는 실행 설계를 만드세요.
 
@@ -110,68 +111,63 @@ const SYSTEM_PROMPT = `당신은 전략기획 전문가입니다. 단순 작업 
 
 반드시 JSON만 응답하세요.`;
 
-const actorOptions: { value: ActorRelationship; label: string; icon: string }[] = [
-  { value: 'ai', label: 'AI', icon: '🤖' },
-  { value: 'ai→human', label: 'AI→사람', icon: '🔄' },
-  { value: 'human→ai', label: '사람→AI', icon: '🔀' },
-  { value: 'human', label: '사람', icon: '🧠' },
-];
-
-const RECAST_ENTRY_STEPS = [
+const buildRecastEntrySteps = (L: (ko: string, en: string) => string) => [
   {
     key: 'outputType',
-    question: '어떤 결과물을 만드나요?',
+    question: L('어떤 결과물을 만드나요?', 'What are you making?'),
     options: [
-      { value: 'report', emoji: '📝', label: '보고서/기획서', description: '의사결정용 문서' },
-      { value: 'product', emoji: '💻', label: '제품/기능 개발', description: '소프트웨어 빌드' },
-      { value: 'research', emoji: '🔬', label: '리서치/분석', description: '조사와 인사이트 도출' },
-      { value: 'campaign', emoji: '📢', label: '마케팅/캠페인', description: '고객 대상 활동' },
+      { value: 'report', emoji: '📝', label: L('보고서/기획서', 'Report/proposal'), description: L('의사결정용 문서', 'Document for decisions') },
+      { value: 'product', emoji: '💻', label: L('제품/기능 개발', 'Product/feature dev'), description: L('소프트웨어 빌드', 'Software build') },
+      { value: 'research', emoji: '🔬', label: L('리서치/분석', 'Research/analysis'), description: L('조사와 인사이트 도출', 'Investigation and insight') },
+      { value: 'campaign', emoji: '📢', label: L('마케팅/캠페인', 'Marketing/campaign'), description: L('고객 대상 활동', 'Customer-facing activity') },
     ],
   },
   {
     key: 'timeline',
-    question: '기한이 어떻게 되나요?',
+    question: L('기한이 어떻게 되나요?', 'What is the deadline?'),
     options: [
-      { value: 'urgent', emoji: '🔥', label: '1주 이내', description: '급한 요청, 속도 우선' },
-      { value: 'normal', emoji: '📅', label: '2~3주', description: '일반적인 프로젝트 기한' },
-      { value: 'relaxed', emoji: '🗓️', label: '한 달 이상', description: '충분한 검토 시간' },
-      { value: 'undefined', emoji: '❓', label: '아직 미정', description: '기한 없이 진행' },
+      { value: 'urgent', emoji: '🔥', label: L('1주 이내', 'Within 1 week'), description: L('급한 요청, 속도 우선', 'Urgent — speed first') },
+      { value: 'normal', emoji: '📅', label: L('2~3주', '2–3 weeks'), description: L('일반적인 프로젝트 기한', 'Typical project timeline') },
+      { value: 'relaxed', emoji: '🗓️', label: L('한 달 이상', 'Over a month'), description: L('충분한 검토 시간', 'Plenty of review time') },
+      { value: 'undefined', emoji: '❓', label: L('아직 미정', 'Not set yet'), description: L('기한 없이 진행', 'Proceed without a deadline') },
     ],
   },
   {
     key: 'teamSize',
-    question: '누구와 함께 하나요?',
+    question: L('누구와 함께 하나요?', 'Who are you working with?'),
     options: [
-      { value: 'solo', emoji: '🧑', label: '혼자', description: '1인 작업' },
-      { value: 'small', emoji: '👥', label: '2~3명', description: '소규모 협업' },
-      { value: 'team', emoji: '👨‍👩‍👧‍👦', label: '5명 이상 팀', description: '역할 분담 필요' },
-      { value: 'cross', emoji: '🏢', label: '외부 협력 포함', description: '타 부서·외주·파트너' },
+      { value: 'solo', emoji: '🧑', label: L('혼자', 'Solo'), description: L('1인 작업', 'Solo work') },
+      { value: 'small', emoji: '👥', label: L('2~3명', '2–3 people'), description: L('소규모 협업', 'Small-team collaboration') },
+      { value: 'team', emoji: '👨‍👩‍👧‍👦', label: L('5명 이상 팀', '5+ team'), description: L('역할 분담 필요', 'Need role division') },
+      { value: 'cross', emoji: '🏢', label: L('외부 협력 포함', 'Includes external partners'), description: L('타 부서·외주·파트너', 'Cross-dept, vendors, partners') },
     ],
   },
   {
     key: 'aiComfort',
-    question: 'AI에게 어디까지 맡기시겠어요?',
+    question: L('AI에게 어디까지 맡기시겠어요?', 'How much will you delegate to AI?'),
     options: [
-      { value: 'draft', emoji: '✏️', label: '초안 생성만', description: '사람이 대부분 판단' },
-      { value: 'analysis', emoji: '📊', label: '분석과 초안', description: 'AI가 자료 수집·분석' },
-      { value: 'decision-support', emoji: '🧭', label: '판단 지원까지', description: 'AI가 선택지와 근거 제시' },
-      { value: 'full', emoji: '🚀', label: '실행까지 위임', description: '사람은 최종 확인만' },
+      { value: 'draft', emoji: '✏️', label: L('초안 생성만', 'Drafts only'), description: L('사람이 대부분 판단', 'Humans make most decisions') },
+      { value: 'analysis', emoji: '📊', label: L('분석과 초안', 'Analysis and drafts'), description: L('AI가 자료 수집·분석', 'AI gathers and analyzes') },
+      { value: 'decision-support', emoji: '🧭', label: L('판단 지원까지', 'Decision support'), description: L('AI가 선택지와 근거 제시', 'AI proposes options with reasoning') },
+      { value: 'full', emoji: '🚀', label: L('실행까지 위임', 'Full delegation'), description: L('사람은 최종 확인만', 'Human only does final check') },
     ],
   },
   {
     key: 'stakes',
-    question: '이 결과물의 중요도는?',
+    question: L('이 결과물의 중요도는?', 'How important is the output?'),
     options: [
-      { value: 'low', emoji: '📋', label: '내부 참고용', description: '부담 없는 내부 문서' },
-      { value: 'medium', emoji: '👔', label: '팀/부서 발표', description: '동료·팀장이 볼 자료' },
-      { value: 'high', emoji: '🏛️', label: '경영진 보고', description: '의사결정권자에게 전달' },
-      { value: 'critical', emoji: '⚡', label: '외부 고객/투자자', description: '실패 시 비용이 큰 상황' },
+      { value: 'low', emoji: '📋', label: L('내부 참고용', 'Internal reference'), description: L('부담 없는 내부 문서', 'Low-stakes internal doc') },
+      { value: 'medium', emoji: '👔', label: L('팀/부서 발표', 'Team/dept. presentation'), description: L('동료·팀장이 볼 자료', 'Materials for peers/leads') },
+      { value: 'high', emoji: '🏛️', label: L('경영진 보고', 'Executive briefing'), description: L('의사결정권자에게 전달', 'Goes to decision-makers') },
+      { value: 'critical', emoji: '⚡', label: L('외부 고객/투자자', 'External clients/investors'), description: L('실패 시 비용이 큰 상황', 'High cost if it fails') },
     ],
   },
 ];
 
 /* ── Recasting Loader ── */
 function RecastLoader() {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -180,9 +176,9 @@ function RecastLoader() {
   }, []);
 
   const messages = [
-    '역할을 배분하고 있습니다',
-    '실행 순서를 조율합니다',
-    '검증 포인트를 설계합니다',
+    L('역할을 배분하고 있습니다', 'Assigning roles'),
+    L('실행 순서를 조율합니다', 'Sequencing execution'),
+    L('검증 포인트를 설계합니다', 'Designing checkpoints'),
   ];
 
   const bars = [
@@ -230,6 +226,9 @@ interface RecastStepProps {
 }
 
 export function RecastStep({ onNavigate }: RecastStepProps) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const RECAST_ENTRY_STEPS = buildRecastEntrySteps(L);
   const store = useRecastStore();
   const { items, currentId, loadItems, createItem, updateItem, deleteItem, setCurrentId, getCurrentItem, updateStep, removeStep, addStep, reorderSteps } = store;
   const { judgments, addJudgment, loadJudgments } = useJudgmentStore();
@@ -295,7 +294,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
       ...(pendingProjectId ? { project_id: pendingProjectId } : {}),
     });
     if (pendingProjectId) {
-      addRef(pendingProjectId, { tool: 'recast', itemId: id, label: '워크플로우 설계' });
+      addRef(pendingProjectId, { tool: 'recast', itemId: id, label: L('워크플로우 설계', 'Workflow design') });
       setPendingProjectId(undefined);
     }
 
@@ -369,7 +368,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
             const stepText = `${step.task} ${step.expected_output || ''}`.toLowerCase();
             const overlap = limitWords.filter(w => stepText.includes(w));
             if (overlap.length >= 2) {
-              warnings.push(`"${step.task}" → AI 한계와 충돌 가능: "${limitation}"`);
+              warnings.push(L(`"${step.task}" → AI 한계와 충돌 가능: "${limitation}"`, `"${step.task}" → may conflict with AI limitation: "${limitation}"`));
             }
           }
         }
@@ -392,7 +391,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
       if (isAuthError(err)) {
         setError('LOGIN_REQUIRED');
       } else {
-        setError(de.message || '악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.');
+        setError(de.message || L('악보를 편곡할 수 없었습니다. 다시 시도하거나 더 구체적으로 입력해보세요.', 'Could not recast. Try again or be more specific.'));
       }
       updateItem(id, { status: 'input' });
     }
@@ -466,13 +465,13 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
         <div>
           <h1 className="text-[22px] font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>{t('tool.recast')} <span className="text-[16px] font-normal text-[var(--text-secondary)]">| {t('tool.recast.subtitle')}</span></h1>
           <p className="text-[13px] text-[var(--text-secondary)] mt-1">
-            AI와 사람의 역할을 나누고, 실행 단계를 설계합니다.
+            {L('AI와 사람의 역할을 나누고, 실행 단계를 설계합니다.', 'Divide roles between AI and humans, and design execution steps.')}
           </p>
           {(() => {
             const signals = getSignals({ tool: 'recast' });
             return signals.length > 0 ? (
               <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
-                이전 {signals.length}건의 편곡 이력이 학습에 반영되고 있습니다
+                {L(`이전 ${signals.length}건의 편곡 이력이 학습에 반영되고 있습니다`, `${signals.length} prior recast sessions are informing the analysis`)}
               </p>
             ) : null;
           })()}
@@ -496,7 +495,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
               }`}
             >
               <FileText size={14} />
-              {(item.analysis?.goal_summary || item.input_text || '맵').slice(0, 25)}
+              {(item.analysis?.goal_summary || item.input_text || L('맵', 'Map')).slice(0, 25)}
               <span onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="ml-1 p-0.5 hover:text-red-500 cursor-pointer">
                 <Trash2 size={12} />
               </span>
@@ -510,26 +509,26 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
         <Card>
           {reframeCtx && (
             <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] mb-3">
-              <Check size={12} /> 악보 해석 맥락이 반영되고 있습니다
+              <Check size={12} /> {L('악보 해석 맥락이 반영되고 있습니다', 'Reframe context is being applied')}
             </div>
           )}
           <StepEntry
             steps={RECAST_ENTRY_STEPS}
-            textLabel="추가로 알려줄 맥락이 있나요?"
-            textPlaceholder="예: 지난 분기 실적 데이터를 반드시 포함해야 함 / 마케팅팀과 병렬 진행 중 / 대표가 '고객 관점'을 강조했음"
+            textLabel={L('추가로 알려줄 맥락이 있나요?', 'Any extra context to share?')}
+            textPlaceholder={L("예: 지난 분기 실적 데이터를 반드시 포함해야 함 / 마케팅팀과 병렬 진행 중 / 대표가 '고객 관점'을 강조했음", "e.g., Must include last quarter's results / running in parallel with marketing / CEO emphasized 'customer perspective'")}
             animatedPlaceholders={[
-              '예: 지난 분기 실적 데이터를 반드시 포함해야 함',
-              '예: 마케팅팀과 병렬 진행 중이라 일정 조율 필요',
-              '예: 대표가 "고객 관점"을 강조했음',
-              '예: 3주 내 경영회의 발표 예정, 실행안 수준 필요',
-              '예: 기술팀 리소스 2명만 투입 가능, 외주 고려 중',
+              L('예: 지난 분기 실적 데이터를 반드시 포함해야 함', "e.g., Must include last quarter's results"),
+              L('예: 마케팅팀과 병렬 진행 중이라 일정 조율 필요', 'e.g., Running in parallel with marketing — schedule coordination needed'),
+              L('예: 대표가 "고객 관점"을 강조했음', 'e.g., CEO emphasized "customer perspective"'),
+              L('예: 3주 내 경영회의 발표 예정, 실행안 수준 필요', 'e.g., Exec meeting in 3 weeks — needs execution-level plan'),
+              L('예: 기술팀 리소스 2명만 투입 가능, 외주 고려 중', 'e.g., Only 2 engineers available — considering outsourcing'),
             ]}
-            textHint="위에서 선택한 내용만으로도 충분합니다. 특수한 조건이나 배경이 있다면 자유롭게 적어주세요."
-            submitLabel="워크플로우 설계"
+            textHint={L('위에서 선택한 내용만으로도 충분합니다. 특수한 조건이나 배경이 있다면 자유롭게 적어주세요.', 'The selections above are enough. Feel free to add any unique conditions or background.')}
+            submitLabel={L('워크플로우 설계', 'Design workflow')}
             initialText={inputText}
             contextPanel={reframeCtx ? (
               <div className="rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] px-4 py-3">
-                <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">악보 해석에서 도출된 맥락</p>
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">{L('악보 해석에서 도출된 맥락', 'Context from reframe')}</p>
                 <p className="text-[14px] font-semibold text-[var(--text-primary)] leading-snug">
                   {reframeCtx.reframed_question || reframeCtx.surface_task}
                 </p>
@@ -537,7 +536,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {reframeCtx.unverified_assumptions.slice(0, 3).map((a, i) => (
                       <span key={i} className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200">
-                        미확인: {typeof a === 'string' ? a : a.assumption}
+                        {L('미확인', 'Unverified')}: {typeof a === 'string' ? a : a.assumption}
                       </span>
                     ))}
                   </div>
@@ -553,8 +552,10 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                 })
                 .filter(Boolean)
                 .join('\n');
+              const contextHeader = L('맥락', 'Context');
+              const extraHeader = L('추가 맥락', 'Additional context');
               const fullPrompt = context
-                ? (text.trim() ? `[맥락]\n${context}\n\n[추가 맥락]\n${text}` : `[맥락]\n${context}`)
+                ? (text.trim() ? `[${contextHeader}]\n${context}\n\n[${extraHeader}]\n${text}` : `[${contextHeader}]\n${context}`)
                 : text;
               handleAnalyze(fullPrompt);
             }}
@@ -562,10 +563,10 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
           {error && (
             error === 'LOGIN_REQUIRED' ? (
               <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-4 mt-3">
-                <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">무료 체험을 모두 사용했어요</p>
-                <p className="text-[13px] text-[var(--text-secondary)] mb-3">로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.</p>
+                <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Your free trial is used up')}</p>
+                <p className="text-[13px] text-[var(--text-secondary)] mb-3">{L('로그인하면 하루 10회까지 무료로 계속 사용할 수 있습니다.', 'Sign in to keep using it free — up to 10 times a day.')}</p>
                 <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all">
-                  로그인 / 회원가입
+                  {L('로그인 / 회원가입', 'Sign in / Sign up')}
                 </Link>
               </div>
             ) : (
@@ -574,7 +575,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                   <AlertTriangle size={14} /> <span>{error}</span>
                 </div>
                 <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
-                  다시 시도
+                  {L('다시 시도', 'Retry')}
                 </button>
               </div>
             )
@@ -599,7 +600,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
               {/* 재정의된 질문 (from 악보 해석) — compact reference */}
               {relatedReframe?.analysis && (
                 <div className="rounded-xl bg-[var(--bg)] px-4 py-3">
-                  <p className="text-[11px] font-medium text-[var(--text-secondary)] mb-1">악보 해석에서 재정의된 질문</p>
+                  <p className="text-[11px] font-medium text-[var(--text-secondary)] mb-1">{L('악보 해석에서 재정의된 질문', 'Reframed question from Reframe')}</p>
                   <p className="text-[14px] font-bold text-[var(--text-primary)] leading-snug">
                     {relatedReframe.selected_question || relatedReframe.analysis.reframed_question || relatedReframe.analysis.surface_task}
                   </p>
@@ -631,7 +632,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
 
           {current.status === 'review' && (
             <Button variant="ghost" onClick={() => { if (currentId) { addStep(currentId); recordSignal({ project_id: current?.project_id, tool: 'recast', signal_type: 'step_structural_change', signal_data: { action: 'add' } }); } }}>
-              <Plus size={14} /> 단계 추가
+              <Plus size={14} /> {L('단계 추가', 'Add step')}
             </Button>
           )}
 
@@ -647,7 +648,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-[12px] font-semibold text-amber-800 mb-1.5">
                 <AlertTriangle size={12} className="inline mr-1 -mt-0.5" />
-                AI 한계 주의
+                {L('AI 한계 주의', 'AI limitation warning')}
               </p>
               {current.analysis.ai_limitation_warnings.map((w, i) => (
                 <p key={i} className="text-[12px] text-amber-700 leading-relaxed">- {w}</p>
@@ -661,7 +662,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                 <AlertTriangle size={14} /> <span>{error}</span>
               </div>
               <button onClick={() => { setError(''); handleAnalyze(); }} className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-red-200 text-red-600 hover:bg-red-100 cursor-pointer transition-colors">
-                다시 시도
+                {L('다시 시도', 'Retry')}
               </button>
             </div>
           )}
@@ -673,7 +674,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                   <RotateCcw size={14} /> {t('common.newStart')}
                 </Button>
                 <div className="flex gap-2">
-                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => '편곡 | ' + (current.analysis?.goal_summary || '')} />
+                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => L('편곡 | ', 'Recast | ') + (current.analysis?.goal_summary || '')} />
                   <Button onClick={handleConfirm}>
                     <Check size={14} /> {t('common.confirm')}
                   </Button>
@@ -682,7 +683,7 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
             ) : (
               <>
                 <Button variant="secondary" size="sm" onClick={() => { setCurrentId(null); setInputText(''); setPendingProjectId(undefined); }}>
-                  <ArrowRight size={14} /> 새 맵
+                  <ArrowRight size={14} /> {L('새 맵', 'New map')}
                 </Button>
                 <div className="flex gap-2">
                   <Button
@@ -699,9 +700,9 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
                       onNavigate('rehearse');
                     }}
                   >
-                    <Send size={14} /> 리허설 받기
+                    <Send size={14} /> {L('리허설 받기', 'Run rehearsal')}
                   </Button>
-                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => '편곡 | ' + (current.analysis?.goal_summary || '')} />
+                  <ShareBar getText={() => recastToMarkdown(current)} getTitle={() => L('편곡 | ', 'Recast | ') + (current.analysis?.goal_summary || '')} />
                 </div>
               </>
             )}
@@ -716,16 +717,18 @@ export function RecastStep({ onNavigate }: RecastStepProps) {
             return (
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 reward-entrance">
                 <p className="text-[12px] font-bold text-[var(--text-primary)] mb-1">
-                  {steps.length}단계 중 {humanDecisions > 0 ? `${humanDecisions}곳에서 당신의 판단이 필요합니다` : 'AI가 전체를 실행합니다'}
+                  {humanDecisions > 0
+                    ? L(`${steps.length}단계 중 ${humanDecisions}곳에서 당신의 판단이 필요합니다`, `${humanDecisions} of ${steps.length} steps need your judgment`)
+                    : L(`${steps.length}단계 중 AI가 전체를 실행합니다`, `AI will run all ${steps.length} steps`)}
                 </p>
                 {aiAuto > 0 && (
                   <p className="text-[11px] text-[var(--text-secondary)] mb-2.5">
-                    나머지 {aiAuto}단계는 AI가 실행합니다{checkpoints > 0 ? ` · 체크포인트 ${checkpoints}곳` : ''}
+                    {L(`나머지 ${aiAuto}단계는 AI가 실행합니다${checkpoints > 0 ? ` · 체크포인트 ${checkpoints}곳` : ''}`, `The other ${aiAuto} steps run on AI${checkpoints > 0 ? ` · ${checkpoints} checkpoints` : ''}`)}
                   </p>
                 )}
                 {keyAssumptions > 0 && (
                   <p className="text-[11px] text-[var(--accent)]">
-                    핵심 가정 {keyAssumptions}건 — 리허설에서 이해관계자들이 검증합니다
+                    {L(`핵심 가정 ${keyAssumptions}건 — 리허설에서 이해관계자들이 검증합니다`, `${keyAssumptions} key assumptions — stakeholders will verify them in rehearsal`)}
                   </p>
                 )}
               </div>
@@ -777,6 +780,8 @@ function QuickRehearsalCard({
   reframe: ReframeItem | null;
   onStartRehearsal: (personas: Persona[]) => void;
 }) {
+  const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const reviewers = recast.analysis?.suggested_reviewers || [];
   const [selected, setSelected] = useState<Set<number>>(new Set(reviewers.map((_, i) => i)));
   const [started, setStarted] = useState(false);
@@ -808,16 +813,16 @@ function QuickRehearsalCard({
     medium: 'bg-amber-100 text-amber-700',
     low: 'bg-gray-100 text-gray-600',
   };
-  const influenceLabels: Record<string, string> = { high: '높음', medium: '중간', low: '낮음' };
+  const influenceLabels: Record<string, string> = { high: L('높음', 'High'), medium: L('중간', 'Medium'), low: L('낮음', 'Low') };
 
   return (
     <Card className="!bg-[var(--checkpoint)] !border-amber-200">
       <div className="flex items-center gap-2 mb-2">
         <Users size={16} className="text-amber-700" />
-        <p className="text-[14px] font-bold text-[var(--text-primary)]">이 계획을 검증할 이해관계자</p>
+        <p className="text-[14px] font-bold text-[var(--text-primary)]">{L('이 계획을 검증할 이해관계자', 'Stakeholders to verify this plan')}</p>
       </div>
       <p className="text-[12px] text-[var(--text-secondary)] mb-3">
-        프로젝트 맥락에서 이해관계자를 도출했습니다. 선택 후 바로 리허설을 시작하세요.
+        {L('프로젝트 맥락에서 이해관계자를 도출했습니다. 선택 후 바로 리허설을 시작하세요.', 'Stakeholders derived from project context. Pick any and start a rehearsal.')}
       </p>
 
       <div className="space-y-2.5">
@@ -854,12 +859,12 @@ function QuickRehearsalCard({
               <div className="flex flex-wrap gap-1.5">
                 {reviewer.decision_style && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ai)] text-[#2d4a7c] font-medium">
-                    {{ analytical: '데이터 중심', intuitive: '직관 중심', consensus: '합의 중시', directive: '빠른 결정' }[reviewer.decision_style]}
+                    {{ analytical: L('데이터 중심', 'Data-driven'), intuitive: L('직관 중심', 'Intuitive'), consensus: L('합의 중시', 'Consensus-driven'), directive: L('빠른 결정', 'Decisive') }[reviewer.decision_style]}
                   </span>
                 )}
                 {reviewer.risk_tolerance && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg)] text-[var(--text-secondary)] font-medium">
-                    리스크 {{ low: '회피', medium: '균형', high: '수용' }[reviewer.risk_tolerance]}
+                    {L('리스크', 'Risk')} {{ low: L('회피', 'averse'), medium: L('균형', 'balanced'), high: L('수용', 'tolerant') }[reviewer.risk_tolerance]}
                   </span>
                 )}
                 {reviewer.success_metric && (
@@ -873,7 +878,7 @@ function QuickRehearsalCard({
         ))}
 
         <Button onClick={handleStart} disabled={selected.size === 0}>
-          <Users size={14} /> {selected.size}명에게 리허설 받기
+          <Users size={14} /> {L(`${selected.size}명에게 리허설 받기`, `Run rehearsal with ${selected.size}`)}
         </Button>
       </div>
     </Card>
