@@ -1,8 +1,12 @@
 import { getStorage, STORAGE_KEYS } from './storage';
+import { getCurrentLanguage } from '@/lib/i18n';
 import type { Project, ReframeItem, RecastItem, FeedbackRecord } from '@/stores/types';
 
 export function generateChecklist(project: Project | null): string {
   if (!project) return '';
+  const ko = getCurrentLanguage() === 'ko';
+  const L = (k: string, e: string) => (ko ? k : e);
+
   const decompositions = getStorage<ReframeItem[]>(STORAGE_KEYS.REFRAME_LIST, [])
     .filter((d) => d.project_id === project.id && d.status === 'done');
   const recasts = getStorage<RecastItem[]>(STORAGE_KEYS.RECAST_LIST, [])
@@ -12,16 +16,17 @@ export function generateChecklist(project: Project | null): string {
 
   const lines: string[] = [];
   const actorLabels: Record<string, string> = { ai: '🤖', human: '🧠', both: '🤝' };
+  const dateStr = new Date().toLocaleDateString(ko ? 'ko-KR' : 'en-US', ko ? undefined : { year: 'numeric', month: 'short', day: 'numeric' });
 
-  lines.push(`# 실행 체크리스트: ${project.name}`);
-  lines.push(`> ${new Date().toLocaleDateString('ko-KR')} 생성`);
+  lines.push(L(`# 실행 체크리스트: ${project.name}`, `# Execution Checklist: ${project.name}`));
+  lines.push(L(`> ${dateStr} 생성`, `> Generated ${dateStr}`));
   lines.push('');
 
   // Core question
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis) {
-      lines.push(`## 핵심 질문`);
+      lines.push(L(`## 핵심 질문`, `## Core question`));
       lines.push(`**${latest.selected_question || latest.analysis.surface_task}**`);
       lines.push('');
     }
@@ -31,11 +36,17 @@ export function generateChecklist(project: Project | null): string {
   if (recasts.length > 0) {
     const latest = recasts[recasts.length - 1];
     if (latest.analysis?.key_assumptions && latest.analysis.key_assumptions.length > 0) {
-      lines.push(`## 가정 검증 체크포인트`);
+      lines.push(L(`## 가정 검증 체크포인트`, `## Assumption checkpoints`));
       lines.push('');
       for (const ka of latest.analysis.key_assumptions) {
-        lines.push(`- [ ] **핵심 가정**: ${ka.assumption} (확신도: ${ka.certainty === 'high' ? '높음' : ka.certainty === 'medium' ? '중간' : '낮음'})`);
-        if (ka.if_wrong) lines.push(`  - 틀리면: ${ka.if_wrong}`);
+        const certainty = ka.certainty === 'high' ? L('높음', 'High')
+          : ka.certainty === 'medium' ? L('중간', 'Medium')
+          : L('낮음', 'Low');
+        lines.push(L(
+          `- [ ] **핵심 가정**: ${ka.assumption} (확신도: ${certainty})`,
+          `- [ ] **Key assumption**: ${ka.assumption} (confidence: ${certainty})`,
+        ));
+        if (ka.if_wrong) lines.push(L(`  - 틀리면: ${ka.if_wrong}`, `  - If wrong: ${ka.if_wrong}`));
       }
       lines.push('');
     }
@@ -46,14 +57,17 @@ export function generateChecklist(project: Project | null): string {
     const latest = recasts[recasts.length - 1];
     const steps = latest.steps.length > 0 ? latest.steps : latest.analysis?.steps || [];
 
-    lines.push(`## 실행 단계`);
+    lines.push(L(`## 실행 단계`, `## Execution steps`));
     lines.push('');
     steps.forEach((step, i) => {
       const actor = actorLabels[step.actor] || '';
       const time = step.estimated_time ? ` (${step.estimated_time})` : '';
       lines.push(`- [ ] **Step ${i + 1}** ${actor} ${step.task}${time}`);
       if (step.checkpoint) {
-        lines.push(`  - ⚑ 체크포인트: ${step.checkpoint_reason}`);
+        lines.push(L(
+          `  - ⚑ 체크포인트: ${step.checkpoint_reason}`,
+          `  - ⚑ Checkpoint: ${step.checkpoint_reason}`,
+        ));
       }
     });
     lines.push('');
@@ -62,18 +76,18 @@ export function generateChecklist(project: Project | null): string {
   // Stakeholder checklist
   if (feedbacks.length > 0) {
     const latest = feedbacks[feedbacks.length - 1];
-    lines.push(`## 이해관계자 확인사항`);
+    lines.push(L(`## 이해관계자 확인사항`, `## Stakeholder follow-ups`));
     lines.push('');
     for (const result of latest.results) {
-      lines.push(`### ${result.overall_reaction || '페르소나'}`);
+      lines.push(`### ${result.overall_reaction || L('페르소나', 'Persona')}`);
       for (const concern of (result.concerns || [])) {
         lines.push(`- [ ] ${concern}`);
       }
       for (const q of (result.first_questions || [])) {
-        lines.push(`- [ ] 예상 질문 대비: ${q}`);
+        lines.push(L(`- [ ] 예상 질문 대비: ${q}`, `- [ ] Prepare for: ${q}`));
       }
       for (const w of (result.wants_more || [])) {
-        lines.push(`- [ ] 추가 준비: ${w}`);
+        lines.push(L(`- [ ] 추가 준비: ${w}`, `- [ ] Additionally prepare: ${w}`));
       }
       lines.push('');
     }
@@ -83,7 +97,7 @@ export function generateChecklist(project: Project | null): string {
   if (decompositions.length > 0) {
     const latest = decompositions[decompositions.length - 1];
     if (latest.analysis && latest.analysis.ai_limitations.length > 0) {
-      lines.push(`## 직접 판단 필요 (AI 한계)`);
+      lines.push(L(`## 직접 판단 필요 (AI 한계)`, `## Human judgment needed (AI limitations)`));
       latest.analysis.ai_limitations.forEach((l) => lines.push(`- [ ] ${l}`));
       lines.push('');
     }

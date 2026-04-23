@@ -391,8 +391,9 @@ describe('Checklist', () => {
     const project = makeProject();
     const reframeItem = makeReframeItem();
 
-    // getStorage is called 3 times: reframe, recast, feedback
+    // getStorage is called 4 times: settings (via getCurrentLanguage), reframe, recast, feedback
     mockGetStorage
+      .mockReturnValueOnce({ language: 'ko' }) // SETTINGS (for getCurrentLanguage)
       .mockReturnValueOnce([reframeItem])   // REFRAME_LIST
       .mockReturnValueOnce([])              // RECAST_LIST
       .mockReturnValueOnce([]);             // FEEDBACK_HISTORY
@@ -407,6 +408,7 @@ describe('Checklist', () => {
     const recastItem = makeRecastItem();
 
     mockGetStorage
+      .mockReturnValueOnce({ language: 'ko' }) // SETTINGS
       .mockReturnValueOnce([])              // REFRAME_LIST
       .mockReturnValueOnce([recastItem])    // RECAST_LIST
       .mockReturnValueOnce([]);             // FEEDBACK_HISTORY
@@ -422,6 +424,7 @@ describe('Checklist', () => {
     const recastItem = makeRecastItem();
 
     mockGetStorage
+      .mockReturnValueOnce({ language: 'ko' }) // SETTINGS
       .mockReturnValueOnce([])              // REFRAME_LIST
       .mockReturnValueOnce([recastItem])    // RECAST_LIST
       .mockReturnValueOnce([]);             // FEEDBACK_HISTORY
@@ -458,6 +461,7 @@ describe('Checklist', () => {
     };
 
     mockGetStorage
+      .mockReturnValueOnce({ language: 'ko' }) // SETTINGS
       .mockReturnValueOnce([emptyReframe])  // REFRAME_LIST
       .mockReturnValueOnce([emptyRecast])   // RECAST_LIST
       .mockReturnValueOnce([]);             // FEEDBACK_HISTORY

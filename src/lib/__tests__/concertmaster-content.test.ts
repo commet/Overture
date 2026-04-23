@@ -73,10 +73,28 @@ vi.mock('@/lib/retrospective', () => ({
 
 vi.mock('@/lib/i18n', () => ({
   t: vi.fn((key: string, params?: Record<string, unknown>) => {
-    let text = key;
+    const map: Record<string, string> = {
+      'dq.element.appropriateFrame': '프레이밍',
+      'dq.element.creativeAlternatives': '대안 탐색',
+      'dq.element.relevantInformation': '정보 수집',
+      'dq.element.clearValues': '관점 다양성',
+      'dq.element.soundReasoning': '추론 품질',
+      'dq.element.commitmentToAction': '실행 가능성',
+      'axis.customerValue': '고객 가치',
+      'axis.feasibility': '실현 가능성',
+      'axis.business': '비즈니스',
+      'axis.orgCapacity': '조직 역량',
+      'concertmaster.defaultProject': '프로젝트',
+      'coaching.refine.biggestGain': '가장 큰 개선: {element}',
+      'coaching.refine.biggestDrop': '하락 원인: {element}',
+      'coaching.refine.dqImproving': '판단 품질이 개선되고 있습니다 ({prev} → {current}).',
+      'coaching.refine.dqDeclining': '판단 품질이 하락했습니다 ({prev} → {current}). 이번엔 가정 검토를 더 꼼꼼히 해보세요.',
+    };
+    let text = map[key] ?? key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        text += ` ${k}=${v}`;
+        text = text.replace(`{${k}}`, String(v));
+        if (!text.includes(String(v))) text += ` ${k}=${v}`;
       }
     }
     return text;
@@ -280,7 +298,7 @@ describe('Scenario E: DQ 하락 사용자', () => {
   it('refine 코칭: 하락을 경고하고 원인을 짚어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const warnMsg = coaching.find(c => c.message.includes('coaching.refine.dqDeclining'));
+    const warnMsg = coaching.find(c => c.message.includes('판단 품질이 하락'));
     expect(warnMsg).toBeDefined();
     expect(warnMsg!.tone).toBe('challenge');
   });
@@ -288,8 +306,7 @@ describe('Scenario E: DQ 하락 사용자', () => {
   it('refine 코칭: 하락 원인(프레이밍)이 detail에 있어야 한다', () => {
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const warnMsg = coaching.find(c => c.message.includes('coaching.refine.dqDeclining'));
-    // detail is from t('coaching.refine.biggestDrop', { element: '프레이밍' }) → "coaching.refine.biggestDrop element=프레이밍"
+    const warnMsg = coaching.find(c => c.message.includes('판단 품질이 하락'));
     expect(warnMsg?.detail).toContain('프레이밍');
   });
 
@@ -783,10 +800,9 @@ describe('Scenario P: DQ 하락 후 회복', () => {
 
     const profile = buildConcertmasterProfile();
     const coaching = getStepCoaching('refine', profile);
-    const recoveryMsg = coaching.find(c => c.message.includes('coaching.refine.dqImproving'));
+    const recoveryMsg = coaching.find(c => c.message.includes('판단 품질이 개선'));
     expect(recoveryMsg).toBeDefined();
     expect(recoveryMsg!.tone).toBe('positive');
-    // detail is from t('coaching.refine.biggestGain', { element: '프레이밍' }) → "coaching.refine.biggestGain element=프레이밍"
     expect(recoveryMsg!.detail).toContain('프레이밍');
   });
 });

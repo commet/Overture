@@ -166,9 +166,10 @@ describe('Context Builder Simulation', () => {
   // ═══════════════════════════════════════
   describe('buildEnhancedSystemPrompt', () => {
     describe('빈 데이터 → 원본 그대로', () => {
-      it('judgment 0건 → basePrompt 반환', () => {
+      it('judgment 0건 → basePrompt로 시작 (locale directive 꼬리 허용)', () => {
         setupStorage({ sot_judgments: [] });
-        expect(buildEnhancedSystemPrompt(BASE_PROMPT)).toBe(BASE_PROMPT);
+        // Locale directive is always appended at end; verify body is basePrompt unchanged.
+        expect(buildEnhancedSystemPrompt(BASE_PROMPT)).toMatch(new RegExp(`^${BASE_PROMPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
       });
 
       it('undefined projectId → 프로젝트 섹션 없음', () => {

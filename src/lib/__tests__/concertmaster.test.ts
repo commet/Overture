@@ -44,9 +44,24 @@ vi.mock('@/lib/judgment-vitality', () => ({
 // i18n: passthrough — return key with params interpolated
 vi.mock('@/lib/i18n', () => ({
   t: vi.fn((key: string, params?: Record<string, unknown>) => {
-    let text = key;
+    // Resolve DQ element / axis keys to Korean labels (used across tests)
+    const map: Record<string, string> = {
+      'dq.element.appropriateFrame': '프레이밍',
+      'dq.element.creativeAlternatives': '대안 탐색',
+      'dq.element.relevantInformation': '정보 수집',
+      'dq.element.clearValues': '관점 다양성',
+      'dq.element.soundReasoning': '추론 품질',
+      'dq.element.commitmentToAction': '실행 가능성',
+      'axis.customerValue': '고객 가치',
+      'axis.feasibility': '실현 가능성',
+      'axis.business': '비즈니스',
+      'axis.orgCapacity': '조직 역량',
+      'concertmaster.defaultProject': '프로젝트',
+    };
+    let text = map[key] ?? key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
+        text = text.replace(`{${k}}`, String(v));
         text += ` ${k}=${v}`;
       }
     }
