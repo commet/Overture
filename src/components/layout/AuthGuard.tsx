@@ -1,28 +1,110 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useLocale } from '@/hooks/useLocale';
+import { Lock, ChevronRight } from 'lucide-react';
+
+/**
+ * Soft wall: when anonymous, renders an in-page sign-in card instead of redirecting.
+ * Preserves header + nav chrome so the user can explore other public routes.
+ */
+
+type PageKey = 'project' | 'agents' | 'teams' | 'other';
+
+function detectPage(pathname: string): PageKey {
+  if (pathname.startsWith('/project')) return 'project';
+  if (pathname.startsWith('/agents')) return 'agents';
+  if (pathname.startsWith('/teams')) return 'teams';
+  return 'other';
+}
+
+function getCopy(page: PageKey, ko: boolean) {
+  const L = (k: string, e: string) => (ko ? k : e);
+  switch (page) {
+    case 'project':
+      return {
+        title: L('프로젝트는 로그인이 필요해요', 'Projects need an account'),
+        description: L(
+          '로그인하면 지금까지 작업한 내용이 프로젝트로 저장되고, 다음 번에 이어서 작업할 수 있어요.',
+          'Sign in to save your work as projects and pick up where you left off next time.',
+        ),
+      };
+    case 'agents':
+      return {
+        title: L('에이전트는 로그인이 필요해요', 'Agents need an account'),
+        description: L(
+          '로그인하면 나만의 리뷰어 팀을 저장하고, 워크스페이스에서 바로 쓸 수 있어요.',
+          'Sign in to save your own reviewer team and use them directly in the workspace.',
+        ),
+      };
+    case 'teams':
+      return {
+        title: L('팀은 로그인이 필요해요', 'Teams need an account'),
+        description: L(
+          '팀을 구성해서 여러 프로젝트에 일관된 검토자를 배치할 수 있어요.',
+          'Compose teams and assign consistent reviewers across multiple projects.',
+        ),
+      };
+    default:
+      return {
+        title: L('로그인이 필요해요', 'Sign in required'),
+        description: L(
+          '이 페이지는 로그인한 사용자만 사용할 수 있어요.',
+          'This page is only available to signed-in users.',
+        ),
+      };
+  }
+}
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  const pathname = usePathname();
+  const locale = useLocale();
+  const ko = locale === 'ko';
+  const L = (k: string, e: string) => (ko ? k : e);
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center py-20">
         <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    const page = detectPage(pathname);
+    const { title, description } = getCopy(page, ko);
+    const redirectTo = encodeURIComponent(pathname || '/');
+
+    return (
+      <div className="flex-1 flex items-center justify-center py-16 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--accent)]/10 mb-5">
+            <Lock size={22} className="text-[var(--accent)]" />
+          </div>
+          <h2 className="text-[20px] font-bold text-[var(--text-primary)] mb-2">{title}</h2>
+          <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-6">{description}</p>
+          <div className="flex flex-col gap-2 items-center">
+            <Link
+              href={`/login?redirect=${redirectTo}`}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-[14px] font-semibold transition-all hover:shadow-[var(--shadow-sm)]"
+              style={{ background: 'var(--gradient-gold)' }}
+            >
+              {L('로그인하고 계속하기', 'Sign in to continue')} <ChevronRight size={14} />
+            </Link>
+            <Link
+              href="/workspace"
+              className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+            >
+              {L('로그인 없이 워크스페이스 써보기 →', 'Try the workspace without signing in →')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
