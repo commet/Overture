@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { validateMessages, validateSystemPrompt, validateRequest, normalizeMaxTokens } from '@/lib/llm-validation';
-
-const DAILY_LIMIT = 20;
-const ANON_LIMIT = 12;
+import { DAILY_LIMIT, ANON_LIMIT } from '@/lib/quota-config';
 
 /**
  * Verify Supabase auth token from request.
@@ -108,11 +106,11 @@ export async function POST(req: NextRequest) {
     || 'unknown';
 
   if (auth) {
-    // Logged-in user: 5/day via Supabase RPC
+    // Logged-in user: DAILY_LIMIT/day via Supabase RPC
     const allowed = await checkRateLimit(auth.userId, auth.token);
     if (!allowed) {
       return NextResponse.json(
-        { error: "Today's free quota (10 calls) is used up. Enter your own API key in Settings for unlimited use." },
+        { error: `Today's free quota (${DAILY_LIMIT} calls) is used up. Enter your own API key in Settings for unlimited use.` },
         { status: 429 }
       );
     }
@@ -123,7 +121,7 @@ export async function POST(req: NextRequest) {
     const allowed = await checkAnonRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
-        { error: 'Free trial quota exhausted. Log in to keep using up to 10 free calls per day!', needsLogin: true },
+        { error: `Free trial quota exhausted. Log in to keep using up to ${DAILY_LIMIT} free calls per day!`, needsLogin: true },
         { status: 429 }
       );
     }

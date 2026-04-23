@@ -1,5 +1,6 @@
 import { getStorage, STORAGE_KEYS } from '@/lib/storage';
 import type { Settings } from '@/stores/types';
+import { DAILY_LIMIT } from '@/lib/quota-config';
 
 // ━━━ Types ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -65,7 +66,7 @@ function categorizeError(status: number, body?: Record<string, unknown>): LLMErr
     // 이 경우는 단순 rate limit이 아니라 "로그인하면 풀린다"는 별개의 UX 경로.
     const needsLogin = body?.needsLogin === true;
     if (needsLogin) {
-      return new LLMError('LOGIN_REQUIRED:무료 체험을 모두 사용했습니다. 로그인하면 하루 10회까지 무료로 사용할 수 있어요.', {
+      return new LLMError(`LOGIN_REQUIRED:무료 체험을 모두 사용했습니다. 로그인하면 하루 ${DAILY_LIMIT}회까지 무료로 사용할 수 있어요.`, {
         category: 'auth', status, retryable: false,
       });
     }

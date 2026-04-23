@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkerPersona } from '@/stores/types';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { parsePartialAnalysis } from '@/lib/partial-analysis';
+import { DAILY_LIMIT, ANON_LIMIT } from '@/lib/quota-config';
 
 /* ─── Step-level error fallback ─── */
 function StepErrorFallback() {
@@ -274,7 +275,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                 <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
                   <div className="flex items-center gap-2 text-[13px]">
                     <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
-                    <span className="text-[var(--text-primary)]">{locale === 'ko' ? <>로그인 없이 <strong>1회 무료 체험</strong> · 로그인하면 하루 2회</> : <>Try <strong>1 free session</strong> without login · 2 per day with login</>}</span>
+                    <span className="text-[var(--text-primary)]">{locale === 'ko' ? <>로그인 없이 <strong>하루 {ANON_LIMIT}회 무료</strong> · 로그인하면 하루 {DAILY_LIMIT}회</> : <><strong>{ANON_LIMIT} free per day</strong> without login · {DAILY_LIMIT} per day with login</>}</span>
                   </div>
                   <Link href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">{L('로그인', 'Log in')}</Link>
                 </div>
@@ -334,7 +335,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                   {error && error.startsWith('LOGIN_REQUIRED') && (
                     <div className="mt-3 p-4 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/20">
                       <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Free trial limit reached')}</p>
-                      <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{L('로그인하면 하루 10회까지 무료로 사용할 수 있습니다.', 'Sign in to get up to 10 free uses per day.')}</p>
+                      <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{L(`로그인하면 하루 ${DAILY_LIMIT}회까지 무료로 사용할 수 있습니다.`, `Sign in to get up to ${DAILY_LIMIT} free uses per day.`)}</p>
                       <Link href="/login" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[12px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>
                         {L('로그인', 'Sign In')} <ChevronRight size={12} />
                       </Link>
@@ -701,7 +702,7 @@ function WorkspaceContent() {
               <div className="flex items-center gap-2 text-[12px]">
                 <Sparkles size={13} className="text-[var(--accent)] shrink-0" />
                 <span className="text-[var(--text-primary)]">
-                  {locale === 'ko' ? <>로그인 없이 <strong>3회 무료</strong> · <Link href="/login" className="text-[var(--accent)] font-semibold underline">로그인</Link>하면 하루 5회</> : <><strong>3 free</strong> without login · <Link href="/login" className="text-[var(--accent)] font-semibold underline">Log in</Link> for 5 per day</>}
+                  {locale === 'ko' ? <>로그인 없이 <strong>하루 {ANON_LIMIT}회 무료</strong> · <Link href="/login" className="text-[var(--accent)] font-semibold underline">로그인</Link>하면 하루 {DAILY_LIMIT}회</> : <><strong>{ANON_LIMIT} free per day</strong> without login · <Link href="/login" className="text-[var(--accent)] font-semibold underline">Log in</Link> for {DAILY_LIMIT} per day</>}
                 </span>
               </div>
             </div>

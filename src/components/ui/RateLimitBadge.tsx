@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { t } from '@/lib/i18n';
-
-const DAILY_LIMIT = 5;
+import { DAILY_LIMIT } from '@/lib/quota-config';
 
 /**
  * Displays remaining rate limit count for proxy mode.
