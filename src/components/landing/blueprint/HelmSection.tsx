@@ -3,22 +3,18 @@
 /**
  * HelmSection — § I · 선미 (STERN)
  *
- * First user-facing section. Top of the page.
- * Visual: ship's STERN viewed top-down. Rudder sticks up at the very top.
- * Helm wheel sits inside the hull. Hull sides extend down off-section,
- * continuing into CrewSection. User is the captain at the helm.
- *
- * Hull geometry (shared across all 3 sections so edges align):
- *   viewBox: 0 0 1200 H
- *   hull exterior:   x = 140 and x = 1060 (vertical sides)
- *   hull interior:   x = 140 to 1060  (width 920)
+ * Top of the page. Ship's stern viewed top-down.
+ * Wake ripples above the rudder (the ship has been sailing).
+ * Stern transom + chamfers + helm wheel inside.
+ * Hull sides are CSS (absolute, full-height) — identical across all 3 sections
+ * so the ship reads as continuous.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { track } from '@/lib/analytics';
-import { useLocale, type Locale } from '@/hooks/useLocale';
+import { useLocale } from '@/hooks/useLocale';
 import { CompassRose } from './CompassRose';
 
 interface ExampleData {
@@ -62,58 +58,85 @@ function useRotating(count: number, stop: boolean, interval = 4200) {
   return idx;
 }
 
-function StemShip({ locale }: { locale: Locale }) {
+/**
+ * SternStructure — ship's stern drawn as SVG, anchored to top of section.
+ * No hull sides (those are CSS in the section). Only decorative stern parts:
+ *   wake ripples · rudder · transom · chamfers · deck planks · helm wheel
+ */
+function SternStructure() {
   return (
     <svg
-      viewBox="0 0 1200 900"
+      viewBox="0 0 1200 440"
       xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMid meet"
-      className="absolute inset-0 w-full h-full pointer-events-none"
+      preserveAspectRatio="xMidYMin meet"
+      className="absolute left-0 right-0 top-0 w-full pointer-events-none"
       style={{ color: 'var(--bp-ink)' }}
       aria-hidden="true"
     >
-      {/* Rudder — small rectangle above stern transom */}
-      <rect x="560" y="60" width="80" height="70" fill="var(--bp-paper)" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="600" y1="60" x2="600" y2="130" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
+      {/* Wake ripples — 3 dashed sine-like arcs above the rudder. The ship has been moving. */}
+      {[12, 28, 44].map((y, i) => (
+        <path
+          key={y}
+          d={`M ${360 + i * 20} ${y} Q 540 ${y - 6} 720 ${y} T 1080 ${y}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="0.75"
+          strokeDasharray="4 8"
+          opacity={0.32 - i * 0.08}
+        />
+      ))}
 
-      {/* Stern transom — horizontal line closing the back of the ship */}
+      {/* Rudder — small rectangle sticking out above stern transom */}
+      <rect x="570" y="70" width="60" height="60" fill="var(--bp-paper)" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="600" y1="70" x2="600" y2="130" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+
+      {/* Pintle/gudgeon marks on rudder */}
+      <line x1="565" y1="88" x2="570" y2="88" stroke="currentColor" strokeWidth="1" />
+      <line x1="565" y1="112" x2="570" y2="112" stroke="currentColor" strokeWidth="1" />
+
+      {/* Stern transom — horizontal line from hull to hull */}
       <line x1="140" y1="140" x2="1060" y2="140" stroke="currentColor" strokeWidth="2" />
 
-      {/* Stern chamfers — 45° cut corners for aesthetic */}
+      {/* Stern chamfers — 45° cut corners where hull meets transom */}
       <line x1="140" y1="140" x2="180" y2="180" stroke="currentColor" strokeWidth="2" />
       <line x1="1060" y1="140" x2="1020" y2="180" stroke="currentColor" strokeWidth="2" />
 
-      {/* Hull sides — vertical, extend off bottom (continues into CrewSection) */}
-      <line x1="140" y1="180" x2="140" y2="900" stroke="currentColor" strokeWidth="2" />
-      <line x1="1060" y1="180" x2="1060" y2="900" stroke="currentColor" strokeWidth="2" />
-
-      {/* Aft deck planking — subtle dashed horizontals */}
-      {[180, 220].map((y) => (
-        <line key={y} x1="140" y1={y} x2="1060" y2={y} stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" opacity="0.3" />
+      {/* Aft deck planking — dashed horizontals fade downward */}
+      {[200, 240, 280, 320, 360].map((y, i) => (
+        <line
+          key={y}
+          x1="150"
+          y1={y}
+          x2="1050"
+          y2={y}
+          stroke="currentColor"
+          strokeWidth="0.5"
+          strokeDasharray="2 6"
+          opacity={0.28 - i * 0.045}
+        />
       ))}
 
-      {/* Helm wheel — centered between the chamfers */}
-      <g transform="translate(600 280)">
-        <circle r="54" fill="var(--bp-paper)" stroke="currentColor" strokeWidth="1.5" />
-        <circle r="42" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
+      {/* Helm wheel — centered on the aft deck */}
+      <g transform="translate(600 250)">
+        <circle r="58" fill="var(--bp-paper)" stroke="currentColor" strokeWidth="1.5" />
+        <circle r="44" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
         <circle r="6" fill="currentColor" />
         {[0, 45, 90, 135].map((deg) => (
           <line
             key={deg}
-            x1={-54 * Math.cos((deg * Math.PI) / 180)}
-            y1={-54 * Math.sin((deg * Math.PI) / 180)}
-            x2={54 * Math.cos((deg * Math.PI) / 180)}
-            y2={54 * Math.sin((deg * Math.PI) / 180)}
+            x1={-58 * Math.cos((deg * Math.PI) / 180)}
+            y1={-58 * Math.sin((deg * Math.PI) / 180)}
+            x2={58 * Math.cos((deg * Math.PI) / 180)}
+            y2={58 * Math.sin((deg * Math.PI) / 180)}
             stroke="currentColor"
             strokeWidth="1"
           />
         ))}
-        {/* Helm handle nubs */}
         {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
           <circle
             key={deg}
-            cx={60 * Math.cos((deg * Math.PI) / 180)}
-            cy={60 * Math.sin((deg * Math.PI) / 180)}
+            cx={64 * Math.cos((deg * Math.PI) / 180)}
+            cy={64 * Math.sin((deg * Math.PI) / 180)}
             r="3"
             fill="var(--bp-paper)"
             stroke="currentColor"
@@ -122,41 +145,13 @@ function StemShip({ locale }: { locale: Locale }) {
         ))}
       </g>
 
-      {/* Helm label — "조타륜 · HELM" */}
-      <g transform="translate(600 370)">
-        <line x1="0" y1="-25" x2="0" y2="-15" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
-        <text textAnchor="middle" style={{
-          font: '500 11px var(--font-mono), monospace',
-          fill: 'var(--bp-ink-soft)',
-          letterSpacing: '0.22em',
-        }}>
-          {locale === 'ko' ? '조타륜 · HELM' : 'THE HELM'}
-        </text>
-      </g>
-
-      {/* Side rail ticks (oar-port style) along hull */}
-      {Array.from({ length: 10 }, (_, i) => 280 + i * 60).map((y) => (
+      {/* Oar-port rail ticks along hull sides */}
+      {Array.from({ length: 5 }, (_, i) => 200 + i * 50).map((y) => (
         <g key={`rail-${y}`}>
-          <line x1="140" y1={y} x2="128" y2={y} stroke="currentColor" strokeWidth="0.6" opacity="0.4" />
-          <line x1="1060" y1={y} x2="1072" y2={y} stroke="currentColor" strokeWidth="0.6" opacity="0.4" />
+          <line x1="140" y1={y} x2="128" y2={y} stroke="currentColor" strokeWidth="0.6" opacity="0.35" />
+          <line x1="1060" y1={y} x2="1072" y2={y} stroke="currentColor" strokeWidth="0.6" opacity="0.35" />
         </g>
       ))}
-
-      {/* Coordinate marker at top-left */}
-      <text x="100" y="18" style={{
-        font: '500 9px var(--font-mono), monospace',
-        fill: 'var(--bp-ink-soft)',
-        letterSpacing: '0.18em',
-      }}>
-        AFT · N
-      </text>
-      <text x="1100" y="18" textAnchor="end" style={{
-        font: '500 9px var(--font-mono), monospace',
-        fill: 'var(--bp-ink-soft)',
-        letterSpacing: '0.18em',
-      }}>
-        PLATE I
-      </text>
     </svg>
   );
 }
@@ -187,30 +182,41 @@ export function HelmSection() {
   };
 
   return (
-    <section className="relative bp-root bp-grid overflow-hidden" aria-labelledby="helm-heading">
-      <StemShip locale={locale} />
+    <section
+      className="relative bp-root bp-grid overflow-hidden"
+      aria-labelledby="helm-heading"
+      style={{ background: 'var(--bp-paper)' }}
+    >
+      {/* Hull sides — CSS, full section height, continues into next sections */}
+      <div className="absolute top-0 bottom-0 pointer-events-none"
+           style={{ left: '11.67%', width: 2, background: 'var(--bp-ink)' }} />
+      <div className="absolute top-0 bottom-0 pointer-events-none"
+           style={{ right: '11.67%', width: 2, background: 'var(--bp-ink)' }} />
 
-      {/* Content INSIDE the hull frame */}
-      <div className="relative max-w-5xl mx-auto px-6 md:px-14 pt-[220px] md:pt-[340px] pb-24 md:pb-28">
+      {/* Stern structure — SVG anchored to top */}
+      <SternStructure />
 
-        {/* Section marker — centered, below helm wheel */}
-        <div className="flex items-center justify-center gap-3 mb-4">
+      {/* Content — starts below stern deck */}
+      <div className="relative max-w-5xl mx-auto px-6 md:px-16 pt-[420px] md:pt-[480px] pb-20 md:pb-24">
+
+        {/* Section marker */}
+        <div className="flex items-center justify-center gap-3 mb-5">
           <span className="bp-mono text-[11px] md:text-[12px]"
-                style={{ color: 'var(--bp-ink-soft)', letterSpacing: '0.28em', textTransform: 'uppercase' }}>
+                style={{ color: 'var(--bp-ink-soft)', letterSpacing: '0.28em' }}>
             § I
           </span>
           <span className="bp-node" />
           <span className="bp-mono text-[11px] md:text-[12px]"
-                style={{ color: 'var(--bp-ink-soft)', letterSpacing: '0.28em', textTransform: 'uppercase' }}>
+                style={{ color: 'var(--bp-ink-soft)', letterSpacing: '0.28em' }}>
             {L('선미 · THE HELM', 'THE HELM')}
           </span>
         </div>
-        <div className="bp-gold-rule mx-auto mb-10 md:mb-14" />
+        <div className="bp-gold-rule mx-auto mb-12 md:mb-16" />
 
-        {/* Big centered hero — large display type */}
+        {/* Big centered hero */}
         <h1
           id="helm-heading"
-          className="text-center leading-[1.04] tracking-tight break-keep"
+          className="text-center leading-[1.03] tracking-tight break-keep"
           style={{
             fontFamily: 'var(--font-display)',
             color: 'var(--bp-ink)',
@@ -237,8 +243,8 @@ export function HelmSection() {
           </span>
         </p>
 
-        {/* Rotating voice — larger + centered */}
-        <div className="mt-10 md:mt-12 min-h-[50px] flex justify-center">
+        {/* Rotating voice */}
+        <div className="mt-12 min-h-[48px] flex justify-center">
           <AnimatePresence mode="wait">
             <motion.p
               key={idx}
@@ -251,7 +257,7 @@ export function HelmSection() {
                 color: 'var(--bp-ink-soft)',
                 fontSize: 'clamp(13px, 1.05vw, 15px)',
                 letterSpacing: '0.02em',
-                maxWidth: '680px',
+                maxWidth: '700px',
               }}
             >
               {voices[idx]}
@@ -259,10 +265,10 @@ export function HelmSection() {
           </AnimatePresence>
         </div>
 
-        {/* Input + compass row */}
-        <div className="mt-12 md:mt-16 flex flex-col lg:flex-row items-stretch lg:items-start gap-8 lg:gap-10 justify-center">
+        {/* Compass + input row */}
+        <div className="mt-14 md:mt-16 flex flex-col lg:flex-row items-center lg:items-start gap-10 lg:gap-14 justify-center">
 
-          {/* Compass rose */}
+          {/* Compass — primary interaction indicator */}
           <div className="flex flex-col items-center shrink-0">
             <CompassRose size={140} bearing={bearing} active={compassActive} />
             <p
@@ -280,8 +286,7 @@ export function HelmSection() {
           </div>
 
           {/* Input column */}
-          <div className="flex-1 max-w-2xl">
-            {/* Example chips */}
+          <div className="flex-1 max-w-2xl w-full">
             <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-4">
               {examples.map((ex, i) => {
                 const isActive = i === idx && !focused;
@@ -300,7 +305,6 @@ export function HelmSection() {
               })}
             </div>
 
-            {/* Text input */}
             <div className="bp-input-frame flex items-center gap-3 px-4 py-3.5">
               <span className="bp-mono text-[13px] shrink-0" style={{ color: 'var(--bp-ink-soft)' }}>⌕</span>
               <input
@@ -317,7 +321,6 @@ export function HelmSection() {
               />
             </div>
 
-            {/* Submit row */}
             <div className="mt-5 flex flex-wrap items-center gap-4">
               <button
                 onClick={handleSubmit}

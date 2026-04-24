@@ -277,7 +277,7 @@ export function CrewSection() {
   return (
     <section
       className="relative bp-root overflow-hidden"
-      style={{ background: 'var(--bp-paper-deep)' }}
+      style={{ background: 'var(--bp-paper)' }}
       aria-labelledby="crew-heading"
     >
       {/* Subtle dot grid */}
@@ -286,6 +286,18 @@ export function CrewSection() {
         style={{
           backgroundImage: 'radial-gradient(circle, var(--bp-ink-whisper) 1px, transparent 1px)',
           backgroundSize: '24px 24px',
+        }}
+      />
+
+      {/* Deck planking — horizontal dashed lines inside hull area */}
+      <div
+        className="absolute top-0 bottom-0 pointer-events-none"
+        style={{
+          left: '11.67%',
+          right: '11.67%',
+          backgroundImage:
+            'repeating-linear-gradient(0deg, transparent 0, transparent 119px, var(--bp-ink-whisper) 119px, var(--bp-ink-whisper) 120px)',
+          opacity: 0.8,
         }}
       />
 
