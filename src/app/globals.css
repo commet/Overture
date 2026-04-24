@@ -55,6 +55,18 @@
 
   /* Typography */
   --font-display: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', 'SF Mono', ui-monospace, monospace;
+
+  /* Blueprint palette — landing-scoped. Paper + navy ink + gold leaf.
+     Designed to avoid the AI-dark aesthetic while staying distinctive. */
+  --bp-paper: #f4ede0;          /* Aged parchment — warmer than --bg */
+  --bp-paper-deep: #ebe2d0;     /* Secondary surface, section alternation */
+  --bp-ink: #1a2a3a;            /* Navy ink — historical blueprint line */
+  --bp-ink-soft: #4a6180;       /* Secondary line / label */
+  --bp-ink-faint: rgba(26, 42, 58, 0.18);   /* Grid, hairlines */
+  --bp-ink-whisper: rgba(26, 42, 58, 0.08); /* Background grid */
+  --bp-gold: #96782e;           /* Gold leaf — same as --accent, paired with ink */
+  --bp-gold-deep: #7a6224;      /* Pressed gold, hover state */
 
   /* Easing */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -117,6 +129,16 @@
   --glow-gold: 0 0 20px rgba(212, 185, 104, 0.12), 0 0 60px rgba(212, 185, 104, 0.04);
   --glow-gold-intense: 0 0 20px rgba(212, 185, 104, 0.20), 0 0 40px rgba(212, 185, 104, 0.08);
   --glow-accent: 0 0 16px rgba(212, 185, 104, 0.10);
+
+  /* Blueprint — dark mode ink (kept readable but not the default target) */
+  --bp-paper: #1f1c18;
+  --bp-paper-deep: #2a2620;
+  --bp-ink: #e8dcc3;
+  --bp-ink-soft: #a89680;
+  --bp-ink-faint: rgba(232, 220, 195, 0.18);
+  --bp-ink-whisper: rgba(232, 220, 195, 0.06);
+  --bp-gold: #d4b968;
+  --bp-gold-deep: #e8d48b;
 }
 
 [data-theme="dark"] body {
@@ -2248,4 +2270,237 @@ button, a, input, textarea {
   font-weight: 600;
   color: var(--accent);
   margin-top: 2px;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Blueprint — landing-scoped utility classes.
+   Paired with tokens in :root (paper + ink + gold leaf).
+   Strict rules: 1px/1.5px/2px strokes only. H/V/45° lines only.
+   Gold appears at ~5 moments max per viewport.
+   ────────────────────────────────────────────────────────────────── */
+
+.bp-root {
+  background: var(--bp-paper);
+  color: var(--bp-ink);
+}
+
+/* Subliminal grid — 24px dot matrix at 6% opacity */
+.bp-grid {
+  background-image: radial-gradient(circle, var(--bp-ink-whisper) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+}
+
+/* Monospaced technical label — for coordinates, section numbers, crew roles */
+.bp-mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  letter-spacing: 0.02em;
+}
+
+/* Section marker ( § 01 · BOW ) */
+.bp-section-mark {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bp-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bp-section-mark::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: var(--bp-ink-soft);
+}
+
+/* Gold hairline beneath section headers — the one allowed gold element here */
+.bp-gold-rule {
+  height: 1px;
+  background: var(--bp-gold);
+  width: 32px;
+  opacity: 0.9;
+}
+
+/* Hairline — general use */
+.bp-hairline {
+  border-top: 1px solid var(--bp-ink-faint);
+}
+.bp-hairline-strong {
+  border-top: 1.5px solid var(--bp-ink);
+}
+
+/* Coordinate tick — tiny horizontal mark with a vertical notch, like dimension line */
+.bp-tick {
+  display: inline-block;
+  width: 8px;
+  height: 1px;
+  background: var(--bp-ink);
+  position: relative;
+}
+.bp-tick::before,
+.bp-tick::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 7px;
+  background: var(--bp-ink);
+}
+.bp-tick::before { left: 0; }
+.bp-tick::after { right: 0; }
+
+/* Node — small open circle at endpoints (Kittl blueprint rule) */
+.bp-node {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--bp-ink);
+  border-radius: 50%;
+  background: var(--bp-paper);
+  display: inline-block;
+}
+.bp-node-gold {
+  border-color: var(--bp-gold);
+  background: var(--bp-gold);
+}
+
+/* Button — "set sail" — gold applied intentionally */
+.bp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  background: var(--bp-ink);
+  color: var(--bp-paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--bp-ink);
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+  transition: background 200ms var(--ease-musical), color 200ms var(--ease-musical);
+}
+.bp-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--bp-gold);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-musical);
+  pointer-events: none;
+}
+.bp-btn-primary:hover::before { opacity: 1; }
+.bp-btn-primary:disabled {
+  background: transparent;
+  color: var(--bp-ink-soft);
+  border-color: var(--bp-ink-faint);
+  cursor: not-allowed;
+}
+.bp-btn-primary:disabled::before { opacity: 0; }
+
+/* Secondary — outline button */
+.bp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--bp-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid var(--bp-ink-faint);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color 200ms var(--ease-musical), color 200ms var(--ease-musical);
+}
+.bp-btn-secondary:hover {
+  border-color: var(--bp-ink);
+  color: var(--bp-ink);
+}
+.bp-btn-secondary[data-active='true'] {
+  border-color: var(--bp-gold);
+  color: var(--bp-gold-deep);
+}
+
+/* Input — paper-like, underline only */
+.bp-input-frame {
+  border: 1px solid var(--bp-ink-faint);
+  background: var(--bp-paper);
+  transition: border-color 200ms var(--ease-musical);
+}
+.bp-input-frame:focus-within {
+  border-color: var(--bp-ink);
+}
+.bp-input {
+  background: transparent;
+  color: var(--bp-ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.bp-input::placeholder {
+  color: var(--bp-ink-soft);
+  opacity: 0.6;
+}
+
+/* Station label card — used beside ship diagram */
+.bp-station {
+  border: 1px solid var(--bp-ink-faint);
+  background: var(--bp-paper);
+  padding: 14px 16px;
+  transition: border-color 200ms var(--ease-musical);
+}
+.bp-station:hover {
+  border-color: var(--bp-ink);
+}
+.bp-station[data-active='true'] {
+  border-color: var(--bp-ink);
+  box-shadow: 2px 2px 0 0 var(--bp-gold);
+}
+
+/* Stage wake — horizontal flow with dashed connector */
+.bp-wake-step {
+  position: relative;
+  padding-left: 18px;
+}
+.bp-wake-step::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--bp-ink);
+  border-radius: 50%;
+  background: var(--bp-paper);
+}
+.bp-wake-step[data-terminal='true']::before {
+  background: var(--bp-gold);
+  border-color: var(--bp-gold);
+}
+
+/* Dashed connector between wake steps */
+.bp-wake-connector {
+  border-top: 1px dashed var(--bp-ink-faint);
+}
+
+/* ── Reduced motion respects user preference ── */
+@media (prefers-reduced-motion: reduce) {
+  .bp-btn-primary,
+  .bp-btn-secondary,
+  .bp-input-frame,
+  .bp-station,
+  .bp-btn-primary::before {
+    transition: none;
+  }
 }

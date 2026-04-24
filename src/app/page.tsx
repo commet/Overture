@@ -1,17 +1,15 @@
-import { Hero } from '@/components/landing/Hero';
-import { ProcessFlow } from '@/components/landing/ProcessFlow';
-import { UseCaseFlow } from '@/components/landing/UseCaseFlow';
-import { ClosingCTA } from '@/components/landing/ClosingCTA';
+import { BowSection } from '@/components/landing/blueprint/BowSection';
+import { MidshipSection } from '@/components/landing/blueprint/MidshipSection';
+import { SternSection } from '@/components/landing/blueprint/SternSection';
 import { ScrollTracker } from '@/components/landing/ScrollTracker';
 
 export default function HomePage() {
   return (
     <div>
       <ScrollTracker />
-      <Hero />
-      <UseCaseFlow />
-      <ProcessFlow />
-      <ClosingCTA />
+      <BowSection />
+      <MidshipSection />
+      <SternSection />
     </div>
   );
 }
