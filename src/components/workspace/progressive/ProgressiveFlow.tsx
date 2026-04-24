@@ -56,6 +56,7 @@ import { diffItems } from './shared/diffItems';
 import { parsePartialAnalysis, parsePartialDoc, parsePartialFeedback } from '@/lib/partial-analysis';
 import { renderInline, renderMd } from './shared/renderMd';
 import { AnalysisCard } from './shared/AnalysisCard';
+import { UpdateSummaryChip } from './shared/UpdateSummaryChip';
 import { QuestionCard } from './shared/QuestionCard';
 import { ShareBar } from '@/components/ui/ShareBar';
 
@@ -134,33 +135,35 @@ function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; 
   const idx = phaseIdx(phase, round, hasMix);
   const pct = Math.min((idx / 4) * 100, 100);
   return (
-    <div className="mb-10">
-      <div className="flex items-center justify-between mb-3">
+    <div className="mb-6">
+      {/* Minimal phase labels — smaller dots, tighter spacing.
+          PhaseStatusBar carries the live state; this gives orientation only. */}
+      <div className="flex items-center justify-between mb-2">
         {PHASES.map((label, i) => {
           const done = i < idx;
           const active = i === idx && phase !== 'complete';
           const final_ = phase === 'complete' && i === 3;
           return (
-            <div key={label} className="flex flex-col items-center gap-1.5 flex-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-700 ${
+            <div key={label} className="flex items-center gap-1.5 flex-1 min-w-0">
+              <div className={`w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 transition-all duration-700 ${
                 done || final_
                   ? 'bg-[var(--accent)] text-white'
                   : active
-                    ? 'bg-[var(--accent)]/15 text-[var(--accent)] ring-2 ring-[var(--accent)]/30'
+                    ? 'bg-[var(--accent)]/15 text-[var(--accent)] ring-[1.5px] ring-[var(--accent)]/40'
                     : 'bg-[var(--border-subtle)] text-[var(--text-tertiary)]'
               }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
                 {done || final_ ? '✓' : i + 1}
               </div>
-              <span className={`text-[12px] font-medium transition-all duration-700 ${
+              <span className={`text-[10px] font-medium truncate transition-colors duration-700 ${
                 done || final_ ? 'text-[var(--accent)]' : active ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'
-              }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
+              }`}>
                 {label}
               </span>
             </div>
           );
         })}
       </div>
-      <div className="relative h-[3px] rounded-full bg-[var(--border-subtle)] overflow-hidden">
+      <div className="relative h-[2px] rounded-full bg-[var(--border-subtle)] overflow-hidden">
         <motion.div className="absolute inset-y-0 left-0 rounded-full" style={{ background: 'var(--gradient-gold)' }}
           animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: EASE }} />
       </div>
@@ -1271,6 +1274,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const mixPreviewRef = useRef<HTMLDivElement>(null);
   const dmFeedbackRef = useRef<HTMLDivElement>(null);
   const finalRef = useRef<HTMLDivElement>(null);
+  const analysisCardRef = useRef<HTMLDivElement>(null);
 
   // Double rAF: frame 1 lets React commit pending state, frame 2 ensures the
   // new element is laid out before we scroll to it. Previous 200/250ms timers
@@ -2099,17 +2103,25 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             </motion.div>
           )}
 
+          {/* Update summary chip — surfaces "what changed" at the user's eye level
+              (right above the next question). AnalysisCard lives further down,
+              so without this, users miss the evolution they just triggered. */}
+          {latest && snapshots.length > 1 && !final_ && phase === 'conversing' && !mix && (
+            <UpdateSummaryChip
+              snapshot={latest}
+              prevSnapshot={snapshots[snapshots.length - 2]}
+              onSeeDetail={() => scrollToRef(analysisCardRef, 'top')}
+              locale={locale}
+            />
+          )}
+
           {/* Question FIRST — user action at the top, not buried below */}
           <div ref={questionRef}>
             {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} locale={locale} />}
           </div>
 
-          {/* PhaseDivider: Team work begins */}
-          {deployPhase === 'deployed' && !final_ && workers.length > 0 && (
-            <PhaseDivider done={L('질문 완료', 'Questions done')} next={L('팀 작업 중', 'Team working')} />
-          )}
-
-          {/* Inline worker reports — staggered reveal for polished feel */}
+          {/* Inline worker reports — staggered reveal for polished feel.
+              (PhaseStatusBar already surfaces "team working" state.) */}
           {deployPhase === 'deployed' && !final_ && (
             <div ref={workerSectionRef} className="space-y-4">
               {/* Running workers — minimal: avatar + task + spinner (no streaming text) */}
@@ -2187,34 +2199,26 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
 
-          {/* PhaseDivider: Synthesizing */}
-          {(phase === 'mixing' || phase === 'lead_synthesizing') && (
-            <PhaseDivider done={L('팀 분석', 'Team analysis')} next={L('초안 작성 중', 'Drafting')} />
-          )}
-
-          {/* Lead Synthesis — previously hidden, now visible */}
+          {/* Lead Synthesis — previously hidden, now visible.
+              (Drafting status already surfaced in PhaseStatusBar.) */}
           {session?.lead_synthesis && !final_ && (
             <LeadSynthesisCard synthesis={session.lead_synthesis} />
           )}
 
-          {/* Version indicator — shows what round we're on */}
-          {snapshots.length > 1 && !final_ && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent)]/[0.04] border border-[var(--accent)]/10 w-fit">
-              <Sparkles size={11} className="text-[var(--accent)]" />
-              <span className="text-[11px] text-[var(--accent)] font-medium">{locale === 'ko' ? `${snapshots.length - 1}번째 개선 반영됨` : `${snapshots.length - 1} improvement(s) applied`}</span>
-            </motion.div>
-          )}
-
-          {/* Living Analysis — the evolving draft with visible diffs */}
+          {/* Living Analysis — the evolving draft with visible diffs.
+              Version/change summary now lives in UpdateSummaryChip above
+              the question; card stays focused on the content itself. */}
           {latest && !final_ && (
-            <AnalysisCard
-              snapshot={latest}
-              prevSnapshot={snapshots.length > 1 ? snapshots[snapshots.length - 2] : null}
-              isActive={!mix}
-              showExecutionPlan
-              locale={locale}
-              team={workers.filter(w => w.persona).map(w => ({ emoji: w.persona!.emoji || '', color: w.persona!.color || '', name: w.persona!.name || '' }))}
-            />
+            <div ref={analysisCardRef}>
+              <AnalysisCard
+                snapshot={latest}
+                prevSnapshot={snapshots.length > 1 ? snapshots[snapshots.length - 2] : null}
+                isActive={!mix}
+                showExecutionPlan
+                locale={locale}
+                team={workers.filter(w => w.persona).map(w => ({ emoji: w.persona!.emoji || '', color: w.persona!.color || '', name: w.persona!.name || '' }))}
+              />
+            </div>
           )}
 
           {/* Framing Confirmation — Round 1 후 사용자 확인 (Weakness A) */}
@@ -2318,9 +2322,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           </div>
 
           {final_ && <div ref={finalRef}>
-            {/* PhaseDivider: Final document */}
-            {dmFb && <PhaseDivider done={L('검토 반영', 'Feedback applied')} next={L('최종 문서', 'Final document')} />}
-
             {/* Version chip + history toggle — subtle header */}
             {activeDraft && (
               <div className="flex items-center justify-end gap-2 pb-2">

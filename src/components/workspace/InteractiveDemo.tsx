@@ -11,6 +11,7 @@ import { track } from '@/lib/analytics';
 import { EASE, SPRING } from './progressive/shared/constants';
 import { renderInline, renderMd } from './progressive/shared/renderMd';
 import { AnalysisCard } from './progressive/shared/AnalysisCard';
+import { UpdateSummaryChip } from './progressive/shared/UpdateSummaryChip';
 import { QuestionCard } from './progressive/shared/QuestionCard';
 import { TypingDots, AvatarRipple, ShimmerBar, tickersFor } from './progressive/shared/AgentVisuals';
 
@@ -1545,6 +1546,19 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Update summary chip — surfaces Q1 result at user's eye level
+              so the evolution in AnalysisCard above doesn't get missed. */}
+          {snapshots.length > 1 && phaseGte(phase, 'workers') && !phaseGte(phase, 'draft') && (
+            <UpdateSummaryChip
+              snapshot={snapshots[snapshots.length - 1]}
+              prevSnapshot={snapshots[snapshots.length - 2]}
+              onSeeDetail={() =>
+                analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              locale={locale}
+            />
+          )}
 
           {/* 6. Q2 — workers 결과를 본 후 검증 방법 선택 */}
           {phase === 'q2' && (
