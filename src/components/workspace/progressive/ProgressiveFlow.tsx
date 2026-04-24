@@ -755,9 +755,9 @@ function PhaseStatusBar({
       className={`sticky top-14 z-30 mx-auto mb-6 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm transition-colors duration-500 ${
         mode === 'ai_working'
           ? showLongWait
-            ? 'bg-amber-50/70 dark:bg-amber-900/15 border-amber-300/30'
+            ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-300/25'
             : 'bg-[var(--surface)]/90 border-[var(--accent)]/15'
-          : 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-300/30'
+          : 'bg-[var(--accent)]/[0.06] border-[var(--accent)]/25'
       }`}
     >
       {mode === 'ai_working' ? (
@@ -766,7 +766,7 @@ function PhaseStatusBar({
           <div className={`w-2.5 h-2.5 rounded-full ${showLongWait ? 'bg-amber-500' : 'bg-[var(--accent)]'}`} />
         </div>
       ) : (
-        <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--gradient-gold)' }}>
           <UserCheck size={11} className="text-white" />
         </div>
       )}
@@ -774,7 +774,7 @@ function PhaseStatusBar({
         <span className={`text-[13px] font-semibold ${
           mode === 'ai_working'
             ? showLongWait ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-primary)]'
-            : 'text-amber-700 dark:text-amber-300'
+            : 'text-[var(--accent)]'
         }`}>
           {showLongWait ? L('오래 걸리고 있어요 — 계속 진행 중', 'Taking longer than usual — still working') : label}
         </span>
@@ -998,100 +998,122 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
-  const aiWorkers = workers.filter(w => (w.agent_type || 'ai') === 'ai');
-  const selfWorkers = workers.filter(w => w.agent_type === 'self');
-  const humanWorkers = workers.filter(w => w.agent_type === 'human');
-  const total = workers.length;
-  const staggerDelay = 0.25;
+  // Single ordered list: AI → Self → Human (groups preserved but without
+  // color-coded section headers — type indicator moves into the row itself)
+  const ordered: WorkerTask[] = [
+    ...workers.filter(w => (w.agent_type || 'ai') === 'ai'),
+    ...workers.filter(w => w.agent_type === 'self'),
+    ...workers.filter(w => w.agent_type === 'human'),
+  ];
+  const total = ordered.length;
+  const staggerDelay = 0.07;
 
-  const renderRow = (w: WorkerTask, i: number, offset: number) => (
-    <motion.div key={w.id}
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.15 + (offset + i) * staggerDelay, duration: 0.35, ease: EASE }}
-      className="flex items-start gap-3 px-3.5 py-2.5 rounded-xl bg-[var(--surface)]/80">
-      {w.agent_type === 'human'
-        ? <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[14px] shrink-0 mt-0.5">👤</div>
-        : w.agent_type === 'self'
-        ? <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-[14px] shrink-0 mt-0.5">🧠</div>
-        : <WorkerAvatar persona={w.persona} size="md" />
-      }
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[14px] font-medium text-[var(--text-primary)]">
-            {w.agent_type === 'human' ? (w.contact?.name || w.question_to_human?.slice(0, 15) || L('외부 확인', 'External'))
-              : w.agent_type === 'self' ? L('내 판단', 'My decision')
-              : (personaName(w.persona, locale) || 'AI')}
-          </span>
-          {w.persona?.role && w.agent_type !== 'self' && w.agent_type !== 'human' && (
-            <span className="text-[11px] text-[var(--text-tertiary)]">{personaRole(w.persona, locale)}</span>
+  const renderRow = (w: WorkerTask, i: number) => {
+    const displayName = w.agent_type === 'human'
+      ? (w.contact?.name || w.question_to_human?.slice(0, 15) || L('외부 확인', 'External'))
+      : w.agent_type === 'self'
+        ? L('내 판단', 'My decision')
+        : (personaName(w.persona, locale) || 'AI');
+    const roleText = w.agent_type === 'human'
+      ? L('확인 요청', 'External check')
+      : w.agent_type === 'self'
+        ? L('세션 중 직접 답변', 'Answered in session')
+        : personaRole(w.persona, locale);
+
+    return (
+      <motion.div key={w.id}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 + i * staggerDelay, duration: 0.3, ease: EASE }}
+        className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+        {/* Avatar */}
+        {w.agent_type === 'human'
+          ? <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex items-center justify-center text-[14px] shrink-0 mt-0.5 border border-[var(--border-subtle)]">👤</div>
+          : w.agent_type === 'self'
+            ? <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex items-center justify-center text-[14px] shrink-0 mt-0.5 border border-[var(--border-subtle)]">🧠</div>
+            : <WorkerAvatar persona={w.persona} size="md" />
+        }
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-[14px] font-semibold text-[var(--text-primary)]">
+              {displayName}
+            </span>
+            {roleText && (
+              <span className="text-[11px] text-[var(--text-tertiary)]">{roleText}</span>
+            )}
+          </div>
+          <p className="text-[12px] text-[var(--text-secondary)] line-clamp-2 mt-0.5 leading-[1.5]">{w.task}</p>
+          {/* Scope preview — neutral tone, no color pills */}
+          {(w.ai_scope || w.self_scope) && (
+            <div className="mt-2 space-y-0.5 text-[11px] leading-[1.55]">
+              {w.ai_scope && (
+                <div className="flex gap-1.5">
+                  <span className="text-[var(--text-tertiary)] font-medium shrink-0 min-w-[1.5rem]">AI</span>
+                  <span className="text-[var(--text-secondary)]">{w.ai_scope}</span>
+                </div>
+              )}
+              {w.self_scope && (
+                <div className="flex gap-1.5">
+                  <span className="text-[var(--accent)] font-medium shrink-0 min-w-[1.5rem]">{L('나', 'Me')}</span>
+                  <span className="text-[var(--text-secondary)]">{w.self_scope}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Human worker: contact input */}
+          {w.agent_type === 'human' && onUpdateWorker && (
+            <div className="flex items-center gap-2 mt-2">
+              <select
+                value={w.contact?.channel || 'email'}
+                onChange={(e) => onUpdateWorker(w.id, { contact: { channel: e.target.value as 'email' | 'slack', name: w.contact?.name || '', address: w.contact?.address || '' } })}
+                className="text-[11px] px-2 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] cursor-pointer"
+                onClick={(e) => e.stopPropagation()}>
+                <option value="email">Email</option>
+                <option value="slack">Slack</option>
+              </select>
+              <input
+                type="text"
+                value={w.contact?.address || ''}
+                onChange={(e) => onUpdateWorker(w.id, { contact: { channel: w.contact?.channel || 'email', name: w.contact?.name || '', address: e.target.value } })}
+                placeholder={w.contact?.channel === 'slack' ? 'Slack User ID' : 'email@example.com'}
+                className="flex-1 text-[11px] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           )}
         </div>
-        <p className="text-[12px] text-[var(--text-secondary)] line-clamp-1 mt-0.5">{w.task}</p>
-        {/* Scope preview */}
-        {(w.ai_scope || w.self_scope) && (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {w.ai_scope && <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-600">AI: {w.ai_scope.slice(0, 40)}{w.ai_scope.length > 40 ? '…' : ''}</span>}
-            {w.self_scope && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-600">{L('나', 'Me')}: {w.self_scope.slice(0, 40)}{w.self_scope.length > 40 ? '…' : ''}</span>}
-          </div>
-        )}
-        {/* Human worker: contact input */}
-        {w.agent_type === 'human' && onUpdateWorker && (
-          <div className="flex items-center gap-2 mt-2">
-            <select
-              value={w.contact?.channel || 'email'}
-              onChange={(e) => onUpdateWorker(w.id, { contact: { channel: e.target.value as 'email' | 'slack', name: w.contact?.name || '', address: w.contact?.address || '' } })}
-              className="text-[11px] px-2 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] cursor-pointer"
-              onClick={(e) => e.stopPropagation()}>
-              <option value="email">📧 Email</option>
-              <option value="slack">💬 Slack</option>
-            </select>
-            <input
-              type="text"
-              value={w.contact?.address || ''}
-              onChange={(e) => onUpdateWorker(w.id, { contact: { channel: w.contact?.channel || 'email', name: w.contact?.name || '', address: e.target.value } })}
-              placeholder={w.contact?.channel === 'slack' ? 'Slack User ID' : 'email@example.com'}
-              className="flex-1 text-[11px] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-
-  const teamDoneDelay = 0.15 + total * staggerDelay;
+      </motion.div>
+    );
+  };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-      className="rounded-2xl border border-[var(--accent)]/12 bg-gradient-to-b from-[var(--accent)]/[0.04] to-transparent p-5 md:p-6 space-y-4">
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+      className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 md:p-6">
 
-      {aiWorkers.length > 0 && (
+      {/* Header — quiet eyebrow + count */}
+      <div className="flex items-baseline justify-between mb-4">
         <div>
-          <p className="text-[11px] font-bold text-blue-600 mb-1.5 flex items-center gap-1">🤖 {L('AI 에이전트', 'AI Agents')} <span className="text-[var(--text-tertiary)] font-normal">({L('자동 실행', 'auto')})</span></p>
-          <div className="space-y-1.5">{aiWorkers.map((w, i) => renderRow(w, i, 0))}</div>
+          <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.14em] mb-1">
+            {L('팀 구성', 'Your Team')}
+          </div>
+          <p className="text-[14px] text-[var(--text-secondary)]">
+            {L(`${total}명이 함께 분석할 준비가 됐어요`, `${total} ready to analyze together`)}
+          </p>
         </div>
-      )}
+      </div>
 
-      {selfWorkers.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-amber-600 mb-1.5 flex items-center gap-1">🧠 {L('내가 판단', 'My Decisions')} <span className="text-[var(--text-tertiary)] font-normal">({L('세션 중', 'in-session')})</span></p>
-          <div className="space-y-1.5">{selfWorkers.map((w, i) => renderRow(w, i, aiWorkers.length))}</div>
-        </div>
-      )}
+      {/* Worker list — single flow, dividers between items */}
+      <div className="divide-y divide-[var(--border-subtle)]/60 border-y border-[var(--border-subtle)]/60">
+        {ordered.map((w, i) => renderRow(w, i))}
+      </div>
 
-      {humanWorkers.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-gray-600 mb-1.5 flex items-center gap-1">👤 {L('확인 요청', 'External')} <span className="text-[var(--text-tertiary)] font-normal">({L('이메일/슬랙', 'email/slack')})</span></p>
-          <div className="space-y-1.5">{humanWorkers.map((w, i) => renderRow(w, i, aiWorkers.length + selfWorkers.length))}</div>
-        </div>
-      )}
-
+      {/* Start button — primary CTA */}
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: teamDoneDelay + 0.2, duration: 0.5, ease: EASE }}
-        className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
+        transition={{ delay: 0.15 + total * staggerDelay, duration: 0.4, ease: EASE }}
+        className="mt-5 w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
         {L('시작', 'Start')} <ChevronRight size={14} />
       </motion.button>
@@ -2216,7 +2238,6 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 isActive={!mix}
                 showExecutionPlan
                 locale={locale}
-                team={workers.filter(w => w.persona).map(w => ({ emoji: w.persona!.emoji || '', color: w.persona!.color || '', name: w.persona!.name || '' }))}
               />
             </div>
           )}

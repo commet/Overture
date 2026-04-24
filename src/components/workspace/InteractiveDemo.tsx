@@ -1447,10 +1447,10 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
         <div className="w-16" />
       </div>
 
-      {/* Content: main (centered) + agent sidebar (floating right) */}
-      <div className="relative flex-1 overflow-hidden">
-        {/* Main column — stays centered */}
-        <div ref={scrollRef} className="h-full overflow-y-auto">
+      {/* Content: main column (scroll) + sidebar column (own space) */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Main column — grows, scrolls independently */}
+        <div ref={scrollRef} className="flex-1 h-full overflow-y-auto">
           <div className="max-w-2xl mx-auto px-5 md:px-6 py-6 space-y-5">
 
             {/* 1. Typing input */}
@@ -1472,7 +1472,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
             {/* 3. Analysis card (v0) */}
             {phaseGte(phase, 'analysis') && currentSnapshot && (
               <div ref={analysisRef} className="scroll-mt-4">
-                <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} team={scenario.team} />
+                <AnalysisCard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} locale={locale} />
               </div>
             )}
 
@@ -1717,18 +1717,19 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
           </div>
         </div>
 
-        {/* Agent sidebar — appears after analysis, floating right */}
+        {/* Agent sidebar — own column, not absolute. Reserves space so
+            main column stays stable when it appears. */}
         {phaseGte(phase, 'analysis') && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
+          <motion.aside
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5, duration: 0.6, ease: EASE }}
-            className="hidden lg:block absolute top-0 right-4 xl:right-8 w-64 xl:w-72 pt-6 h-full"
+            transition={{ delay: 0.3, duration: 0.5, ease: EASE }}
+            className="hidden lg:flex w-[280px] xl:w-[300px] shrink-0 h-full overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg)]/30 flex-col"
           >
-            <div className="sticky top-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
+            <div className="p-4">
               <DemoAgentSidebar scenario={scenario} workers={runtimeWorkers} phase={phase} visibleWorkers={visibleWorkers} locale={locale} />
             </div>
-          </motion.div>
+          </motion.aside>
         )}
       </div>
 

@@ -34,8 +34,6 @@ interface AnalysisCardProps {
   isActive?: boolean;
   showExecutionPlan?: boolean;
   locale?: 'ko' | 'en';
-  /** Team avatars for attribution */
-  team?: Array<{ emoji: string; color: string; name: string }>;
 }
 
 export function AnalysisCard({
@@ -44,7 +42,6 @@ export function AnalysisCard({
   isActive = true,
   showExecutionPlan = false,
   locale = 'ko',
-  team,
 }: AnalysisCardProps) {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const hasChanges = prevSnapshot && snapshot.version > (prevSnapshot.version ?? 0);
@@ -69,7 +66,6 @@ export function AnalysisCard({
       className="rounded-2xl">
       <div className={`rounded-2xl p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
         <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          {isActive && <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />}
           <div className="p-5 md:p-7">
             {/* Eyebrow — text-only, no pill. Presence through typography. */}
             <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-3">
@@ -208,21 +204,25 @@ export function AnalysisCard({
               </div>
             )}
 
-            {/* Execution plan footer — workspace only */}
+            {/* Execution plan footer — workspace only, neutral palette */}
             <AnimatePresence>
               {showExecutionPlan && snapshot.execution_plan && snapshot.execution_plan.steps.length > 0 && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.5, ease: EASE }} className="overflow-hidden">
                   <div className="pt-4 mt-4 border-t border-[var(--border-subtle)]">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{L('실행 계획:', 'Execution Plan:')}</span>
-                      {snapshot.execution_plan.steps.map((step, i) => (
-                        <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          step.who === 'ai' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : step.who === 'human' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'
-                        }`}>{step.task}</span>
-                      ))}
-                      <span className="text-[10px] text-[var(--text-tertiary)]">
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.12em]">{L('실행 계획', 'Execution Plan')}</span>
+                      {snapshot.execution_plan.steps.map((step, i) => {
+                        const mark = step.who === 'ai' ? 'AI' : step.who === 'human' ? L('외부', 'Ext') : L('도구', 'Tool');
+                        return (
+                          <span key={i} className="inline-flex items-baseline gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg)] border border-[var(--border-subtle)]/60">
+                            <span className="text-[var(--text-tertiary)] font-semibold text-[9px] tracking-wider">{mark}</span>
+                            <span className="text-[var(--text-secondary)]">{step.task}</span>
+                          </span>
+                        );
+                      })}
+                      <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">
                         <span className="hidden lg:inline">{L('우측 패널에서 확인 →', 'See right panel →')}</span>
-                        <span className="lg:hidden">{L('↓ 하단 팀 탭에서 진행 중', '↓ In progress in team tab below')}</span>
+                        <span className="lg:hidden">{L('↓ 하단 팀 탭에서 진행 중', '↓ In progress below')}</span>
                       </span>
                     </div>
                   </div>
