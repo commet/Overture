@@ -370,11 +370,11 @@ function MixPreview({ mix, dm, onDM, onSkip, busy, cmReview, debateResult }: { m
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
-      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-transparent">
-        <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          <div className="h-[2px]" style={{ background: 'var(--gradient-gold)' }} />
-          <div className="p-5 md:p-10 space-y-6">
-            <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] rounded-full bg-[var(--accent)]/8 px-3 py-1">{L('초안', 'Draft')}</span>
+      <div className="rounded-2xl p-[1px] bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5">
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+          <div className="p-5 md:p-7 space-y-6">
+            {/* Eyebrow — text-only, matches AnalysisCard */}
+            <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">{L('초안', 'Draft')}</div>
             <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--text-primary)] leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{mix.title}</h2>
             <blockquote className="border-l-[3px] border-[var(--accent)]/20 pl-5 text-[15px] text-[var(--text-secondary)] italic leading-relaxed">{renderInline(mix.executive_summary)}</blockquote>
 
@@ -496,9 +496,9 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
       </motion.div>
 
     <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
-      <div className="rounded-2xl md:rounded-[2rem] p-[1px] bg-[var(--border-subtle)]">
-        <div className="rounded-[calc(1rem-1px)] md:rounded-[calc(2rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
-          <div className="p-5 md:p-10 space-y-6">
+      <div className="rounded-2xl p-[1px] bg-[var(--border-subtle)]">
+        <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
+          <div className="p-5 md:p-7 space-y-6">
             {/* Reviewer — larger avatar like demo */}
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-[var(--accent)]/8 flex items-center justify-center text-[18px] font-bold text-[var(--accent)]">{initial}</div>
@@ -513,11 +513,11 @@ function DMFeedback({ fb, onToggle, onFinalize, onDeepen, busy }: { fb: import('
               &ldquo;{fb.first_reaction}&rdquo;
             </blockquote>
 
-            {/* Good parts — prominent, not secondary */}
+            {/* Good parts — neutral palette for consistency */}
             {fb.good_parts.length > 0 && (
-              <div className="rounded-xl bg-green-50/60 dark:bg-green-950/20 border border-green-200/30 dark:border-green-800/20 px-4 py-3.5">
-                <p className="text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-[0.2em] mb-2.5">{L('잘한 점', 'Strengths')}</p>
-                {fb.good_parts.map((g, i) => <p key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2.5 mb-2 last:mb-0 leading-relaxed"><span className="text-green-500 shrink-0 mt-0.5 text-[14px]">&#10003;</span>{g}</p>)}
+              <div className="rounded-xl bg-[var(--bg)]/50 px-4 py-3.5">
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.15em] mb-2.5">{L('잘한 점', 'Strengths')}</p>
+                {fb.good_parts.map((g, i) => <p key={i} className="text-[13px] text-[var(--text-primary)] flex items-start gap-2.5 mb-2 last:mb-0 leading-relaxed"><span className="text-[var(--accent)] shrink-0 mt-0.5 text-[12px]">&#10003;</span>{g}</p>)}
               </div>
             )}
 

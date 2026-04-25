@@ -449,8 +449,8 @@ export const WorkerReportBlock = memo(function WorkerReportBlock({
                   Lv.{agentLevel}
                 </span>
               )}
-              {isApproved && <span className="ml-2 text-[11px] text-emerald-600 font-medium">{L('반영', 'Applied')}</span>}
-              {isRejected && <span className="ml-2 text-[11px] text-red-500 font-medium">{L('제외', 'Excluded')}</span>}
+              {isApproved && <span className="ml-2 text-[11px] text-[var(--accent)] font-medium">{L('반영', 'Applied')}</span>}
+              {isRejected && <span className="ml-2 text-[11px] text-[var(--text-tertiary)] font-medium">{L('제외', 'Excluded')}</span>}
             </p>
             {/* Task name */}
             <p className="text-[11px] text-[var(--accent)] mt-0.5">{worker.task}</p>
