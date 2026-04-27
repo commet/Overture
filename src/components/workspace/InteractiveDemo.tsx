@@ -1739,7 +1739,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
       }`}>
         {/* Phase progress dots */}
         <div className="max-w-2xl mx-auto px-5 pt-3 flex items-center justify-center gap-1.5">
-          {(locale === 'ko' ? ['상황 파악', '팀 작업', '검증 선택', '피드백', '완성'] : ['Analysis', 'Team Work', 'Validation', 'Feedback', 'Done']).map((label, i) => {
+          {(locale === 'ko' ? ['상황', '팀', '검증', '피드백', '완성'] : ['Analysis', 'Team', 'Validate', 'Feedback', 'Done']).map((label, i) => {
             const milestones: DemoPhase[] = ['analysis', 'workers', 'q2', 'dm', 'final'];
             const reached = phaseGte(phase, milestones[i]);
             const current = i === milestones.findIndex(m => !phaseGte(phase, m)) || (isDone && i === milestones.length - 1);

@@ -387,7 +387,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
               {projects.length === 0 && (
                 <div className="mt-12 pt-8 border-t border-[var(--border-subtle)]/60 text-center">
                   <p className="text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
-                    {locale === 'ko' ? <>상황을 알려주시면 AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation — an AI team will analyze, draft,<br className="hidden md:block" />and simulate decision-maker reactions.</>}
+                    {locale === 'ko' ? <>상황을 알려주시면 AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" /> 의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation — an AI team will analyze, draft,<br className="hidden md:block" /> and simulate decision-maker reactions.</>}
                   </p>
                 </div>
               )}
