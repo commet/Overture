@@ -18,6 +18,18 @@ import type { Stage } from '@/data/voyage-crew';
 type Locale = 'ko' | 'en';
 
 const HORIZON_Y = 280;
+const VB_W = 1200;
+const VB_H = 680;
+
+// Five waypoint positions — receding from foreground (left, bigger) to
+// horizon (right, tiny + gold). The path is a curve to imply distance.
+const PATH = [
+  { x: 240, y: 540, scale: 1.0 },
+  { x: 380, y: 460, scale: 0.85 },
+  { x: 540, y: 380, scale: 0.7 },
+  { x: 720, y: 320, scale: 0.55 },
+  { x: 920, y: 285, scale: 0.45 }, // Synthesis — at Ithaca
+];
 
 export function HelmScene({
   stages,
@@ -28,20 +40,15 @@ export function HelmScene({
   locale: Locale;
   className?: string;
 }) {
-  // Five waypoint positions — receding from foreground (left, bigger) to
-  // horizon (right, tiny + gold). The path is a curve to imply distance.
-  const path = [
-    { x: 240, y: 540, scale: 1.0 },
-    { x: 380, y: 460, scale: 0.85 },
-    { x: 540, y: 380, scale: 0.7 },
-    { x: 720, y: 320, scale: 0.55 },
-    { x: 920, y: 285, scale: 0.45 }, // Synthesis — at Ithaca
-  ];
+  const path = PATH;
 
+  // Overlay labels are HTML positioned by viewBox-percentage so they stay
+  // viewport-fixed in size. Inside the SVG, text would scale with the
+  // illustration and become unreadable on mobile (~2px on 375px viewport).
   return (
+    <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
     <svg
-      className={className}
-      viewBox="0 0 1200 680"
+      viewBox={`0 0 ${VB_W} ${VB_H}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ color: 'var(--bp-ink)', width: '100%', height: '100%', display: 'block' }}
       role="img"
@@ -80,19 +87,7 @@ export function HelmScene({
         strokeWidth="0.7"
         opacity="0.9"
       />
-      <text
-        x="940"
-        y="232"
-        textAnchor="middle"
-        style={{
-          font: '500 9.5px var(--font-mono), monospace',
-          fill: 'var(--bp-gold-deep)',
-          letterSpacing: '0.32em',
-          textTransform: 'uppercase',
-        }}
-      >
-        Ithaca
-      </text>
+      {/* Ithaca label rendered as HTML overlay (see below) for mobile readability */}
 
       {/* ── Horizon line + dawn glow ── */}
       <line x1="0" y1={HORIZON_Y} x2="1200" y2={HORIZON_Y} stroke="currentColor" strokeWidth="0.6" opacity="0.4" />
@@ -227,47 +222,7 @@ export function HelmScene({
                 stroke={isFinal ? 'var(--bp-gold-deep)' : 'currentColor'}
                 strokeWidth="1"
               />
-              {/* Number */}
-              {!isFinal && (
-                <text
-                  x={p.x}
-                  y={p.y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  style={{
-                    font: '600 9.5px var(--font-mono), monospace',
-                    fill: 'var(--bp-ink)',
-                  }}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </text>
-              )}
-              {/* Label */}
-              <text
-                x={p.x}
-                y={p.y + labelOffset + 4}
-                textAnchor="middle"
-                style={{
-                  font: `600 ${12 * p.scale}px var(--font-mono), monospace`,
-                  fill: isFinal ? 'var(--bp-gold-deep)' : 'var(--bp-ink)',
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {stage.label[locale]}
-              </text>
-              <text
-                x={p.x}
-                y={p.y + labelOffset + 18 * p.scale}
-                textAnchor="middle"
-                style={{
-                  font: `400 ${10 * p.scale}px var(--font-mono), monospace`,
-                  fill: 'var(--bp-ink-soft)',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {stage.subtitle[locale]}
-              </text>
+              {/* Number + label rendered as HTML overlay (see below) for mobile readability */}
             </g>
           );
         })}
@@ -326,20 +281,113 @@ export function HelmScene({
         </g>
       </g>
 
-      {/* ── A tiny mono caption ── */}
-      <text
-        x={600}
-        y={660}
-        textAnchor="middle"
-        style={{
-          font: '500 10px var(--font-mono), monospace',
-          fill: 'var(--bp-ink-soft)',
-          letterSpacing: '0.32em',
-          textTransform: 'uppercase',
-        }}
-      >
-        ⌐ at the helm
-      </text>
+      {/* "at the helm" caption rendered as HTML overlay (see below) for mobile readability */}
     </svg>
+
+    {/* ─────────── HTML overlay labels (viewport-fixed font sizes) ─────────── */}
+    {/* Positioned by viewBox-percentage so they sit on top of the SVG correctly. */}
+    {/* Ithaca label */}
+    <span
+      className="bp-mono"
+      style={{
+        position: 'absolute',
+        left: `${(940 / VB_W) * 100}%`,
+        top: `${(218 / VB_H) * 100}%`,
+        transform: 'translateX(-50%)',
+        color: 'var(--bp-gold-deep)',
+        fontSize: 'clamp(10px, 1vw, 12px)',
+        letterSpacing: '0.32em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+      }}
+    >
+      Ithaca
+    </span>
+
+    {/* Five waypoint labels — number badge + label + subtitle */}
+    {path.map((p, i) => {
+      const stage = stages[i];
+      if (!stage) return null;
+      const isFinal = i === stages.length - 1;
+      const labelOffsetPct = ((p.y + 22 * p.scale + 4) / VB_H) * 100;
+      return (
+        <div
+          key={stage.id}
+          style={{
+            position: 'absolute',
+            left: `${(p.x / VB_W) * 100}%`,
+            top: `${labelOffsetPct}%`,
+            transform: 'translateX(-50%)',
+            textAlign: 'center',
+            pointerEvents: 'none',
+            // Scale label group with perspective: distant labels slightly smaller
+            fontSize: `clamp(${(8 * p.scale).toFixed(1)}px, ${(0.85 * p.scale).toFixed(2)}vw, ${(11 * p.scale).toFixed(1)}px)`,
+            lineHeight: 1.2,
+          }}
+        >
+          {!isFinal && (
+            <div
+              className="bp-mono"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: `-${(p.y + 22 * p.scale - p.y) / VB_H * 100}%`,
+                transform: 'translate(-50%, -100%)',
+                color: 'var(--bp-ink)',
+                fontSize: 'inherit',
+                fontWeight: 600,
+              }}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </div>
+          )}
+          <div
+            className="bp-mono"
+            style={{
+              color: isFinal ? 'var(--bp-gold-deep)' : 'var(--bp-ink)',
+              fontWeight: 600,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {stage.label[locale]}
+          </div>
+          <div
+            className="bp-mono"
+            style={{
+              color: 'var(--bp-ink-soft)',
+              fontWeight: 400,
+              letterSpacing: '0.04em',
+              marginTop: 2,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {stage.subtitle[locale]}
+          </div>
+        </div>
+      );
+    })}
+
+    {/* "at the helm" caption */}
+    <span
+      className="bp-mono"
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: `${(660 / VB_H) * 100}%`,
+        transform: 'translateX(-50%)',
+        color: 'var(--bp-ink-soft)',
+        fontSize: 'clamp(9px, 0.9vw, 11px)',
+        letterSpacing: '0.32em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+      }}
+    >
+      ⌐ at the helm
+    </span>
+    </div>
   );
 }

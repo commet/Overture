@@ -10,6 +10,7 @@ import { track } from '@/lib/analytics';
 export function ScrollTracker() {
   const firedRef = useRef(new Set<number>());
   const entryRef = useRef(Date.now());
+  const exitFiredRef = useRef(false);
 
   useEffect(() => {
     const milestones = [25, 50, 75, 100];
@@ -28,18 +29,29 @@ export function ScrollTracker() {
       }
     };
 
-    const onUnload = () => {
+    // beforeunload is unreliable on mobile (especially iOS) and won't fire when
+    // the page is BFCache-restored. pagehide + visibilitychange("hidden") is
+    // the standard pair for capturing "user left" across all platforms.
+    const fireExit = () => {
+      if (exitFiredRef.current) return;
+      exitFiredRef.current = true;
       track('landing_exit', {
-        max_scroll: Math.max(...firedRef.current, 0),
+        max_scroll: Math.max(...Array.from(firedRef.current), 0),
         time_ms: Date.now() - entryRef.current,
       });
     };
 
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') fireExit();
+    };
+
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('beforeunload', onUnload);
+    window.addEventListener('pagehide', fireExit);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('beforeunload', onUnload);
+      window.removeEventListener('pagehide', fireExit);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 

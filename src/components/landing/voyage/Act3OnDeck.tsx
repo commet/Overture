@@ -39,7 +39,7 @@ export function Act3OnDeck() {
 
         <h2
           id="ondeck-heading"
-          className="bp-fade-up text-center mt-8 md:mt-10 max-w-3xl mx-auto break-keep"
+          className={`bp-fade-up text-center mt-8 md:mt-10 max-w-3xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
           style={{
             fontFamily: 'var(--font-display)',
             color: 'var(--bp-ink)',

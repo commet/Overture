@@ -2575,3 +2575,11 @@ button, a, input, textarea {
     animation: none;
   }
 }
+
+/* SVG annotation text inside the cutaway is unreadable on mobile
+   (renders at 1.5–3px once the viewBox scales down). Hide on small
+   viewports — the StationCards below carry the same information at
+   viewport-fixed font sizes. */
+@media (max-width: 640px) {
+  .cutaway-annotation { display: none; }
+}

@@ -53,7 +53,7 @@ export function Act1Voyage() {
         <div className="text-center max-w-4xl mx-auto mt-6 md:mt-10">
           <h1
             id="voyage-heading"
-            className="bp-fade-up break-keep"
+            className={`bp-fade-up ${locale === 'ko' ? 'break-keep' : ''}`}
             style={{
               fontFamily: 'var(--font-display)',
               color: 'var(--bp-ink)',
@@ -82,7 +82,7 @@ export function Act1Voyage() {
           </h1>
 
           <p
-            className="bp-fade-up mt-6 md:mt-8 max-w-2xl mx-auto break-keep"
+            className={`bp-fade-up mt-6 md:mt-8 max-w-2xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
             style={{
               color: 'var(--bp-ink-soft)',
               fontSize: 'clamp(15px, 1.2vw, 18px)',
@@ -102,18 +102,16 @@ export function Act1Voyage() {
           >
             <a
               href="#orchestration"
-              className="bp-mono"
+              className="bp-mono inline-flex items-center"
               style={{
                 color: 'var(--bp-ink)',
                 fontSize: 11.5,
                 letterSpacing: '0.22em',
                 textTransform: 'uppercase',
                 borderBottom: '1px solid var(--bp-ink)',
-                paddingBottom: 2,
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('orchestration')?.scrollIntoView({ behavior: 'smooth' });
+                paddingBottom: 4,
+                paddingTop: 12,
+                minHeight: 44,
               }}
             >
               {L('배 안을 보기', 'See the vessel inside')}

@@ -3,14 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { useLocale } from '@/hooks/useLocale';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useLocaleSwitch } from '@/hooks/useLocaleSwitch';
 
 export function LandingHeader() {
-  const locale = useLocale();
+  const { locale, switchTo: handleLocaleChange } = useLocaleSwitch();
   const L = (ko: string, en: string) => (locale === 'ko' ? ko : en);
   const { user, loading } = useAuth();
-  const { updateSettings } = useSettingsStore();
 
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -19,12 +17,6 @@ export function LandingHeader() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const handleLocaleChange = (next: 'ko' | 'en') => {
-    if (next === locale) return;
-    updateSettings({ language: next });
-    window.location.reload();
-  };
 
   return (
     <header
@@ -38,8 +30,12 @@ export function LandingHeader() {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         <div className="h-14 md:h-16 flex items-center justify-between">
-          {/* Wordmark */}
-          <Link href="/" className="flex items-baseline gap-2 group">
+          {/* Wordmark — min 44px hit area for mobile */}
+          <Link
+            href="/"
+            className="flex items-baseline gap-2 group"
+            style={{ padding: '12px 4px 12px 0', marginLeft: -4 }}
+          >
             <span
               style={{
                 fontFamily: 'var(--font-display)',
@@ -80,7 +76,8 @@ export function LandingHeader() {
                 onClick={() => handleLocaleChange('ko')}
                 className="bp-mono cursor-pointer transition-colors"
                 style={{
-                  padding: '4px 10px',
+                  padding: '12px 14px',
+                  minHeight: 44,
                   fontSize: 10.5,
                   letterSpacing: '0.18em',
                   background: locale === 'ko' ? 'var(--bp-ink)' : 'transparent',
@@ -94,7 +91,8 @@ export function LandingHeader() {
                 onClick={() => handleLocaleChange('en')}
                 className="bp-mono cursor-pointer transition-colors"
                 style={{
-                  padding: '4px 10px',
+                  padding: '12px 14px',
+                  minHeight: 44,
                   fontSize: 10.5,
                   letterSpacing: '0.18em',
                   background: locale === 'en' ? 'var(--bp-ink)' : 'transparent',
@@ -106,17 +104,19 @@ export function LandingHeader() {
               </button>
             </div>
 
-            {/* Auth area */}
+            {/* Auth area — min 44px tap area */}
             {!loading && (
               user ? (
                 <Link
                   href="/workspace"
-                  className="bp-mono transition-opacity hover:opacity-70"
+                  className="bp-mono transition-opacity hover:opacity-70 inline-flex items-center"
                   style={{
                     color: 'var(--bp-ink)',
                     fontSize: 11,
                     letterSpacing: '0.16em',
                     textTransform: 'uppercase',
+                    padding: '12px 6px',
+                    minHeight: 44,
                   }}
                 >
                   {L('워크스페이스 →', 'Workspace →')}
@@ -124,12 +124,14 @@ export function LandingHeader() {
               ) : (
                 <Link
                   href="/login"
-                  className="bp-mono transition-opacity hover:opacity-70"
+                  className="bp-mono transition-opacity hover:opacity-70 inline-flex items-center"
                   style={{
                     color: 'var(--bp-ink-soft)',
                     fontSize: 11,
                     letterSpacing: '0.16em',
                     textTransform: 'uppercase',
+                    padding: '12px 6px',
+                    minHeight: 44,
                   }}
                 >
                   {L('로그인', 'Sign In')}

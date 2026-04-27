@@ -49,7 +49,7 @@ export function Act2Cutaway() {
 
         <h2
           id="cutaway-heading"
-          className="bp-fade-up text-center mt-8 md:mt-10 max-w-3xl mx-auto break-keep"
+          className={`bp-fade-up text-center mt-8 md:mt-10 max-w-3xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
           style={{
             fontFamily: 'var(--font-display)',
             color: 'var(--bp-ink)',
@@ -76,7 +76,7 @@ export function Act2Cutaway() {
         </h2>
 
         <p
-          className="bp-fade-up text-center mt-6 max-w-xl mx-auto break-keep"
+          className={`bp-fade-up text-center mt-6 max-w-xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
           style={{
             color: 'var(--bp-ink-soft)',
             fontSize: 'clamp(14px, 1.05vw, 16px)',
@@ -112,17 +112,33 @@ export function Act2Cutaway() {
           }}
         >
           {orderedDivisions.map((division, idx) => (
-            <div
+            <button
               key={division.id}
+              type="button"
               onMouseEnter={() => setActive(division.id)}
               onMouseLeave={() => setActive(null)}
+              // Touch path: tap activates (mouseenter doesn't fire on touch).
+              // Desktop click fires after hover already set it — same value, no-op visually.
+              onClick={() => setActive(division.id)}
+              aria-pressed={active === division.id}
               style={{
                 opacity: active && active !== division.id ? 0.55 : 1,
                 transition: 'opacity 200ms ease',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                textAlign: 'left',
+                cursor: 'pointer',
+                width: '100%',
               }}
             >
-              <StationCard division={division} locale={locale} number={idx + 1} />
-            </div>
+              <StationCard
+                division={division}
+                locale={locale}
+                number={idx + 1}
+                active={active === division.id}
+              />
+            </button>
           ))}
         </div>
       </div>

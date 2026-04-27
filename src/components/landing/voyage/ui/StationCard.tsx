@@ -8,7 +8,6 @@
  * shadow so the system reveal is interactive without being noisy.
  */
 
-import { useState } from 'react';
 import { Cartouche } from './Cartouche';
 import type { CrewDivision } from '@/data/voyage-crew';
 
@@ -18,20 +17,16 @@ export function StationCard({
   division,
   locale,
   number,           // 01..05 in cutaway order
+  active = false,   // controlled by parent (lifted state for cutaway sync)
 }: {
   division: CrewDivision;
   locale: Locale;
   number: number;
+  active?: boolean;
 }) {
-  const [hover, setHover] = useState(false);
-
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{ width: '100%' }}
-    >
-      <Cartouche padding={18} active={hover}>
+    <div style={{ width: '100%' }}>
+      <Cartouche padding={18} active={active}>
         {/* Top row: index + count badge */}
         <div
           className="bp-mono"

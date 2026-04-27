@@ -77,6 +77,11 @@ function StationMarker({
       data-station={station.id}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      onClick={(e) => {
+        // Touch path: tap activates (mouseenter doesn't fire on touch).
+        e.stopPropagation();
+        onEnter();
+      }}
       style={{ cursor: 'pointer' }}
     >
       {/* Outer ring */}
@@ -99,6 +104,7 @@ function StationMarker({
         strokeWidth="1.2"
       />
       <text
+        className="cutaway-annotation"
         x={station.cx}
         y={station.cy}
         textAnchor="middle"
@@ -153,6 +159,7 @@ export function ShipCutaway({
       <line x1="60" y1="46" x2="220" y2="46" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
       <line x1="980" y1="46" x2="1140" y2="46" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
       <text
+        className="cutaway-annotation"
         x="600"
         y="50"
         textAnchor="middle"
@@ -261,6 +268,7 @@ export function ShipCutaway({
         ))}
       </g>
       <text
+        className="cutaway-annotation"
         x={286}
         y={394}
         textAnchor="middle"
@@ -282,6 +290,7 @@ export function ShipCutaway({
         <line x1="0" y1="6" x2="2.5" y2="13" stroke="currentColor" strokeWidth="0.8" />
       </g>
       <text
+        className="cutaway-annotation"
         x={316}
         y={362}
         textAnchor="middle"

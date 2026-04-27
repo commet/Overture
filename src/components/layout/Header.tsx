@@ -7,11 +7,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { RateLimitBadge } from '@/components/ui/RateLimitBadge';
 import { SyncStatus } from '@/components/ui/SyncStatus';
-import { useLocale } from '@/hooks/useLocale';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useLocaleSwitch } from '@/hooks/useLocaleSwitch';
 
 export function Header() {
-  const locale = useLocale();
+  const { locale, switchTo: handleLocaleChange } = useLocaleSwitch();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
   const navItems: Array<{ href: string; label: string; primary?: boolean; requiresAuth?: boolean }> = [
@@ -23,18 +22,16 @@ export function Header() {
     { href: '/settings', label: L('설정', 'Settings') },
   ];
 
-  const { updateSettings } = useSettingsStore();
-  const handleLocaleChange = (next: 'ko' | 'en') => {
-    if (next === locale) return;
-    updateSettings({ language: next });
-    window.location.reload();
-  };
-
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
 
-  // Landing page renders its own minimal header (LandingHeader)
+  // Landing page renders its own minimal header (LandingHeader). This bail
+  // exists because <Header /> is rendered globally from layout.tsx; the
+  // alternative — moving header rendering into LayoutShell — would couple
+  // landing-vs-app routing to a single component without changing the
+  // visual divergence here, so we keep the bail until both headers share
+  // primitive components worth lifting.
   const isLanding = pathname === '/';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
