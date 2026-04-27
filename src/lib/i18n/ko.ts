@@ -342,6 +342,8 @@ export const ko = {
   'boss.shareIntro': '{emoji} {typeCode} 팀장한테 "{situation}" 해봤는데',
   'boss.shareVerdict': '{emoji} 결과: {label}',
   'boss.shareInvite': '너네 팀장은 뭐 유형이야? ㅋㅋ',
+  'boss.signatureLabel': '입버릇',
+  'boss.kyeolLabel': '결',
   'boss.innerCollapse': '속마음 접기',
   'boss.innerView': '지난 속마음 보기',
   'boss.totalEntries': '· 전체 {n}개',

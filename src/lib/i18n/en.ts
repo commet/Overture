@@ -324,6 +324,8 @@ export const en: Record<TranslationKey, string> = {
   'boss.shareIntro': '{emoji} Asked a {typeCode} manager: "{situation}"',
   'boss.shareVerdict': '{emoji} Verdict: {label}',
   'boss.shareInvite': "What type is your manager? lol",
+  'boss.signatureLabel': 'Catchphrase',
+  'boss.kyeolLabel': 'Read',
   'boss.innerCollapse': 'Collapse inner thoughts',
   'boss.innerView': 'Show previous inner thoughts',
   'boss.totalEntries': '· {n} total',

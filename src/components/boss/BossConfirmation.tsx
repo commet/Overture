@@ -6,6 +6,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
 import type { PersonalityType } from '@/lib/boss/personality-types';
 import { SajuPreview } from './SajuPreview';
+import { composeKyeol } from '@/lib/boss/kyeol';
 
 interface BossConfirmationProps {
   typeData: PersonalityType;
@@ -48,6 +49,7 @@ export function BossConfirmation({
   }, []);
 
   const hasBirth = birthYear >= 1940;
+  const kyeol = hasBirth ? composeKyeol(birthYear, locale) : null;
 
   return (
     <motion.div
@@ -88,6 +90,14 @@ export function BossConfirmation({
         {hasBirth && (
           <div style={{ marginBottom: 18 }}>
             <SajuPreview year={birthYear} month={birthMonth} day={birthDay} />
+            {kyeol && (
+              <p style={{
+                marginTop: 10, fontSize: 12, color: 'var(--text-secondary)',
+                fontStyle: 'italic', lineHeight: 1.5, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto',
+              }}>
+                {kyeol.line}
+              </p>
+            )}
             {sajuLoading && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
                 <Loader2 size={11} className="animate-spin" />

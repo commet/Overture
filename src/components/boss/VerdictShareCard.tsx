@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 import { getPersonalityType } from '@/lib/boss/personality-types';
 import { useBossStore } from '@/stores/useBossStore';
+import { useLocale } from '@/hooks/useLocale';
+import { composeKyeol } from '@/lib/boss/kyeol';
 import { t } from '@/lib/i18n';
 
 interface VerdictShareCardProps {
@@ -42,18 +44,23 @@ function findBestQuote(messages: Array<{ role: string; content: string }>): stri
 
 export function VerdictShareCard({ verdict, typeCode, situation, onClose }: VerdictShareCardProps) {
   const [copied, setCopied] = useState(false);
+  const locale = useLocale();
   const type = getPersonalityType(typeCode);
   const messages = useBossStore(s => s.messages);
+  const birthYear = useBossStore(s => s.birthYear);
 
   const bestQuote = findBestQuote(messages);
   const situationShort = situation.length > 25 ? situation.slice(0, 25) + '...' : situation;
+  const signature = type?.speechPatterns?.[0] ?? '';
+  const kyeol = birthYear ? composeKyeol(birthYear, locale) : null;
 
   // Share text — natural when pasted into a chat
   const verdictLabel = VERDICT_LABEL_KEY[verdict.verdict] ? t(VERDICT_LABEL_KEY[verdict.verdict]) : verdict.verdict;
+  const signatureLine = signature ? `\n${t('boss.signatureLabel')}: "${signature}"` : '';
   const shareText = `${t('boss.shareIntro', { emoji: type?.emoji || '👔', typeCode, situation: situationShort })}
 
 "${bestQuote || verdict.reason}"
-
+${signatureLine}
 ${t('boss.shareVerdict', { emoji: VERDICT_EMOJI[verdict.verdict], label: verdictLabel })}
 
 ${t('boss.shareInvite')}
@@ -98,6 +105,12 @@ ${t('boss.shareInvite')}
           </div>
         </div>
 
+        {kyeol && (
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px', fontStyle: 'italic' }}>
+            {kyeol.line}
+          </p>
+        )}
+
         {/* The quote — the star of the card */}
         {bestQuote && (
           <div style={{
@@ -114,11 +127,18 @@ ${t('boss.shareInvite')}
         )}
 
         {/* Verdict — secondary, not primary */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: signature ? 10 : 0 }}>
           <span style={{ fontSize: 14 }}>{VERDICT_EMOJI[verdict.verdict]}</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{verdictLabel}</span>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>— {verdict.reason.length > 30 ? verdict.reason.slice(0, 30) + '...' : verdict.reason}</span>
         </div>
+
+        {signature && (
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
+            <span style={{ fontWeight: 700, marginRight: 6 }}>{t('boss.signatureLabel')}</span>
+            &ldquo;{signature}&rdquo;
+          </p>
+        )}
       </div>
 
       {/* Copy button — prominent */}
