@@ -38,13 +38,22 @@ export function Header() {
   const [darkMode, setDarkMode] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Theme initialization
+  // Theme initialization + cross-tab sync
   useEffect(() => {
     const saved = localStorage.getItem('overture-theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDark = saved === 'dark' || (!saved && prefersDark);
     setDarkMode(isDark);
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== 'overture-theme' || e.newValue == null) return;
+      const nextDark = e.newValue === 'dark';
+      setDarkMode(nextDark);
+      document.documentElement.setAttribute('data-theme', nextDark ? 'dark' : 'light');
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const toggleTheme = () => {

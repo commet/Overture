@@ -664,7 +664,15 @@ function WorkspaceContent() {
                     <ChevronRight size={12} className="text-[var(--text-tertiary)] mx-1" />
                   )}
                   <button
-                    onClick={() => handleNavigate(step.id)}
+                    ref={(el) => {
+                      if (el && isActive) {
+                        el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                      }
+                    }}
+                    onClick={(e) => {
+                      handleNavigate(step.id);
+                      (e.currentTarget as HTMLButtonElement).scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
                       isActive
                         ? 'bg-[var(--bg)] shadow-[var(--shadow-xs)] text-[var(--text-primary)]'
