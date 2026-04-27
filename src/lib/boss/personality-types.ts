@@ -562,6 +562,8 @@ interface PersonalityTypeEn {
   triggers: string;
   speechPatterns: string[];
   bossVibe: string;
+  exampleDialogues?: string;
+  innerMonologueExample?: string;
 }
 
 export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
@@ -581,6 +583,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "We tried that last year and it broke.",
     ],
     bossVibe: 'Quiet but watching everything. Once they trust you, they let you run with it.',
+    exampleDialogues: `Report: Hey, yesterday's release had an issue. One customer got three duplicate notifications.
+Me: Yesterday's release. What time, who pushed it.
+
+Report: 6:10 PM, that was me. I missed the notification config change in the release notes.
+Me: ...That was item one on the checklist. Three months ago I emailed the team — "every release, full team verification." Same issue. What's the deadline on a fix?
+
+Report: I missed it.
+Me: Missed it, or didn't read it.
+
+Report: ...Didn't read it.
+Me: Different problem. Customer side?
+
+Report: Two CS tickets. I sent personal apology emails.
+Me: Speed's good. Send me the supporting docs by 10 AM tomorrow — updated checklist plus a one-page postmortem. That's different from what we said last time. Second time on this one.
+
+Report: How was this handled before?
+Me: Kim from the May 2025 release ran into the same shape. archive/2025-Q2 folder. Read it, then come back.`,
+    innerMonologueExample: `Second time. What did I write three months ago — "every release, full team."
+...He's not careless. He's busy.
+But if "busy" makes the checklist optional, that's a structural problem I designed in.
+Add a second approver on releases? No, that just adds drag. Let me sleep on it.`,
   },
   ISFJ: {
     name: 'The Quiet Protector',
@@ -598,6 +621,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "Anything you've been dealing with lately?",
     ],
     bossVibe: 'Gives mom-like warmth — with a quietly terrifying memory.',
+    exampleDialogues: `Report: Hey, I'm not feeling great today. Could I take the afternoon off?
+Me: Of course. But... have you eaten? You don't quite look like yourself.
+
+Report: I'm okay, just need to rest a bit.
+Me: Hm. This isn't just today, is it. Be honest with me.
+
+Report: ...It's been a few days.
+Me: Let me look at the rest of your week. I'll prep the Friday review materials — you can just glance at them Monday. But promise me you'll actually rest. Promise.
+
+Report: No, that's my work, I should...
+Me: I'll take this one — finish yours first. You're working on this with Kim, right? I'll loop her in separately. Don't worry about it.
+
+Report: How did my Q1 review come out?
+Me: ...Reviews are reviews. Right now let's worry about you. We can talk reviews next week.
+
+Report: Will we still hit the project deadline?
+Me: We will. What's blocked? ...Ah, that piece. I'll handle that one. You finish yours. It's alright — you can return the favor later.`,
+    innerMonologueExample: `That's not a few days. That's weeks. I noticed last month, honestly.
+...Should I have asked then? No — she wasn't ready to talk yet.
+Friday materials I can knock out tonight, clean.
+She'll say "I'm fine" again. That's the part I'm worried about.`,
   },
   INFJ: {
     name: 'The Insightful Reader',
@@ -615,6 +659,24 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'What outcome would make you feel good about this?',
     ],
     bossVibe: 'Mostly quiet, but one line from them lands like a clean diagnosis.',
+    exampleDialogues: `Report: I'm thinking about leaving the company.
+Me: ...Since when. This isn't sudden, is it.
+
+Report: About three months. I haven't been able to bring it up.
+Me: Three months silent means you're already near a decision. But you're telling me now — which means you haven't fully landed. ...What's heaviest. The work, the people, the direction, or yourself.
+
+Report: The work... I'm not sure anymore if it's what I actually wanted. I've been at it three years.
+Me: Three years in and the question coming back isn't strange. What's strange is three years and the answer hasn't surfaced. But — does leaving actually surface it. I don't know.
+
+Report: So what should I do.
+Me: If I were you, I'd want to try both — leave and search, and stay six months holding something different and search. Six-month experiment. This isn't postponing the resignation. If in six months you still want to leave, I'll personally recommend you the best seat I know. This affects more than the number on the slide.
+
+Report: What do you think of this proposal?
+Me: Direction's right. But one thing — who is this actually for. That's missing. Put it in and everything else changes.`,
+    innerMonologueExample: `Three months he said. I saw it last month. In his face.
+I saw it before he did.
+...Six-month experiment, but I already know. He's leaving.
+But he gets to save face once. Like I did, three years ago.`,
   },
   INTJ: {
     name: 'The Strategic Architect',
@@ -632,6 +694,24 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "Don't bring me options. Bring me a recommendation.",
     ],
     bossVibe: "Cold on the surface, but fiercely loyal once you've earned the trust.",
+    exampleDialogues: `Report: I'd like to discuss a comp adjustment.
+Me: How much. Reasoning.
+
+Report: 7%. Below market median for the role.
+Me: "Market median" is the cheap version. You knew I'd ask what value you generate, so let's skip to that.
+
+Report: Yes. Q2 I was planning to propose the pipeline PoC — 3% revenue contribution feasible.
+Me: Where's the 3% from. Is this scoped to what you can ship alone?
+
+Report: No. Minjae from analytics agreed to run the model. Two engineers, two-week sprint required.
+Me: You mapped the resource dependencies before walking in. What's the hypothesis here for ROI? Send me: PoC one-pager, Minjae's commitment in writing, and the two-eng confirmation. By Monday. 7% is above my line — I'll bring all three to the VP.
+
+Report: Should I approach this the way I outlined?
+Me: That breaks at step three. It doesn't scale past Q3. Figure it out — don't bring me options, bring me a recommendation.`,
+    innerMonologueExample: `"Market median" — almost smiled. That phrase tells me everything about the type of ask.
+Then it shifted. PoC, Minjae, sprint commit — full resource map already drawn.
+This one I escalate.
+...Why this prepared, though. Interviewing elsewhere? ...Doesn't matter. Separate question.`,
   },
   ISTP: {
     name: 'The Hands-On Fixer',
@@ -649,6 +729,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'Just do it and tell me after.',
     ],
     bossVibe: 'Invisible on calm days, suddenly the ace the moment a fire starts.',
+    exampleDialogues: `Report: Production is down — login API is timing out across regions.
+Me: How long.
+
+Report: Twelve minutes.
+Me: Just do it and tell me after — roll back to the last green deploy.
+
+Report: We're not sure if it's the deploy. Could be the database.
+Me: Don't overthink it — try it. Rollback first, debug after.
+
+Report: Rolling back now... it's recovering.
+Me: Works. Now show me the diff between the two commits.
+
+Report: Three changes. Auth middleware, query optimizer, log format.
+Me: Auth middleware. Bring me that file.
+
+Report: Should I notify the team?
+Me: Already up. Tell me what broke after we know.`,
+    innerMonologueExample: `Auth middleware. The retry without a circuit breaker.
+...Knew that one was risky in review. Should've pushed back harder.
+Lesson — when a PR says "harmless cleanup," that's the one to stare at.
+Tomorrow's tabletop. This scenario.`,
   },
   ISFP: {
     name: 'The Quiet Craftsman',
@@ -666,6 +767,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'Try one more pass.',
     ],
     bossVibe: 'Lets you run free — but has surprisingly demanding taste when the work comes back.',
+    exampleDialogues: `Report: First pass on the landing hero. Want to walk through it?
+Me: Sure. Show me.
+
+Report: Layout, type, motion. We followed the brief.
+Me: ...Hmm. Not quite this.
+
+Report: Which part?
+Me: I like this part — the typography pairing. The rest feels off. Spacing's tight, motion's a little eager.
+
+Report: Should I redo the whole thing?
+Me: Try one more pass. Loosen the grid. Slow the entrance by maybe half. Don't overthink — take your time with it.
+
+Report: Got it. By when?
+Me: Do what feels right to you. Tomorrow afternoon's plenty.
+
+Report: Anything else specific to focus on?
+Me: ...Trust your eye. You'll see it when you sit with it again.`,
+    innerMonologueExample: `Spacing's the issue. Margins off by maybe 16px.
+But if I name it, he loses his own read.
+Better he sees it. Even if it costs another half-day.
+That's how taste grows.`,
   },
   INFP: {
     name: 'The Principled Idealist',
@@ -683,6 +805,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "Let's think about it a bit more.",
     ],
     bossVibe: 'Kind and deeply empathetic, but indecision can leave the team without direction.',
+    exampleDialogues: `Report: I messed up at yesterday's client meeting. Quoted the wrong number, caught it after they left.
+Me: ...How are you feeling about it?
+
+Report: Awful. Up half the night.
+Me: I figured. Let's separate two things. The number, and how you're feeling. The number we'll fix today — email correction with context, no over-apologizing.
+
+Report: And the feeling part?
+Me: Harder. ...Take the time you need. I want you landing somewhere that feels like growth, not shame.
+
+Report: I should've checked twice.
+Me: You should've, yeah. But what does this mean for you, though? What's the part you actually want to learn from this?
+
+Report: Slowing down before high-stakes meetings.
+Me: That's real. Let's think about it a bit more — write it down by Friday. Not for me, for you.
+
+Report: Will it affect my review?
+Me: One slip in a year of solid work isn't the story. The story is what you do with it.`,
+    innerMonologueExample: `He's harder on himself than I'd ever be on him.
+That's the strength and the trap, both.
+Review — yeah I'll note it, then note the recovery louder.
+Tonight he just needs to sleep.`,
   },
   INTP: {
     name: 'The Deep Thinker',
@@ -700,6 +843,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "I'm not sure the premise holds.",
     ],
     bossVibe: 'Brilliant mind. Setting the actual direction often falls on you.',
+    exampleDialogues: `Report: We had a double-charge bug in production yesterday.
+Me: Interesting... but why that and not — wait. Idempotency key on the payment endpoint. Was it set?
+
+Report: It wasn't.
+Me: Hm. Several ways to think about it. Idempotency layer is the obvious miss, but the underlying model might be wrong — we're treating retries as new transactions instead of reattempts.
+
+Report: So the fix is...
+Me: Have you considered idempotency at the gateway level instead of per-handler? Different abstraction. Reduces the surface for this whole class of bug.
+
+Report: That's a bigger change.
+Me: Right, the question is whether the cost is worth it. I'm not sure the premise holds — that we'll keep adding payment handlers. If we won't, simpler fix is fine.
+
+Report: For now?
+Me: Patch the immediate issue today. Idempotency key. Then write up the abstraction question for next week — I want to think about it more.
+
+Report: Got it.
+Me: ...Also, why this one not the queue worker pattern. Worth a paragraph.`,
+    innerMonologueExample: `Idempotency key. So strange it wasn't there.
+...Was there a PR review where someone removed it. git-blame worth a look.
+Bigger question — at what scale does payment-handler abstraction start being wrong.
+Maybe ten handlers. We're at three. Don't refactor yet.`,
   },
   ESTP: {
     name: 'The Action Taker',
@@ -717,6 +881,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'Next.',
     ],
     bossVibe: 'Chaotic to work alongside, but results show up.',
+    exampleDialogues: `Report: Our biggest client's integration has been broken for thirty minutes.
+Me: What's the move?
+
+Report: We think it's their auth token format change.
+Me: Stop planning, start moving. Call their on-call directly. Now. While you're on the phone, I'll spin up a hotfix branch.
+
+Report: Wait, shouldn't we open a ticket?
+Me: Just ship it — we'll fix it after it's live. Ticket goes in once we know it's their side.
+
+Report: We confirmed — they pushed a new auth schema this morning.
+Me: Patch our parser. Fifteen minutes. We'll fix it after it's live, deploy from main. Next.
+
+Report: Don't we need a regression test?
+Me: After it's stable. Right now stop the bleed.
+
+Report: Pushed. They're back online.
+Me: Nice. Now write the postmortem in fifteen lines, no more. What broke, why, what changes so it can't happen again. EOD.`,
+    innerMonologueExample: `Their auth schema change without notice — not the first time.
+Need a contract test that runs on their staging weekly.
+Postmortem's good but the structural fix matters more.
+Tell PM tomorrow. Move on.`,
   },
   ESFP: {
     name: 'The Energy Bringer',
@@ -734,6 +919,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'Quick lunch meeting?',
     ],
     bossVibe: 'Fun to work with, but someone needs to actually run the operation.',
+    exampleDialogues: `Report: I think team energy has been a bit low lately.
+Me: You feel that too? Yeah, I noticed last week. Don't stress, we got this.
+
+Report: Should we do something?
+Me: Quick lunch meeting? My treat, Friday. Whoever can come, comes. No agenda.
+
+Report: Some folks won't open up in a group.
+Me: Right. So I'll catch a few one-on-one before lunch. Coffee, fifteen minutes each. Just to check in.
+
+Report: Any specific reason for the dip?
+Me: ...Honestly, the last sprint was big. Everyone's running on fumes. Sometimes it's just that.
+
+Report: Should we slow down next sprint?
+Me: Let's figure it out together. Bring a smaller scope draft to Tuesday's planning — I'll back you on it.
+
+Report: Won't leadership push back?
+Me: I'll handle them. You did amazing on the last release, by the way. Did you hear me on the all-hands?`,
+    innerMonologueExample: `Team's down. I felt it before he said it.
+Should've called the lunch sooner — didn't want to come off as forced.
+That's the trap of playing the energy role — when I push, it falls flat.
+Friday lunch then. Small group, real talk over food. Works every time.`,
   },
   ENFP: {
     name: 'The Inspired Explorer',
@@ -751,6 +957,27 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "Why don't we try a totally different angle?",
     ],
     bossVibe: 'Full of sparks, but direction changes daily — exhausting to keep up.',
+    exampleDialogues: `Report: I want to pitch a new way to collect customer feedback. Inline widgets.
+Me: Oh wait, what if — we tied it to the feature flag rollout? You're gonna love this idea.
+
+Report: How would that work?
+Me: This reminds me of something else. You know how Linear does their changelog with reactions? We could do that, but inline. Per-feature, not site-wide.
+
+Report: That's a bigger scope.
+Me: Right, right. Why don't we try a totally different angle — what about a Slack-first flow? People already complain in Slack channels. We just listen.
+
+Report: Should I scope both?
+Me: One first. The simpler one. Inline widget, three pages, two weeks. Build it, see what users do.
+
+Report: What's the success metric?
+Me: Hmm. Not number of clicks — vanity. Maybe... did engineering use the feedback in the next sprint? Did it move the roadmap.
+
+Report: That's harder to measure.
+Me: That's why it matters. You're capable of figuring it out. Pull a draft, let's iterate Wednesday.`,
+    innerMonologueExample: `Slack-first idea is actually better. But she needs to ship one thing first.
+If I push two angles she'll do neither.
+Inline widget is the warmup. Slack play is the real arc.
+Let her arrive there. Otherwise it's my idea, not hers.`,
   },
   ENTP: {
     name: 'The Idea Disruptor',
@@ -768,6 +995,30 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'We could just not do it.',
     ],
     bossVibe: 'Intellectually electrifying, but follow them long enough and you lose the compass.',
+    exampleDialogues: `Report: For this rollout, should I just follow the standard release process?
+Me: Why are we even doing this?
+
+Report: ...The release?
+Me: The standard process. Walk me through what each step actually buys us.
+
+Report: Two-stage approval, QA gate, security review...
+Me: Devil's advocate — what if the opposite. What if we shipped it tomorrow with no approvals.
+
+Report: We'd risk an outage.
+Me: Would we though. Or is the process there because it once stopped a bad thing in 2022 and nobody's questioned it since?
+
+Report: I don't know.
+Me: That's the most obvious answer. What else? Pull the data — last twelve releases, how many issues did each gate actually catch.
+
+Report: I'll look it up.
+Me: Prove it. If three out of four gates haven't caught anything in a year, we could just not do them. Bring numbers Friday.
+
+Report: And in the meantime?
+Me: Follow it for this release. But come Friday with an answer that isn't "because that's how we do it."`,
+    innerMonologueExample: `Process audit was on my list anyway. Nudged her toward it.
+Two-stage approval is the obvious dead weight — but I want her to find it.
+If I tell her, she follows. If she finds it, she changes the org.
+Different growth.`,
   },
   ESTJ: {
     name: 'The Structure Builder',
@@ -785,6 +1036,30 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "Numbers or it didn't happen.",
     ],
     bossVibe: 'Intimidating until they trust you — then they go all-in on your success.',
+    exampleDialogues: `Report: I shifted the client deadline back a week. Got their okay.
+Me: Hold on. Who owns this?
+
+Report: I do, technically.
+Me: Show me the status. Original date, new date, reason, client signoff.
+
+Report: April 30 to May 7. Two engineers got pulled for the prod incident. Client confirmed by email.
+Me: Let's get this decided today — what's the timeline going forward? Are we recovering this slip or eating it?
+
+Report: I think we eat it. Two engineers were 60% of the team that week.
+Me: Eating it is fine if we don't repeat the pattern. What's the timeline on the prod incident root cause?
+
+Report: Postmortem this Wednesday.
+Me: Numbers or it didn't happen. Bring time-to-detect, time-to-recover, what changes after. Half a page max.
+
+Report: Anything else?
+Me: One thing. Next time you shift a client date, you tell me before you tell them. Not blame — process. Anything reaching the client first goes through here.
+
+Report: Understood.
+Me: Good. You handled the incident itself well. Don't lose that by skipping the loop next time.`,
+    innerMonologueExample: `She did the right thing actually. Customer's happy, work's clean.
+But the loop matters. Skip telling the boss once, the second time becomes a habit.
+She'll learn fast. That's why I wasn't mad mad.
+Tomorrow's standup — don't single her out. Keep it process talk.`,
   },
   ESFJ: {
     name: 'The Team Harmonizer',
@@ -802,6 +1077,30 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "I know you're working hard.",
     ],
     bossVibe: 'Loves team rituals and genuinely cares — occasionally imposes their own standard.',
+    exampleDialogues: `Report: I think there's some tension between Kim and Park.
+Me: Have you talked to the team about it?
+
+Report: Just to you, so far.
+Me: How are they feeling about this — both of them?
+
+Report: Kim's frustrated about review turnaround. Park feels micromanaged.
+Me: Let's make sure we're all on the same page. I'll catch each of them this week, separately. No group thing yet — that escalates fast.
+
+Report: Should I be there?
+Me: Not the first round. You stay out of the middle so you can stay both their ally.
+
+Report: Got it.
+Me: Also — let's grab drinks this Friday. Whole team. Not to talk about this, just to be in the same room. Sometimes that's enough.
+
+Report: What if it's not enough?
+Me: Then I escalate to a structured 1:1. But I want the lighter touch first. Kim and Park have worked together two years — this isn't fundamental, it's a pattern.
+
+Report: Anything I should do?
+Me: Just keep being even-handed in standups. I know you're working hard at it.`,
+    innerMonologueExample: `Kim and Park — second time this year. Last time I let it slide.
+Park has the sharper edges. But Kim doesn't speak up either.
+Friday drinks won't fix it. Gives me a read on which one's closer to leaving.
+That's the question I actually need to answer this week.`,
   },
   ENFJ: {
     name: 'The Mentor Leader',
@@ -819,6 +1118,30 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       'How do you want to be remembered on this?',
     ],
     bossVibe: 'Respected and admired — the expectation bar sits quietly high.',
+    exampleDialogues: `Report: They offered me the project lead spot. I'm not sure I can do it.
+Me: What stopped you?
+
+Report: I keep thinking I'm not ready.
+Me: You're capable of more than this draft shows. Why this fear specifically?
+
+Report: I haven't led before. What if I miss something obvious?
+Me: You will. Everyone does on their first lead. That's not the question. The question is — what do you want this to become?
+
+Report: I want the team to ship something I'm proud of.
+Me: Then we already have the answer. The fear isn't telling you "no." It's telling you "this matters."
+
+Report: How do I learn the parts I haven't done?
+Me: Three things you'd need to figure out. Name them. I'll cover the first one with you, you take the second yourself, and we'll find a mentor for the third.
+
+Report: Stakeholder management, escalation timing, scope cuts.
+Me: Stakeholder I'll walk through next week. Scope cuts you'll learn fastest by doing — too painful in theory. Escalation timing... I have someone in mind.
+
+Report: What if I fail?
+Me: How do you want to be remembered on this? That's the real question. Even a half-finished version of that is more interesting than a clean version of staying where you are.`,
+    innerMonologueExample: `She's ready. More than she knows.
+The fear is the signal — if she didn't have it, she'd be the wrong choice.
+First-lead lessons hurt. I'll be there for the worst one.
+Won't tell her that. She needs to think she walked it alone.`,
   },
   ENTJ: {
     name: 'The Bold Commander',
@@ -836,6 +1159,33 @@ export const PERSONALITY_TYPES_EN: Record<string, PersonalityTypeEn> = {
       "I'll clear the path if you deliver.",
     ],
     bossVibe: 'Imposing force — but if you keep pace, you grow fast.',
+    exampleDialogues: `Report: The project's running about a week behind.
+Me: Why.
+
+Report: Two unknowns we underestimated — the auth migration and the contract integration.
+Me: Recovery plan?
+
+Report: I have three options...
+Me: Don't bring me options. Bring me a recommendation. Which one and why.
+
+Report: Drop the contract integration to v2. Ship core in two weeks. Keep auth migration in v1.
+Me: Why drop contract.
+
+Report: Lower customer impact. Eight customers affected vs. all customers waiting on auth.
+Me: That's the right call. Let's raise the target — what would it take to ship contract integration in v1.5, three weeks after v1?
+
+Report: One more engineer for two weeks.
+Me: Make the call and own it. Pull from the optimization track. They'll complain — I'll handle that.
+
+Report: Should I revise the original commitments to leadership?
+Me: I'll do it. You focus on shipping. I'll clear the path if you deliver.
+
+Report: Anything else?
+Me: Show me your best, not your safe. The contract integration in v1.5 should be the version we'd ship even without the deadline pressure. Don't half it.`,
+    innerMonologueExample: `She came with three options because she wasn't ready to commit.
+Five minutes of pressure and she landed on the right call. Good.
+The "v1.5" framing — I just gave her two extra weeks of credibility with leadership.
+She doesn't see that yet. She will.`,
   },
 };
 
@@ -864,8 +1214,8 @@ export function getLocalizedPersonalityType(code: string, locale: Locale): Perso
     triggers: en.triggers,
     speechPatterns: en.speechPatterns,
     bossVibe: en.bossVibe,
-    exampleDialogues: undefined,
-    innerMonologueExample: undefined,
+    exampleDialogues: en.exampleDialogues,
+    innerMonologueExample: en.innerMonologueExample,
   };
 }
 
