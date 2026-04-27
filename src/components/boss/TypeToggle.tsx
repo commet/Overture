@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { AXES } from '@/lib/boss/personality-types';
 import { useBossStore } from '@/stores/useBossStore';
+import { track } from '@/lib/analytics';
 
 /**
  * 4-axis pill selector with boss context hints.
@@ -11,6 +12,12 @@ import { useBossStore } from '@/stores/useBossStore';
 export function TypeToggle() {
   const axes = useBossStore((s) => s.axes);
   const setAxis = useBossStore((s) => s.setAxis);
+
+  const handleAxisChange = (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => {
+    if (axes[key] === value) return;
+    setAxis(key, value);
+    track('boss_axis_changed', { axis: key, from: axes[key], to: value });
+  };
 
   return (
     <div className="bt-row">
@@ -24,7 +31,7 @@ export function TypeToggle() {
             <div className="bt-pair">
               <button
                 type="button"
-                onClick={() => setAxis(axis.key, axis.left.code)}
+                onClick={() => handleAxisChange(axis.key, axis.left.code)}
                 className="bt-pill"
                 data-active={isLeft}
               >
@@ -39,7 +46,7 @@ export function TypeToggle() {
               </button>
               <button
                 type="button"
-                onClick={() => setAxis(axis.key, axis.right.code)}
+                onClick={() => handleAxisChange(axis.key, axis.right.code)}
                 className="bt-pill"
                 data-active={!isLeft}
               >

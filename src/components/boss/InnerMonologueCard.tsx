@@ -13,6 +13,7 @@ import {
 import { computeDailyMood } from '@/lib/boss/daily-energy';
 import type { InnerMonologueArchiveEntry } from '@/stores/agent-types';
 import { t } from '@/lib/i18n';
+import { track } from '@/lib/analytics';
 import { useLocale } from '@/hooks/useLocale';
 
 interface InnerMonologueCardProps {
@@ -50,6 +51,7 @@ export function InnerMonologueCard({ verdict }: InnerMonologueCardProps) {
 
   const handleReveal = useCallback(async () => {
     if (!typeData || innerLoading || innerMonologue) return;
+    track('boss_inner_revealed', { mbti: typeData.code, verdict });
 
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
     const system = agent?.personality_profile

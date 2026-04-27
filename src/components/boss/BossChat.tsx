@@ -13,6 +13,7 @@ import { callLLMStream } from '@/lib/llm';
 import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessageContext, buildFollowUpContext, type BossMood } from '@/lib/boss/boss-prompt';
 import { useAgentStore } from '@/stores/useAgentStore';
 import { applyBossCalibration, applyExplicitCalibration } from '@/lib/observation-engine';
+import { track } from '@/lib/analytics';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
@@ -307,10 +308,19 @@ export function BossChat() {
                 completedAt: new Date().toISOString(),
                 emoji: tp?.emoji || '👔',
               });
+              track('boss_verdict_received', {
+                verdict: parsed.verdict,
+                mbti: tc,
+                turns: useBossStore.getState().messages.length,
+              });
             } catch { /* JSON 파싱 실패 시 무시 */ }
             const clean = raw.replace(jsonMatch[0], '').trim();
             useBossStore.getState().updateStreamingText(clean);
           }
+          // Per-turn metric — count + length of the assistant message just committed.
+          const turnIdx = useBossStore.getState().messages.length; // 0-based count BEFORE commit
+          const turnText = useBossStore.getState().streamingText;
+          track('boss_chat_turn', { turn_index: turnIdx + 1, message_length: turnText.length });
           commitAssistantMessage();
           setBossState('idle');
         },
@@ -452,10 +462,9 @@ export function BossChat() {
                 const id = saveAsAgent();
                 if (id) {
                   setSaved(true);
-                  // 패시브 교정 즉시 적용
                   applyBossCalibration(id, messages);
-                  // 캘리브레이션 플로우 시작
                   setCalibrationStep('similarity');
+                  track('boss_saved_as_agent', { turns: messages.length, mbti: typeCode });
                 }
               }}
               style={{ color: 'var(--accent)' }}
@@ -644,18 +653,20 @@ export function BossChat() {
           >
             <p className="bc-cal-q">{L('실제 팀장이랑 얼마나 비슷해?', 'How close is this to your actual boss?')}</p>
             <div className="bc-cal-options">
-              <button onClick={() => setCalibrationStep('detail')} className="bc-cal-btn">{L('😐 좀 다름', '😐 A bit off')}</button>
               <button onClick={() => {
-                // "꽤 비슷" = 패시브 교정만 유지, 추가 교정 불필요
+                track('boss_calibration_similarity', { rating: 'a_bit_off', mbti: typeCode, turns: messages.length });
+                setCalibrationStep('detail');
+              }} className="bc-cal-btn">{L('😐 좀 다름', '😐 A bit off')}</button>
+              <button onClick={() => {
                 if (loadedAgentId) {
                   const agent = useAgentStore.getState().getAgent(loadedAgentId);
                   const tonObs = agent?.observations.find(o => o.observation.includes('톤이 잘 맞'));
                   if (tonObs) useAgentStore.getState().reinforceObservation(loadedAgentId, tonObs.id);
                 }
+                track('boss_calibration_similarity', { rating: 'pretty_close', mbti: typeCode, turns: messages.length });
                 setCalibrationStep('done');
               }} className="bc-cal-btn bc-cal-btn-active">{L('🤔 꽤 비슷', '🤔 Pretty close')}</button>
               <button onClick={() => {
-                // "소름" = 현재 프로필 강하게 reinforce
                 if (loadedAgentId) {
                   const agent = useAgentStore.getState().getAgent(loadedAgentId);
                   agent?.observations.forEach(o => {
@@ -664,6 +675,7 @@ export function BossChat() {
                     }
                   });
                 }
+                track('boss_calibration_similarity', { rating: 'eerie', mbti: typeCode, turns: messages.length });
                 setCalibrationStep('done');
               }} className="bc-cal-btn bc-cal-btn-active">{L('😮 소름', '😮 Eerie')}</button>
             </div>
@@ -679,15 +691,27 @@ export function BossChat() {
             <p className="bc-cal-q">{L('어떤 점이 달라?', 'What feels different?')}</p>
             <div className="bc-cal-options">
               <button
-                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_direct'); setCalibrationStep('done'); }}
+                onClick={() => {
+                  if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_direct');
+                  track('boss_calibration_detail', { delta: 'more_direct', mbti: typeCode });
+                  setCalibrationStep('done');
+                }}
                 className="bc-cal-btn"
               >{L('실제로 더 직설적', 'They\'re more direct')}</button>
               <button
-                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_soft'); setCalibrationStep('done'); }}
+                onClick={() => {
+                  if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'more_soft');
+                  track('boss_calibration_detail', { delta: 'more_soft', mbti: typeCode });
+                  setCalibrationStep('done');
+                }}
                 className="bc-cal-btn"
               >{L('실제로 더 부드러움', 'They\'re softer')}</button>
               <button
-                onClick={() => { if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'different_tone'); setCalibrationStep('done'); }}
+                onClick={() => {
+                  if (loadedAgentId) applyExplicitCalibration(loadedAgentId, 'different_tone');
+                  track('boss_calibration_detail', { delta: 'different_tone', mbti: typeCode });
+                  setCalibrationStep('done');
+                }}
                 className="bc-cal-btn"
               >{L('말투가 좀 다름', 'The tone is different')}</button>
             </div>

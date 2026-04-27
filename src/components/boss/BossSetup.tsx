@@ -294,6 +294,10 @@ export function BossSetup() {
               type="text"
               value={userContextHint}
               onChange={(e) => setUserContextHint(e.target.value.slice(0, 140))}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v.length > 0) track('boss_hint_typed', { length: v.length });
+              }}
               className="bs-hint-input"
               maxLength={140}
               autoComplete="off"

@@ -9,6 +9,7 @@ import { useBossStore } from '@/stores/useBossStore';
 import { useAgentStore } from '@/stores/useAgentStore';
 import type { Agent } from '@/stores/agent-types';
 import { useLocale } from '@/hooks/useLocale';
+import { track } from '@/lib/analytics';
 
 function SavedBossList() {
   const locale = useLocale();
@@ -41,7 +42,15 @@ function SavedBossList() {
           return (
             <button
               key={boss.id}
-              onClick={() => loadBossFromAgent(boss.id)}
+              onClick={() => {
+                track('boss_loaded_from_agent', {
+                  source: 'saved_list',
+                  mbti: boss.personality_code,
+                  prior_turns: boss.chat_history?.length ?? 0,
+                  observation_count: boss.observations?.length ?? 0,
+                });
+                loadBossFromAgent(boss.id);
+              }}
               className="agent-card"
               style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, textAlign: 'left', width: '100%' }}
             >
@@ -99,6 +108,12 @@ function AutoLoadAgent() {
     const tryLoad = () => {
       const agent = useAgentStore.getState().getAgent(agentId);
       if (agent && agent.origin === 'boss_sim' && agent.personality_code) {
+        track('boss_loaded_from_agent', {
+          source: 'url_param',
+          mbti: agent.personality_code,
+          prior_turns: agent.chat_history?.length ?? 0,
+          observation_count: agent.observations?.length ?? 0,
+        });
         reset();
         loadBossFromAgent(agentId);
         return true;
