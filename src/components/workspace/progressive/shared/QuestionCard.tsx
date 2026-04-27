@@ -72,7 +72,7 @@ export function QuestionCard({
                 onClick={() => go(opt)}
                 disabled={disabled || submitted}
                 whileTap={{ scale: 0.97 }}
-                className={`w-full text-left px-4 py-3 rounded-xl text-[13px] leading-snug border cursor-pointer ${
+                className={`w-full text-left px-4 py-3 min-h-[44px] md:min-h-0 rounded-xl text-[13px] leading-snug border cursor-pointer ${
                   selected === opt
                     ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold shadow-sm'
                     : submitted
@@ -97,7 +97,7 @@ export function QuestionCard({
                 onChange={e => setInput(e.target.value)}
                 placeholder={L('또는 직접 입력...', 'Or type your own...')}
                 disabled={disabled || submitted}
-                className="flex-1 px-3.5 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
+                className="flex-1 px-3.5 py-2.5 md:py-2 min-h-[44px] md:min-h-0 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-base md:text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }}
               />
               {input.trim() && (
@@ -105,7 +105,7 @@ export function QuestionCard({
                   onClick={goText}
                   disabled={disabled || submitted}
                   whileTap={{ scale: 0.95 }}
-                  className="shrink-0 px-4 py-2 text-white rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-30"
+                  className="shrink-0 px-4 py-2.5 md:py-2 min-h-[44px] md:min-h-0 text-white rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-30"
                   style={{ background: 'var(--gradient-gold)' }}>
                   {L('확인', 'OK')}
                 </motion.button>
@@ -122,14 +122,14 @@ export function QuestionCard({
             placeholder={L('입력...', 'Type here...')}
             autoFocus
             disabled={disabled || submitted}
-            className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
+            className="flex-1 px-3.5 py-2.5 min-h-[44px] md:min-h-0 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-base md:text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/30 disabled:opacity-30"
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goText(); } }}
           />
           <motion.button
             onClick={goText}
             disabled={disabled || !input.trim() || submitted}
             whileTap={{ scale: 0.95 }}
-            className="shrink-0 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
+            className="shrink-0 px-5 py-2.5 min-h-[44px] md:min-h-0 text-white rounded-xl text-[13px] font-semibold shadow-[var(--shadow-sm)] cursor-pointer disabled:opacity-30"
             style={{ background: 'var(--gradient-gold)' }}>
             {L('확인', 'OK')}
           </motion.button>

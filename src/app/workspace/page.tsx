@@ -271,10 +271,10 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                   <div className="space-y-1">
                     {projects.slice(0, 3).map((p) => (
                       <button key={p.id} onClick={() => onReady(p.id)}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--surface)] hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all group">
+                        className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 md:py-2 min-h-[44px] md:min-h-0 rounded-lg hover:bg-[var(--surface)] hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all group">
                         <FolderOpen size={12} className="text-[var(--accent)] shrink-0" />
                         <span className="text-[13px] text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">{p.name}</span>
-                        <ChevronRight size={12} className="text-[var(--text-tertiary)] shrink-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ChevronRight size={12} className="text-[var(--text-tertiary)] shrink-0 ml-auto opacity-0 md:opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     ))}
                   </div>
@@ -307,18 +307,22 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                     </div>
                   )}
                   <div className="p-3 md:p-4">
+                    {/* text-base (16px) on mobile prevents iOS Safari auto-zoom on focus.
+                        text-[15px] on md+ keeps the desktop refined size. */}
                     <textarea ref={inputRef} value={problemInput}
                       onChange={(e) => { setProblemInput(e.target.value); if (justFromDemo) setJustFromDemo(false); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
                       placeholder={L('예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어', "e.g., I need to write a report by next week but don't know where to start")}
                       rows={3} maxLength={5000}
-                      className="w-full px-3 py-2.5 bg-transparent text-[15px] text-[var(--text-primary)] leading-[1.65] resize-none focus:outline-none placeholder:text-[var(--text-tertiary)]" />
+                      className="w-full px-3 py-2.5 bg-transparent text-base md:text-[15px] text-[var(--text-primary)] leading-[1.65] resize-none focus:outline-none placeholder:text-[var(--text-tertiary)]" />
                     <div className="flex items-center justify-between gap-3 mt-2 px-1">
-                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                      {/* Desktop-only keyboard hint — irrelevant on mobile */}
+                      <span className="hidden md:inline text-[11px] text-[var(--text-tertiary)]">
                         {L('Enter로 시작 · Shift+Enter로 줄바꿈', 'Enter to start · Shift+Enter for newline')}
                       </span>
+                      <span className="md:hidden" />
                       <button onClick={() => { setJustFromDemo(false); handleSubmit(); }} disabled={!problemInput.trim()}
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[40px] transition-shadow hover:shadow-[var(--shadow-md)] ${justFromDemo ? 'animate-pulse' : ''}`}
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-5 py-3 md:py-2.5 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] md:min-h-[40px] transition-shadow hover:shadow-[var(--shadow-md)] ${justFromDemo ? 'animate-pulse' : ''}`}
                         style={{ background: 'var(--gradient-gold)' }}>
                         {L('시작', 'Start')} <ChevronRight size={12} />
                       </button>
