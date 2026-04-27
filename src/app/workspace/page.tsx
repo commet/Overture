@@ -283,103 +283,108 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
                 </div>
               )}
 
-              {/* Anonymous trial banner */}
+              {/* Anonymous trial banner — compact, only critical info */}
               {!user && (
-                <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
-                  <div className="flex items-center gap-2 text-[13px]">
-                    <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
+                <div className="mb-5 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/15">
+                  <div className="flex items-center gap-2 text-[12px]">
+                    <Sparkles size={12} className="text-[var(--accent)] shrink-0" />
                     <span className="text-[var(--text-primary)]">{locale === 'ko' ? <>로그인 없이 <strong>하루 {ANON_LIMIT}회 무료</strong> · 로그인하면 하루 {DAILY_LIMIT}회</> : <><strong>{ANON_LIMIT} free per day</strong> without login · {DAILY_LIMIT} per day with login</>}</span>
                   </div>
-                  <Link href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">{L('로그인', 'Log in')}</Link>
+                  <Link href="/login" className="shrink-0 px-3 py-1 rounded-lg bg-[var(--accent)] text-[var(--bg)] text-[12px] font-semibold hover:shadow-[var(--shadow-sm)] transition-all">{L('로그인', 'Log in')}</Link>
                 </div>
               )}
 
-              {/* Heading */}
-              <div className="mb-8 text-center">
-                <h1 className="text-display-lg text-[var(--text-primary)]">
-                  {locale === 'ko' ? <>막막한 업무,<br /><span className="text-gold-gradient">같이 풀어드립니다</span></> : <>Stuck on a task?<br /><span className="text-gold-gradient">We&apos;ll figure it out together</span></>}
-                </h1>
-                <p className="mt-3 text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
-                  {locale === 'ko' ? <>상황을 알려주세요. AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation. An AI team will analyze, draft,<br className="hidden md:block" />and simulate decision-maker reactions.</>}
-                </p>
+              {/* PRIMARY: Direct input — the workspace's hero. Big, prominent,
+                  immediately actionable. Marketing copy lives below or
+                  is reserved for first-time users (no projects yet). */}
+              <div className="mb-3">
+                <label className="block text-[13px] font-semibold text-[var(--text-primary)] mb-2.5">
+                  {L('어떤 상황인가요?', "What's the situation?")}
+                </label>
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden focus-within:border-[var(--accent)]/40 transition-colors">
+                  {justFromDemo && (
+                    <div className="px-4 md:px-5 py-2.5 bg-[var(--accent)]/8 border-b border-[var(--accent)]/15 text-[12px] text-[var(--accent)] flex items-center gap-2">
+                      <Sparkles size={12} className="shrink-0" />
+                      <span>{L('데모 내용을 가져왔어요. 그대로 쓰거나 내 상황으로 바꿔도 돼요.', 'Loaded from the demo. Run as-is, or rewrite for your own situation.')}</span>
+                    </div>
+                  )}
+                  <div className="p-3 md:p-4">
+                    <textarea ref={inputRef} value={problemInput}
+                      onChange={(e) => { setProblemInput(e.target.value); if (justFromDemo) setJustFromDemo(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+                      placeholder={L('예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어', "e.g., I need to write a report by next week but don't know where to start")}
+                      rows={3} maxLength={5000}
+                      className="w-full px-3 py-2.5 bg-transparent text-[15px] text-[var(--text-primary)] leading-[1.65] resize-none focus:outline-none placeholder:text-[var(--text-tertiary)]" />
+                    <div className="flex items-center justify-between gap-3 mt-2 px-1">
+                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                        {L('Enter로 시작 · Shift+Enter로 줄바꿈', 'Enter to start · Shift+Enter for newline')}
+                      </span>
+                      <button onClick={() => { setJustFromDemo(false); handleSubmit(); }} disabled={!problemInput.trim()}
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[40px] transition-shadow hover:shadow-[var(--shadow-md)] ${justFromDemo ? 'animate-pulse' : ''}`}
+                        style={{ background: 'var(--gradient-gold)' }}>
+                        {L('시작', 'Start')} <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {error && error.startsWith('LOGIN_REQUIRED') && (
+                  <div className="mt-3 p-4 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/20">
+                    <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Free trial limit reached')}</p>
+                    <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{L(`로그인하면 하루 ${DAILY_LIMIT}회까지 무료로 사용할 수 있습니다.`, `Sign in to get up to ${DAILY_LIMIT} free uses per day.`)}</p>
+                    <Link href="/login" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[12px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>
+                      {L('로그인', 'Sign In')} <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                )}
+                {error && !error.startsWith('LOGIN_REQUIRED') && (
+                  <div className="mt-3 px-3 py-2.5 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 text-[13px] text-[var(--text-primary)] flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                    <div>
+                      <span>
+                        {error.includes('한도') || error.includes('rate') || error.includes('limit')
+                          ? L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.')
+                          : error}
+                      </span>
+                      {(error.includes('API 키') || error.includes('API key') || error.includes('한도') || error.includes('rate')) && (
+                        <a href="/settings" className="block mt-1.5 text-[12px] text-[var(--accent)] font-medium hover:underline">
+                          {L('Settings에서 API 키 등록하기 →', 'Register your API key in Settings →')}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Scenario cards — click = demo showcase */}
-              <div className="mb-6">
-                <p className="text-[12px] text-[var(--text-tertiary)] mb-3">{L('이런 상황이라면, 체험해보세요', 'Try these scenarios')}</p>
+              {/* SECONDARY: Demo scenarios — compact, framed as "둘러보기".
+                  Returning users glance past; first-timers explore. */}
+              <div className="mt-10">
+                <p className="text-[11px] text-[var(--text-tertiary)] mb-3 uppercase tracking-[0.12em] font-semibold">
+                  {L('처음이라면 — 시나리오로 둘러보기', "New here? — Try a sample scenario")}
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {demoScenarios.map(s => (
                     <button key={s.id} onClick={() => setDemoScenario(s)}
-                      className="text-left p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-md)] hover:-translate-y-[1px] cursor-pointer transition-all duration-200 group">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <span className="text-[18px]">{s.icon}</span>
+                      className="text-left p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all duration-200 group">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[16px]">{s.icon}</span>
                         <span className="text-[13px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{s.title}</span>
                       </div>
-                      <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">&ldquo;{s.problemText}&rdquo;</p>
-                      <div className="flex items-center gap-1 mt-3 text-[11px] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
-                        {L('체험해보기', 'Try it')} <ChevronRight size={11} />
-                      </div>
+                      <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed line-clamp-2">&ldquo;{s.problemText}&rdquo;</p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Direct input */}
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
-                {justFromDemo && (
-                  <div className="px-4 md:px-5 py-2.5 bg-[var(--accent)]/8 border-b border-[var(--accent)]/15 text-[12px] text-[var(--accent)] flex items-center gap-2">
-                    <Sparkles size={12} className="shrink-0" />
-                    <span>{L('데모 내용을 가져왔어요. 그대로 쓰거나 내 상황으로 바꿔도 돼요.', "Loaded from the demo. Run as-is, or rewrite for your own situation.")}</span>
-                  </div>
-                )}
-                <div className="p-4 md:p-5">
-                  <p className="text-[12px] text-[var(--text-tertiary)] mb-2.5">
-                    {problemInput.trim() ? L('수정하거나 그대로 시작하세요', 'Edit or start as-is') : L('내 상황을 직접 입력할 수도 있어요', 'Or describe your own situation')}
+              {/* TERTIARY: Marketing copy — only for absolute first-time users
+                  (no recent projects). Returning users skip this entirely. */}
+              {projects.length === 0 && (
+                <div className="mt-12 pt-8 border-t border-[var(--border-subtle)]/60 text-center">
+                  <p className="text-[14px] md:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+                    {locale === 'ko' ? <>상황을 알려주시면 AI 팀이 분석하고, 초안을 만들고,<br className="hidden md:block" />의사결정권자 반응까지 시뮬레이션합니다.</> : <>Tell us the situation — an AI team will analyze, draft,<br className="hidden md:block" />and simulate decision-maker reactions.</>}
                   </p>
-                  <div className="flex items-start gap-3">
-                    <textarea ref={inputRef} value={problemInput}
-                      onChange={(e) => { setProblemInput(e.target.value); if (justFromDemo) setJustFromDemo(false); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-                      placeholder={L('예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어', "e.g., I need to write a report by next week but don't know where to start")}
-                      rows={problemInput.trim() ? 3 : 1} maxLength={5000}
-                      onFocus={(e) => { e.target.rows = 3; }}
-                      onBlur={(e) => { if (!e.target.value) e.target.rows = 1; }}
-                      className="flex-1 px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-all placeholder:text-[var(--text-tertiary)]" />
-                    <button onClick={() => { setJustFromDemo(false); handleSubmit(); }} disabled={!problemInput.trim()}
-                      className={`shrink-0 px-5 py-3 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] transition-shadow hover:shadow-[var(--shadow-md)] ${justFromDemo ? 'animate-pulse' : ''}`}
-                      style={{ background: 'var(--gradient-gold)' }}>
-                      {L('시작', 'Start')} <ChevronRight size={12} className="inline ml-1" />
-                    </button>
-                  </div>
-
-                  {error && error.startsWith('LOGIN_REQUIRED') && (
-                    <div className="mt-3 p-4 rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/20">
-                      <p className="text-[14px] font-bold text-[var(--text-primary)] mb-1">{L('무료 체험을 모두 사용했어요', 'Free trial limit reached')}</p>
-                      <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{L(`로그인하면 하루 ${DAILY_LIMIT}회까지 무료로 사용할 수 있습니다.`, `Sign in to get up to ${DAILY_LIMIT} free uses per day.`)}</p>
-                      <Link href="/login" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[12px] font-semibold" style={{ background: 'var(--gradient-gold)' }}>
-                        {L('로그인', 'Sign In')} <ChevronRight size={12} />
-                      </Link>
-                    </div>
-                  )}
-                  {error && !error.startsWith('LOGIN_REQUIRED') && (
-                    <div className="mt-3 px-3 py-2.5 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 text-[13px] text-[var(--text-primary)] flex items-start gap-2">
-                      <AlertTriangle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
-                      <div>
-                        <span>
-                          {error.includes('한도') || error.includes('rate') || error.includes('limit')
-                            ? L('무료 체험 한도에 도달했습니다. Settings에서 본인의 API 키를 등록하면 무제한 사용이 가능합니다.', 'Free trial limit reached. Register your own API key in Settings for unlimited use.')
-                            : error}
-                        </span>
-                        {(error.includes('API 키') || error.includes('API key') || error.includes('한도') || error.includes('rate')) && (
-                          <a href="/settings" className="block mt-1.5 text-[12px] text-[var(--accent)] font-medium hover:underline">
-                            {L('Settings에서 API 키 등록하기 →', 'Register your API key in Settings →')}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
 
