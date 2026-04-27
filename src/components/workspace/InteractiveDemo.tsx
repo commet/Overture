@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Sparkles, Check, ArrowRight, UserCheck, Loader2, ChevronDown } from 'lucide-react';
 import { WorkerAvatar } from './progressive/WorkerAvatar';
@@ -40,29 +40,95 @@ const phaseGte = (current: DemoPhase, target: DemoPhase) => PHASE_ORDER.indexOf(
    TYPING INPUT — char-by-char animation
    ═══════════════════════════════════════════════════════════ */
 
-function TypingInput({ text, onDone, locale = 'ko' }: { text: string; onDone: () => void; locale?: 'ko' | 'en' }) {
+/* Build [start, end) ranges for highlight phrases inside the text. Sorted +
+   non-overlapping (later overlaps drop). */
+function buildHighlightRanges(text: string, highlights?: string[]): Array<[number, number]> {
+  if (!highlights || highlights.length === 0) return [];
+  const raw: Array<[number, number]> = [];
+  for (const h of highlights) {
+    if (!h) continue;
+    let idx = 0;
+    while ((idx = text.indexOf(h, idx)) !== -1) {
+      raw.push([idx, idx + h.length]);
+      idx += h.length;
+    }
+  }
+  raw.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const r of raw) {
+    if (merged.length === 0 || r[0] >= merged[merged.length - 1][1]) merged.push(r);
+  }
+  return merged;
+}
+
+/** Render `text.slice(0, typed)` with highlight ranges as <strong>. */
+function renderTypedWithHighlights(text: string, typed: number, ranges: Array<[number, number]>): ReactNode[] {
+  const out: ReactNode[] = [];
+  let pos = 0;
+  for (let i = 0; i < ranges.length; i++) {
+    const [s, e] = ranges[i];
+    if (s >= typed) break;
+    if (s > pos) out.push(<span key={`p${i}`}>{text.slice(pos, s)}</span>);
+    const visibleEnd = Math.min(e, typed);
+    out.push(
+      <strong key={`h${i}`} className="font-semibold text-[var(--text-primary)]">
+        {text.slice(s, visibleEnd)}
+      </strong>,
+    );
+    pos = visibleEnd;
+    if (visibleEnd < e) return out; // typing inside this highlight, no more after
+  }
+  if (pos < typed) out.push(<span key="tail">{text.slice(pos, typed)}</span>);
+  return out;
+}
+
+function TypingInput({ text, highlights, onDone, locale = 'ko' }: {
+  text: string;
+  highlights?: string[];
+  onDone: () => void;
+  locale?: 'ko' | 'en';
+}) {
   const [typed, setTyped] = useState(0);
   const doneRef = useRef(false);
   const typedRef = useRef(0);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const ranges = useMemo(() => buildHighlightRanges(text, highlights), [text, highlights]);
+
+  // Skip-to-end: click the input to fill instantly + finish soon
+  const skip = () => {
+    typedRef.current = text.length;
+    setTyped(text.length);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      setTimeout(() => onDoneRef.current(), 250);
+    }
+  };
 
   useEffect(() => {
     let frame: number;
-    const charDelay = () => 35 + Math.random() * 40; // 35-75ms
-    let nextAt = performance.now() + 300; // initial pause
+    // Faster baseline (~27ms avg) vs old (~55ms avg) — ~2x speed.
+    const charDelay = (ch: string) => {
+      const base = 18 + Math.random() * 18; // 18–36ms
+      // Brief pause at sentence ends so the rhythm doesn't feel mechanical
+      if (ch === '.' || ch === '?' || ch === '!') return base + 150;
+      if (ch === ',') return base + 60;
+      return base;
+    };
+    let nextAt = performance.now() + 200;
     typedRef.current = 0;
     doneRef.current = false;
 
     const tick = (now: number) => {
       if (now >= nextAt && typedRef.current < text.length) {
+        const ch = text.charAt(typedRef.current);
         typedRef.current += 1;
         setTyped(typedRef.current);
         if (typedRef.current >= text.length && !doneRef.current) {
           doneRef.current = true;
-          setTimeout(() => onDoneRef.current(), 600);
+          setTimeout(() => onDoneRef.current(), 400);
         }
-        nextAt = now + charDelay();
+        nextAt = now + charDelay(ch);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -70,16 +136,30 @@ function TypingInput({ text, onDone, locale = 'ko' }: { text: string; onDone: ()
     return () => cancelAnimationFrame(frame);
   }, [text]);
 
+  const isTyping = typed < text.length;
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
-      className="flex items-start gap-3 px-5 py-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] w-full">
+      onClick={isTyping ? skip : undefined}
+      role={isTyping ? 'button' : undefined}
+      tabIndex={isTyping ? 0 : undefined}
+      onKeyDown={isTyping ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); skip(); } } : undefined}
+      aria-label={isTyping ? (locale === 'ko' ? '클릭해서 건너뛰기' : 'Click to skip') : undefined}
+      className={`relative flex items-start gap-3 px-5 py-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] w-full ${isTyping ? 'cursor-pointer hover:border-[var(--accent)]/30 transition-colors' : ''}`}>
       <div className="w-6 h-6 rounded-full bg-[var(--text-primary)] flex items-center justify-center shrink-0 mt-0.5">
         <span className="text-[var(--bg)] text-[10px] font-bold">{locale === 'ko' ? '나' : 'Me'}</span>
       </div>
-      <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
-        {text.slice(0, typed)}
-        {typed < text.length && <span className="inline-block w-[2px] h-[16px] bg-[var(--accent)] ml-0.5 align-middle animate-pulse" />}
+      <p className="flex-1 text-[14px] text-[var(--text-primary)] leading-relaxed">
+        {ranges.length > 0
+          ? renderTypedWithHighlights(text, typed, ranges)
+          : text.slice(0, typed)}
+        {isTyping && <span className="inline-block w-[2px] h-[16px] bg-[var(--accent)] ml-0.5 align-middle animate-pulse" />}
       </p>
+      {isTyping && (
+        <span className="hidden sm:inline-block shrink-0 self-center text-[10px] text-[var(--text-tertiary)] tracking-wide">
+          {locale === 'ko' ? '클릭해 건너뛰기' : 'Click to skip'}
+        </span>
+      )}
     </motion.div>
   );
 }
@@ -1455,7 +1535,7 @@ export function InteractiveDemo({ scenario, locale = 'ko', onStartReal, onBack }
 
             {/* 1. Typing input */}
             {phaseGte(phase, 'typing') && (
-              <TypingInput text={scenario.problemText} onDone={() => setPhase('team')} locale={locale} />
+              <TypingInput text={scenario.problemText} highlights={scenario.problemHighlights} onDone={() => setPhase('team')} locale={locale} />
             )}
 
             {/* 2. Team entrance — sidebar replaces this on desktop, keep for mobile timing */}
