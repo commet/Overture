@@ -1,13 +1,26 @@
 /**
- * HeroShip 콘텐츠 데이터 — 3-sector 구조
- * Bow (선두) / Midship (선중앙) / Stern (선미)
+ * Voyage data — 5 crew divisions + 5 stages of work.
+ *
+ * The page metaphors the journey of a project as an Odyssey-era voyage:
+ *   Captain (the user) sets the heading.
+ *   Five divisions of crew handle the rest.
+ *   Five stages of work move the ship from brief → Ithaca.
+ *
+ * `stationOrder` controls the visual order of divisions in the Cutaway —
+ * forward-of-ship first (Scouts at the bow), aft-of-ship last (Concertmaster
+ * at the helm). Watch sits up in the crow's nest above all decks.
  */
 
+export type DivisionId = 'scouts' | 'cartographers' | 'artisans' | 'watch' | 'concertmaster';
+
 export type CrewDivision = {
-  id: 'scouts' | 'cartographers' | 'artisans' | 'watch' | 'concertmaster';
+  id: DivisionId;
   label: { ko: string; en: string };
+  /** Single-sentence purpose, deliberately punchy — shown in the cutaway station card. */
   role: { ko: string; en: string };
+  /** Where they sit on the ship — copy-only, used in the station label. */
   stationLabel: { ko: string; en: string };
+  /** Member count is the visible signal; individual names live underneath if expanded. */
   members: { name: string; personaRole: { ko: string; en: string } }[];
 };
 
@@ -15,7 +28,10 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   {
     id: 'scouts',
     label: { ko: '탐색조', en: 'Scouts' },
-    role: { ko: '먼저 바다로 나가 낯선 해역의 정보를 가져온다', en: 'They sail ahead and read the unknown waters' },
+    role: {
+      ko: '먼저 바다로 나가 낯선 해역의 정보를 가져온다',
+      en: 'Sail ahead, read the unknown waters',
+    },
     stationLabel: { ko: '선수 난간', en: 'Forward railing' },
     members: [
       { name: '하윤', personaRole: { ko: '리서치 인턴', en: 'Research intern' } },
@@ -26,8 +42,11 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   {
     id: 'cartographers',
     label: { ko: '제도사', en: 'Cartographers' },
-    role: { ko: '해도를 그리고 어디로 갈지를 정한다', en: 'They chart the course and set the heading' },
-    stationLabel: { ko: '메인 마스트 아래 해도 테이블', en: 'Chart table, under the mainmast' },
+    role: {
+      ko: '해도를 그리고 어디로 갈지를 정한다',
+      en: 'Chart the course, set the heading',
+    },
+    stationLabel: { ko: '메인마스트 아래 해도 테이블', en: 'Chart table, under the mainmast' },
     members: [
       { name: '정민', personaRole: { ko: '전략 주니어', en: 'Strategy junior' } },
       { name: '현우', personaRole: { ko: '전략 구루', en: 'Strategy lead' } },
@@ -37,7 +56,10 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   {
     id: 'artisans',
     label: { ko: '장인들', en: 'Artisans' },
-    role: { ko: '각자의 손기술로 항해의 실물을 만든다', en: 'They build the voyage with their own hands' },
+    role: {
+      ko: '각자의 손기술로 항해의 실물을 만든다',
+      en: 'Build the voyage with their own hands',
+    },
     stationLabel: { ko: '메인 갑판', en: 'Main deck' },
     members: [
       { name: '서연', personaRole: { ko: '카피라이터', en: 'Copywriter' } },
@@ -52,8 +74,11 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   {
     id: 'watch',
     label: { ko: '망루', en: 'The Watch' },
-    role: { ko: '수평선 너머의 위험을 먼저 본다', en: 'They spot danger before anyone else' },
-    stationLabel: { ko: '까마귀 둥지 (crow\'s nest)', en: "Crow's nest" },
+    role: {
+      ko: '수평선 너머의 위험을 먼저 본다',
+      en: 'Spot danger before anyone else does',
+    },
+    stationLabel: { ko: "까마귀 둥지 (crow's nest)", en: "Crow's nest" },
     members: [
       { name: '동혁', personaRole: { ko: '리스크 검토자', en: 'Risk reviewer' } },
       { name: '지은', personaRole: { ko: 'UX 설계자', en: 'UX designer' } },
@@ -63,16 +88,21 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   {
     id: 'concertmaster',
     label: { ko: '악장', en: 'Concertmaster' },
-    role: { ko: '모든 선원의 목소리를 하나로 묶어 선장에게 전한다', en: "The captain's first mate — binds every voice into one" },
-    stationLabel: { ko: '조타륜', en: 'At the helm' },
+    role: {
+      ko: '모든 선원의 목소리를 하나로 묶어 선장에게 전한다',
+      en: "First mate — binds every voice into one for the captain",
+    },
+    stationLabel: { ko: '조타륜 옆', en: 'Beside the helm' },
     members: [
       { name: '악장', personaRole: { ko: '종합 검토자', en: 'Maestro' } },
     ],
   },
 ];
 
+export type StageId = 'brief' | 'draft' | 'review' | 'refinement' | 'synthesis';
+
 export type Stage = {
-  id: 'brief' | 'draft' | 'review' | 'refinement' | 'synthesis';
+  id: StageId;
   label: { ko: string; en: string };
   subtitle: { ko: string; en: string };
 };
@@ -104,3 +134,5 @@ export const STAGES: Stage[] = [
     subtitle: { ko: '이타카가 보인다', en: 'Ithaca in sight' },
   },
 ];
+
+export const TOTAL_CREW = CREW_DIVISIONS.reduce((sum, d) => sum + d.members.length, 0);

@@ -2511,3 +2511,67 @@ button, a, input, textarea {
     transition: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+ * Voyage hero — animations for the 3-act landing illustrations
+ * ─────────────────────────────────────────────────────────────── */
+
+/* Wave drift — wave path translates horizontally to imply ocean motion.
+   Three layers offset in speed and direction give parallax depth. */
+@keyframes bp-wave-drift-a {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-60px); }
+}
+@keyframes bp-wave-drift-b {
+  from { transform: translateX(0); }
+  to   { transform: translateX(40px); }
+}
+@keyframes bp-wave-drift-c {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-90px); }
+}
+
+.bp-wave { transform-origin: center; }
+.bp-wave-0 { animation: bp-wave-drift-a 14s ease-in-out infinite alternate; }
+.bp-wave-1 { animation: bp-wave-drift-b 18s ease-in-out infinite alternate; }
+.bp-wave-2 { animation: bp-wave-drift-c 11s ease-in-out infinite alternate; }
+
+/* Sail unfurl — used for entrance on Act 1 ship sails. Reveals fill via
+   a clip-path that opens from the spar downward. */
+@keyframes bp-sail-unfurl {
+  from { clip-path: inset(0 0 100% 0); opacity: 0.4; }
+  to   { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+.bp-sail-unfurl { animation: bp-sail-unfurl 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+/* Stroke draw — line illustrations entering by stroke-dashoffset animation.
+   Caller sets stroke-dasharray inline (length-dependent); animation drives
+   the offset to zero. */
+@keyframes bp-stroke-draw {
+  from { stroke-dashoffset: var(--draw-from, 800); }
+  to   { stroke-dashoffset: 0; }
+}
+.bp-stroke-draw { animation: bp-stroke-draw 1.6s cubic-bezier(0.16, 0.84, 0.44, 1) both; }
+
+/* Compass needle — slow constant rotation. Decorative, climactic. */
+@keyframes bp-needle-drift {
+  0%   { transform: rotate(-2.5deg); }
+  50%  { transform: rotate(2.5deg); }
+  100% { transform: rotate(-2.5deg); }
+}
+.bp-needle-drift { animation: bp-needle-drift 9s ease-in-out infinite; transform-origin: center; }
+
+/* Fade-up — used for text+content entrance on each act. */
+@keyframes bp-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bp-fade-up { animation: bp-fade-up 800ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-wave-0, .bp-wave-1, .bp-wave-2,
+  .bp-sail-unfurl, .bp-stroke-draw,
+  .bp-needle-drift, .bp-fade-up {
+    animation: none;
+  }
+}

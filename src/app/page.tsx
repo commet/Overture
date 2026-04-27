@@ -1,15 +1,17 @@
-import { HelmSection } from '@/components/landing/blueprint/HelmSection';
-import { CrewSection } from '@/components/landing/blueprint/CrewSection';
-import { HeadingSection } from '@/components/landing/blueprint/HeadingSection';
 import { ScrollTracker } from '@/components/landing/ScrollTracker';
+import { LandingHeader } from '@/components/landing/LandingHeader';
+import { Act1Voyage } from '@/components/landing/voyage/Act1Voyage';
+import { Act2Cutaway } from '@/components/landing/voyage/Act2Cutaway';
+import { Act3OnDeck } from '@/components/landing/voyage/Act3OnDeck';
 
 export default function HomePage() {
   return (
     <div>
       <ScrollTracker />
-      <HelmSection />
-      <CrewSection />
-      <HeadingSection />
+      <LandingHeader />
+      <Act1Voyage />
+      <Act2Cutaway />
+      <Act3OnDeck />
     </div>
   );
 }

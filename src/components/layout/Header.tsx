@@ -33,6 +33,9 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
+
+  // Landing page renders its own minimal header (LandingHeader)
+  const isLanding = pathname === '/';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -82,6 +85,9 @@ export function Header() {
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
   const avatarUrl = user?.user_metadata?.avatar_url;
+
+  // Landing renders LandingHeader instead — keep app chrome out of the marketing canvas
+  if (isLanding) return null;
 
   return (
     <header className="sticky top-0 z-40 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
