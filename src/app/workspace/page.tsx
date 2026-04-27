@@ -262,23 +262,21 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, ease: EASE }}>
 
-              {/* Returning user: previous projects */}
+              {/* Returning user: previous projects — compact rows */}
               {projects.length > 0 && (
-                <div className="mb-8">
-                  <div className="space-y-2">
+                <div className="mb-6">
+                  <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] font-semibold mb-2">
+                    {L('이어서 작업', 'Continue')}
+                  </p>
+                  <div className="space-y-1">
                     {projects.slice(0, 3).map((p) => (
                       <button key={p.id} onClick={() => onReady(p.id)}
-                        className="w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all">
-                        <FolderOpen size={14} className="text-[var(--accent)] shrink-0" />
-                        <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">{p.name}</span>
-                        <ChevronRight size={14} className="text-[var(--text-tertiary)] shrink-0 ml-auto" />
+                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--surface)] hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all group">
+                        <FolderOpen size={12} className="text-[var(--accent)] shrink-0" />
+                        <span className="text-[13px] text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">{p.name}</span>
+                        <ChevronRight size={12} className="text-[var(--text-tertiary)] shrink-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     ))}
-                  </div>
-                  <div className="mt-6 mb-8 flex items-center gap-4">
-                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-                    <span className="text-[11px] text-[var(--text-tertiary)]">{L('새로 시작하기', 'Start new')}</span>
-                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                   </div>
                 </div>
               )}
