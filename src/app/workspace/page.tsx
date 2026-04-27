@@ -120,6 +120,8 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
   const [streamingText, setStreamingText] = useState('');
   const [previewPersonas, setPreviewPersonas] = useState<WorkerPersona[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [justFromDemo, setJustFromDemo] = useState(false);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const { createProject } = useProjectStore();
   const progressiveStore = useProgressiveStore();
   const phaseRef = React.useRef<HeroPhase>('idle');
@@ -227,7 +229,18 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
             locale={locale}
             onStartReal={() => {
               setProblemInput(demoScenario.problemText);
+              setJustFromDemo(true);
               setDemoScenario(null);
+              // Next paint: scroll input into view + focus + place caret at end
+              requestAnimationFrame(() => {
+                const el = inputRef.current;
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el.focus();
+                  const len = el.value.length;
+                  el.setSelectionRange(len, len);
+                }
+              });
             }}
             onBack={() => setDemoScenario(null)}
           />
@@ -313,20 +326,27 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
 
               {/* Direct input */}
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] overflow-hidden">
+                {justFromDemo && (
+                  <div className="px-4 md:px-5 py-2.5 bg-[var(--accent)]/8 border-b border-[var(--accent)]/15 text-[12px] text-[var(--accent)] flex items-center gap-2">
+                    <Sparkles size={12} className="shrink-0" />
+                    <span>{L('데모 내용을 가져왔어요. 그대로 쓰거나 내 상황으로 바꿔도 돼요.', "Loaded from the demo. Run as-is, or rewrite for your own situation.")}</span>
+                  </div>
+                )}
                 <div className="p-4 md:p-5">
                   <p className="text-[12px] text-[var(--text-tertiary)] mb-2.5">
                     {problemInput.trim() ? L('수정하거나 그대로 시작하세요', 'Edit or start as-is') : L('내 상황을 직접 입력할 수도 있어요', 'Or describe your own situation')}
                   </p>
                   <div className="flex items-start gap-3">
-                    <textarea value={problemInput} onChange={(e) => setProblemInput(e.target.value)}
+                    <textarea ref={inputRef} value={problemInput}
+                      onChange={(e) => { setProblemInput(e.target.value); if (justFromDemo) setJustFromDemo(false); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
                       placeholder={L('예: 다음 주까지 보고서를 써야 하는데 어디서 시작해야 할지 모르겠어', "e.g., I need to write a report by next week but don't know where to start")}
                       rows={problemInput.trim() ? 3 : 1} maxLength={5000}
                       onFocus={(e) => { e.target.rows = 3; }}
                       onBlur={(e) => { if (!e.target.value) e.target.rows = 1; }}
                       className="flex-1 px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border-subtle)] text-[14px] text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none focus:border-[var(--accent)]/40 transition-all placeholder:text-[var(--text-tertiary)]" />
-                    <button onClick={() => handleSubmit()} disabled={!problemInput.trim()}
-                      className="shrink-0 px-5 py-3 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] transition-shadow hover:shadow-[var(--shadow-md)]"
+                    <button onClick={() => { setJustFromDemo(false); handleSubmit(); }} disabled={!problemInput.trim()}
+                      className={`shrink-0 px-5 py-3 text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 cursor-pointer min-h-[44px] transition-shadow hover:shadow-[var(--shadow-md)] ${justFromDemo ? 'animate-pulse' : ''}`}
                       style={{ background: 'var(--gradient-gold)' }}>
                       {L('시작', 'Start')} <ChevronRight size={12} className="inline ml-1" />
                     </button>

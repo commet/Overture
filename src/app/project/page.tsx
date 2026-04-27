@@ -134,11 +134,16 @@ export default function ProjectPage() {
               <p className="text-[12px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto">
                 {L('워크스페이스에서 프로젝트를 만들면, 4단계 프로세스의 진행 상황을 여기서 한눈에 확인할 수 있습니다.', 'Create a project in your workspace and track the 4-stage process progress here at a glance.')}
               </p>
-              <Link href="/workspace">
-                <button className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
-                  {L('워크스페이스에서 시작하기', 'Start in workspace')} <ArrowRight size={14} />
-                </button>
-              </Link>
+              <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                <Link href="/workspace">
+                  <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--bg)] text-[13px] font-semibold hover:shadow-[var(--shadow-sm)] hover:-translate-y-[1px] active:translate-y-0 transition-all cursor-pointer">
+                    {L('워크스페이스에서 시작하기', 'Start in workspace')} <ArrowRight size={14} />
+                  </button>
+                </Link>
+                <Link href="/workspace?demo=planning" className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors">
+                  {L('또는 30초 데모 먼저 보기 →', 'Or see a 30-second demo first →')}
+                </Link>
+              </div>
             </Card>
           ) : (
             <>

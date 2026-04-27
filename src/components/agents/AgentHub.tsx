@@ -46,7 +46,30 @@ export function AgentHub() {
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
-  if (agents.length === 0) return null;
+  if (agents.length === 0) {
+    return (
+      <div className="agent-hub" aria-busy="true" aria-live="polite">
+        <h1 className="agent-hub-title">{L('에이전트', 'Agents')}</h1>
+        <p className="agent-hub-subtitle">{L('당신의 팀입니다. 사용할수록 성장합니다.', 'Your team. They grow as you work with them.')}</p>
+        <div className="mt-6 space-y-8">
+          {[0, 1, 2].map((sectionIdx) => (
+            <section key={sectionIdx} className="space-y-3">
+              <div className="h-4 w-32 rounded bg-[var(--surface)] animate-pulse" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {[0, 1, 2, 3].map((cardIdx) => (
+                  <div
+                    key={cardIdx}
+                    className="h-28 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] animate-pulse"
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        <span className="sr-only">{L('에이전트 불러오는 중', 'Loading agents')}</span>
+      </div>
+    );
+  }
 
   // 체인 에이전트
   const researchChain = chains.find(c => c.id === 'research');
