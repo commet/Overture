@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (redirectAfter?: string) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, captchaToken?: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -61,7 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectAfter?: string) => {
+    // Supabase OAuth takes a full-page redirect, so sessionStorage survives the round-trip.
+    // auth/callback consumes + clears the key.
+    if (redirectAfter && redirectAfter.startsWith('/') && !redirectAfter.startsWith('//')) {
+      sessionStorage.setItem('overture:postAuthRedirect', redirectAfter);
+    }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

@@ -169,7 +169,7 @@ function LoginContent() {
           <div className="p-6 space-y-5">
           {/* Google OAuth */}
           <button
-            onClick={signInWithGoogle}
+            onClick={() => signInWithGoogle(searchParams.get('redirect') || undefined)}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)] hover:border-[var(--accent)] hover:bg-[var(--ai)]/30 transition-all cursor-pointer text-[14px] font-semibold text-[var(--text-primary)]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -201,6 +201,7 @@ function LoginContent() {
               <input
                 type="email"
                 required
+                maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={L('이메일', 'Email')}
@@ -213,6 +214,7 @@ function LoginContent() {
                   type="password"
                   required
                   minLength={8}
+                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={L('비밀번호 (8자 이상)', 'Password (8+ characters)')}

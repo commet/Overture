@@ -27,7 +27,12 @@ export default function AuthCallbackPage() {
         }
       }
 
-      router.replace('/workspace');
+      const stashed = sessionStorage.getItem('overture:postAuthRedirect');
+      if (stashed) sessionStorage.removeItem('overture:postAuthRedirect');
+      const safeRedirect = stashed && stashed.startsWith('/') && !stashed.startsWith('//')
+        ? stashed
+        : '/workspace';
+      router.replace(safeRedirect);
     };
 
     handleCallback();

@@ -1,55 +1,52 @@
 import { describe, it, expect } from 'vitest';
+import { isPublicPath } from './lib/public-paths';
 
 /**
- * Tests for proxy route matching logic.
- * Verifies public vs protected route classification.
+ * Tests for route-access classification.
+ * Verifies PUBLIC_PATHS stays aligned with the soft-wall policy in LayoutShell.
  */
 
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback', '/guide', '/demo'];
-const PUBLIC_PREFIXES = ['/api/', '/_next/', '/favicon.ico'];
-
-function isPublic(pathname: string): boolean {
-  if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) return true;
-  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
-}
-
-describe('proxy route matching', () => {
+describe('public path classification', () => {
   // Public routes — should NOT require auth
   it.each([
     '/',
     '/login',
     '/auth/callback',
     '/guide',
-    '/demo',
     '/guide/getting-started',
+    '/workspace',
+    '/boss',
+    '/settings',
+    '/privacy',
+    '/terms',
     '/api/llm',
     '/api/llm/direct',
     '/_next/static/chunk.js',
     '/favicon.ico',
   ])('"%s" is public', (path) => {
-    expect(isPublic(path)).toBe(true);
+    expect(isPublicPath(path)).toBe(true);
   });
 
   // Protected routes — should require auth
   it.each([
-    '/workspace',
     '/project',
-    '/settings',
+    '/agents',
+    '/teams',
     '/tools/reframe',
     '/tools/recast',
     '/tools/rehearse',
     '/tools/refine',
     '/tools/synthesize',
   ])('"%s" is protected', (path) => {
-    expect(isPublic(path)).toBe(false);
+    expect(isPublicPath(path)).toBe(false);
   });
 
   // Edge cases
   it('"/login-admin" is not matched as public (not an exact match or subpath)', () => {
-    expect(isPublic('/login-admin')).toBe(false);
+    expect(isPublicPath('/login-admin')).toBe(false);
   });
 
   it('"/guidepost" is not matched as public', () => {
-    expect(isPublic('/guidepost')).toBe(false);
+    expect(isPublicPath('/guidepost')).toBe(false);
   });
 });
