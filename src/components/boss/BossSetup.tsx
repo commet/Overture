@@ -95,7 +95,7 @@ export function BossSetup() {
   const handleConfirmContinue = useCallback(() => {
     track('boss_chat_initiated', {
       mbti: typeCode,
-      hasSaju: birthYearValid,
+      hasBirthData: birthYearValid,
       sawConfirmation: true,
     });
     startChat();

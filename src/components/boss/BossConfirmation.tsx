@@ -91,7 +91,7 @@ export function BossConfirmation({
             {sajuLoading && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
                 <Loader2 size={11} className="animate-spin" />
-                <span>{L('사주 해석 불러오는 중', 'Loading reading…')}</span>
+                <span>{L('팀장 프로필 준비 중', 'Preparing your manager…')}</span>
               </div>
             )}
           </div>
