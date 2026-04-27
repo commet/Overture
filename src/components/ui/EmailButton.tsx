@@ -9,13 +9,15 @@ interface EmailButtonProps {
   getSubject: () => string;
   getBody: () => string;
   label?: string;
+  onSent?: () => void;
 }
 
-export function EmailButton({ getSubject, getBody, label }: EmailButtonProps) {
+export function EmailButton({ getSubject, getBody, label, onSent }: EmailButtonProps) {
   const locale = useLocale();
   const resolvedLabel = label ?? (locale === 'ko' ? '이메일' : 'Email');
   const handleClick = () => {
     window.open(composeMailtoLink(getSubject(), getBody()), '_self');
+    onSent?.();
   };
 
   return (

@@ -185,6 +185,7 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
         if (phaseRef.current === 'assembling') {
           if (timerRef.current) clearTimeout(timerRef.current);
           setPhase('analyzing');
+          track('first_analysis_start', { text_length: text.length, anonymous: !user });
         }
       });
 
@@ -214,6 +215,9 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
       setPhase('idle');
       setStreamingText('');
       track('workspace_start_error', { error: errMsg, is_rate_limit: isRateLimit, needs_login: needsLogin });
+      if (needsLogin || isRateLimit) {
+        track('quota_blocked', { reason: needsLogin ? 'anon_quota' : 'auth_quota', anonymous: !user });
+      }
     }
   };
 

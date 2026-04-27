@@ -9,9 +9,10 @@ import { useLocale } from '@/hooks/useLocale';
 interface CopyButtonProps {
   getText: () => string;
   label?: string;
+  onCopied?: () => void;
 }
 
-export function CopyButton({ getText, label }: CopyButtonProps) {
+export function CopyButton({ getText, label, onCopied }: CopyButtonProps) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const resolvedLabel = label ?? L('결과 복사', 'Copy result');
@@ -21,6 +22,7 @@ export function CopyButton({ getText, label }: CopyButtonProps) {
     try {
       await copyToClipboard(getText());
       setCopied(true);
+      onCopied?.();
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Copy failed:', err);

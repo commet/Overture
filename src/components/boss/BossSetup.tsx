@@ -9,8 +9,10 @@ import { getLocalizedPersonalityType } from '@/lib/boss/personality-types';
 import { ArrowRight } from 'lucide-react';
 import { SajuPreview } from './SajuPreview';
 import { CollectionProgress } from './CollectionProgress';
+import { BossConfirmation } from './BossConfirmation';
 import { t } from '@/lib/i18n';
 import { useLocale } from '@/hooks/useLocale';
+import { track } from '@/lib/analytics';
 
 const EXAMPLE_SITUATIONS_KO = [
   '연봉 협상을 하고 싶은데요',
@@ -60,9 +62,10 @@ const fadeUp: Variants = {
 
 export function BossSetup() {
   const locale = useLocale();
-  const { axes, gender, birthYear, birthMonth, birthDay, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
+  const { axes, gender, birthYear, birthMonth, birthDay, sajuLoading, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
+  const [confirmedSituation, setConfirmedSituation] = useState('');
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getLocalizedPersonalityType(typeCode, locale);
@@ -73,11 +76,30 @@ export function BossSetup() {
 
   const handleSubmit = useCallback(async () => {
     if (!situation.trim() || isLaunching) return;
+    const trimmed = situation.trim();
+    setConfirmedSituation(trimmed);
     setIsLaunching(true);
+    addUserMessage(trimmed);
+    track('boss_setup_complete', {
+      mbti: typeCode,
+      gender,
+      hasBirthYear: birthYearValid,
+      hasBirthMonth: birthMonthValid,
+      hasBirthDay: birthDayValid,
+      situation_length: trimmed.length,
+    });
+    // Fire Saju in background — confirmation panel shows loader until it lands.
     loadSaju();
-    addUserMessage(situation.trim());
+  }, [situation, isLaunching, loadSaju, addUserMessage, typeCode, gender, birthYearValid, birthMonthValid, birthDayValid]);
+
+  const handleConfirmContinue = useCallback(() => {
+    track('boss_chat_initiated', {
+      mbti: typeCode,
+      hasSaju: birthYearValid,
+      sawConfirmation: true,
+    });
     startChat();
-  }, [situation, isLaunching, loadSaju, addUserMessage, startChat]);
+  }, [typeCode, birthYearValid, startChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -87,6 +109,20 @@ export function BossSetup() {
   };
 
   const isReady = situation.trim().length > 0;
+
+  if (isLaunching && typeData) {
+    return (
+      <BossConfirmation
+        typeData={typeData}
+        situation={confirmedSituation}
+        birthYear={birthYear}
+        birthMonth={birthMonthValid ? birthMonth : undefined}
+        birthDay={birthDayValid ? birthDay : undefined}
+        sajuLoading={sajuLoading}
+        onContinue={handleConfirmContinue}
+      />
+    );
+  }
 
   return (
     <motion.div
