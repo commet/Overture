@@ -93,6 +93,9 @@ export interface Agent {
   saju_profile?: unknown;    // SajuProfile (Korean locale only) — import cycle 방지
   zodiac_profile?: unknown;  // ZodiacProfile (English locale / globalized) — import cycle 방지
   boss_locale?: 'ko' | 'en'; // 보스 생성 당시 로케일 — 렌더/프롬프트 분기에 사용
+  /** Optional one-line user-supplied hint about this boss (e.g. "마감 가까우면 예민함").
+   *  Treated as a soft modulator in the LLM prompt, never as a defining trait. */
+  user_context_hint?: string;
 
   // Boss 대화 연속성 — 최근 대화 스레드 (boss_sim 전용)
   chat_history?: BossChatTurn[];

@@ -331,6 +331,7 @@ interface AgentState {
     birthMonth?: number;
     birthDay?: number;
     locale?: 'ko' | 'en';
+    userContextHint?: string;
   }) => string;
 
   // 해금
@@ -439,6 +440,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       saju_profile: data.saju_profile,
       zodiac_profile: data.zodiac_profile,
       boss_locale: data.boss_locale,
+      user_context_hint: data.user_context_hint,
       chat_history: data.chat_history,
       inner_monologue_archive: data.inner_monologue_archive,
       xp: data.xp || 0,
@@ -666,6 +668,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       saju_profile: config.sajuProfile,
       zodiac_profile: config.zodiacProfile,
       boss_locale: locale,
+      user_context_hint: config.userContextHint?.trim() || undefined,
     });
   },
 

@@ -57,10 +57,14 @@ interface BossState {
   // Agent 연동
   loadedAgentId: string | null;   // 저장된 boss agent를 불러왔을 때
 
+  // Optional one-liner the user wrote about this boss. Soft modulator in prompt.
+  userContextHint: string;
+
   // Actions
   setAxis: (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => void;
   setGender: (g: '남' | '여') => void;
   setBirth: (y: number, m?: number, d?: number) => void;
+  setUserContextHint: (v: string) => void;
   loadSaju: () => Promise<void>;
   startChat: () => void;
   addUserMessage: (content: string) => void;
@@ -105,6 +109,7 @@ const INITIAL_STATE = {
   innerLoading: false,
   loadedAgentId: null as string | null,
   lastSituation: '',
+  userContextHint: '',
 };
 
 export const useBossStore = create<BossState>((set, get) => ({
@@ -114,6 +119,8 @@ export const useBossStore = create<BossState>((set, get) => ({
     set((s) => ({ axes: { ...s.axes, [key]: value } })),
 
   setGender: (g) => set({ gender: g }),
+
+  setUserContextHint: (v) => set({ userContextHint: v }),
 
   setBirth: (y, m?, d?) => {
     const yearNum = isNaN(y) ? 0 : Math.floor(y);
@@ -271,7 +278,7 @@ export const useBossStore = create<BossState>((set, get) => ({
   // ─── Agent 연동 ───
 
   saveAsAgent: (name) => {
-    const { axes, gender, sajuProfile, zodiacProfile, birthYear, birthMonth, birthDay } = get();
+    const { axes, gender, sajuProfile, zodiacProfile, birthYear, birthMonth, birthDay, userContextHint } = get();
     const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
     const locale: 'ko' | 'en' = getCurrentLanguage() === 'ko' ? 'ko' : 'en';
     // Use locale-aware personality data so EN bosses get English name/style/triggers persisted.
@@ -300,6 +307,7 @@ export const useBossStore = create<BossState>((set, get) => ({
       birthMonth: birthMonth || undefined,
       birthDay: birthDay || undefined,
       locale,
+      userContextHint: userContextHint || undefined,
     });
 
     set({ loadedAgentId: agentId });
@@ -347,6 +355,7 @@ export const useBossStore = create<BossState>((set, get) => ({
       messages: restored,
       lastSituation: lastUserTurn?.content || '',
       loadedAgentId: agentId,
+      userContextHint: agent.user_context_hint || '',
     });
   },
 }));

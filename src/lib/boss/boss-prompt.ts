@@ -19,6 +19,36 @@ export interface BossProfile {
   zodiac?: ZodiacProfile | null;
   gender: '남' | '여';
   locale?: BossLocale;
+  /** Optional one-line user-supplied hint about THIS boss. Treated as a soft modulator. */
+  userContextHint?: string;
+}
+
+/** Build the soft-hint section. Heavy guard rails so the LLM does not overfit. */
+function buildHintSection(hint: string | undefined, locale: BossLocale): string {
+  const trimmed = hint?.trim();
+  if (!trimmed) return '';
+  if (locale === 'en') {
+    return `
+
+## One thing the report mentioned about this boss (soft hint)
+"${trimmed}"
+
+How to use this:
+- This is one facet of the boss, not their definition. The MBTI personality and innate read are primary.
+- Do NOT mention or quote this hint back to the user — never say "I heard you said…" or paraphrase it as fact.
+- If the current topic is unrelated to this hint, ignore it completely.
+- Influence at most through subtle tone/timing nudges, not through topic selection or content.`;
+  }
+  return `
+
+## 부하가 알려준 한 측면 (참고)
+"${trimmed}"
+
+이 정보 사용 가이드:
+- 이건 보스의 한 단면일 뿐이지, 그 사람의 전부가 아니다. 핵심은 성격유형 + 결.
+- 이 한 줄을 사용자에게 인용하거나 언급하지 말 것. "당신이 ~라고 했는데" 같은 메타 발화 금지.
+- 지금 대화 주제와 관련이 없으면 자연스럽게 무시할 것.
+- 영향은 톤/속도/타이밍의 미세 조정으로만. 답변의 주제나 결론을 결정하지 말 것.`;
 }
 
 /**
@@ -32,10 +62,11 @@ export function buildBossSystemPrompt(boss: BossProfile): string {
 }
 
 function buildBossSystemPromptKo(boss: BossProfile): string {
-  const { type, saju, yearMonth, gender } = boss;
+  const { type, saju, yearMonth, gender, userContextHint } = boss;
   const genderLabel = gender === '남' ? '남성' : '여성';
 
   const daily = computeDailyMood(yearMonth);
+  const hintSection = buildHintSection(userContextHint, 'ko');
 
   let sajuSection = '';
   if (saju) {
@@ -72,7 +103,7 @@ ${type.bossVibe}.
 ${type.exampleDialogues ? `
 ## 너의 실제 대화 예시 (이 톤과 패턴을 따라해)
 ${type.exampleDialogues}` : ''}
-${sajuSection}${daily ? daily.promptContext : ''}
+${sajuSection}${daily ? daily.promptContext : ''}${hintSection}
 
 ## 딱 이것만 지켜
 - ${type.speechLevel === 'formal' ? '**해요체** 기반. 부드럽지만 상사 톤. 가끔 반말 섞여도 OK.' : type.speechLevel === 'casual' ? '**반말**. 직장 상사 톤. 친한 사이는 아니지만 위아래가 분명.' : '**해요체와 반말 혼용**. 상황에 따라 자연스럽게 섞어.'}
@@ -82,8 +113,9 @@ ${sajuSection}${daily ? daily.promptContext : ''}
 }
 
 function buildBossSystemPromptEn(boss: BossProfile): string {
-  const { type, zodiac, gender } = boss;
+  const { type, zodiac, gender, userContextHint } = boss;
   const genderLabel = gender === '남' ? 'male' : 'female';
+  const hintSection = buildHintSection(userContextHint, 'en');
 
   // Zodiac-based hidden layer (Chinese + Western)
   let zodiacSection = '';
@@ -115,7 +147,7 @@ ${type.bossVibe}
 Catchphrases: ${type.speechPatterns.map(p => `"${p}"`).join(', ')}
 
 What you care about: ${type.triggers}
-${zodiacSection}
+${zodiacSection}${hintSection}
 
 ## Hard rules
 - ${speechStyle}
@@ -427,6 +459,7 @@ export function buildBossSystemPromptFromAgent(agent: Agent): string {
     zodiac,
     gender: agent.boss_gender || '남',
     locale: agentLocale,
+    userContextHint: agent.user_context_hint,
   };
 
   let prompt = buildBossSystemPrompt(boss);

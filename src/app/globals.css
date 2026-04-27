@@ -879,6 +879,58 @@ button, a, input, textarea {
   color: var(--text-tertiary);
 }
 
+/* ── Optional one-line hint row ── */
+
+.bs-hint-row {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bs-hint-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+  padding-left: 4px;
+}
+
+.bs-hint-wrap {
+  position: relative;
+}
+
+.bs-hint-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.bs-hint-input:focus {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--gold-muted);
+}
+
+.bs-hint-placeholder {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  right: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+}
+
 /* ── CTA row ── */
 
 .bs-cta-row {

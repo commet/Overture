@@ -267,9 +267,10 @@ export function BossChat() {
       : buildFollowUpContext(round, currentMood, bossLocale);
 
     const zodiac = useBossStore.getState().zodiacProfile;
+    const userContextHint = useBossStore.getState().userContextHint;
     const system = (agent?.personality_profile
       ? buildBossSystemPromptFromAgent(agent)
-      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, zodiac, gender, locale: bossLocale })
+      : buildBossSystemPrompt({ type: typeData, saju: sajuProfile, yearMonth: yearMonthProfile, zodiac, gender, locale: bossLocale, userContextHint })
     ) + contextSuffix;
     const llmMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
 

@@ -60,9 +60,25 @@ const fadeUp: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
 
+const HINT_EXAMPLES_KO = [
+  '예: 평소엔 좋은데 마감 가까우면 예민함',
+  '예: 새로 온 임원이라 아직 어색함',
+  '예: 데이터 좋아하는데 디자인은 약함',
+  '예: 사적 얘기 잘 안 하는 편',
+  '예: 회의 길어지면 짜증 냄',
+];
+
+const HINT_EXAMPLES_EN = [
+  "e.g. usually fine, but tense near deadlines",
+  "e.g. newly transferred — still warming up",
+  "e.g. loves data, weak on design",
+  "e.g. doesn't do small talk",
+  "e.g. gets short when meetings run long",
+];
+
 export function BossSetup() {
   const locale = useLocale();
-  const { axes, gender, birthYear, birthMonth, birthDay, sajuLoading, setGender, setBirth, loadSaju, startChat, addUserMessage } = useBossStore();
+  const { axes, gender, birthYear, birthMonth, birthDay, sajuLoading, userContextHint, setGender, setBirth, setUserContextHint, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
   const [confirmedSituation, setConfirmedSituation] = useState('');
@@ -70,6 +86,7 @@ export function BossSetup() {
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getLocalizedPersonalityType(typeCode, locale);
   const examples = locale === 'ko' ? EXAMPLE_SITUATIONS_KO : EXAMPLE_SITUATIONS_EN;
+  const hintExamples = locale === 'ko' ? HINT_EXAMPLES_KO : HINT_EXAMPLES_EN;
   const birthYearValid = birthYear >= 1940 && birthYear <= 2006;
   const birthMonthValid = birthMonth >= 1 && birthMonth <= 12;
   const birthDayValid = birthDay >= 1 && birthDay <= 31;
@@ -264,6 +281,30 @@ export function BossSetup() {
             interval={2800}
             className="bs-placeholder"
           />
+        </div>
+
+        {/* Optional one-liner hint about THIS boss — soft modulator, not a definition. */}
+        <div className="bs-hint-row">
+          <label className="bs-hint-label" htmlFor="bs-hint">
+            {locale === 'ko' ? '이 팀장에 대해 한 줄만 더 (선택)' : 'One more line about this boss (optional)'}
+          </label>
+          <div className="bs-hint-wrap">
+            <input
+              id="bs-hint"
+              type="text"
+              value={userContextHint}
+              onChange={(e) => setUserContextHint(e.target.value.slice(0, 140))}
+              className="bs-hint-input"
+              maxLength={140}
+              autoComplete="off"
+            />
+            <AnimatedPlaceholder
+              texts={hintExamples}
+              visible={!userContextHint}
+              interval={3400}
+              className="bs-hint-placeholder"
+            />
+          </div>
         </div>
         <div className="bs-cta-row">
           <p className="bs-fine">{t('boss.disclaimer')}</p>
