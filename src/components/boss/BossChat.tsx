@@ -213,9 +213,14 @@ export function BossChat() {
   const [shareMode, setShareMode] = useState(false);
   const [verdict, setVerdict] = useState<{ verdict: string; reason: string; tip?: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const postVerdictRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const hasTriggeredFirst = useRef(false);
+  // Set by the "여기까지" button — consumed (and cleared) by the next LLM call
+  // so the boss issues a verdict in the next reply instead of asking another
+  // question.
+  const forceVerdictRef = useRef(false);
 
   const typeData = getPersonalityType();
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
@@ -228,6 +233,16 @@ export function BossChat() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
+
+  // When a verdict lands, the most distinctive moment of the product is the
+  // inner-monologue (이면) card. Pull it into view so the user does not miss it.
+  useEffect(() => {
+    if (!verdict) return;
+    const t = setTimeout(() => {
+      postVerdictRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [verdict]);
 
   // 컴포넌트 언마운트 시 패시브 교정 자동 적용
   useEffect(() => {
@@ -266,9 +281,11 @@ export function BossChat() {
     const agent = loadedAgentId ? useAgentStore.getState().getAgent(loadedAgentId) : undefined;
     const bossLocale: 'ko' | 'en' = (agent?.boss_locale as 'ko' | 'en') ?? (getCurrentLanguage() === 'ko' ? 'ko' : 'en');
 
+    const consumeForceVerdict = forceVerdictRef.current;
+    if (consumeForceVerdict) forceVerdictRef.current = false;
     const contextSuffix = isFirst
       ? buildFirstMessageContext(bossLocale)
-      : buildFollowUpContext(round, currentMood, bossLocale);
+      : buildFollowUpContext(round, currentMood, bossLocale, consumeForceVerdict);
 
     const zodiac = useBossStore.getState().zodiacProfile;
     const userContextHint = useBossStore.getState().userContextHint;
@@ -368,6 +385,16 @@ export function BossChat() {
     const updated = [...messages, { id: `u-${Date.now()}`, role: 'user' as const, content: text, timestamp: Date.now() }];
     sendToLLM(updated);
   }, [input, isStreaming, addUserMessage, messages, sendToLLM]);
+
+  const handleForceVerdict = useCallback(() => {
+    if (isStreaming || verdict) return;
+    const text = locale === 'ko' ? '여기까지 듣고 결정 부탁드려요.' : 'Make the call from what you have so far.';
+    forceVerdictRef.current = true;
+    addUserMessage(text);
+    const updated = [...messages, { id: `u-${Date.now()}`, role: 'user' as const, content: text, timestamp: Date.now() }];
+    track('boss_force_verdict_requested', { mbti: typeCode, turns: messages.length });
+    sendToLLM(updated);
+  }, [isStreaming, verdict, locale, addUserMessage, messages, sendToLLM, typeCode]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -590,7 +617,9 @@ export function BossChat() {
 
         {/* Post-verdict actions */}
         {verdict && !isStreaming && !shareMode && (
-          <PostVerdictPanel verdict={verdict} onShare={() => setShareMode(true)} />
+          <div ref={postVerdictRef}>
+            <PostVerdictPanel verdict={verdict} onShare={() => setShareMode(true)} />
+          </div>
         )}
         {verdict && shareMode && (
           <VerdictShareCard
@@ -755,6 +784,19 @@ export function BossChat() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Force-verdict shortcut — appears once user has fed enough context */}
+      {!verdict && !isStreaming && messages.filter(m => m.role === 'user').length >= 3 && (
+        <div className="bc-force-verdict-row">
+          <button
+            type="button"
+            onClick={handleForceVerdict}
+            className="bc-force-verdict-btn"
+          >
+            {L('여기까지 듣고 결정 부탁 →', 'Make the call from this →')}
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="bc-input-bar">

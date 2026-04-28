@@ -129,12 +129,51 @@ function AutoLoadAgent() {
   return null;
 }
 
+/**
+ * Optional URL-driven 30-second demo path.
+ *
+ *   /boss?demo=1                — default demo (ENTJ + sample situation)
+ *   /boss?demo=ENFP             — pick a specific MBTI archetype
+ *   /boss?demo=1&lang=en        — locale honored by useLocale
+ *
+ * Pre-fills MBTI axes + birth year + situation, then signals BossSetup to
+ * autosubmit. Lets a curious share-link visitor reach the chat without
+ * configuring anything.
+ */
+function AutoDemo() {
+  const searchParams = useSearchParams();
+  const setAxis = useBossStore(s => s.setAxis);
+  const setBirth = useBossStore(s => s.setBirth);
+  const setGender = useBossStore(s => s.setGender);
+  const setDemoSituation = useBossStore(s => s.setDemoSituation);
+  const locale = useLocale();
+
+  useEffect(() => {
+    const demo = searchParams?.get('demo');
+    if (!demo) return;
+    const code = (demo.length === 4 && /^[EI][SN][TF][JP]$/i.test(demo) ? demo.toUpperCase() : 'ENTJ');
+    setAxis('ei', code[0]);
+    setAxis('sn', code[1]);
+    setAxis('tf', code[2]);
+    setAxis('jp', code[3]);
+    setGender('남');
+    setBirth(1985, 5, 15);
+    const sample = locale === 'ko'
+      ? '팀장님, 다음 주에 한 번만 재택 가능할까요?'
+      : "Hey — could I work from home one day next week?";
+    setDemoSituation(sample);
+  }, [searchParams, setAxis, setBirth, setGender, setDemoSituation, locale]);
+
+  return null;
+}
+
 function BossPageContent() {
   const phase = useBossStore((s) => s.phase);
 
   return (
     <main className="boss-page">
       <AutoLoadAgent />
+      <AutoDemo />
       <AnimatePresence mode="wait">
         {phase === 'setup' ? (
           <div key="setup-wrapper">

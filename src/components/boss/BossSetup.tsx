@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { TypeToggle } from './TypeToggle';
 import { BehavioralToggle } from './BehavioralToggle';
@@ -79,13 +79,14 @@ const HINT_EXAMPLES_EN = [
 
 export function BossSetup() {
   const locale = useLocale();
-  const { axes, gender, birthYear, birthMonth, birthDay, sajuLoading, userContextHint, setGender, setBirth, setUserContextHint, loadSaju, startChat, addUserMessage } = useBossStore();
+  const { axes, gender, birthYear, birthMonth, birthDay, sajuLoading, userContextHint, demoSituation, setGender, setBirth, setUserContextHint, setDemoSituation, loadSaju, startChat, addUserMessage } = useBossStore();
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
   const [confirmedSituation, setConfirmedSituation] = useState('');
   // Default to "easy" mode — workplace-language quiz. Power users / Korean MBTI fans
   // can flip to MBTI-direct toggle. Both modes share the same axis state.
   const [axisMode, setAxisMode] = useState<'easy' | 'mbti'>('easy');
+  const demoConsumedRef = useRef(false);
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getLocalizedPersonalityType(typeCode, locale);
@@ -112,6 +113,33 @@ export function BossSetup() {
     // Fire Saju in background — confirmation panel shows loader until it lands.
     loadSaju();
   }, [situation, isLaunching, loadSaju, addUserMessage, typeCode, gender, birthYearValid, birthMonthValid, birthDayValid]);
+
+  // Demo path: AutoDemo on /boss?demo=... pre-populates axes/birth and writes
+  // a sample situation into the store. Consume it once, prefill the textarea,
+  // then auto-submit on next tick so the visitor lands in chat without setup.
+  useEffect(() => {
+    if (!demoSituation || demoConsumedRef.current) return;
+    demoConsumedRef.current = true;
+    setSituation(demoSituation);
+    setDemoSituation(null);
+    const t = setTimeout(() => {
+      // Use latest closure of handleSubmit by deferring through state read.
+      const { setIsLaunching: _ } = { setIsLaunching: setIsLaunching };
+      if (!isLaunching) {
+        const trimmed = demoSituation.trim();
+        setConfirmedSituation(trimmed);
+        setIsLaunching(true);
+        addUserMessage(trimmed);
+        track('boss_demo_started', {
+          mbti: typeCode,
+          situation_length: trimmed.length,
+        });
+        loadSaju();
+      }
+      void _;
+    }, 250);
+    return () => clearTimeout(t);
+  }, [demoSituation, demoConsumedRef, setDemoSituation, isLaunching, addUserMessage, loadSaju, typeCode]);
 
   const handleConfirmContinue = useCallback(() => {
     track('boss_chat_initiated', {

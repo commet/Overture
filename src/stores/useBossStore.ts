@@ -60,11 +60,16 @@ interface BossState {
   // Optional one-liner the user wrote about this boss. Soft modulator in prompt.
   userContextHint: string;
 
+  // Demo path: when an AutoDemo writes here, BossSetup picks it up on mount,
+  // pre-fills the situation textarea, and auto-submits. Cleared on consumption.
+  demoSituation: string | null;
+
   // Actions
   setAxis: (key: 'ei' | 'sn' | 'tf' | 'jp', value: string) => void;
   setGender: (g: '남' | '여') => void;
   setBirth: (y: number, m?: number, d?: number) => void;
   setUserContextHint: (v: string) => void;
+  setDemoSituation: (v: string | null) => void;
   loadSaju: () => Promise<void>;
   startChat: () => void;
   addUserMessage: (content: string) => void;
@@ -110,6 +115,7 @@ const INITIAL_STATE = {
   loadedAgentId: null as string | null,
   lastSituation: '',
   userContextHint: '',
+  demoSituation: null as string | null,
 };
 
 export const useBossStore = create<BossState>((set, get) => ({
@@ -121,6 +127,8 @@ export const useBossStore = create<BossState>((set, get) => ({
   setGender: (g) => set({ gender: g }),
 
   setUserContextHint: (v) => set({ userContextHint: v }),
+
+  setDemoSituation: (v) => set({ demoSituation: v }),
 
   setBirth: (y, m?, d?) => {
     const yearNum = isNaN(y) ? 0 : Math.floor(y);

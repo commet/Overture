@@ -176,14 +176,28 @@ A direct report just opened a conversation with you. React naturally, in charact
 
 /**
  * 후속 대화용 — 대화 라운드 + 무드에 따라 boss 행동 변화.
+ * forceVerdict가 true면 사용자가 명시적으로 결정을 요청한 것 — 이번 답변에서 무조건 verdict.
  */
-export function buildFollowUpContext(round: number, mood: BossMood, locale: BossLocale = 'ko'): string {
+export function buildFollowUpContext(
+  round: number,
+  mood: BossMood,
+  locale: BossLocale = 'ko',
+  forceVerdict = false,
+): string {
   return locale === 'en'
-    ? buildFollowUpContextEn(round, mood)
-    : buildFollowUpContextKo(round, mood);
+    ? buildFollowUpContextEn(round, mood, forceVerdict)
+    : buildFollowUpContextKo(round, mood, forceVerdict);
 }
 
-function buildFollowUpContextKo(round: number, mood: BossMood): string {
+function buildFollowUpContextKo(round: number, mood: BossMood, forceVerdict: boolean): string {
+  if (forceVerdict) {
+    return `\n\n## 사용자 요청
+- 부하직원이 "여기까지 듣고 결정해달라"고 요청했다.
+- 이번 답변에서 **반드시** verdict JSON을 내라. 더 묻지 마라.
+- 짧게 결정 이유를 말하고, 끝에 JSON 블록 추가:
+  \`{"verdict":"approved"|"rejected"|"conditional","reason":"한 줄 이유","tip":"이 대화에서 부하직원이 잘한 점 또는 아쉬운 점 한 줄"}\`
+- reason과 tip은 대화와 같은 반말 구어체로. 보고서 톤 금지.`;
+  }
   const phaseGuide = round <= 2
     ? '아직 탐색 중이다. 부하직원의 의도를 파악하려고 질문을 던져라.'
     : round <= 4
@@ -213,7 +227,15 @@ function buildFollowUpContextKo(round: number, mood: BossMood): string {
 - 결론 전에는 JSON을 넣지 마라. 대화만 하라.`;
 }
 
-function buildFollowUpContextEn(round: number, mood: BossMood): string {
+function buildFollowUpContextEn(round: number, mood: BossMood, forceVerdict: boolean): string {
+  if (forceVerdict) {
+    return `\n\n## User request
+- The report just asked you to "make the call now."
+- In THIS reply you MUST issue a verdict. Do not ask another question.
+- State the reason briefly, then append the JSON block at the very end:
+  \`{"verdict":"approved"|"rejected"|"conditional","reason":"one-line reason","tip":"one line on what they did well or missed"}\`
+- Keep reason and tip in the same conversational tone as the chat — no formal-report phrasing.`;
+  }
   const phaseGuide = round <= 2
     ? "Still probing. Ask questions to figure out what the person really wants."
     : round <= 4
