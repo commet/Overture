@@ -266,6 +266,8 @@ export const useBossStore = create<BossState>((set, get) => ({
       innerMonologue: '',
       innerStreamingText: '',
       innerLoading: false,
+      // The hint described the previous boss; the new random type is a different person.
+      userContextHint: '',
     });
   },
 
@@ -278,6 +280,9 @@ export const useBossStore = create<BossState>((set, get) => ({
       innerMonologue: '',
       innerStreamingText: '',
       innerLoading: false,
+      // Same situation, but agent association is dropped — clear hint so a saved
+      // descriptor doesn't leak into a fresh, unsaved boss.
+      userContextHint: '',
     });
   },
 
