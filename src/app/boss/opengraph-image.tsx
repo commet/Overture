@@ -1,16 +1,17 @@
 import { ImageResponse } from 'next/og';
+import { headers } from 'next/headers';
 
 // Twitter / Facebook standard
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export const alt = '팀장 시뮬레이터 — 말하기 전에 미리 연습';
+export const alt = 'Boss Simulator — Rehearse before you speak';
 
 // Render on first request and cache at the edge.
 // Avoids local-build network fetches for the Pretendard webfont.
 export const dynamic = 'force-dynamic';
 export const revalidate = false;
 
-// Pretendard from CDN — supports Korean glyphs
+// Pretendard from CDN — supports Korean glyphs AND Latin
 const PRETENDARD_BOLD =
   'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2';
 const PRETENDARD_SEMIBOLD =
@@ -32,10 +33,48 @@ async function tryFetchFont(url: string): Promise<ArrayBuffer | null> {
   }
 }
 
+interface Copy {
+  brandSubtitle: string;
+  userBubble: string;
+  bossTag: string;
+  bossLine: string;
+  tagline: string;
+  subtitle: string;
+}
+
+const COPY_KO: Copy = {
+  brandSubtitle: '팀장 시뮬레이터',
+  userBubble: '팀장님, 재택 좀 더 하고 싶은데요',
+  bossTag: 'ENTJ · 호랑이띠',
+  bossLine: '"그래서, 결과는 더 나오고?"',
+  tagline: '팀장한테 할 말, 미리 들어보기',
+  subtitle: '성격유형 + 타고난 결로 진짜 반응을 시뮬레이션',
+};
+
+const COPY_EN: Copy = {
+  brandSubtitle: 'Boss Simulator',
+  userBubble: 'Hey — could I work from home one day next week?',
+  bossTag: 'ENTJ · The Bold Commander',
+  bossLine: '"Sure. And how do the numbers move if you\'re remote?"',
+  tagline: 'Got something to tell your boss? Hear it first.',
+  subtitle: 'Personality + birth-energy → a simulation that actually lands',
+};
+
+function detectLocale(acceptLanguage: string | null): 'ko' | 'en' {
+  if (!acceptLanguage) return 'ko';
+  // First language token wins. Korean OS locales lead with 'ko-...' or 'ko_...'.
+  const first = acceptLanguage.split(',')[0]?.toLowerCase().trim() ?? '';
+  return first.startsWith('ko') ? 'ko' : 'en';
+}
+
 export default async function Image() {
-  // Best-effort font load. On Vercel these fetches succeed and Korean glyphs render
-  // crisply. If they fail (e.g. sandboxed local build with no outbound network), we
-  // fall back to ImageResponse's default font and the build still succeeds.
+  const h = await headers();
+  const locale = detectLocale(h.get('accept-language'));
+  const copy = locale === 'ko' ? COPY_KO : COPY_EN;
+
+  // Best-effort font load. On Vercel these fetches succeed and Korean/Latin
+  // glyphs render crisply. If they fail (e.g. sandboxed local build with no
+  // outbound network), we fall back to ImageResponse's default font.
   const [bold, semibold, regular] = await Promise.all([
     tryFetchFont(PRETENDARD_BOLD),
     tryFetchFont(PRETENDARD_SEMIBOLD),
@@ -50,7 +89,6 @@ export default async function Image() {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          // Warm dark — concert-hall vibe, not flashy
           background:
             'radial-gradient(ellipse at top left, #2a1f17 0%, #1a1410 55%, #120e0b 100%)',
           padding: '64px 72px',
@@ -93,7 +131,7 @@ export default async function Image() {
             Overture
           </span>
           <span style={{ color: '#5d5044', fontSize: 18, marginLeft: 8 }}>·</span>
-          <span style={{ color: '#8a7e6e', fontSize: 18, fontWeight: 600 }}>팀장 시뮬레이터</span>
+          <span style={{ color: '#8a7e6e', fontSize: 18, fontWeight: 600 }}>{copy.brandSubtitle}</span>
         </div>
 
         {/* User line — mundane workplace question */}
@@ -120,11 +158,11 @@ export default async function Image() {
               border: '1px solid rgba(255, 252, 245, 0.1)',
               borderRadius: '20px 20px 20px 6px',
               padding: '18px 26px',
-              maxWidth: 720,
+              maxWidth: 820,
             }}
           >
-            <span style={{ color: '#e8e2d6', fontSize: 30, fontWeight: 500, lineHeight: 1.35 }}>
-              팀장님, 재택 좀 더 하고 싶은데요
+            <span style={{ color: '#e8e2d6', fontSize: 28, fontWeight: 500, lineHeight: 1.35 }}>
+              {copy.userBubble}
             </span>
           </div>
         </div>
@@ -165,7 +203,7 @@ export default async function Image() {
               border: '1px solid rgba(212, 165, 116, 0.35)',
               borderRadius: '20px 20px 6px 20px',
               padding: '18px 26px',
-              maxWidth: 740,
+              maxWidth: 820,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -178,11 +216,11 @@ export default async function Image() {
                   textTransform: 'uppercase',
                 }}
               >
-                ENTJ · 호랑이띠
+                {copy.bossTag}
               </span>
             </div>
-            <span style={{ color: '#fff8eb', fontSize: 34, fontWeight: 700, lineHeight: 1.3 }}>
-              &ldquo;그래서, 결과는 더 나오고?&rdquo;
+            <span style={{ color: '#fff8eb', fontSize: 32, fontWeight: 700, lineHeight: 1.3 }}>
+              {copy.bossLine}
             </span>
           </div>
         </div>
@@ -198,11 +236,11 @@ export default async function Image() {
             borderTop: '1px solid rgba(212, 165, 116, 0.15)',
           }}
         >
-          <span style={{ color: '#f5ead6', fontSize: 38, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            팀장한테 할 말, 미리 들어보기
+          <span style={{ color: '#f5ead6', fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em' }}>
+            {copy.tagline}
           </span>
-          <span style={{ color: '#8a7e6e', fontSize: 19, fontWeight: 500 }}>
-            성격유형 + 타고난 결로 진짜 반응을 시뮬레이션
+          <span style={{ color: '#8a7e6e', fontSize: 18, fontWeight: 500 }}>
+            {copy.subtitle}
           </span>
         </div>
       </div>
