@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:analysis-snapshot",
+  "title": "AnalysisSnapshot",
+  "description": "Output of /overture:clarify. Problem understanding at a point in time. Ported from webapp's AnalysisSnapshot type (src/stores/types.ts:681).",
+  "type": "object",
+  "required": ["version", "real_question", "hidden_assumptions", "skeleton"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic counter within a session. 0 = initial analysis, 1+ = deepening rounds."
+    },
+    "real_question": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The reframed question after surfacing hidden framing. NOT the user's surface request."
+    },
+    "hidden_assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Assumptions the user is making without stating. Each phrased as a declarative sentence."
+    },
+    "skeleton": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Bullet-level skeleton of what the final answer would contain. 3-7 bullets."
+    },
+    "execution_plan": {
+      "type": ["object", "null"],
+      "description": "Steps for team deployment. Produced when real_question is clear enough to decompose.",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["task", "output"],
+            "properties": {
+              "task": { "type": "string" },
+              "output": { "type": "string", "description": "Expected deliverable" },
+              "agent_hint": { "type": "string", "description": "Optional agent suggestion (agentId). Soft signal." },
+              "agent_type": { "enum": ["ai", "self", "human"] },
+              "ai_scope": { "type": "string" },
+              "self_scope": { "type": "string" },
+              "decision": { "type": "string" }
+            }
+          }
+        },
+        "key_assumptions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "insight": {
+      "type": "string",
+      "description": "Key insight that emerged from this round of analysis. Present on deepening rounds."
+    },
+    "framing_confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Self-assessed confidence that the reframed question is correct. <70 triggers framing validation."
+    },
+    "framing_locked": {
+      "type": "boolean",
+      "description": "User confirmed the reframing. Subsequent rounds cannot re-challenge."
+    },
+    "convergence_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Aggregate of question stability + assumption reduction. >=75 means ready to mix."
+    },
+    "decision_line": {
+      "type": "string",
+      "description": "A single sign-off-worthy decision sentence (Phase 1 typed question output)."
+    },
+    "weakest_assumption": {
+      "type": "object",
+      "properties": {
+        "assumption": { "type": "string" },
+        "explanation": { "type": "string" }
+      }
+    }
+  }
+}

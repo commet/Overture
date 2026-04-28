@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:session",
+  "title": "Session",
+  "description": "A plugin session — one problem being worked through /overture:clarify → :team → :boss → :revise. Stored as .overture/sessions/{id}/session.json. Mirrors webapp's ProgressiveSession (src/stores/types.ts:924) but scoped for plugin (no Supabase, no React state).",
+  "type": "object",
+  "required": ["id", "problem_text", "phase", "created_at", "updated_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Session ID (slug-safe, human-readable preferred over UUID for directory naming)."
+    },
+    "problem_text": {
+      "type": "string",
+      "description": "The original user input."
+    },
+    "repo_path": {
+      "type": "string",
+      "description": "Absolute path to the repo this session belongs to. Plugin uses this for code-native context."
+    },
+    "repo_branch": {
+      "type": "string",
+      "description": "Git branch at session start. Helps recover context."
+    },
+    "invoking_context": {
+      "type": "object",
+      "description": "What the user was working on when they invoked overture.",
+      "properties": {
+        "target_type": { "enum": ["task", "pr", "file", "branch", "design_doc", "ad_hoc"] },
+        "target_ref": { "type": "string", "description": "PR#, file path, branch name, etc." }
+      }
+    },
+    "boss_agent": {
+      "type": "object",
+      "description": "Configured Boss for this session. Pulled from .overture/config.yaml.",
+      "properties": {
+        "mbti_code": { "type": "string" },
+        "name": { "type": "string" },
+        "gender": { "enum": ["남", "여", "male", "female"] },
+        "locale": { "enum": ["ko", "en"] }
+      }
+    },
+    "phase": {
+      "enum": ["input", "analyzing", "conversing", "team_deploying", "team_working", "mixing", "dm_feedback", "refining", "complete"],
+      "description": "Plugin phase. Simplified from webapp (no lead_synthesizing, no iterating — revisions append drafts without separate phase)."
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current Q&A round within analyzing/conversing."
+    },
+    "max_rounds": {
+      "type": "integer",
+      "default": 3
+    },
+    "snapshots": {
+      "type": "array",
+      "items": { "$ref": "./analysis-snapshot.json" },
+      "description": "All snapshots from /overture:clarify rounds. Latest is authoritative."
+    },
+    "questions_and_answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "answer": { "type": "string" }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "description": "Output of /overture:team classification step.",
+      "properties": {
+        "stakes": { "enum": ["routine", "important", "critical"] },
+        "decision_type": { "enum": ["known_path", "needs_analysis", "no_answer", "on_fire"] },
+        "agent_count": { "type": "integer" },
+        "pipeline": { "enum": ["single_stage", "two_stage"] }
+      }
+    },
+    "workers": {
+      "type": "array",
+      "items": { "$ref": "./worker-result.json" }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "worker_ids": { "type": "array", "items": { "type": "string" } },
+          "depends_on_stage_id": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "mix": {
+      "oneOf": [{ "$ref": "./mix-result.json" }, { "type": "null" }]
+    },
+    "dm_feedback": {
+      "oneOf": [{ "$ref": "./dm-feedback.json" }, { "type": "null" }]
+    },
+    "final_scaffold": {
+      "oneOf": [{ "$ref": "./final-scaffold.json" }, { "type": "null" }]
+    },
+    "drafts": {
+      "type": "array",
+      "items": { "$ref": "./draft.json" },
+      "description": "Version tree of completed drafts. drafts[0] = root of tree."
+    },
+    "active_draft_id": {
+      "type": ["string", "null"],
+      "description": "Currently-focused draft. null = latest."
+    },
+    "released_draft_id": {
+      "type": ["string", "null"],
+      "description": "Draft marked as v{major}.0 release."
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

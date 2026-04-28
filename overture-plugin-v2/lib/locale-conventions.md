@@ -1,0 +1,42 @@
+# Locale Conventions
+
+Every skill honors `config.locale` from `.overture/config.yaml`. Default is `ko` when config is missing or locale field absent.
+
+## Affected surfaces
+
+All of these MUST switch on `config.locale`:
+
+1. **AskUserQuestion** — title, question text, option labels
+2. **User-facing print output** — status reports, error messages, confirmation dialogs
+3. **LLM system prompts** — tone rules, example formatting instructions
+4. **Generated artifact field content** — `first_reaction`, `good_parts[]`, etc. in the output locale
+
+NOT switched on locale (always stays same):
+- Field NAMES in JSON artifacts (`real_question`, `hidden_assumptions`, `first_reaction`, etc.)
+- Agent `id`s and canonical names in `data/agents.yaml`
+- MBTI codes
+- Version labels (`v0.1`, `v1.0`, etc.)
+- File paths
+
+## Option pattern
+
+For AskUserQuestion with binary choices:
+
+| Situation | ko | en |
+|-----------|-----|-----|
+| Accept | "네" / "맞아요" / "진행" | "Yes" / "Proceed" |
+| Reject | "아니오" / "취소" / "다시" | "No" / "Cancel" / "Redo" |
+| Later | "나중에" / "생략" | "Later" / "Skip" |
+| Free input | "직접 입력" / "다른 의견" | "Let me type it" / "Other" |
+
+## Bilingual boss types
+
+MBTI `example_dialogue` entries in `data/boss-types.yaml` are Korean-only. This is **intentional**: the archetype's rhythm is modeled on Korean workplace culture. For locale=en, the boss prompt keeps the structural personality fields (communicationStyle, feedbackStyle, triggers, speechPatterns, bossVibe) and translates them at prompt-build time; example_dialogue is referenced as "rhythm model" without requiring output in the same language.
+
+The webapp takes the same approach: `personality-types.ts` has `PERSONALITY_TYPES` (ko, full) and `PERSONALITY_TYPES_EN` (en, structural only). Plugin-v2 inherits this split.
+
+## Mixing languages
+
+If user input is in English but locale is `ko`, plugin responds in Korean (respecting config) but can include the English phrases inline in `<user-data>` tags. Vice versa.
+
+If users want ad-hoc locale override without editing config, `/overture:sail --locale en "..."` flag support is **post-MVP**.

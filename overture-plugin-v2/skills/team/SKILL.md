@@ -1,0 +1,451 @@
+---
+name: team
+description: Deploy a team of specialized agents as WORKERS on a clarified problem (the crew sets out from port). Each agent does their domain work — research, numbers, critique, UX, legal, etc. — in their own voice on the actual artifact (code, PR, file, design doc). Agents are not critics here; they're producers. Output is a MixResult aggregating their work with sentence-level attribution preserved. Invoke after `/overture:clarify` has produced an AnalysisSnapshot with an `execution_plan`. This is where Overture's differentiator lives: agents act on REAL artifacts with distinct voices, and contradictions between them are preserved, not averaged. Invoked as `/overture:team`.
+---
+
+# /overture:team
+
+**What this skill does:** Takes a clarified problem + execution plan, classifies it, selects the right 2–4 agents, deploys them in parallel as WORKERS (not critics), and aggregates their work.
+
+**Why this matters (M9 — Workers not critics):** The legacy 4R plugin had agents as "persona reviewers." This skill rejects that model. Agents here PRODUCE artifacts — research notes, ROI tables, UX critiques, compliance checklists. Critique is a separate downstream step (`/overture:boss`). This is the shift from web app's reality, not the old plugin's.
+
+**Why this matters (M3 — Contradiction preservation):** For `stakes: critical` problems, this skill runs a two-stage pipeline with an explicit debate step. Agent disagreements are stored in `team_contradictions[]`, not aggregated away. M4 final scaffold requires this field populated when debate ran.
+
+---
+
+## When to run
+
+Invoke after:
+- `/overture:clarify` has written `versions/v{X}/analysis.json` with `execution_plan.steps` ≥ 2
+- User explicitly runs `/overture:team` with a prior session in conversing phase
+
+Refuse to run when:
+- No session exists → direct user to `/overture:clarify` first
+- Latest snapshot lacks `execution_plan` → direct user to run another round of clarify
+- Unless `--force` flag is passed (prints warning)
+
+---
+
+## Inputs
+
+- **Session ID** (optional): from `--session <id>`. Defaults to most recently modified session in `.overture/sessions/`.
+- **Force flag** (optional): `--force` skips the analysis_readiness check.
+- **Override agents** (optional): `--agents sujin,donghyuk,jieun` — bypass automatic selection. Use sparingly; classification is usually better.
+
+---
+
+## Execution steps
+
+### Step 1 — Load session state
+
+1. Find session: latest `.overture/sessions/*/session.json` or specified via `--session`.
+2. Read latest snapshot from `session.snapshots[-1]`.
+3. Assert `execution_plan.steps` has ≥ 2 entries. If not, halt with direction to run more clarify rounds.
+4. Compute next version label using rules from `lib/session/version-numbering.md`:
+   - v0.1 directory exists already (created by `/overture:clarify`).
+   - **Marker-file detection for re-run**: a version is considered "team-completed" when `versions/{label}/workers.json` exists. If the latest version's `workers.json` exists, this invocation is a re-run → compute next label via `nextChildLabel(latest_label, existing_siblings_under_same_parent)` from version-numbering.md. Typically produces `v0.2` (main-line) or `v0.1.1` (branch from v0.1 when v0.2 already exists).
+   - If `workers.json` does NOT exist in the latest version dir, this is the first team run for that version → use the existing label (do NOT create a new version dir). The team populates the same dir clarify already opened.
+5. Create `versions/{label}/` directory only if a new version was computed; otherwise reuse existing.
+6. Read locale from `.overture/config.yaml` (default `ko`). All user-facing text in this skill (AskUserQuestion options, report strings, worker instructions) uses this locale.
+
+### Step 1.5 — Gather repo context (CRITICAL for M1 code-native)
+
+**Purpose:** Workers need real artifacts to work on, not prose. This step assembles the codebase/target context ONCE so stage-1 workers can act code-native.
+
+**Three paths:**
+
+**(A) Explicit target** — `session.invoking_context.target_type` in `{pr, file, branch, issue, design_doc}`:
+- `pr` → already expanded by `/overture:clarify` at session start. Re-read `versions/v0.1/meta.json` for `pr_context.diff`, `pr_context.description`, `pr_context.files_changed`. Pass forward.
+- `file` → re-read the file contents. Include `git log -5 <file>` for recent context.
+- `branch` → re-run `git diff main...<branch>` + `git log main..<branch>`.
+- `issue` → re-fetch via `gh issue view <N>`.
+
+**(B) Bare prose invocation** (`target_type: ad_hoc`, the most common case):
+- Run `git ls-files | head -100` to sample repo structure.
+- Read `package.json` (or `Cargo.toml` / `pyproject.toml` / `go.mod`) for stack hints.
+- Read `README.md` first 50 lines if present.
+- Run `git log -10 --oneline` for recent activity.
+- Assemble a **repo_sketch** block: `{languages, frameworks, recent_commits, directory_tree_sample}`.
+- Workers receive this sketch and can Grep/Glob for specific files as they work.
+
+**(C) No git repo / no files** (edge case — user in empty directory):
+- Skip repo gathering.
+- Set `repo_context: null` and flag in session.json that workers will operate in hypothetical mode.
+- User-facing warning at end of Step 11: "⚠ No codebase detected. Workers returned hypothetical-mode outputs (marked `[hypothetical]`). For code-native results, run Overture from within a project repo."
+
+**Write** the gathered context to `versions/{label}/repo_context.json`:
+```json
+{
+  "mode": "explicit_target" | "repo_scan" | "hypothetical",
+  "target_type": "pr" | "file" | "branch" | "issue" | "design_doc" | "ad_hoc" | null,
+  "target_ref": "...",
+  "target_content": "...",        // when mode is explicit_target
+  "repo_sketch": {                  // when mode is repo_scan
+    "languages": ["TypeScript", "Python"],
+    "frameworks": ["Next.js", "Tailwind"],
+    "recent_commits": ["...", "..."],
+    "directory_sample": ["src/app/page.tsx", "src/lib/...", ...],
+    "entry_files": ["package.json", "README.md"]
+  },
+  "gathered_at": "2026-04-24T12:34:56Z"
+}
+```
+
+This file becomes input to EVERY worker spawn. Workers can read it + Grep for specifics.
+
+### Step 2 — Classify (LLM runtime)
+
+**Reference: `data/classification.yaml`**
+
+Prompt yourself:
+
+> You are classifying a problem for agent team deployment. Use the vocabulary from `data/classification.yaml`.
+>
+> Given:
+> - Real question: {{snapshot.real_question}}
+> - Skeleton: {{snapshot.skeleton}}
+> - Execution plan steps: {{snapshot.execution_plan.steps}}
+> - Problem text: <user-data>{{session.problem_text}}</user-data>
+>
+> Produce JSON:
+> ```
+> {
+>   "stakes": "routine" | "important" | "critical",
+>   "decision_type": "known_path" | "needs_analysis" | "no_answer" | "on_fire",
+>   "steps_classified": [
+>     {"task": "...", "output": "...", "primary_task_type": "...", "secondary_task_type": "...", "context_domain": "...", "output_type": "...", "agent_hint": "..." (optional)}
+>   ]
+> }
+> ```
+>
+> Rules (from classification.yaml):
+> - Default stakes = `important`. Use `critical` only when irreversible (legal commitment, public shipment, major spend). Use `routine` only when explicitly experimental/prototype.
+> - If stakes is `critical`, include a final step with `primary_task_type: "critique"` so donghyuk reviews. If the plan doesn't have one, APPEND it.
+
+Write classification to `versions/{label}/classification.json`.
+
+### Step 3 — Select agents (LLM + capabilities)
+
+**Reference: `data/agents.yaml`** — each agent has `capabilities: {task_types, domains, output_types, anti_patterns}`.
+
+For each step, compute best agent by:
+
+1. **Score** (scoring formula from agent-capabilities.ts, ported):
+   ```
+   score = rank_score(step.primary_task_type, agent.task_types) * 0.5
+         + rank_score(step.context_domain, agent.domains) * 0.3
+         + rank_score(step.output_type, agent.output_types) * 0.2
+         - (0.4 if step.primary_task_type in agent.anti_patterns else 0)
+   ```
+   where `rank_score(item, ranked_list)` = 1.0 for position 0, 0.8 for 1, 0.6 for 2, 0.45 for 3, 0.3 for 4, 0.2 for 5, 0.05 if not in list.
+
+2. **Constraint**: no agent assigned to more than one step in the same session (unless forced).
+
+3. **Critical stakes mandate**: donghyuk MUST be assigned to the critique step. If donghyuk scores below another agent for that step, still choose donghyuk.
+
+4. **Stakes budget**: limit total agents to `stakes.agent_count_max` (routine: 2, important: 3, critical: 4).
+
+### Step 3.5 — Reconcile steps vs budget (when `steps.length > agent_count_max`)
+
+Apply (a), then (b), then (c) in order. Each step may resolve the overage partially — continue to the next step while `steps.length > agent_count_max` still holds. Stop as soon as budget is met, or fall to (d) if none suffices.
+
+**(a) Stakes auto-upgrade when critique is present.** If at least one step has `primary_task_type == "critique"` AND current stakes is `routine` or `important`, upgrade stakes by one level (`routine → important` or `important → critical`). Recompute `agent_count_max` (important=3, critical=4). Log upgrade in `classification.json` with `stakes_upgrade_reason: "critique_step_present"`.
+- Applies regardless of over-count magnitude. Rationale: a critique step in the execution plan is a strong signal the problem merits fuller team deployment; don't gate on "exactly +1 over budget."
+- If still over budget after (a), continue to (b).
+
+**(b) Merge adjacent same-type steps.** Scan steps for pairs with identical `primary_task_type` AND similar `context_domain` (same or adjacent in classification.yaml). Merge iteratively: concatenate `task` strings with " + ", union `expected_output`, keep the agent with higher score if both had hints. Each merged step gets one agent. Log merges to `classification.json:merges[]`.
+- Example: two research steps on same domain → one sujin handles both, task becomes "research X + research Y".
+- If still over budget after merges exhausted, continue to (c).
+
+**(c) Drop lowest-scoring steps iteratively.** While `steps.length > agent_count_max`: compute best-match agent score for every remaining step, drop the ONE with lowest score. Preserve each dropped step in `classification.json:dropped_steps[]` with its reason and best-agent score. Repeat until budget matches.
+- **Mandatory surfacing**: every dropped step MUST be represented in the final `scaffold.human_required_checkpoints[]` with `checkpoint: "<original task>", why: "dropped from automated pipeline — over_agent_budget"`. This preserves transparency (M4) and gives the user a path to manually cover the dropped area.
+
+**(d) Forbidden fallback**: one agent assigned to two un-merged steps. Do NOT do this silently. If (a)–(c) all failed (e.g., stakes already critical AND no mergeable pairs AND budget still exceeded), halt with error message explaining the conflict and suggesting the user increase `team.max_agents_override` in config.yaml or split the execution_plan into two `/overture:team` invocations.
+
+After reconciliation, `steps.length ≤ agent_count_max` is guaranteed.
+
+### Step 3.6 — Framework assignment per agent
+
+Look up `agents.yaml[agent_id].frameworks[classification.decision_type]` (fallback to `frameworks.default`). Pick the first framework in that list.
+
+Produce `versions/{label}/team_plan.json`:
+```json
+{
+  "stages": [
+    {
+      "id": "stage-1",
+      "label": "Domain work",
+      "worker_ids": ["w-1", "w-2", "w-3"],
+      "depends_on_stage_id": null
+    },
+    {
+      "id": "stage-2",
+      "label": "Critical review",
+      "worker_ids": ["w-4"],
+      "depends_on_stage_id": "stage-1"
+    }
+  ],
+  "workers": [
+    {"id": "w-1", "agent_id": "sujin", "framework": "Analysis of Competing Hypotheses", "task": "...", "expected_output": "...", "task_type": "research", "context_domain": "tech", "output_type": "report"}
+  ]
+}
+```
+
+Stage rules:
+- `stakes: routine | important` → single stage (all workers parallel).
+- `stakes: critical` → two stages: stage-1 = all non-critique workers; stage-2 = critique worker(s), depends on stage-1 results.
+
+### Step 4 — Deploy stage 1 workers in parallel
+
+For each worker in stage-1, use the **Task tool** to spawn a sub-agent:
+
+- **subagent_type**: the agent's canonical ID from agents.yaml (e.g., `sujin`, `minjae`). These map to `.claude/agents/<agentId>.md` which Phase 4 generates.
+- **description**: short (e.g., "research 3 competitors")
+- **prompt**: constructed as (locale-aware):
+
+  ```
+  You are {{agent.name}} ({{agent.name_en}} if locale=en) working as a team worker on this problem.
+  
+  <user-data context="problem">
+  Real question: {{snapshot.real_question}}
+  Your task: {{worker.task}}
+  Expected output shape: {{worker.expected_output}}
+  </user-data>
+  
+  ── Repo context (mode: {{repo_context.mode}}) ──
+  
+  {{if mode == "explicit_target"}}
+  You have a specific artifact to work on:
+  <user-data context="artifact" type="{{target_type}}" ref="{{target_ref}}">
+  {{target_content}}
+  </user-data>
+  
+  Read this artifact directly. You may Grep/Glob the repo for additional files if needed.
+  {{endif}}
+  
+  {{if mode == "repo_scan"}}
+  No specific artifact was provided. This is a repo-wide question. Repo sketch:
+  - Languages: {{repo_sketch.languages_joined}}
+  - Frameworks: {{repo_sketch.frameworks_joined}}
+  - Recent commits: {{repo_sketch.recent_commits_first_5}}
+  - Directory sample: {{repo_sketch.directory_sample_first_20}}
+  - Entry files: {{repo_sketch.entry_files_joined}}
+  
+  You have Read/Grep/Glob tools. **Use them** to find and read the files relevant to YOUR task before producing output. Do not rely on the sketch alone — it's a starting map, not the answer. Cite specific file paths + line numbers in your output when relevant.
+  {{endif}}
+  
+  {{if mode == "hypothetical"}}
+  ⚠ HYPOTHETICAL MODE: No codebase is accessible. Prefix your output with `[hypothetical absent code]` and structure answer as "IF the code looks like X, THEN Y". Be explicit about what you're assuming.
+  {{endif}}
+  
+  ── Framework ──
+  {{worker.framework}}
+  
+  ── Voice ──
+  Read your agent definition for voice + tone. Produce the output in YOUR voice — the example dialogues in your .md file are the rhythm reference.
+  
+  ── Rules ──
+  - Do NOT critique other workers; they run in parallel and you don't see their work.
+  - Do NOT summarize the whole problem; you handle YOUR task.
+  - Cite specific files/lines when working from `explicit_target` or `repo_scan`.
+  - {{locale-specific concluding line: ko="~이내로 간결하게 작성하세요." en="Keep under {{word_budget}} words."}}
+  
+  Return a {{worker.output_type}} in ~{{word_budget}} words.
+  ```
+  
+  Word budget by stakes:
+  - routine: 150 words max
+  - important: 300 words max  
+  - critical: 500 words max
+
+All stage-1 workers spawn in a **single message with multiple Task tool calls in parallel** (per Agent tool usage rules). Do NOT sequential spawn.
+
+### Step 5 — Collect stage 1 results
+
+Each Task returns a result. For each:
+1. Append to `workers` array in `versions/{label}/workers.json` with `status: "done"`, `result: <agent output>`, timestamps.
+2. If any worker errored, log to `errors.log` in the version directory. Don't halt — other workers continue.
+
+### Step 6 — Deploy stage 2 (only if `stakes: critical`)
+
+Stage-2 workers (typically donghyuk) get **stage-1 results as context**:
+
+```
+You are {{agent.name}} doing critical review of the team's work.
+Your task: {{worker.task}}
+
+Team results from stage 1:
+{{for each stage-1 worker}}
+## {{worker.agent_name}} ({{worker.task_type}}) — {{worker.task}}
+{{worker.result}}
+{{endfor}}
+
+Framework: {{worker.framework}}
+
+Your job: find the ONE most important risk or weakness in the team's combined output. Follow M9 — you are doing the WORK of risk analysis, not "reviewing" each agent in turn.
+
+Return a risk_assessment in ~500 words.
+```
+
+### Step 7 — Debate (critical stakes only)
+
+#### Detection — when does debate trigger?
+
+Agents often disagree across **different frames** (legal vs tech, cost vs UX) yet reach opposing conclusions on a **shared canonical decision axis**. A naive "same topic" check misses this. Use these canonical axes:
+
+| Axis | Trigger phrases (any framing) |
+|---|---|
+| **ship_or_halt** | "merge / don't merge", "release / hold", "approve / block", "now / wait" |
+| **scope_cut_vs_expand** | "narrower / wider", "subset first / full", "MVP / complete" |
+| **build_vs_buy** | "in-house / vendor", "own / outsource" |
+| **invest_vs_defer** | "fund now / wait", "increase budget / hold" |
+| **rollback_vs_forward** | "revert / fix forward", "patch / replace" |
+| **fast_vs_safe** | "ship today / harden first", "speed / certainty" |
+| **automate_vs_manual** | "AI handles / human decides", "automated check / review gate" |
+
+For each axis, LLM scans all stage-1 outputs and asks: **does any agent imply one side AND another agent imply the other side, even if they argue from different domain lenses?** If yes → debate.
+
+Examples that previous spec might have missed:
+- taejun (legal frame): "halt — premise is wrong" + junseo (tech frame): "conditional ship — flag covers risk" → BOTH speaking to `ship_or_halt`. **Trigger debate.**
+- minjae (numbers frame): "ROI 24mo, slow" + hyunwoo (strategy frame): "moat is decisive, ship now" → BOTH speaking to `invest_vs_defer`. **Trigger debate.**
+- jieun (UX frame): "users will revolt, hold rollout" + minseo (marketing frame): "launch window closes Friday, ship" → `fast_vs_safe`. **Trigger debate.**
+
+Counter-examples (NO debate — different axes):
+- taejun: "GDPR concern" + junseo: "DB lock manageable" → different axes, no opposing stance on same axis. Convergent on "issues exist," divergent only in domain. No debate.
+
+#### Spawn
+
+If detection triggers, identify the canonical axis + the (≥2) agents on opposite sides. Spawn debate prompt:
+
+> Team agents {{A}}, {{B}} (and possibly more) reached opposing positions on the **{{canonical_axis}}** axis, even though they argued from different domain frames. State each agent's position in their own voice (1-2 sentences), then identify what specific information/condition would resolve the tie. **Do NOT pick a winner.** The user will resolve.
+
+Write to `versions/{label}/debate.json`:
+```json
+{
+  "topic": "PR #42 ship_or_halt",
+  "axis": "ship_or_halt",
+  "positions": [
+    {"agent_id": "taejun", "frame": "legal", "stance": "Halt — premise오류 의심."},
+    {"agent_id": "junseo", "frame": "tech", "stance": "Conditional ship — flag + rollback 필수."}
+  ],
+  "tie_breaking_condition": "원 ticket의 실제 legal 요구사항 확인되면 해소.",
+  "unresolved": true
+}
+```
+
+If multiple axes have opposing stances simultaneously, write multiple entries to debate.json (as an array).
+
+### Step 8 — Synthesize (MixResult)
+
+Prompt yourself:
+
+> Aggregate the team's work into a MixResult (schema: `data/schemas/mix-result.json`).
+>
+> Team outputs:
+> {{all worker results with agent names}}
+>
+> {{if debate ran}}
+> Unresolved contradictions (DO NOT resolve, preserve):
+> {{debate.topic}} — {{positions}}
+> {{endif}}
+>
+> Produce:
+> - `title`: a tight name for the session output
+> - `executive_summary`: 2-3 sentences. NOT "our team analyzed..." — WHAT the work found.
+> - `sections[]`: logical grouping of team outputs. Each section MUST cite `contributor_worker_ids`. If using sentence-level attribution (recommended for critical stakes), include `sentences[]` with per-sentence `contributor_worker_ids`.
+> - `key_assumptions[]`: 3-5 assumptions that, if false, would collapse the output. Pulled from agent outputs where they flagged such assumptions.
+> - `next_steps[]`: concrete actions.
+>
+> Do NOT collapse contradictions. If section prose MUST reference a tension, phrase it as "X says A, Y says B, unresolved."
+
+Write result to `versions/{label}/mix.json`.
+
+### Step 9 — Build FinalScaffold (plugin-native output)
+
+This is the PLUGIN-SPECIFIC divergence from webapp. Webapp produces a markdown document; plugin produces a decision scaffold.
+
+Construct `FinalScaffold` (schema: `data/schemas/final-scaffold.json`):
+- `reframed_question`: from snapshot
+- `key_trade_offs[]`: extract from team outputs + debate. Each trade-off = axis + side_a + side_b.
+- `hidden_assumptions[]`: from mix.key_assumptions, with `evaluation` (likely_true / uncertain / doubtful) based on team's validation
+- `team_contradictions[]`: populated from debate.json if ran; else empty array
+- `human_required_checkpoints[]`: extract from worker outputs where agents flagged "AI cannot decide this" or "human judgment needed". **Also append**: every entry from `classification.json:dropped_steps[]` (from Step 3.5(c)) as a checkpoint with `checkpoint: "<original task>", why: "dropped from automated pipeline — over_agent_budget. Manual coverage needed."`. This is mandatory per M4 transparency.
+- `next_actions[]`: from mix.next_steps, annotated with `actor` = ai_executable or user
+
+Write to `versions/{label}/scaffold.json`.
+
+### Step 10 — Update session.json
+
+- Append all workers to `session.workers[]`
+- Append stages to `session.stages[]`
+- Set `session.mix` to the MixResult
+- Set `session.final_scaffold` to the FinalScaffold
+- Update `session.classification`
+- Set `phase: "dm_feedback"` (ready for boss) OR `phase: "complete"` if user opted to skip boss
+- Update `updated_at`
+
+### Step 11 — Report to user
+
+```
+## Overture · Team · {{label}}
+
+**Classification:** {{stakes}} · {{decision_type}} ({{agent_count}} agents)
+
+**Agents deployed:**
+{{for each worker}}
+- {{agent_emoji}} {{agent_name}} ({{framework}}) — {{one-line task}}
+{{endfor}}
+
+**Key findings** (from MixResult executive_summary):
+{{executive_summary}}
+
+{{if team_contradictions}}
+**⚠ Unresolved contradictions** (preserved, not aggregated):
+{{for each}}
+- {{topic}}: {{agent A}} says {{stance A}}; {{agent B}} says {{stance B}}
+{{endfor}}
+{{endif}}
+
+**Hidden assumptions** (if any prove false, rethink):
+{{for each in scaffold.hidden_assumptions}}
+- [{{evaluation}}] {{assumption}}
+{{endfor}}
+
+**Human-required checkpoints:**
+{{for each}}
+- {{checkpoint}} — {{why AI cannot}}
+{{endfor}}
+
+**Next step:** `/overture:boss` for stakeholder review, or `/overture:chart` to see the version tree.
+```
+
+---
+
+## Meta-check gates (self-verify before returning)
+
+- **M1 (Code-native)**: Did `repo_context.mode` match the invocation? If `mode == hypothetical` but the user provided a `@target`, something broke. If `mode == repo_scan` but no worker cites a file path in its output, agents didn't actually use repo access — the output is de-facto hypothetical. Flag this in the final report so user knows.
+- **M9 (Worker not critic)**: Did each stage-1 worker PRODUCE an artifact in their domain? If any output reads as "I reviewed X and found issues" instead of "here's the X analysis," that's critic mode — reject and re-spawn.
+- **M3 (Contradiction preservation)**: **Only applies when debate ran.** If stakes is critical AND debate ran AND debate found disagreement, `scaffold.team_contradictions[]` MUST contain the debate entry. If debate ran and found no genuine disagreement, empty `team_contradictions[]` is correct and M3 passes. Do NOT fabricate contradiction to fill the array.
+- **M4 (Decision scaffold)**: Does scaffold have `key_trade_offs[]`, `hidden_assumptions[]`, `human_required_checkpoints[]` all populated (empty arrays are valid — the fields must EXIST)?
+- **M6 (Agent relationship / stakes-driven)**: Did agent count match stakes budget? If critical stakes with only 2 agents, you under-budgeted.
+- **M7 (Commodity bot check)**: If the output reads as "here's a code review" or "here's a summary," you've lost the judgment-scaffold shape. Output must preserve decision structure, not be a flat review.
+
+---
+
+## Error modes
+
+- **Task tool spawn fails**: retry once. If still fails, mark worker status=error, continue with other workers. Explain in final report.
+- **Agent sub-agent not found** (agent .md missing): fall back to instructing yourself via the agent's data entry from agents.yaml. Note the fallback.
+- **Debate classification ambiguous**: if you can't identify 2 clearly disagreeing agents, skip debate but log "no clear disagreement surfaced" to session.json. Don't fabricate debate.
+- **Word budget exceeded by an agent**: accept output, don't re-spawn. Note in attribution.
+
+---
+
+## Forbidden patterns
+
+- Running `/overture:team` without prior `/overture:clarify` session.
+- Spawning agents sequentially when they should be parallel (you MUST use multiple Task tool calls in a single message for stage-1 workers).
+- Collapsing team_contradictions into a "consensus" bullet.
+- Letting stage-1 workers critique each other. They don't see each other's work until stage 2 (critical stakes only).
+- Using `devils-advocate` as a default agent. It's not in agents.yaml for a reason — critique is in-stage via donghyuk.
+- Writing a "final deliverable markdown document" à la webapp. Plugin emits FinalScaffold. The mix is internal.

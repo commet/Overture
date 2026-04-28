@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:config",
+  "title": "PluginConfig",
+  "description": "User's plugin configuration, stored at .overture/config.yaml in the repo. Read by every skill at invocation. Plugin-v2 MVP fields only. If file missing, skills use defaults + prompt user to create.",
+  "type": "object",
+  "required": ["locale"],
+  "properties": {
+    "locale": {
+      "enum": ["ko", "en"],
+      "default": "ko",
+      "description": "Language for prompts, AskUserQuestion options, and generated output. Overrides skill defaults."
+    },
+    "boss": {
+      "type": "object",
+      "description": "Configured Boss (stakeholder) for /overture:boss. Optional — skill offers generic fallback if absent.",
+      "required": ["mbti_code"],
+      "properties": {
+        "mbti_code": {
+          "type": "string",
+          "pattern": "^(ISTJ|ISFJ|INFJ|INTJ|ISTP|ISFP|INFP|INTP|ESTP|ESFP|ENFP|ENTP|ESTJ|ESFJ|ENFJ|ENTJ)$",
+          "description": "MBTI 4-letter code. Must match an entry in data/boss-types.yaml."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the boss. e.g., '박 팀장' or 'Alex'. Can be free-form."
+        },
+        "gender": {
+          "enum": ["남", "여", "male", "female"],
+          "description": "Affects prompt pronouns in Korean mode."
+        },
+        "role": {
+          "type": "string",
+          "default": "팀장",
+          "description": "Role label. Default '팀장' (ko) or 'Team Lead' (en)."
+        }
+      }
+    },
+    "team": {
+      "type": "object",
+      "description": "Team deployment preferences. All optional.",
+      "properties": {
+        "max_agents_override": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "Override stakes-based agent count limit. Use with care."
+        },
+        "preferred_agents": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Agent IDs to prefer when scores are close. Soft signal."
+        }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "description": "Session archive preferences.",
+      "properties": {
+        "commit_sessions": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, status skill suggests committing .overture/sessions/ changes at phase=complete."
+        }
+      }
+    }
+  }
+}

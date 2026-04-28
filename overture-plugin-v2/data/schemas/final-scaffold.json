@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:final-scaffold",
+  "title": "FinalScaffold",
+  "description": "Plugin-native final output. NOT a markdown document (that's the webapp's model). A DECISION SCAFFOLD preserving contradictions, hidden assumptions, trade-offs, and human-required checkpoints. This is the anti-commodity differentiator: Overture plugin outputs decision structure, not solutions.",
+  "type": "object",
+  "required": ["reframed_question", "key_trade_offs", "hidden_assumptions", "human_required_checkpoints", "next_actions"],
+  "properties": {
+    "reframed_question": {
+      "type": "string",
+      "description": "The real question, as surfaced by /overture:clarify. Must not be the user's surface request."
+    },
+    "key_trade_offs": {
+      "type": "array",
+      "description": "The axes the user must decide on. NOT the answer — the dimensions.",
+      "items": {
+        "type": "object",
+        "required": ["axis", "side_a", "side_b"],
+        "properties": {
+          "axis": { "type": "string", "description": "What is being traded. e.g., 'short-term velocity vs long-term maintainability'." },
+          "side_a": { "type": "string", "description": "What A represents + its cost." },
+          "side_b": { "type": "string", "description": "What B represents + its cost." },
+          "which_condition_favors_a": { "type": "string" },
+          "which_condition_favors_b": { "type": "string" }
+        }
+      }
+    },
+    "hidden_assumptions": {
+      "type": "array",
+      "description": "Assumptions the scaffold rests on. If any prove false, scaffold collapses.",
+      "items": {
+        "type": "object",
+        "required": ["assumption", "risk_if_false"],
+        "properties": {
+          "assumption": { "type": "string" },
+          "risk_if_false": { "type": "string" },
+          "evaluation": { "enum": ["likely_true", "uncertain", "doubtful"] }
+        }
+      }
+    },
+    "team_contradictions": {
+      "type": "array",
+      "description": "Where team agents disagreed. CRITICAL: do NOT aggregate away. This is the anti-commodity signal — preserving disagreement.",
+      "items": {
+        "type": "object",
+        "required": ["topic", "positions"],
+        "properties": {
+          "topic": { "type": "string" },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["agent_id", "stance"],
+              "properties": {
+                "agent_id": { "type": "string" },
+                "stance": { "type": "string" }
+              }
+            }
+          },
+          "unresolved": { "type": "boolean", "description": "True if the user must choose; false if debate resolved it." }
+        }
+      }
+    },
+    "human_required_checkpoints": {
+      "type": "array",
+      "description": "Steps the AI explicitly cannot do. These must be surfaced, not buried.",
+      "items": {
+        "type": "object",
+        "required": ["checkpoint", "why"],
+        "properties": {
+          "checkpoint": { "type": "string", "description": "What the human must do/decide." },
+          "why": { "type": "string", "description": "Why AI cannot substitute here." }
+        }
+      }
+    },
+    "boss_concerns_applied": {
+      "type": "array",
+      "description": "Concerns from /overture:boss that were applied to this scaffold.",
+      "items": { "type": "string" }
+    },
+    "boss_concerns_rejected": {
+      "type": "array",
+      "description": "Concerns the user explicitly chose NOT to apply. Preserved for transparency.",
+      "items": { "type": "string" }
+    },
+    "boss_questions_pending": {
+      "type": "array",
+      "description": "Questions boss asked (deep mode would_ask) that user has not yet answered. Cleared when user resolves them or starts new draft.",
+      "items": { "type": "string" }
+    },
+    "next_actions": {
+      "type": "array",
+      "description": "Concrete, time-bounded actions the user can take immediately after reviewing this scaffold.",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": { "type": "string" },
+          "by_when": { "type": "string" },
+          "actor": { "enum": ["user", "ai_executable"] }
+        }
+      }
+    }
+  }
+}

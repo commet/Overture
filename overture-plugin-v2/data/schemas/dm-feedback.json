@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:dm-feedback",
+  "title": "DMFeedbackResult",
+  "description": "Output of /overture:boss. Stakeholder review with concerns, severity, fix suggestions. Ported from webapp's DMFeedbackResult + unified ReviewFeedback (src/stores/types.ts:849, 870).",
+  "type": "object",
+  "required": ["persona_name", "first_reaction", "good_parts", "concerns", "approval_condition"],
+  "properties": {
+    "persona_name": { "type": "string", "description": "Boss name (display)." },
+    "persona_role": { "type": "string" },
+    "mbti_type": {
+      "type": "string",
+      "description": "MBTI code (ISTJ, INTJ, etc.) from boss-types.yaml. Present when this feedback came from a configured MBTI boss."
+    },
+    "first_reaction": {
+      "type": "string",
+      "description": "One-line first impression in the boss's voice. NO report-speak."
+    },
+    "good_parts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "2-3 specific strengths. Must cite what section/point."
+    },
+    "concerns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "severity", "fix_suggestion"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The concern — must point to WHERE (section/line)."
+          },
+          "severity": {
+            "enum": ["critical", "important", "minor"],
+            "description": "critical = blocker; important = should fix before ship; minor = nice-to-have."
+          },
+          "fix_suggestion": {
+            "type": "string",
+            "description": "Actionable direction. 'Here's how to fix it' — concern without fix is forbidden."
+          },
+          "applied": {
+            "type": "boolean",
+            "description": "User's decision on whether to apply this fix. critical defaults to true."
+          }
+        }
+      }
+    },
+    "approval_condition": {
+      "type": "string",
+      "description": "'If you fix X, this is ready.' One specific sentence."
+    },
+    "mode": {
+      "enum": ["quick", "deep"],
+      "description": "quick = hallway conversation (~150 words); deep = team meeting."
+    },
+    "would_ask": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deep mode only. Questions the boss would ask in a meeting."
+    },
+    "failure_scenario": {
+      "type": "string",
+      "description": "Deep mode only. Concrete scenario where this plan fails (2-3 sentences)."
+    },
+    "untested_assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deep mode only. What the document takes for granted that might not be true."
+    }
+  }
+}

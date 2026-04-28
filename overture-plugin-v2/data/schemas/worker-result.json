@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:worker-result",
+  "title": "WorkerResult",
+  "description": "Output of a single agent worker during /overture:team. Trimmed from webapp's WorkerTask (src/stores/types.ts:749). Plugin scope drops the streaming/approval UI fields, keeps the artifact + metadata.",
+  "type": "object",
+  "required": ["id", "agent_id", "task", "expected_output", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Worker task ID (UUID or timestamp-based)."
+    },
+    "step_index": {
+      "type": "integer",
+      "description": "Position in the execution_plan.steps array."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Canonical agentId from agents.yaml. e.g., 'sujin', 'minjae'."
+    },
+    "agent_name": {
+      "type": "string",
+      "description": "Display name (KR). e.g., '다은'."
+    },
+    "task": {
+      "type": "string",
+      "description": "What the agent was asked to do."
+    },
+    "expected_output": {
+      "type": "string",
+      "description": "Shape of deliverable expected."
+    },
+    "task_type": {
+      "enum": ["research", "analysis", "synthesis", "strategy", "calculation", "writing", "critique", "design", "legal_review", "planning"],
+      "description": "Classification from classification.yaml.task_types."
+    },
+    "context_domain": {
+      "enum": ["market", "finance", "tech", "legal", "ux", "ops", "product", "brand"]
+    },
+    "output_type": {
+      "enum": ["report", "document", "numbers", "checklist", "risk_assessment", "comparison", "plan"]
+    },
+    "framework": {
+      "type": "string",
+      "description": "Thinking framework assigned. e.g., 'Analysis of Competing Hypotheses'."
+    },
+    "status": {
+      "enum": ["pending", "running", "done", "error", "skipped"]
+    },
+    "result": {
+      "type": ["string", "null"],
+      "description": "The artifact this agent produced. null until status=done."
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Worker IDs that must complete before this one runs. For two-stage pipelines."
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "Pipeline stage this worker belongs to. Single-stage problems: all workers share one stage."
+    },
+    "error": {
+      "type": ["string", "null"]
+    },
+    "started_at": { "type": ["string", "null"], "format": "date-time" },
+    "completed_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:mix-result",
+  "title": "MixResult",
+  "description": "Aggregated output from team workers. Ported from webapp's MixResult (src/stores/types.ts:880). Preserves sentence-level attribution.",
+  "type": "object",
+  "required": ["title", "executive_summary", "sections", "key_assumptions", "next_steps"],
+  "properties": {
+    "title": { "type": "string" },
+    "executive_summary": { "type": "string", "description": "2-3 sentence overview." },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["heading", "content"],
+        "properties": {
+          "heading": { "type": "string" },
+          "content": { "type": "string", "description": "Section prose. May be computed from sentences[] when present." },
+          "contributor_worker_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Which agents contributed to this section. Union of sentence-level when sentences[] present."
+          },
+          "contributor_names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Agent names (convenience; derived from worker_ids)."
+          },
+          "sentences": {
+            "type": "array",
+            "description": "Fine-grained sentence attribution. Optional but recommended for critical stakes sessions.",
+            "items": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": { "type": "string" },
+                "contributor_worker_ids": { "type": "array", "items": { "type": "string" } },
+                "contributor_names": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "key_assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Assumptions this aggregation rests on. If any prove false, the mix may collapse."
+    },
+    "next_steps": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

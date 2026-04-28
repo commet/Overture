@@ -1,0 +1,69 @@
+{
+  "name": "overture",
+  "version": "2.0.0",
+  "description": "Judgment harness for AI. Structure a decision inside your actual codebase — AI team deploys as workers on real code/PRs/files, preserving contradictions and hidden assumptions. Output is a DECISION SCAFFOLD (not a solution). Built on Claude Code's subagent + Task tool. Complement to Cursor (code generation) and Copilot Review (critique).",
+  "author": {
+    "name": "Overture",
+    "email": "yclee913@gmail.com",
+    "url": "https://github.com/commet"
+  },
+  "homepage": "https://github.com/commet/Overture",
+  "license": "MIT",
+  "repository": "https://github.com/commet/Overture",
+  "commands": [
+    "./skills/sail/SKILL.md",
+    "./skills/clarify/SKILL.md",
+    "./skills/team/SKILL.md",
+    "./skills/boss/SKILL.md",
+    "./skills/chart/SKILL.md"
+  ],
+  "agents": [
+    "./agents/hayoon.md",
+    "./agents/sujin.md",
+    "./agents/research_director.md",
+    "./agents/strategy_jr.md",
+    "./agents/hyunwoo.md",
+    "./agents/chief_strategist.md",
+    "./agents/seoyeon.md",
+    "./agents/minjae.md",
+    "./agents/hyeyeon.md",
+    "./agents/minseo.md",
+    "./agents/sujin_hr.md",
+    "./agents/junseo.md",
+    "./agents/yerin.md",
+    "./agents/donghyuk.md",
+    "./agents/jieun.md",
+    "./agents/taejun.md",
+    "./agents/concertmaster.md"
+  ],
+  "references": [
+    "./data/agents.yaml",
+    "./data/boss-types.yaml",
+    "./data/classification.yaml",
+    "./data/schemas/analysis-snapshot.json",
+    "./data/schemas/worker-result.json",
+    "./data/schemas/mix-result.json",
+    "./data/schemas/dm-feedback.json",
+    "./data/schemas/final-scaffold.json",
+    "./data/schemas/draft.json",
+    "./data/schemas/session.json",
+    "./data/schemas/config.json",
+    "./lib/session/version-numbering.md",
+    "./lib/session/session-layout.md",
+    "./lib/locale-conventions.md",
+    "./lib/config.example.yaml",
+    "./lib/rehearsal-prompt.md"
+  ],
+  "statusline": "./statusline/index.js",
+  "keywords": [
+    "decision-making",
+    "structured-thinking",
+    "judgment-harness",
+    "agent-team",
+    "code-native",
+    "decision-scaffold",
+    "version-tree",
+    "overture",
+    "anti-sycophancy"
+  ]
+}
