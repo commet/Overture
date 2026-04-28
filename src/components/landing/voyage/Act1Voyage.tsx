@@ -41,7 +41,7 @@ export function Act1Voyage() {
           className="relative mx-auto mt-10 md:mt-14 bp-fade-up"
           style={{
             width: '100%',
-            maxWidth: 1100,
+            maxWidth: 950,
             aspectRatio: '1200 / 600',
             animationDelay: '120ms',
           }}
@@ -50,7 +50,7 @@ export function Act1Voyage() {
         </div>
 
         {/* Title block */}
-        <div className="text-center max-w-4xl mx-auto mt-6 md:mt-10">
+        <div className="text-center max-w-4xl mx-auto mt-4 md:mt-6">
           <h1
             id="voyage-heading"
             className={`bp-fade-up ${locale === 'ko' ? 'break-keep' : ''}`}
@@ -58,25 +58,23 @@ export function Act1Voyage() {
               fontFamily: 'var(--font-display)',
               color: 'var(--bp-ink)',
               fontWeight: 700,
-              fontSize: 'clamp(40px, 5.2vw, 76px)',
-              lineHeight: 1.05,
+              fontSize: 'clamp(32px, 3.8vw, 60px)',
+              lineHeight: 1.1,
               letterSpacing: '-0.012em',
               animationDelay: '320ms',
             }}
           >
             {locale === 'ko' ? (
               <>
-                한 번도 안 가본 곳으로 가야 할 때,
+                어디로 갈지 정하는 것 —
                 <br />
-                <span style={{ color: 'var(--bp-ink-soft)' }}>당신의 배는 이미 떠나 있다.</span>
+                <span style={{ color: 'var(--bp-ink-soft)' }}>그게 가장 어려운 일이었다.</span>
               </>
             ) : (
               <>
-                <span className="lg:whitespace-nowrap">When you set out for somewhere</span>
+                Choosing the heading
                 <br />
-                <span className="lg:whitespace-nowrap">you've never been —</span>
-                <br />
-                <span style={{ color: 'var(--bp-ink-soft)' }}>the crew is already aboard.</span>
+                <span style={{ color: 'var(--bp-ink-soft)' }}>was always the hardest part.</span>
               </>
             )}
           </h1>
@@ -91,8 +89,8 @@ export function Act1Voyage() {
             }}
           >
             {L(
-              '17명의 선원이 각자 자리에서 일할 준비를 마쳤습니다. 당신은 어디로 갈지만 정하면 됩니다.',
-              'Seventeen crew, each at their station, ready. You only need to name the heading.',
+              '이제 17명의 팀이 함께합니다. 키는 당신이 잡습니다.',
+              'Now seventeen crew sail alongside. You hold the helm.',
             )}
           </p>
 
