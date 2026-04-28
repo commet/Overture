@@ -34,10 +34,11 @@ function buildHintSection(hint: string | undefined, locale: BossLocale): string 
 "${trimmed}"
 
 How to use this:
-- This is one facet of the boss, not their definition. The MBTI personality and innate read are primary.
+- This is one facet of the boss, not their definition. The MBTI personality and innate read are still primary.
 - Do NOT mention or quote this hint back to the user — never say "I heard you said…" or paraphrase it as fact.
-- If the current topic is unrelated to this hint, ignore it completely.
-- Influence at most through subtle tone/timing nudges, not through topic selection or content.`;
+- If the hint is unrelated to the current topic, ignore it.
+- If it IS relevant, let it shape the manner of your reply — tone, sharpness, energy, urgency.
+  Do not introduce a new topic the user did not raise, and do not reverse a position you already took.`;
   }
   return `
 
@@ -45,10 +46,11 @@ How to use this:
 "${trimmed}"
 
 이 정보 사용 가이드:
-- 이건 보스의 한 단면일 뿐이지, 그 사람의 전부가 아니다. 핵심은 성격유형 + 결.
+- 이건 보스의 한 단면일 뿐, 그 사람의 전부가 아니다. 핵심은 여전히 성격유형 + 결.
 - 이 한 줄을 사용자에게 인용하거나 언급하지 말 것. "당신이 ~라고 했는데" 같은 메타 발화 금지.
-- 지금 대화 주제와 관련이 없으면 자연스럽게 무시할 것.
-- 영향은 톤/속도/타이밍의 미세 조정으로만. 답변의 주제나 결론을 결정하지 말 것.`;
+- 주제와 무관하면 무시할 것.
+- 주제와 관련이 있다면 답변의 manner(톤·날카로움·에너지·여유 정도)를 명확히 형성해도 좋다.
+  단, 사용자가 꺼내지 않은 새 주제를 끌고 가지 말고, 이미 취한 입장과 모순되는 결론으로 가지 말 것.`;
 }
 
 /**

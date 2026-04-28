@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Check } from 'lucide-react';
 import { useBossStore } from '@/stores/useBossStore';
 import { useLocale } from '@/hooks/useLocale';
 import { track } from '@/lib/analytics';
@@ -109,23 +111,41 @@ export function BehavioralToggle() {
   const setAxis = useBossStore((s) => s.setAxis);
   const locale = useLocale();
   const quiz = getQuiz(locale === 'ko' ? 'ko' : 'en');
+  // Track which axes the user has explicitly answered in this Easy session.
+  // Default state is ESTJ in the store; without this, every row would look
+  // pre-selected and the user can't tell what they have actually committed to.
+  const [answered, setAnswered] = useState<Record<AxisKey, boolean>>({
+    ei: false, sn: false, tf: false, jp: false,
+  });
+  const answeredCount = (['ei','sn','tf','jp'] as AxisKey[]).filter((k) => answered[k]).length;
 
   const handleSelect = (key: AxisKey, value: string) => {
-    if (axes[key] === value) return;
-    setAxis(key, value);
+    const previousAnswered = answered[key];
+    if (axes[key] === value && previousAnswered) return;
+    if (axes[key] !== value) setAxis(key, value);
+    if (!previousAnswered) setAnswered((s) => ({ ...s, [key]: true }));
     track('boss_axis_changed', { axis: key, from: axes[key], to: value, mode: 'easy' });
   };
 
   return (
     <div className="btv-quiz">
+      <div className="btv-counter" aria-live="polite">
+        {locale === 'ko'
+          ? <>답한 질문 <strong>{answeredCount}/4</strong>{answeredCount < 4 ? ' — 다 알려주시면 더 정확해져요' : ' ✓'}</>
+          : <>Answered <strong>{answeredCount}/4</strong>{answeredCount < 4 ? ' — sharper read with all four' : ' ✓'}</>}
+      </div>
       {quiz.map((row) => {
         const current = axes[row.key];
+        const userAnswered = answered[row.key];
         return (
-          <div key={row.key} className="btv-row">
+          <div key={row.key} className="btv-row" data-answered={userAnswered}>
             <p className="btv-question">{row.question}</p>
             <div className="btv-options">
               {row.options.map((opt) => {
-                const active = current === opt.code;
+                // Only show the active highlight if the user actually picked this row;
+                // otherwise both options look neutral, even though the underlying axis
+                // has a default value.
+                const active = userAnswered && current === opt.code;
                 return (
                   <button
                     key={opt.code}
@@ -144,6 +164,7 @@ export function BehavioralToggle() {
                     )}
                     <span className="btv-option-emoji" aria-hidden="true">{opt.emoji}</span>
                     <span className="btv-option-label">{opt.label}</span>
+                    {active && <Check size={12} className="btv-option-check" aria-hidden="true" />}
                   </button>
                 );
               })}

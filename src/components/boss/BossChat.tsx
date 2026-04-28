@@ -665,6 +665,11 @@ export function BossChat() {
             exit={{ opacity: 0, y: -5 }}
             className="bc-calibration"
           >
+            <button
+              onClick={() => setCalibrationStep('none')}
+              aria-label={L('닫기', 'Dismiss')}
+              className="bc-cal-dismiss"
+            >×</button>
             <p className="bc-cal-q">{L('실제 팀장이랑 얼마나 비슷해?', 'How close is this to your actual boss?')}</p>
             <div className="bc-cal-options">
               <button onClick={() => {
@@ -702,6 +707,11 @@ export function BossChat() {
             exit={{ opacity: 0, y: -5 }}
             className="bc-calibration"
           >
+            <button
+              onClick={() => setCalibrationStep('none')}
+              aria-label={L('닫기', 'Dismiss')}
+              className="bc-cal-dismiss"
+            >×</button>
             <p className="bc-cal-q">{L('어떤 점이 달라?', 'What feels different?')}</p>
             <div className="bc-cal-options">
               <button
