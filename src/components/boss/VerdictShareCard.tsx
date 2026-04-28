@@ -51,7 +51,7 @@ export function VerdictShareCard({ verdict, typeCode, situation, onClose }: Verd
 
   const bestQuote = findBestQuote(messages);
   const situationShort = situation.length > 25 ? situation.slice(0, 25) + '...' : situation;
-  const signature = type?.speechPatterns?.[0] ?? '';
+  const signature = (type?.speechPatterns?.[0] ?? '').trim();
   const kyeol = birthYear ? composeKyeol(birthYear, locale) : null;
 
   // Share text — natural when pasted into a chat

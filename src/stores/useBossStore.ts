@@ -148,6 +148,10 @@ export const useBossStore = create<BossState>((set, get) => ({
     // full 사주는 day가 있을 때만 의미 (현재는 미사용)
     if (!birthYear || birthYear < 1940) return;
     set({ sajuLoading: true });
+    // Hard 5s ceiling so BossConfirmation never stalls if /api/boss/saju is slow.
+    // Saju is optional — chat works without it.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
       if (birthMonth >= 1 && birthMonth <= 12) {
         // 연+월 있으면 API에 month pillar도 요청
@@ -155,6 +159,7 @@ export const useBossStore = create<BossState>((set, get) => ({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ year: birthYear, month: birthMonth, gender }),
+          signal: controller.signal,
         });
         if (res.ok) {
           const profile = await res.json();
@@ -162,8 +167,9 @@ export const useBossStore = create<BossState>((set, get) => ({
         }
       }
     } catch {
-      // Saju is optional — chat works without it
+      // Saju is optional — chat works without it (timeout / network / abort all land here)
     } finally {
+      clearTimeout(timeoutId);
       set({ sajuLoading: false });
     }
   },
