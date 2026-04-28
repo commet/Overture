@@ -14,6 +14,7 @@ import { buildBossSystemPrompt, buildBossSystemPromptFromAgent, buildFirstMessag
 import { useAgentStore } from '@/stores/useAgentStore';
 import { applyBossCalibration, applyExplicitCalibration } from '@/lib/observation-engine';
 import { track } from '@/lib/analytics';
+import { useAuth } from '@/lib/auth';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getPersonalityType as getType } from '@/lib/boss/personality-types';
 import { getYearElement } from '@/lib/boss/saju-interpreter';
@@ -201,6 +202,8 @@ export function BossChat() {
 
   const locale = useLocale();
   const L = (k: string, e: string) => (locale === 'ko' ? k : e);
+  const { user } = useAuth();
+  const isAnon = !user;
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(!!useBossStore.getState().loadedAgentId);
   const [ctaDismissed, setCtaDismissed] = useState(false);
@@ -457,14 +460,16 @@ export function BossChat() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="bc-reset"
-              title={L('이 팀장 저장하기', 'Save this boss')}
+              title={isAnon
+                ? L('이 팀장 저장하기 (이 브라우저에만 임시 저장)', 'Save this boss (temporary, this browser only)')
+                : L('이 팀장 저장하기', 'Save this boss')}
               onClick={() => {
                 const id = saveAsAgent();
                 if (id) {
                   setSaved(true);
                   applyBossCalibration(id, messages);
                   setCalibrationStep('similarity');
-                  track('boss_saved_as_agent', { turns: messages.length, mbti: typeCode });
+                  track('boss_saved_as_agent', { turns: messages.length, mbti: typeCode, anonymous: isAnon });
                 }
               }}
               style={{ color: 'var(--accent)' }}
@@ -473,10 +478,19 @@ export function BossChat() {
             </motion.button>
           )}
           {saved && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Check size={10} /> {L('저장됨', 'Saved')}
+                <Check size={10} /> {isAnon ? L('임시 저장됨', 'Saved (this browser)') : L('저장됨', 'Saved')}
               </span>
+              {isAnon && (
+                <Link
+                  href="/login"
+                  style={{ fontSize: 10, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
+                  title={L('로그인하면 다른 기기에서도 이 팀장과 다시 대화할 수 있어요', 'Sign in to keep this boss across devices')}
+                >
+                  {L('로그인하면 영구 저장', 'Sign in to keep')}
+                </Link>
+              )}
               <Link
                 href={`/workspace?reviewer=${loadedAgentId || ''}`}
                 style={{ fontSize: 10, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { TypeToggle } from './TypeToggle';
+import { BehavioralToggle } from './BehavioralToggle';
 import { useBossStore } from '@/stores/useBossStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getLocalizedPersonalityType } from '@/lib/boss/personality-types';
@@ -82,6 +83,9 @@ export function BossSetup() {
   const [situation, setSituation] = useState('');
   const [isLaunching, setIsLaunching] = useState(false);
   const [confirmedSituation, setConfirmedSituation] = useState('');
+  // Default to "easy" mode — workplace-language quiz. Power users / Korean MBTI fans
+  // can flip to MBTI-direct toggle. Both modes share the same axis state.
+  const [axisMode, setAxisMode] = useState<'easy' | 'mbti'>('easy');
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
   const typeData = getLocalizedPersonalityType(typeCode, locale);
@@ -162,8 +166,28 @@ export function BossSetup() {
 
       {/* ── MBTI selector ── */}
       <motion.div className="bs-type-section" variants={fadeUp}>
-        <p className="text-[12px] text-[var(--text-tertiary)] mb-2">{t('boss.typeHint')}</p>
-        <TypeToggle />
+        <div className="bs-mode-row">
+          <p className="text-[12px] text-[var(--text-tertiary)]">{t('boss.typeHint')}</p>
+          <div className="bs-mode-toggle" role="group" aria-label={locale === 'ko' ? '입력 방식' : 'Input mode'}>
+            <button
+              type="button"
+              onClick={() => setAxisMode('easy')}
+              data-active={axisMode === 'easy'}
+              aria-pressed={axisMode === 'easy'}
+            >
+              {locale === 'ko' ? '🤔 쉽게' : '🤔 Easy'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAxisMode('mbti')}
+              data-active={axisMode === 'mbti'}
+              aria-pressed={axisMode === 'mbti'}
+            >
+              {locale === 'ko' ? '🎯 MBTI' : '🎯 MBTI'}
+            </button>
+          </div>
+        </div>
+        {axisMode === 'easy' ? <BehavioralToggle /> : <TypeToggle />}
 
         {/* Personality — always visible card */}
         <AnimatePresence mode="wait">

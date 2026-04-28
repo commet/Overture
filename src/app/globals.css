@@ -723,6 +723,120 @@ button, a, input, textarea {
   z-index: -1;
 }
 
+/* ── Mode toggle: Easy / MBTI ── */
+
+.bs-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.bs-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--bg);
+}
+
+.bs-mode-toggle button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.bs-mode-toggle button[data-active="true"] {
+  background: var(--text-primary);
+  color: var(--bg);
+}
+
+/* ── Behavioral quiz toggle ── */
+
+.btv-quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.btv-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btv-question {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  padding-left: 4px;
+}
+
+.btv-options {
+  display: flex;
+  gap: 8px;
+}
+
+.btv-option {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.35;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  z-index: 1;
+  overflow: hidden;
+  min-height: 56px;
+}
+
+.btv-option[data-active="true"] {
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.btv-option-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light, var(--accent)));
+  z-index: -1;
+}
+
+.btv-option-emoji {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btv-option-label {
+  flex: 1;
+  word-break: keep-all;
+}
+
+@media (max-width: 480px) {
+  .btv-options { flex-direction: column; gap: 6px; }
+  .btv-option { min-height: auto; padding: 10px 12px; }
+}
+
 /* ── Profile section (gender + birth + saju) ── */
 .bs-profile-section {
   display: flex;
