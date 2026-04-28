@@ -1,6 +1,6 @@
 # Overture plugin config template.
 # Copy to `.overture/config.yaml` in your repo and customize.
-# Schema: data/schemas/config.json
+# Schema: ~/.claude/overture-data/schemas/config.json
 #
 # On first `/overture:sail` invocation, if .overture/config.yaml is missing, the
 # skill offers to create one from this template via AskUserQuestion.
@@ -8,7 +8,7 @@
 locale: ko  # or "en"
 
 boss:
-  mbti_code: ISTJ  # Must match an entry in data/boss-types.yaml. See choices:
+  mbti_code: ISTJ  # Must match an entry in ~/.claude/overture-data/boss-types.yaml. See choices:
                    # ISTJ, ISFJ, INFJ, INTJ, ISTP, ISFP, INFP, INTP,
                    # ESTP, ESFP, ENFP, ENTP, ESTJ, ESFJ, ENFJ, ENTJ
   name: "박 팀장"

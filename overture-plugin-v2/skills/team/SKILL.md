@@ -41,7 +41,7 @@ Refuse to run when:
 1. Find session: latest `.overture/sessions/*/session.json` or specified via `--session`.
 2. Read latest snapshot from `session.snapshots[-1]`.
 3. Assert `execution_plan.steps` has ≥ 2 entries. If not, halt with direction to run more clarify rounds.
-4. Compute next version label using rules from `lib/session/version-numbering.md`:
+4. Compute next version label using rules from `~/.claude/overture-lib/session/version-numbering.md`:
    - v0.1 directory exists already (created by `/overture:clarify`).
    - **Marker-file detection for re-run**: a version is considered "team-completed" when `versions/{label}/workers.json` exists. If the latest version's `workers.json` exists, this invocation is a re-run → compute next label via `nextChildLabel(latest_label, existing_siblings_under_same_parent)` from version-numbering.md. Typically produces `v0.2` (main-line) or `v0.1.1` (branch from v0.1 when v0.2 already exists).
    - If `workers.json` does NOT exist in the latest version dir, this is the first team run for that version → use the existing label (do NOT create a new version dir). The team populates the same dir clarify already opened.
@@ -95,11 +95,11 @@ This file becomes input to EVERY worker spawn. Workers can read it + Grep for sp
 
 ### Step 2 — Classify (LLM runtime)
 
-**Reference: `data/classification.yaml`**
+**Reference: `~/.claude/overture-data/classification.yaml`**
 
 Prompt yourself:
 
-> You are classifying a problem for agent team deployment. Use the vocabulary from `data/classification.yaml`.
+> You are classifying a problem for agent team deployment. Use the vocabulary from `~/.claude/overture-data/classification.yaml`.
 >
 > Given:
 > - Real question: {{snapshot.real_question}}
@@ -126,7 +126,7 @@ Write classification to `versions/{label}/classification.json`.
 
 ### Step 3 — Select agents (LLM + capabilities)
 
-**Reference: `data/agents.yaml`** — each agent has `capabilities: {task_types, domains, output_types, anti_patterns}`.
+**Reference: `~/.claude/overture-data/agents.yaml`** — each agent has `capabilities: {task_types, domains, output_types, anti_patterns}`.
 
 For each step, compute best agent by:
 
@@ -339,7 +339,7 @@ If multiple axes have opposing stances simultaneously, write multiple entries to
 
 Prompt yourself:
 
-> Aggregate the team's work into a MixResult (schema: `data/schemas/mix-result.json`).
+> Aggregate the team's work into a MixResult (schema: `~/.claude/overture-data/schemas/mix-result.json`).
 >
 > Team outputs:
 > {{all worker results with agent names}}
@@ -364,7 +364,7 @@ Write result to `versions/{label}/mix.json`.
 
 This is the PLUGIN-SPECIFIC divergence from webapp. Webapp produces a markdown document; plugin produces a decision scaffold.
 
-Construct `FinalScaffold` (schema: `data/schemas/final-scaffold.json`):
+Construct `FinalScaffold` (schema: `~/.claude/overture-data/schemas/final-scaffold.json`):
 - `reframed_question`: from snapshot
 - `key_trade_offs[]`: extract from team outputs + debate. Each trade-off = axis + side_a + side_b.
 - `hidden_assumptions[]`: from mix.key_assumptions, with `evaluation` (likely_true / uncertain / doubtful) based on team's validation

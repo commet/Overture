@@ -9,7 +9,7 @@ Every Overture session lives in `.overture/sessions/{session-id}/` relative to t
 ├── config.yaml                  # User's plugin config (boss MBTI, locale)
 ├── sessions/
 │   └── {session-id}/
-│       ├── session.json         # Top-level session record (schema: data/schemas/session.json)
+│       ├── session.json         # Top-level session record (schema: ~/.claude/overture-data/schemas/session.json)
 │       ├── versions/
 │       │   ├── v0.1/
 │       │   │   ├── analysis.json       # AnalysisSnapshot from /overture:clarify
@@ -41,7 +41,7 @@ Collision-safe via `-N` suffix (2, 3, ...). Example:
 
 ## File naming conventions
 
-- JSON for machine-readable artifacts (conform to schemas in `data/schemas/`).
+- JSON for machine-readable artifacts (conform to schemas in `~/.claude/overture-data/schemas/`).
 - `.log` for append-only text logs.
 - `meta.json` in each version dir holds non-artifact metadata (timestamp, triggering skill, user notes).
 

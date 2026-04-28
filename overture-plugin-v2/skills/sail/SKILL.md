@@ -24,13 +24,23 @@ The default entry point. User typed:
 
 ---
 
+## Path resolution
+
+When this skill (or any sub-skill it invokes) refers to `data/...` or `lib/...`,
+these resolve to:
+- `~/.claude/overture-data/` — schemas, agents.yaml, boss-types.yaml, classification.yaml, README.md
+- `~/.claude/overture-lib/` — session-layout.md, version-numbering.md, locale-conventions.md, config.example.yaml, rehearsal-prompt.md
+
+`install.sh` (both `--link` developer mode and copy mode) places them there.
+User's session artifacts live in `<cwd>/.overture/sessions/`.
+
 ## Execution steps
 
 ### Step 0 — Load config
 
-Read `.overture/config.yaml` (schema: `data/schemas/config.json`). If missing, prompt via AskUserQuestion:
-- **ko**: "Overture 설정 파일이 없네요. `lib/config.example.yaml` 기반으로 만들까요?" → Options: "네, 만들어줘", "나중에 할게 (기본값 사용)"
-- **en**: "No Overture config found. Create from `lib/config.example.yaml` template?" → Options: "Yes, create it", "Not now (use defaults)"
+Read `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`). If missing, prompt via AskUserQuestion:
+- **ko**: "Overture 설정 파일이 없네요. `~/.claude/overture-lib/config.example.yaml` 기반으로 만들까요?" → Options: "네, 만들어줘", "나중에 할게 (기본값 사용)"
+- **en**: "No Overture config found. Create from `~/.claude/overture-lib/config.example.yaml` template?" → Options: "Yes, create it", "Not now (use defaults)"
 
 All downstream skills inherit `locale` from this config.
 

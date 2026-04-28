@@ -39,13 +39,13 @@ Refuse when:
 1. Find session + latest version label from session.json.
 2. Read `versions/{label}/scaffold.json` (the FinalScaffold). If missing, halt — team hasn't run.
 3. Read `versions/{label}/mix.json` (for full document context).
-4. Read `.overture/config.yaml` (schema: `data/schemas/config.json`) → get `locale`, `boss.mbti_code`, `boss.name`, `boss.gender`, `boss.role`.
+4. Read `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`) → get `locale`, `boss.mbti_code`, `boss.name`, `boss.gender`, `boss.role`.
 5. If `config` missing entirely or `boss` block absent, fall through to fallback path in "Error modes" section (offer generic DM review).
 6. The locale from config drives the entire review prompt — use the correct section below (Korean or English prompt template).
 
 ### Step 2 — Load personality
 
-1. Read `data/boss-types.yaml`.
+1. Read `~/.claude/overture-data/boss-types.yaml`.
 2. Look up type by `code`. If not found, halt with error.
 3. Extract: `name`, `communication_style`, `feedback_style`, `triggers`, `speech_patterns[]`, `boss_vibe`, `speech_level`, `example_dialogue`.
 
@@ -158,7 +158,7 @@ Run the prompt (invoke yourself or spawn a sub-agent with `subagent_type: genera
 
 ### Step 5 — Validate output shape
 
-Against `data/schemas/dm-feedback.json`:
+Against `~/.claude/overture-data/schemas/dm-feedback.json`:
 - `first_reaction`, `good_parts`, `concerns`, `approval_condition` required.
 - Each concern must have `text`, `severity`, `fix_suggestion`.
 - If mode is `deep`: `would_ask`, `failure_scenario`, `untested_assumptions` required.
@@ -183,7 +183,7 @@ For MVP, present critical as pre-selected, others as optional.
 
 ### Step 7 — Write output
 
-Save to `versions/{label}/boss_feedback.json`. Schema: `data/schemas/dm-feedback.json`.
+Save to `versions/{label}/boss_feedback.json`. Schema: `~/.claude/overture-data/schemas/dm-feedback.json`.
 
 Include MBTI metadata:
 ```json

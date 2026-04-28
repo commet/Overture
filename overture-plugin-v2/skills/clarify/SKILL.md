@@ -50,10 +50,10 @@ If multiple candidates, use **AskUserQuestion** to disambiguate: "Which of these
 
 ### Step 1 — Session bootstrap
 
-1. **Read config**: Load `.overture/config.yaml` (schema: `data/schemas/config.json`). If file missing, ask user via AskUserQuestion whether to create from `lib/config.example.yaml` template. If user declines, proceed with defaults (`locale: ko`, no boss). All user-facing text in this skill uses `config.locale`.
+1. **Read config**: Load `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`). If file missing, ask user via AskUserQuestion whether to create from `~/.claude/overture-lib/config.example.yaml` template. If user declines, proceed with defaults (`locale: ko`, no boss). All user-facing text in this skill uses `config.locale`.
 2. Compute session ID: `YYYY-MM-DD-<kebab-of-first-N-words-of-problem>`. Collision-safe by appending `-2`, `-3`.
 3. Create `.overture/sessions/{id}/` directory.
-4. Create `session.json` at the root with schema from `data/schemas/session.json`. Fields:
+4. Create `session.json` at the root with schema from `~/.claude/overture-data/schemas/session.json`. Fields:
    - `id`, `problem_text`, `repo_path` (from `pwd`), `repo_branch` (from `git branch --show-current`)
    - `invoking_context`: `{target_type, target_ref}` from the input expansion
    - `boss_agent`: from `config.boss` if present
@@ -77,7 +77,7 @@ If multiple candidates, use **AskUserQuestion** to disambiguate: "Which of these
 > </user-data>
 > {{endif}}
 >
-> Produce JSON conforming to `data/schemas/analysis-snapshot.json`:
+> Produce JSON conforming to `~/.claude/overture-data/schemas/analysis-snapshot.json`:
 >
 > - `real_question`: what the user is ACTUALLY deciding. Often different from surface.
 > - `hidden_assumptions`: 3-5 assumptions the user is making without stating.
@@ -183,8 +183,8 @@ Set `phase: "conversing"` (if not ready for team) or stay on `"conversing"` (if 
 
 Written to `.overture/sessions/{id}/`:
 
-- `session.json` — top-level session record (schema: `data/schemas/session.json`)
-- `versions/v0.1/analysis.json` — the AnalysisSnapshot (schema: `data/schemas/analysis-snapshot.json`)
+- `session.json` — top-level session record (schema: `~/.claude/overture-data/schemas/session.json`)
+- `versions/v0.1/analysis.json` — the AnalysisSnapshot (schema: `~/.claude/overture-data/schemas/analysis-snapshot.json`)
 - `versions/v0.1/questions_and_answers.json` — the Q&A history
 - `versions/v0.1/meta.json` — `{triggering_skill: "clarify", timestamp, framing_locked, user_accepted_framing}`
 
