@@ -126,8 +126,11 @@ function getParticle(name: string): string {
  *   1. Where am I? (big stage label + N/4)
  *   2. What happens next? (one-line guide that updates per phase/state)
  */
-const PHASES_KO = ['상황 분석', '팀 작업', '피드백', '완성'] as const;
-const PHASES_EN = ['Analysis', 'Teamwork', 'Feedback', 'Complete'] as const;
+// Voyage metaphor labels — micro injection of the new 'Argus' / 항해
+// concept. Keeps the labels short so the stepper stays compact while
+// reinforcing the "set sail → voyage → report → anchor" mental model.
+const PHASES_KO = ['항해 준비', '항해', '보고', '정박'] as const;
+const PHASES_EN = ['Briefing', 'Voyage', 'Review', 'Anchor'] as const;
 
 function phaseIdx(phase: string, round: number, hasMix: boolean): number {
   if (phase === 'complete') return 4;
@@ -148,18 +151,27 @@ function ProgressLine({
   const idx = Math.min(rawIdx, 3);
   const isComplete = phase === 'complete';
   const pct = Math.min((rawIdx / 4) * 100, 100);
+  const currentLabel = PHASES[isComplete ? 3 : idx];
 
-  // Compact stepper: thin progress rail + 4 milestone dots + labels below.
-  // No card chrome, no big stage hero, no guide line — those duplicate
-  // PhaseStatusBar/StreamSnippet/onboarding banner.
+  // Compact stepper with a tiny "N/4 · stage" eyebrow up top — keeps the
+  // user oriented ("어디에 와있지?") without the heavy hero card the
+  // first iteration had.
   return (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE }}
-      className="mb-5 px-1 mt-1"
+      className="mb-6 px-1 mt-1"
     >
-      <div className="relative h-[3px] rounded-full bg-[var(--border-subtle)]/70 mb-2">
+      <div className="flex items-baseline justify-between mb-2 px-0.5">
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)] tabular-nums">
+          {Math.min(rawIdx + 1, 4)}/4
+          <span className="ml-1.5 text-[var(--text-primary)] normal-case tracking-normal">
+            {currentLabel}
+          </span>
+        </span>
+      </div>
+      <div className="relative h-[4px] rounded-full bg-[var(--border-subtle)]/70 mb-2.5">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full"
           style={{ background: 'var(--gradient-gold)' }}
@@ -173,19 +185,19 @@ function ProgressLine({
           return (
             <div
               key={i}
-              className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-[2px] transition-all duration-500 ${
+              className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ring-[2px] transition-all duration-500 ${
                 done
                   ? 'bg-[var(--accent)] ring-[var(--bg)]'
                   : active
-                    ? 'bg-[var(--surface)] ring-[var(--accent)] shadow-[0_0_0_3px_rgba(180,160,100,0.22)]'
+                    ? 'bg-[var(--surface)] ring-[var(--accent)] shadow-[0_0_0_3px_rgba(180,160,100,0.28)]'
                     : 'bg-[var(--border)] ring-[var(--bg)]'
               }`}
-              style={{ left: `calc(${left}% - 5px)` }}
+              style={{ left: `calc(${left}% - 6px)` }}
             >
               {active && (
                 <motion.div
-                  className="absolute inset-0 rounded-full bg-[var(--accent)]/35"
-                  animate={{ scale: [1, 2, 1], opacity: [0.7, 0, 0.7] }}
+                  className="absolute inset-0 rounded-full bg-[var(--accent)]/45"
+                  animate={{ scale: [1, 2, 1], opacity: [0.75, 0, 0.75] }}
                   transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
                 />
               )}
@@ -200,7 +212,7 @@ function ProgressLine({
           return (
             <span
               key={label}
-              className={`text-[10px] truncate transition-colors duration-500 ${
+              className={`text-[11px] truncate transition-colors duration-500 ${
                 i === 0 ? 'text-left' : i === PHASES.length - 1 ? 'text-right' : 'text-center'
               } ${
                 done
@@ -878,26 +890,13 @@ function PhaseStatusBar({
         </motion.div>
       )}
       <div className="flex-1 min-w-0">
-        <span className={`${mode === 'your_turn' ? 'text-[14px]' : 'text-[13px]'} font-semibold ${
-          mode === 'ai_working'
-            ? showLongWait ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-primary)]'
-            : 'text-[var(--accent)]'
+        <span className={`text-[13px] font-semibold ${
+          showLongWait ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-primary)]'
         }`}>
           {showLongWait ? L('오래 걸리고 있어요 — 계속 진행 중', 'Taking longer than usual — still working') : label}
         </span>
         {!showLongWait && sub && (
-          <span className={`ml-2 ${mode === 'your_turn' ? 'text-[12px] text-[var(--text-secondary)]' : 'text-[12px] text-[var(--text-tertiary)]'}`}>
-            {sub}
-            {mode === 'your_turn' && (
-              <motion.span
-                animate={{ y: [0, 2, 0] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                className="inline-block ml-1.5 align-middle"
-              >
-                <ChevronDown size={12} className="inline text-[var(--accent)]" />
-              </motion.span>
-            )}
-          </span>
+          <span className="ml-2 text-[12px] text-[var(--text-tertiary)]">{sub}</span>
         )}
         {mode === 'ai_working' && substage && (
           <AnimatePresence mode="wait">
@@ -1190,45 +1189,56 @@ function TeamDeployBanner({
             ? <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex items-center justify-center text-[14px] shrink-0 mt-0.5 border border-[var(--border-subtle)]">🧠</div>
             : <WorkerAvatar persona={w.persona} size="md" />
         }
-        {/* Content */}
+        {/* Content — two-tier hierarchy:
+            Line 1 = primary identity (name + origin badge)
+            Line 2 = secondary context (role · expertise · growth cue)
+            Scope/contact rows only when relevant. Cleaner than the
+            previous flat-wrap of 5 inline pieces. */}
         <div className="flex-1 min-w-0">
+          {/* Primary line — name + manual badge only */}
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="text-[14px] font-semibold text-[var(--text-primary)]">
               {displayName}
             </span>
-            {roleText && (
-              <span className="text-[11px] text-[var(--text-tertiary)]">{roleText}</span>
-            )}
-            {/* Origin badge — manual additions surface the user's own intent */}
             {w.added_manually && (
               <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--accent)] bg-[var(--accent)]/[0.08] border border-[var(--accent)]/20 px-1.5 py-0.5 rounded-full">
                 {L('직접 추가', 'Added')}
               </span>
             )}
-            {/* Agent growth cue — Lv + 함께 횟수, only for agent-backed AI workers */}
-            {(w.agent_type || 'ai') === 'ai' && w.agent_id && (() => {
-              const stats = getAgentStats(w.agent_id);
-              if (!stats) return null;
-              const together = stats.totalTasks + stats.totalSyntheses;
-              return (
-                <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
-                  Lv.{stats.agent.level}
-                  {together > 0 && <span className="ml-1 text-[var(--text-tertiary)]">· {together}{L('회 함께', '× w/ you')}</span>}
-                  {together === 0 && <span className="ml-1 text-[var(--accent)]/70">· {L('처음', 'first')}</span>}
-                  {stats.observationCount >= 3 && (
-                    <span className="ml-1 inline-flex items-center gap-0.5 text-[var(--accent)]/70">
-                      <Brain size={9} className="inline" />{stats.observationCount}
-                    </span>
-                  )}
-                </span>
-              );
-            })()}
           </div>
-          {/* Persona expertise — only shown for AI workers; helps user judge fit */}
-          {(w.agent_type || 'ai') === 'ai' && w.persona?.expertise && (
-            <p className="text-[11px] text-[var(--text-tertiary)] line-clamp-1 mt-0.5">
-              {w.persona.expertise}
-            </p>
+          {/* Secondary line — role · expertise · growth cue. Single row,
+              tertiary tone so it reads as supporting metadata. */}
+          {(roleText
+            || ((w.agent_type || 'ai') === 'ai' && w.persona?.expertise)
+            || ((w.agent_type || 'ai') === 'ai' && w.agent_id)
+          ) && (
+            <div className="flex items-center gap-x-1.5 text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+              {roleText && <span className="truncate">{roleText}</span>}
+              {(w.agent_type || 'ai') === 'ai' && w.persona?.expertise && roleText && (
+                <span className="text-[var(--text-tertiary)]/60">·</span>
+              )}
+              {(w.agent_type || 'ai') === 'ai' && w.persona?.expertise && (
+                <span className="truncate">{w.persona.expertise}</span>
+              )}
+              {(w.agent_type || 'ai') === 'ai' && w.agent_id && (() => {
+                const stats = getAgentStats(w.agent_id);
+                if (!stats) return null;
+                const together = stats.totalTasks + stats.totalSyntheses;
+                return (
+                  <span className="shrink-0 ml-auto inline-flex items-center gap-1 tabular-nums">
+                    <span className="text-[var(--accent)]/75 font-medium">Lv.{stats.agent.level}</span>
+                    {together > 0
+                      ? <span>· {together}{L('회', '×')}</span>
+                      : <span className="text-[var(--accent)]/60">· {L('처음', 'first')}</span>}
+                    {stats.observationCount >= 3 && (
+                      <span className="inline-flex items-center gap-0.5 text-[var(--accent)]/70">
+                        <Brain size={9} className="inline" />{stats.observationCount}
+                      </span>
+                    )}
+                  </span>
+                );
+              })()}
+            </div>
           )}
           {/* Scope preview — neutral tone, no color pills */}
           {(w.ai_scope || w.self_scope) && (
@@ -1289,22 +1299,17 @@ function TeamDeployBanner({
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
       className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 md:p-6">
 
-      {/* Header — quiet eyebrow + count + customization hint */}
+      {/* Header — quiet eyebrow + count. The hint line is intentionally
+          terse; the row CTAs ("+ 다른 시각" / "+ 새 팀원") communicate
+          the actions themselves. */}
       <div className="flex items-baseline justify-between mb-4 gap-3">
         <div className="min-w-0">
           <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.14em] mb-1">
-            {L('팀 구성', 'Your Team')}
+            {L('출항 팀', 'Voyage Crew')}
           </div>
           <p className="text-[14px] text-[var(--text-secondary)]">
-            {L(`${total}명이 함께 분석할 준비가 됐어요`, `${total} ready to analyze together`)}
+            {L(`${total}명이 함께 출항할 준비가 됐어요`, `${total} crew ready to sail`)}
           </p>
-          {onOpenPool && (
-            <p className="text-[11px] text-[var(--text-tertiary)] mt-1">
-              {onOpenFreePool
-                ? L('각 task에 다른 시각을 추가하거나 빼고, 새 팀원도 자동 매칭으로 추가할 수 있어요 · 한 task당 최대 5명', 'Add another lens to a task, remove one, or auto-match a new member · up to 5 per task')
-                : L('각 task에 팀원을 추가하거나 뺄 수 있어요 · 한 task당 최대 5명', 'Add or remove members for each task · up to 5 per task')}
-            </p>
-          )}
         </div>
       </div>
 
@@ -1439,35 +1444,112 @@ function TeamDeployBanner({
         );
       })()}
 
-      {/* Start button — primary CTA */}
+      {/* Start button — primary CTA. "출항" carries the voyage metaphor. */}
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 + groups.length * staggerDelay, duration: 0.4, ease: EASE }}
         className="mt-5 w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
-        {L('시작', 'Start')} <ChevronRight size={14} />
+        {L('출항', 'Set sail')} <ChevronRight size={14} />
       </motion.button>
     </motion.div>
   );
 }
 
 /* ═══ Mix Trigger ═══ */
-function MixTrigger({ onMix, onMore, busy }: { onMix: () => void; onMore: () => void; busy: boolean }) {
+/* ═══ Voyage-prep summary — stage transition between Q&A and team work
+ *  Replaces the old MixTrigger. Q&A에서 도출한 방향을 한 화면에 요약해서
+ *  보여주고, 사용자가 (1) 그대로 출항 (2) 한 번 더 짚어보기 (3) 답한 내용
+ *  돌아보기 — 셋 중 명확히 결정하게 한다. 사용자 피드백: "과거에 내린
+ *  '선택'에 대해서도 다시 뒤로 돌아가서 다시 선택하고 싶어하는 사람들이
+ *  많았다"는 점을 받아 "돌아보기" CTA를 명시적으로 노출. */
+function VoyagePrepSummary({
+  snapshot, onMix, onMore, onRevisit, busy,
+}: {
+  snapshot: AnalysisSnapshot;
+  onMix: () => void;
+  onMore: () => void;
+  onRevisit: () => void;
+  busy: boolean;
+}) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  const topAssumption = (snapshot.hidden_assumptions || [])[0];
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="space-y-4 py-2">
-      <p className="text-[12px] text-[var(--text-tertiary)] text-center tracking-wide">{L('초안을 만들 준비가 되었습니다', 'Ready to create a draft')}</p>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <motion.button onClick={onMix} disabled={busy} whileTap={{ scale: 0.98 }}
-          className="flex-1 flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-2xl text-[15px] font-semibold shadow-[var(--shadow-md)] cursor-pointer disabled:opacity-50"
-          style={{ background: 'var(--gradient-gold)' }}>
-          {busy ? <><Loader2 size={16} className="animate-spin" /> {L('조합 중...', 'Combining...')}</> : <>{L('초안 완성하기', 'Create Draft')} <ChevronRight size={14} /></>}
-        </motion.button>
-        {!busy && <motion.button onClick={onMore} whileTap={{ scale: 0.98 }}
-          className="px-6 py-4 rounded-2xl text-[14px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--accent)]/30 cursor-pointer"
-          style={{ transitionProperty: 'border-color', transitionDuration: '400ms', transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>{L('질문 하나 더', 'One more question')}</motion.button>}
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: EASE }}
+      className="my-2"
+    >
+      {/* Stage marker — visual break between Q&A loop and crew assembly. */}
+      <div className="flex items-center gap-3 mb-4 px-1">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-[var(--accent)]/30" />
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] flex items-center gap-1.5">
+          <span>⚓</span>
+          {L('항해 준비 완료', 'Ready to sail')}
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[var(--accent)]/30 to-[var(--accent)]/30" />
+      </div>
+
+      <div className="rounded-2xl md:rounded-[2rem] p-[1.5px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-md)]">
+        <div className="rounded-[calc(1rem-1.5px)] md:rounded-[calc(2rem-1.5px)] bg-[var(--surface)]">
+          <div className="p-6 md:p-8">
+            <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight mb-5"
+              style={{ fontFamily: 'var(--font-display)' }}>
+              {L('이 방향으로 출항해도 될까요?', 'Set sail in this direction?')}
+            </h2>
+
+            {/* Direction summary — single focal sentence + (optional) one
+                key assumption. Compact on purpose: this is a decision
+                point, not a re-read. The full analysis lives in the
+                AnalysisCard above (still expandable). */}
+            <div className="mb-5 pl-4 border-l-[2px] border-[var(--accent)]/40">
+              <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1.5">
+                {L('잡은 항로', 'Course')}
+              </div>
+              <p className="text-[15px] md:text-[16px] text-[var(--text-primary)] leading-relaxed font-medium">
+                {snapshot.real_question}
+              </p>
+              {topAssumption && (
+                <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed mt-2.5">
+                  <span className="text-[var(--text-secondary)] font-medium">{L('전제: ', 'Premise: ')}</span>
+                  {topAssumption}
+                </p>
+              )}
+            </div>
+
+            {/* Primary CTA — set sail. */}
+            <motion.button onClick={onMix} disabled={busy} whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-xl text-[15px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer disabled:opacity-50"
+              style={{ background: 'var(--gradient-gold)' }}>
+              {busy
+                ? <><Loader2 size={16} className="animate-spin" /> {L('조합 중...', 'Combining...')}</>
+                : <>{L('이 방향으로 출항', 'Set sail this way')} <ChevronRight size={15} /></>}
+            </motion.button>
+
+            {/* Secondary actions — keep them as link-style so the primary
+                CTA stays unambiguous. */}
+            {!busy && (
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button
+                  onClick={onMore}
+                  className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                >
+                  {L('한 번 더 짚어보기', 'One more check')}
+                </button>
+                <span className="text-[var(--text-tertiary)]/40">·</span>
+                <button
+                  onClick={onRevisit}
+                  className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                >
+                  {L('답한 내용 돌아보기', 'Revisit my answers')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
@@ -1633,6 +1715,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const mixPreviewRef = useRef<HTMLDivElement>(null);
   const dmFeedbackRef = useRef<HTMLDivElement>(null);
   const finalRef = useRef<HTMLDivElement>(null);
+  const answeredPillsRef = useRef<HTMLDivElement>(null);
   const analysisCardRef = useRef<HTMLDivElement>(null);
 
   // Double rAF: frame 1 lets React commit pending state, frame 2 ensures the
@@ -2584,11 +2667,11 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 transition={{ duration: 0.45, ease: EASE, delay: 0.15 }}
                 className="flex items-start gap-2.5 px-4 py-3 mb-4 rounded-xl bg-[var(--accent)]/[0.05] border border-[var(--accent)]/20"
               >
-                <span className="text-[15px] shrink-0 leading-none mt-0.5">👋</span>
+                <span className="text-[15px] shrink-0 leading-none mt-0.5">⚓</span>
                 <p className="text-[12.5px] text-[var(--text-secondary)] leading-[1.55]">
                   {locale === 'ko'
-                    ? <>처음 오셨군요. 질문 <strong className="text-[var(--text-primary)]">두세 개</strong>만 답하시면, 어울리는 <strong className="text-[var(--text-primary)]">팀이 자동 구성</strong>돼서 본격 분석이 시작돼요.</>
-                    : <>First time? Just answer <strong className="text-[var(--text-primary)]">a couple of questions</strong> and we&apos;ll <strong className="text-[var(--text-primary)]">auto-assemble a team</strong> to dig in.</>}
+                    ? <>항해 준비예요. 질문 <strong className="text-[var(--text-primary)]">두세 개</strong>만 짚어주시면, 어울리는 <strong className="text-[var(--text-primary)]">팀을 꾸려서</strong> 출항해요.</>
+                    : <>Getting ready to sail. Just <strong className="text-[var(--text-primary)]">a couple of questions</strong> and we&apos;ll <strong className="text-[var(--text-primary)]">assemble your crew</strong> for the voyage.</>}
                 </p>
               </motion.div>
             )}
@@ -2672,7 +2755,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             </motion.div>
           )}
 
-          {shouldMix && !busy && phase === 'conversing' && !curQ && <MixTrigger onMix={onMix} onMore={onMore} busy={busy} />}
+          {shouldMix && !busy && phase === 'conversing' && !curQ && latest && (
+            <VoyagePrepSummary
+              snapshot={latest}
+              onMix={onMix}
+              onMore={onMore}
+              onRevisit={() => scrollToRef(answeredPillsRef, 'bottom')}
+              busy={busy}
+            />
+          )}
 
           {/* Lead Synthesis — previously hidden, now visible.
               (Drafting status already surfaced in PhaseStatusBar.) */}
@@ -2680,9 +2771,12 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <LeadSynthesisCard synthesis={session.lead_synthesis} />
           )}
 
-          {/* Living Analysis — the evolving draft with visible diffs.
-              Version/change summary now lives in UpdateSummaryChip above
-              the question; card stays focused on the content itself. */}
+          {/* Living Analysis — stays collapsed throughout the conversing
+              phase so the user isn't buried under accumulating cards.
+              VoyagePrepSummary picks up the decision-point role at the
+              shouldMix moment; this card is a "tap to read the full
+              breakdown" affordance, not the primary narrative. Auto-
+              expands once mix begins (phase moves past 'conversing'). */}
           {latest && !final_ && (
             <div ref={analysisCardRef}>
               <AnalysisCard
@@ -2691,6 +2785,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 isActive={!mix}
                 showExecutionPlan
                 locale={locale}
+                defaultCollapsed={phase === 'conversing' && !mix}
               />
             </div>
           )}
@@ -2769,8 +2864,14 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             />
           )}
 
-          {/* Answered Q&A history — collapsed at bottom */}
-          {!final_ && <AnsweredPills qaPairs={qaPairs} />}
+          {/* Answered Q&A history — collapsed at bottom. ref is used by
+              VoyagePrepSummary's "Revisit my answers" link to scroll back
+              to the Q&A history without disrupting the user's flow. */}
+          {!final_ && (
+            <div ref={answeredPillsRef}>
+              <AnsweredPills qaPairs={qaPairs} />
+            </div>
+          )}
 
           {/* PhaseDivider: Draft ready → Review */}
           {mix && !dmFb && !final_ && phase !== 'mixing' && (

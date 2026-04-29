@@ -1,6 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
 import type { AnalysisSnapshot } from '@/stores/types';
 import { EASE } from './constants';
 import { diffItems } from './diffItems';
@@ -34,6 +36,10 @@ interface AnalysisCardProps {
   isActive?: boolean;
   showExecutionPlan?: boolean;
   locale?: 'ko' | 'en';
+  /** When true, the card renders as a single-line peek with an expand
+   *  toggle. Used during the Q&A loop so the user isn't buried in
+   *  accumulating analysis cards while still answering. */
+  defaultCollapsed?: boolean;
 }
 
 export function AnalysisCard({
@@ -42,9 +48,39 @@ export function AnalysisCard({
   isActive = true,
   showExecutionPlan = false,
   locale = 'ko',
+  defaultCollapsed = false,
 }: AnalysisCardProps) {
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const hasChanges = prevSnapshot && snapshot.version > (prevSnapshot.version ?? 0);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  // Compact peek — used during Q&A loop so the card doesn't dominate
+  // while the user is still answering. Tap to expand.
+  if (collapsed) {
+    return (
+      <motion.button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] transition-colors cursor-pointer group"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1">
+            {L('우리가 잡은 항로', 'Course we plotted')}
+          </div>
+          <p className="text-[13px] text-[var(--text-primary)] leading-snug line-clamp-2">
+            {snapshot.real_question}
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-1 text-[10px] text-[var(--text-tertiary)] mt-0.5 group-hover:text-[var(--accent)] transition-colors">
+          <span>{L('펼치기', 'Expand')}</span>
+          <ChevronDown size={12} />
+        </div>
+      </motion.button>
+    );
+  }
 
   const skeletonDiff = hasChanges
     ? diffItems(prevSnapshot.skeleton, snapshot.skeleton)
@@ -67,18 +103,31 @@ export function AnalysisCard({
       <div className={`rounded-2xl p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
         <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="p-5 md:p-7">
-            {/* Eyebrow — names the card so users understand what they're
-                looking at. "Real Question" alone is too abstract; tying it
-                back to the user's input makes the card feel like a reply. */}
-            <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1.5">
-              {L('팀이 다시 정리한 당신의 질문', "Your question, reframed by the team")}
+            {/* Eyebrow + collapse toggle. Eyebrow names the card so the
+                user knows what they're looking at; metaphor labels carry
+                the new "voyage" framing without overcommitting. */}
+            <div className="flex items-start justify-between gap-3 mb-1.5">
+              <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em]">
+                {L('우리가 잡은 항로', 'Course we plotted')}
+              </div>
+              {defaultCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(true)}
+                  className="shrink-0 inline-flex items-center gap-0.5 text-[10px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors -mt-0.5"
+                  aria-label={L('접기', 'Collapse')}
+                >
+                  <ChevronUp size={11} />
+                  <span>{L('접기', 'Collapse')}</span>
+                </button>
+              )}
             </div>
             {/* First-snapshot sub-line — explains why the card exists and
                 what happens next. Hidden after round 1 since by then the
                 user already knows the pattern. */}
             {!prevSnapshot && (
               <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed mb-3">
-                {L('이렇게 봐도 될까요? 다음 질문이 이어집니다.', "Does this read right? More questions follow.")}
+                {L('이 방향이 맞나요? 한 번 더 짚어볼게요.', "Does this heading look right? We'll check once more.")}
               </p>
             )}
             {prevSnapshot && <div className="mb-2" />}
