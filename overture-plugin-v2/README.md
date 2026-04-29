@@ -28,6 +28,29 @@ When the question is meatier, you get a 15-line decision card preserving the tra
 
 ---
 
+## A real decision flow (case study)
+
+> **Question:** *"Should we ship to EU this quarter or wait one quarter? GDPR 70% ready."*
+
+```
+→ clarify: critical stakes, framing confidence 76 → asks user to confirm
+→ team deploys 4: Sophie (research) · Victor (scenario) · Arthur (legal) · Blake (risk)
+→ stage-1 surfaces a ship-or-halt conflict between Arthur ↔ Victor → debate.json written
+→ Boss (ISTJ) reviews: "1 unresolved tension + 2 critical concerns —
+                        can't approve without external advisor"
+```
+
+Final card shows:
+- **Unresolved tension preserved**: *"Victor: kill criteria reached. Arthur: GDPR fine risk."*
+- **Tie-breaking condition**: *"if external EU GDPR advisor says '70% shippable', Victor wins"*
+- **3 user-required checkpoints**: contact advisor · measure EU DAU · verify competitor timeline
+
+User contacts the advisor. Comes back the next week, runs `/overture:sail --resume <session>`. v0.2 produced reflecting the new info. Ship goes ahead — but now with documented kill criteria and a kept record of who-said-what for the team to read later in `git`.
+
+This is what `team_contradictions[]` + `human_required_checkpoints[]` look like in practice. Not a verdict — a structure you can act on.
+
+---
+
 ## When to use vs not use
 
 **Good fits**

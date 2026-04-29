@@ -28,6 +28,29 @@ density: low (가역적 UI 라벨) · 팀 배치 / Boss 검토 생략
 
 ---
 
+## 실제 결정 흐름 (case study)
+
+> **질문:** *"이번 분기 EU 출시 강행할까, 한 분기 미룰까? GDPR 준비 70%"*
+
+```
+→ clarify: critical 스테이크, framing 신뢰도 76 → 사용자에게 1회 확인
+→ team 4명 배치: 다은(시장조사) · 승현(시나리오) · 윤석(법) · 동혁(리스크)
+→ stage-1에서 ship_or_halt 축에 윤석 ↔ 승현 충돌 감지 → debate.json 작성
+→ Boss(ISTJ 박 팀장) 검토: "미해결 갈등 1건 + critical 우려 2건 —
+                              외부 자문 없이 승인 불가"
+```
+
+최종 카드에 나오는 것:
+- **미해결 갈등 보존**: *"승현: kill criteria 도달. 윤석: GDPR fine 위험."*
+- **해소 조건**: *"외부 EU GDPR 자문가가 '70%로 출시 가능' 답하면 승현 옳음"*
+- **사용자 작업 3건**: 자문가 컨택 · EU DAU 실측 · 경쟁사 진입 일정 확인
+
+사용자가 다음 주에 자문가 컨택 후 돌아와 `/overture:sail --resume <session>`. 새 정보 반영된 v0.2 산출. 출시 GO — 단 kill criteria 명시 + 누가 어떤 stance 냈는지 기록 보존된 채로 `git`에 남음.
+
+이게 `team_contradictions[]` + `human_required_checkpoints[]`의 실제 모양입니다. 답이 아니라, **사용자가 행동할 수 있는 구조**.
+
+---
+
 ## 언제 쓰고, 언제 쓰지 말지
 
 **잘 맞는 경우**
