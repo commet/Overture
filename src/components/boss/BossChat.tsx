@@ -684,7 +684,7 @@ export function BossChat() {
           }}
         >
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            이 피드백을 반영한 기획안을 만들어볼 수 있어요
+            {L('이 피드백을 반영한 기획안을 만들어볼 수 있어요', 'Roll this feedback into a plan you can take forward.')}
           </p>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             <Link
@@ -706,7 +706,7 @@ export function BossChat() {
                 fontSize: 11, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
               }}
             >
-              시작 <ArrowRight size={10} />
+              {L('시작', 'Start')} <ArrowRight size={10} />
             </Link>
             <button
               onClick={() => setCtaDismissed(true)}
