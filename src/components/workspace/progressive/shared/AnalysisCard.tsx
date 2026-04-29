@@ -67,10 +67,21 @@ export function AnalysisCard({
       <div className={`rounded-2xl p-[1px] ${isActive ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/5' : 'bg-[var(--border-subtle)]'}`}>
         <div className="rounded-[calc(1rem-1px)] bg-[var(--surface)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)]">
           <div className="p-5 md:p-7">
-            {/* Eyebrow — text-only, no pill. Presence through typography. */}
-            <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-3">
-              {L('진짜 질문', 'Real Question')}
+            {/* Eyebrow — names the card so users understand what they're
+                looking at. "Real Question" alone is too abstract; tying it
+                back to the user's input makes the card feel like a reply. */}
+            <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1.5">
+              {L('팀이 다시 정리한 당신의 질문', "Your question, reframed by the team")}
             </div>
+            {/* First-snapshot sub-line — explains why the card exists and
+                what happens next. Hidden after round 1 since by then the
+                user already knows the pattern. */}
+            {!prevSnapshot && (
+              <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed mb-3">
+                {L('이렇게 봐도 될까요? 다음 질문이 이어집니다.', "Does this read right? More questions follow.")}
+              </p>
+            )}
+            {prevSnapshot && <div className="mb-2" />}
 
             {/* Real question — single source of truth, no line-through
                 (previous version lives in UpdateSummaryChip above). */}

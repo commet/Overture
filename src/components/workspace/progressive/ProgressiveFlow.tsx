@@ -138,89 +138,28 @@ function phaseIdx(phase: string, round: number, hasMix: boolean): number {
 }
 
 function ProgressLine({
-  phase, round, hasMix, busy, hasQuestion, deployReady, shouldMix, workersDone, workersTotal, hasDmFb,
+  phase, round, hasMix,
 }: {
   phase: string; round: number; hasMix: boolean;
-  busy: boolean; hasQuestion: boolean; deployReady: boolean; shouldMix: boolean;
-  workersDone: number; workersTotal: number; hasDmFb: boolean;
 }) {
   const locale = useLocale();
-  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const PHASES = locale === 'ko' ? PHASES_KO : PHASES_EN;
   const rawIdx = phaseIdx(phase, round, hasMix);
   const idx = Math.min(rawIdx, 3);
   const isComplete = phase === 'complete';
   const pct = Math.min((rawIdx / 4) * 100, 100);
 
-  // Friendly one-liner that tells the user what's happening *and* what to do.
-  // Most cases also include a directional hint (👇 / ⬇) since the next action
-  // is almost always below the fold.
-  const guide: string = (() => {
-    if (isComplete) return L('완성됐어요. 복사하거나 공유하세요.', 'Done — copy or share below.');
-    if (rawIdx === 0) {
-      if (hasQuestion && !busy) return L('👇 아래 질문에 답해주세요', '👇 Answer the question below');
-      if (busy) return L('답변을 받아 상황을 다시 정리하고 있어요', 'Re-analyzing with your answer');
-      if (deployReady) return L('👇 팀이 자동 구성됐어요. 아래에서 확인하고 시작하세요', '👇 Team assembled — confirm and start below');
-      return L('질문에 답하면 팀이 자동 구성돼요', 'Answer to assemble the team');
-    }
-    if (rawIdx === 1) {
-      if (busy) return L('팀이 분야별로 작업 중이에요', 'Team is working in parallel');
-      if (workersTotal > 0 && workersDone < workersTotal) return L(`팀 ${workersDone}/${workersTotal} 진행 중`, `Team ${workersDone}/${workersTotal} in progress`);
-      if (shouldMix) return L('👇 팀 분석 끝났어요. 초안 작성을 시작하세요', '👇 Team done — start drafting below');
-      return L('팀 작업 결과를 모으고 있어요', 'Gathering team output');
-    }
-    if (rawIdx === 2) {
-      if (phase === 'mixing' || phase === 'lead_synthesizing') return L('초안을 작성 중이에요 (30~45초)', 'Drafting (30–45s)');
-      // Note: once mix lands, the store flips phase to 'dm_feedback', so
-      // hasMix at idx=2 is essentially never true — the "draft ready" line
-      // lives at idx=3 below.
-      return L('초안을 정리하고 있어요', 'Preparing draft');
-    }
-    if (rawIdx === 3) {
-      if (busy && phase === 'refining') return L('피드백 반영해 최종본 다듬는 중', 'Applying feedback to the final draft');
-      if (busy) return L('리뷰어가 초안을 읽고 있어요', 'Reviewer is reading');
-      if (hasDmFb) return L('👇 반영할 피드백을 고르고 마무리하세요', '👇 Pick feedback to apply, then finalize');
-      // mix arrived but DM feedback not yet — user is looking at MixPreview.
-      if (hasMix) return L('👇 초안이 나왔어요. 리뷰를 받아보세요', '👇 Draft ready — get a review');
-      return L('피드백을 정리 중이에요', 'Preparing feedback');
-    }
-    return '';
-  })();
-
+  // Compact stepper: thin progress rail + 4 milestone dots + labels below.
+  // No card chrome, no big stage hero, no guide line — those duplicate
+  // PhaseStatusBar/StreamSnippet/onboarding banner.
   return (
     <motion.div
-      initial={{ opacity: 0, y: -6 }}
+      initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE }}
-      className="mb-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-4 md:p-5 shadow-[var(--shadow-sm)]"
+      className="mb-5 px-1 mt-1"
     >
-      {/* Stage hero — N/4 + big label */}
-      <div className="flex items-baseline gap-2.5 mb-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] tabular-nums">
-          {Math.min(rawIdx + 1, 4)} / 4
-        </span>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={isComplete ? 'complete' : idx}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] tracking-tight"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            {PHASES[isComplete ? 3 : idx]}
-          </motion.span>
-        </AnimatePresence>
-        {workersTotal > 0 && rawIdx === 1 && (
-          <span className="ml-auto text-[11px] text-[var(--text-tertiary)] tabular-nums">
-            {workersDone} / {workersTotal}
-          </span>
-        )}
-      </div>
-
-      {/* Progress bar with milestone markers */}
-      <div className="relative h-[6px] rounded-full bg-[var(--border-subtle)] mb-2.5">
+      <div className="relative h-[3px] rounded-full bg-[var(--border-subtle)]/70 mb-2">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full"
           style={{ background: 'var(--gradient-gold)' }}
@@ -234,19 +173,19 @@ function ProgressLine({
           return (
             <div
               key={i}
-              className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ring-[2px] transition-all duration-500 ${
+              className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-[2px] transition-all duration-500 ${
                 done
-                  ? 'bg-[var(--accent)] ring-[var(--surface)]'
+                  ? 'bg-[var(--accent)] ring-[var(--bg)]'
                   : active
-                    ? 'bg-[var(--surface)] ring-[var(--accent)] shadow-[0_0_0_3px_rgba(180,160,100,0.18)]'
-                    : 'bg-[var(--border)] ring-[var(--surface)]'
+                    ? 'bg-[var(--surface)] ring-[var(--accent)] shadow-[0_0_0_3px_rgba(180,160,100,0.22)]'
+                    : 'bg-[var(--border)] ring-[var(--bg)]'
               }`}
-              style={{ left: `calc(${left}% - 6px)` }}
+              style={{ left: `calc(${left}% - 5px)` }}
             >
               {active && (
                 <motion.div
-                  className="absolute inset-0 rounded-full bg-[var(--accent)]/30"
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+                  className="absolute inset-0 rounded-full bg-[var(--accent)]/35"
+                  animate={{ scale: [1, 2, 1], opacity: [0.7, 0, 0.7] }}
                   transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
                 />
               )}
@@ -254,20 +193,18 @@ function ProgressLine({
           );
         })}
       </div>
-
-      {/* Step labels under bar */}
-      <div className="grid grid-cols-4 mb-3 px-1">
+      <div className="grid grid-cols-4">
         {PHASES.map((label, i) => {
           const done = i < idx || (isComplete && i <= 3);
           const active = !isComplete && i === idx;
           return (
             <span
               key={label}
-              className={`text-[10px] md:text-[11px] truncate transition-colors duration-500 ${
+              className={`text-[10px] truncate transition-colors duration-500 ${
                 i === 0 ? 'text-left' : i === PHASES.length - 1 ? 'text-right' : 'text-center'
               } ${
                 done
-                  ? 'text-[var(--accent)] font-medium'
+                  ? 'text-[var(--accent)]/80 font-medium'
                   : active
                     ? 'text-[var(--text-primary)] font-semibold'
                     : 'text-[var(--text-tertiary)]'
@@ -278,22 +215,6 @@ function ProgressLine({
           );
         })}
       </div>
-
-      {/* Friendly guide line */}
-      {guide && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={guide}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="flex items-center gap-2 pt-3 border-t border-[var(--border-subtle)]/60 text-[12px] md:text-[13px] text-[var(--text-secondary)] leading-relaxed"
-          >
-            {guide}
-          </motion.div>
-        </AnimatePresence>
-      )}
     </motion.div>
   );
 }
@@ -918,6 +839,13 @@ function PhaseStatusBar({
   } else {
     return null;
   }
+
+  // Mode-split: when it's the user's turn, the question card itself + the
+  // onboarding banner are louder than this status bar would be. Showing
+  // both creates the duplicate-message problem (user reported "이거 두 개
+  // 기능이 중복되지 않나"). Sticky bar is reserved for ai_working states
+  // (live progress / cancel) where it actually carries unique information.
+  if (mode === 'your_turn') return null;
 
   const showLongWait = mode === 'ai_working' && isLongWait;
   return (
@@ -2549,18 +2477,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             />
           );
         })()}
-        <ProgressLine
-          phase={phase}
-          round={round}
-          hasMix={!!mix}
-          busy={busy}
-          hasQuestion={!!curQ && !busy && phase === 'conversing'}
-          deployReady={deployPhase === 'ready' && workers.length > 0}
-          shouldMix={shouldMix && !busy && phase === 'conversing' && !curQ}
-          workersDone={workers.filter(w => w.status === 'done').length}
-          workersTotal={workers.length}
-          hasDmFb={!!dmFb}
-        />
+        <ProgressLine phase={phase} round={round} hasMix={!!mix} />
 
         {/* PhaseStatusBar + StreamSnippet — sticky wrapper so progress info
             stays glued to the top while the user scrolls through the long
@@ -2656,6 +2573,25 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Question FIRST — user action at the top, not buried below */}
           <div ref={questionRef}>
+            {/* First-time onboarding — explains *why* we're asking the user
+                questions and what happens after. Shown only on the very
+                first question of a session; disappears once the user has
+                answered anything. */}
+            {curQ && !busy && phase === 'conversing' && round === 0 && answers.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: EASE, delay: 0.15 }}
+                className="flex items-start gap-2.5 px-4 py-3 mb-4 rounded-xl bg-[var(--accent)]/[0.05] border border-[var(--accent)]/20"
+              >
+                <span className="text-[15px] shrink-0 leading-none mt-0.5">👋</span>
+                <p className="text-[12.5px] text-[var(--text-secondary)] leading-[1.55]">
+                  {locale === 'ko'
+                    ? <>처음 오셨군요. 질문 <strong className="text-[var(--text-primary)]">두세 개</strong>만 답하시면, 어울리는 <strong className="text-[var(--text-primary)]">팀이 자동 구성</strong>돼서 본격 분석이 시작돼요.</>
+                    : <>First time? Just answer <strong className="text-[var(--text-primary)]">a couple of questions</strong> and we&apos;ll <strong className="text-[var(--text-primary)]">auto-assemble a team</strong> to dig in.</>}
+                </p>
+              </motion.div>
+            )}
             {curQ && !busy && phase === 'conversing' && <QuestionCard key={curQ.id} question={curQ} onAnswer={onAnswer} disabled={busy} locale={locale} />}
           </div>
 
