@@ -70,9 +70,19 @@
     },
     "classification": {
       "type": "object",
-      "description": "Output of /overture:team classification step.",
+      "description": "Output of /overture:team classification step. May be partially populated by /overture:sail Step 6b (user-confirmed stakes) before team runs.",
       "properties": {
         "stakes": { "enum": ["routine", "important", "critical"] },
+        "stakes_confidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Confidence in stakes assignment. <75 triggers sail Step 6b AskUserQuestion. 100 means user-confirmed."
+        },
+        "stakes_user_confirmed": {
+          "type": "boolean",
+          "description": "True when sail Step 6b ran and the user explicitly chose the stakes level. When true, /overture:team Step 2 must NOT re-classify stakes — only fill steps_classified."
+        },
         "decision_type": { "enum": ["known_path", "needs_analysis", "no_answer", "on_fire"] },
         "agent_count": { "type": "integer" },
         "pipeline": { "enum": ["single_stage", "two_stage"] }

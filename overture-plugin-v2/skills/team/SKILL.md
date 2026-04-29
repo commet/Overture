@@ -97,6 +97,8 @@ This file becomes input to EVERY worker spawn. Workers can read it + Grep for sp
 
 **Reference: `~/.claude/overture-data/classification.yaml`**
 
+**Read upstream signals first:** load `session.classification.stakes` (if user-confirmed via sail Step 6b — `session.classification.stakes_user_confirmed == true`, treat as authoritative; do NOT re-classify, only fill `stakes_confidence: 100` and proceed to step breakdown). Otherwise read `snapshot.stakes_guess` + `snapshot.stakes_confidence` from clarify as prior.
+
 Prompt yourself:
 
 > You are classifying a problem for agent team deployment. Use the vocabulary from `~/.claude/overture-data/classification.yaml`.
@@ -105,12 +107,15 @@ Prompt yourself:
 > - Real question: {{snapshot.real_question}}
 > - Skeleton: {{snapshot.skeleton}}
 > - Execution plan steps: {{snapshot.execution_plan.steps}}
+> - Clarify's stakes prior: {{snapshot.stakes_guess}} ({{snapshot.stakes_confidence}}/100) — use as a starting point, not a hard constraint
+> - User-confirmed stakes (if any): {{session.classification.stakes if user_confirmed else "none"}}
 > - Problem text: <user-data>{{session.problem_text}}</user-data>
 >
 > Produce JSON:
 > ```
 > {
 >   "stakes": "routine" | "important" | "critical",
+>   "stakes_confidence": 0-100,
 >   "decision_type": "known_path" | "needs_analysis" | "no_answer" | "on_fire",
 >   "steps_classified": [
 >     {"task": "...", "output": "...", "primary_task_type": "...", "secondary_task_type": "...", "context_domain": "...", "output_type": "...", "agent_hint": "..." (optional)}
@@ -121,8 +126,9 @@ Prompt yourself:
 > Rules (from classification.yaml):
 > - Default stakes = `important`. Use `critical` only when irreversible (legal commitment, public shipment, major spend). Use `routine` only when explicitly experimental/prototype.
 > - If stakes is `critical`, include a final step with `primary_task_type: "critique"` so donghyuk reviews. If the plan doesn't have one, APPEND it.
+> - **`stakes_confidence`**: if user-confirmed upstream → 100. If your classification matches clarify's stakes_guess → average your confidence with clarify's. If your classification *diverges* from clarify's — confidence MUST be ≤70 (a divergence is itself a low-confidence signal). Sail Step 6b uses `<75` as the AskUserQuestion trigger, so this naturally surfaces disagreements to the user before locking the routing.
 
-Write classification to `versions/{label}/classification.json`.
+Write classification to `versions/{label}/classification.json`. Persist `stakes_confidence` AND mark `stakes_user_confirmed: false` (unless upstream confirmed) so the field is explicit.
 
 ### Step 3 — Select agents (LLM + capabilities)
 

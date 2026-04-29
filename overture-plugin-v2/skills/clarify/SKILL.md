@@ -23,6 +23,11 @@ Do NOT run when:
 - A session with phase >= `conversing` already exists and user hasn't asked to restart
 - User explicitly skips with `--skip-clarify` flag (not recommended)
 
+**Flags clarify accepts:**
+- `--no-minimal` — force Step 5b (regular scaffold) even when `decision_density == "low"`. Sail passes this when invoked with `--quick` or `--full`. Direct `/overture:clarify "<problem>"` invocations honor minimal mode automatically.
+- `--continue` — Q&A deepening round on an existing session.
+- `--revise <session-id>` — re-clarify with new input (post-MVP).
+
 ---
 
 ## Inputs
@@ -84,13 +89,27 @@ If multiple candidates, use **AskUserQuestion** to disambiguate: "Which of these
 > - `skeleton`: 3-7 bullets of what a complete answer would contain (structural, not substantive).
 > - `framing_confidence`: 0-100, your self-assessment. Low when the surface question looks like an XY problem.
 > - `insight`: one-line insight that surfaced from this analysis.
+> - `reversibility`: "reversible" | "partial" | "irreversible". Cheap-to-undo? UI label change = reversible. Public legal commitment = irreversible.
+> - `stakes_guess`: "routine" | "important" | "critical". Vocabulary from `classification.yaml`. Default "important" if unclear.
+> - `stakes_confidence`: 0-100. How sure are you about stakes_guess? <75 means downstream sail must AskUserQuestion before locking the routing.
+> - `decision_density`: "low" | "medium" | "high". The cognitive weight this decision actually deserves. See rule 4 below for low-density gate. Default "medium".
+> - `decision_density_reasoning`: one-sentence justification for the chosen density.
 >
 > Rules:
 > 1. The `real_question` MUST NOT be "how do I {{surface request verbatim}}?". If surface matches real, you haven't reframed. Examples:
 >    - Surface: "should we use TypeScript or JavaScript?" → Real: "How much long-term velocity are we willing to trade for short-term setup speed, given team seniority?"
 >    - Surface: "review my PR" → Real: "What's the ONE risk in this PR that would make me roll it back in 48 hours?"
 > 2. `hidden_assumptions` must be declarative sentences, not questions.
-> 3. Do NOT propose solutions. This skill's job ends at structuring the question.
+> 3. Do NOT propose solutions. This skill's job ends at structuring the question — UNLESS rule 4 applies.
+> 4. **`decision_density: "low"` gate** — set ONLY when ALL of:
+>    - `reversibility == "reversible"` (decision can be undone in <1 day with no signal cost)
+>    - `framing_confidence >= 80`
+>    - The right action is collapsible to a single sentence ("rename / don't rename" / "ship / wait")
+>    - There is no human-required checkpoint that needs >5 minutes of user verification
+>
+>    When low fires, Step 5 emits a `MinimalScaffold` (1-line recommendation + 1-line check), NOT the regular skeleton output. This is one of the few places clarify gives a directive — intentional, because the alternative (forcing a 5-section FinalScaffold onto a tab-rename) is the over-engineering failure mode surfaced in the 2026-04-28 reality test (TC1).
+>
+>    When in doubt between low/medium, choose medium. False-low is more harmful than false-medium because false-low gives a directive the user might act on without verification.
 
 **Note on `execution_plan`**: At version 0 (initial analysis), `execution_plan` is usually `null` or absent. It emerges in later rounds (deepening) once the real_question is locked AND enough specificity has been extracted. Do NOT force-fill execution_plan on round 0. The `/overture:team` skill is blocked from running until execution_plan with ≥2 steps exists.
 
@@ -144,6 +163,57 @@ Repeat up to `max_rounds` times (default 3) or until the snapshot contains a fil
 
 ### Step 5 — Output the scaffold (plain-text summary for user)
 
+**Branch on `decision_density` AND `--no-minimal` flag.**
+
+If `--no-minimal` was passed (typically via sail --quick/--full): skip directly to Step 5b regardless of computed density. Log to meta.json: `density_was: "low"` so the user can see the override happened.
+
+#### Step 5a — `decision_density == "low"` AND `--no-minimal` not set → MinimalScaffold
+
+This is the one place clarify produces a directive. The full scaffold pipeline is bypassed because the routing math (rule 4 in Step 2) said it would over-engineer the answer.
+
+1. Construct `MinimalScaffold` (schema: `~/.claude/overture-data/schemas/minimal-scaffold.json`):
+   - `recommendation`: single-sentence imperative. "그냥 작업실로 바꿔. 신호 0이면 손해 0." Not "consider X if Y" — a directive.
+   - `one_check`: one thing the user verifies in <5 minutes that would flip the recommendation. If none exists, density was set wrong — go back to Step 2.
+   - `caveat_if_signal_appears`: optional. Only when there's a real downstream signal worth watching post-action.
+   - `_meta.mode = "minimal"`, `_meta.decision_density = "low"`, `_meta.framing_confidence`, `_meta.reversibility`, `_meta.skipped = ["team", "boss", "debate"]`.
+2. Write to `versions/{label}/minimal_scaffold.json`.
+3. Set `session.phase = "complete"` (no team/boss to follow).
+4. Print to user (locale-aware):
+
+   **locale: ko**
+   ```
+   ## Overture · Minimal · v0.1
+
+   **권장:** {{recommendation}}
+
+   **확인 한 가지** (5분 이내): {{one_check}}
+
+   {{if caveat_if_signal_appears}}**조심:** {{caveat_if_signal_appears}}{{endif}}
+
+   ─────
+   _density: low ({{decision_density_reasoning}}) · 팀 배치 / Boss 검토 생략_
+   _재실행하려면: `/overture:sail --full "{{problem_text}}"` (강제 풀파이프)_
+   ```
+
+   **locale: en**
+   ```
+   ## Overture · Minimal · v0.1
+
+   **Recommendation:** {{recommendation}}
+
+   **One check** (<5 min): {{one_check}}
+
+   {{if caveat_if_signal_appears}}**Watch out:** {{caveat_if_signal_appears}}{{endif}}
+
+   ─────
+   _density: low ({{decision_density_reasoning}}) · team & boss skipped_
+   _Force full pipeline: `/overture:sail --full "{{problem_text}}"`_
+   ```
+
+5. Skip to Step 6 (session.json update). Do NOT emit a regular skeleton — the user got their answer.
+
+#### Step 5b — `decision_density in {"medium", "high"}` (or absent for legacy) → regular scaffold
+
 Print to user:
 
 ```
@@ -162,6 +232,7 @@ Print to user:
 ...
 
 **Framing confidence:** {{score}}/100
+**Stakes guess:** {{stakes_guess}} ({{stakes_confidence}}/100)
 
 {{if execution_plan ready}}
 **Execution plan** ({{N}} steps) — team is ready to deploy.
@@ -187,6 +258,7 @@ Written to `.overture/sessions/{id}/`:
 - `versions/v0.1/analysis.json` — the AnalysisSnapshot (schema: `~/.claude/overture-data/schemas/analysis-snapshot.json`)
 - `versions/v0.1/questions_and_answers.json` — the Q&A history
 - `versions/v0.1/meta.json` — `{triggering_skill: "clarify", timestamp, framing_locked, user_accepted_framing}`
+- `versions/v0.1/minimal_scaffold.json` — **only when `decision_density == "low"`** (Step 5a). MinimalScaffold (schema: `~/.claude/overture-data/schemas/minimal-scaffold.json`). When this file exists, downstream `/overture:sail` MUST set phase=complete and skip team/boss.
 
 ---
 
@@ -195,8 +267,13 @@ Written to `.overture/sessions/{id}/`:
 Before finalizing, verify:
 
 - **M5 (Analysis primacy)**: Did you reframe? Is `real_question` different from the surface request? If same → fail, retry Step 2 with stricter instruction.
-- **M4 (Decision scaffold shape)**: Does the snapshot contain `hidden_assumptions` and `skeleton` as actual arrays, not flat recommendation? If LLM returned a solution-like narrative → fail, retry.
+- **M4 (Decision scaffold shape)**: Does the snapshot contain `hidden_assumptions` and `skeleton` as actual arrays, not flat recommendation? If LLM returned a solution-like narrative → fail, retry. **Exception: when `decision_density == "low"`, `skeleton` may be empty array (the minimal scaffold replaces it).**
 - **M9 (Worker mode, not critic)**: clarify doesn't invoke workers. NA. But DO NOT include agent voices or critique in the analysis output — that's /overture:team and /overture:boss territory.
+- **M-density (Minimal-mode integrity)**: If `decision_density == "low"`:
+  - `reversibility` MUST be `"reversible"` AND `framing_confidence >= 80`. If either is missing, downgrade density to `medium` and revise.
+  - `recommendation` in MinimalScaffold MUST be a single imperative sentence. Strings starting with "consider" / "depends" / "it may be" → fail, downgrade to medium.
+  - `one_check` MUST be verifiable in <5 minutes by the user with no external dependencies (no "ask your team," no "wait 1 week"). If it can't, density was wrong.
+  - `human_required_checkpoints` (in the broader sense) MUST be empty. The whole point of minimal mode is that there's nothing the user has to verify outside the one_check. If you wrote checkpoints, density wasn't low.
 - **Security**: All user-provided text in prompts must be wrapped in `<user-data>` tags. No raw user text concatenated into system prompts.
 
 If any gate fails, revise before emitting files.
@@ -216,7 +293,9 @@ If any gate fails, revise before emitting files.
 ## Forbidden patterns
 
 - Shortening clarify to save tokens. The full loop IS the product.
-- Proposing solutions. This skill reframes; it does not answer.
+- Proposing solutions. This skill reframes; it does not answer — **EXCEPT** in Step 5a (decision_density == "low"), which is the deliberate exception.
 - Aggregating `hidden_assumptions` into a single "main concern" bullet. Keep them separate.
 - Skipping the framing validation when confidence < 70 "because it's probably fine."
 - Using trait descriptions of agents ("a researcher would ask...") — no agents run here.
+- Setting `decision_density: "low"` to "save the user time" when the four conditions in Step 2 rule 4 don't all hold. False-low is more harmful than false-medium.
+- Writing a MinimalScaffold with `recommendation` that says "consider X" or "it depends." Minimal mode is for directives only; if you can't give a directive, density isn't low.

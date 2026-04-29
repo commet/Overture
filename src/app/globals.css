@@ -1369,17 +1369,23 @@ button, a, input, textarea {
 }
 .bc-cal-dismiss {
   position: absolute;
-  top: 6px;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
+  top: 4px;
+  right: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
   border: none;
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Hit area expansion for mobile — visible 32px, tappable 44px via padding-trick. */
+  padding: 6px;
+  margin: -6px;
   transition: background 0.15s, color 0.15s;
 }
 .bc-cal-dismiss:hover {

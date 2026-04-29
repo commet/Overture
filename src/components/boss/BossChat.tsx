@@ -244,6 +244,20 @@ export function BossChat() {
     return () => clearTimeout(t);
   }, [verdict]);
 
+  // Esc dismisses an open calibration step — keyboard users get out without
+  // accidentally clicking a rating just to make it go away.
+  useEffect(() => {
+    if (calibrationStep !== 'similarity' && calibrationStep !== 'detail') return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setCalibrationStep('none');
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [calibrationStep]);
+
   // Anon-friendly calibration prompt: previously the "얼마나 비슷해?" rating
   // only appeared after the user clicked Save. Anonymous visitors (the bulk of
   // share-link traffic) often never save, so we collected zero similarity
@@ -256,7 +270,9 @@ export function BossChat() {
     if (saved) return; // Save flow already triggered calibration
     if (loadedAgentId) return; // Loaded boss — already calibrated previously
     if (calibrationStep !== 'none') return;
-    const t = setTimeout(() => setCalibrationStep('similarity'), 3500);
+    // 5s gives the user time to read the verdict before the rating prompt
+    // pops in. Anything shorter feels like an interrupt on mobile readers.
+    const t = setTimeout(() => setCalibrationStep('similarity'), 5000);
     return () => clearTimeout(t);
   }, [verdict, saved, loadedAgentId, calibrationStep]);
 
@@ -348,6 +364,7 @@ export function BossChat() {
                 verdict: parsed.verdict,
                 mbti: tc,
                 turns: useBossStore.getState().messages.length,
+                triggered_by: consumeForceVerdict ? 'force' : (round >= 7 ? 'auto' : 'natural'),
               });
             } catch { /* JSON 파싱 실패 시 무시 */ }
             const clean = raw.replace(jsonMatch[0], '').trim();

@@ -151,6 +151,10 @@ function AutoDemo() {
   useEffect(() => {
     const demo = searchParams?.get('demo');
     if (!demo) return;
+    // If both ?demo= and ?agent= are present, the saved-agent restore wins —
+    // AutoLoadAgent's loadBossFromAgent would otherwise be silently overridden
+    // by the demo's axes/birth/situation overrides.
+    if (searchParams?.get('agent')) return;
     const code = (demo.length === 4 && /^[EI][SN][TF][JP]$/i.test(demo) ? demo.toUpperCase() : 'ENTJ');
     setAxis('ei', code[0]);
     setAxis('sn', code[1]);

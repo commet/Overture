@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "overture:minimal-scaffold",
+  "title": "MinimalScaffold",
+  "description": "One-screen output for routine/low-density decisions. Replaces FinalScaffold when /overture:clarify determines that the user's question is reversible, single-action, and confidence-high. The whole point: a 1-line decision + 1 quick check fits in one screen and stops bikeshedding. Anti-pattern: forcing a 5-section FinalScaffold onto a tab-rename decision (TC1 failure mode from 2026-04-28 reality test).",
+  "type": "object",
+  "required": ["recommendation", "one_check", "_meta"],
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "description": "Single-sentence imperative. 'Just rename it' / 'Don't change yet — wait for X signal.' Must be actionable in one read."
+    },
+    "one_check": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "description": "The ONE thing the user verifies in <5 minutes that would flip the recommendation. If they can't think of any flip-condition, recommendation is too weak."
+    },
+    "caveat_if_signal_appears": {
+      "type": "string",
+      "maxLength": 240,
+      "description": "Optional one-line caveat. 'If you see X after shipping, revert.' Use only when reversibility has a non-trivial signal."
+    },
+    "_meta": {
+      "type": "object",
+      "required": ["mode", "decision_density", "generated_at"],
+      "properties": {
+        "mode": { "const": "minimal" },
+        "decision_density": { "const": "low" },
+        "framing_confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "reversibility": { "enum": ["reversible", "partial", "irreversible"] },
+        "skipped": {
+          "type": "array",
+          "description": "What was deliberately skipped vs FinalScaffold (team, boss, debate). Transparency for the user.",
+          "items": { "type": "string" }
+        },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

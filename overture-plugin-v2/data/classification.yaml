@@ -187,6 +187,8 @@ runtime_instructions: |
   When classifying a user task, produce the following JSON:
   {
     "stakes": "routine" | "important" | "critical",
+    "stakes_confidence": 0-100,
+    "stakes_user_confirmed": true | false,
     "decision_type": "known_path" | "needs_analysis" | "no_answer" | "on_fire",
     "steps": [
       {
@@ -212,3 +214,12 @@ runtime_instructions: |
      research docs" is synthesis (it's consolidating other work), not writing.
   4. agent_hint is optional. When you add it, it's a soft signal — the skill
      will still score via capabilities to verify match.
+  5. stakes_confidence rules:
+     - If upstream sail Step 6b already user-confirmed the stakes → set 100 and
+       stakes_user_confirmed=true.
+     - If your classification matches clarify's snapshot.stakes_guess → average
+       confidences (yours + clarify's).
+     - If your classification DIVERGES from clarify's → confidence MUST be <=70.
+       Divergence is itself a low-confidence signal; surface it.
+     The threshold sail uses to trigger AskUserQuestion is <75, so this naturally
+     forces disagreements between clarify and team to be resolved by the user.

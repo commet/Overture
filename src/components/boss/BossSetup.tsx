@@ -203,7 +203,13 @@ export function BossSetup() {
           <div className="bs-mode-toggle" role="group" aria-label={locale === 'ko' ? '입력 방식' : 'Input mode'}>
             <button
               type="button"
-              onClick={() => setAxisMode('easy')}
+              onClick={() => {
+                if (axisMode !== 'easy') {
+                  const answeredCount = (['ei','sn','tf','jp'] as const).filter(k => answeredAxes[k]).length;
+                  track('boss_axis_mode_switched', { from: axisMode, to: 'easy', answered_axes: answeredCount });
+                  setAxisMode('easy');
+                }
+              }}
               data-active={axisMode === 'easy'}
               aria-pressed={axisMode === 'easy'}
             >
@@ -211,7 +217,13 @@ export function BossSetup() {
             </button>
             <button
               type="button"
-              onClick={() => setAxisMode('mbti')}
+              onClick={() => {
+                if (axisMode !== 'mbti') {
+                  const answeredCount = (['ei','sn','tf','jp'] as const).filter(k => answeredAxes[k]).length;
+                  track('boss_axis_mode_switched', { from: axisMode, to: 'mbti', answered_axes: answeredCount });
+                  setAxisMode('mbti');
+                }
+              }}
               data-active={axisMode === 'mbti'}
               aria-pressed={axisMode === 'mbti'}
             >

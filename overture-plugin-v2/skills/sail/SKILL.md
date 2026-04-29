@@ -77,10 +77,12 @@ Decision table:
 ### Step 4 — Chain skills (if `--full`)
 
 Run sequentially:
-1. `/overture:clarify` (until ready for mix, or max rounds)
+1. `/overture:clarify --no-minimal` (until ready for mix, or max rounds). The `--no-minimal` flag suppresses Step 6a auto-collapse — `--full` is an explicit user override.
 2. `/overture:team` (on the snapshot's execution_plan)
 3. `/overture:boss` (unless `--no-boss`)
 4. `/overture:chart` (final — show scaffold + tree)
+
+Clarify still computes `decision_density` (for telemetry/logging in meta.json) but Step 5 emits the regular scaffold instead of MinimalScaffold.
 
 Between skills, report brief transition to user:
 > "Clarify done. Deploying team..."
@@ -89,22 +91,57 @@ Between skills, report brief transition to user:
 
 ### Step 5 — `--quick` mode
 
-Runs only `/overture:clarify`. Produces a scaffold based on analysis alone (no team deployed). Useful for:
+Runs only `/overture:clarify --no-minimal`. The `--no-minimal` flag forces clarify to emit the regular scaffold (Step 5b) even on low-density questions, because the user explicitly opted into the framing exercise. Useful for:
 - Fast problem framing check ("is this even the right question?")
 - When the problem is too small for team deployment
 - Initial exploration
 
 The scaffold in quick mode has `key_trade_offs` and `hidden_assumptions` but empty `team_contradictions` and a note that team was not deployed.
 
+**Difference from auto-MinimalScaffold (Step 6a)**:
+- `--quick` always emits the regular scaffold structure (skeleton + hidden_assumptions arrays). The user explicitly opted into the framing exercise.
+- Auto-MinimalScaffold (Step 6a) emits a 1-line directive when decision_density==low. The user did NOT opt in — clarify decided the question was sub-routine and the framing exercise itself would over-engineer.
+
+If user passes `--quick` AND clarify computes density==low: still emit regular scaffold (user override). The minimal-mode collapse is only for the no-flag default path.
+
 ### Step 6 — Default mode (no flag)
 
-If `--full` / `--quick` not specified: run `/overture:clarify` first, then:
-- If the snapshot has clear `execution_plan` and stakes seem important/critical → offer to proceed to team
-- If the snapshot suggests the problem is small / routine → offer quick scaffold
+If `--full` / `--quick` not specified: run `/overture:clarify` first, then branch on the resulting AnalysisSnapshot.
+
+#### Step 6a — `decision_density == "low"` → MinimalScaffold path (no further action)
+
+Clarify Step 5a already wrote `versions/{label}/minimal_scaffold.json` AND set `session.phase = "complete"`. Sail's job here:
+- Print a one-line confirmation ("Minimal mode — bikeshed prevention. 1줄 권장이 위에 있습니다.").
+- DO NOT offer team deployment, DO NOT offer boss review, DO NOT AskUserQuestion. The user already got their answer.
+- Exit.
+
+**Why no AskUserQuestion here**: rule 4 in clarify Step 2 already gated this with strict conditions (reversibility==reversible AND framing_confidence>=80 AND single-action AND no >5min checkpoint). Adding a confirmation prompt re-introduces the bikeshed cost we just saved. The user can override with `/overture:sail --full "<problem>"` if they disagree — that's the escape hatch printed in clarify Step 5a output.
+
+#### Step 6b — `decision_density in {"medium", "high"}` AND `stakes_confidence < 75` → confirm stakes first
+
+When clarify is uncertain about stakes (borderline routine/important or important/critical), ask before locking the routing:
+
+Use AskUserQuestion:
+- Title (ko): "스테이크 확인" / Title (en): "Confirm stakes"
+- Question (ko): "이 결정이 **{{stakes_guess}}** 정도로 보이는데(자신도: {{stakes_confidence}}/100) 맞나요?"
+- Question (en): "I read this as **{{stakes_guess}}** stakes (confidence: {{stakes_confidence}}/100). Right?"
+- Options:
+  - "맞아 — {{stakes_guess}}로 진행" / "Yes, proceed as {{stakes_guess}}"
+  - "더 가볍게 봐도 돼" / "Lighter than that" — downgrade one level
+  - "더 무겁게 봐야 해" / "Heavier than that" — upgrade one level
+
+Persist the user-confirmed stakes to `session.classification.stakes` and `session.classification.stakes_user_confirmed = true`. Then continue to Step 6c with the locked stakes.
+
+If `stakes_confidence >= 75`: skip directly to Step 6c without asking — clarify is sure enough that the friction of asking outweighs the routing risk.
+
+#### Step 6c — Standard routing (medium/high density, stakes locked)
+
+- If snapshot has clear `execution_plan` and stakes is important/critical → offer to proceed to team.
+- If stakes is routine but density wasn't low (e.g. routine but irreversible signal, or routine with framing_confidence<80) → offer quick scaffold.
 
 Use AskUserQuestion:
 - Title: "다음 단계"
-- Question: "문제가 {{stakes_guess}}으로 보입니다. 어떻게 진행할까요?"
+- Question: "어떻게 진행할까요?"
 - Options: "팀 배치 (3-5 에이전트)", "빠른 스캐폴드만 (에이전트 없이)", "일단 멈추자 — 더 생각해볼게"
 
 ---
