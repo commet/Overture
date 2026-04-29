@@ -14,13 +14,16 @@ description: Top-level Overture orchestrator — set sail on a decision. Structu
 ## When to run
 
 The default entry point. User typed:
-- `/overture:sail "<problem description>"` — process a new problem
+- `/overture:sail "<problem description>"` — process a new problem (auto-routed by stakes/density)
 - `/overture:sail @PR#123` — work through this PR
 - `/overture:sail @<file>` — think about this file
 - `/overture:sail` (bare) — continue latest session, or prompt for input
-- `/overture:sail --full "<problem>"` — force full pipeline (clarify → team → boss)
-- `/overture:sail --quick "<problem>"` — clarify only (no team deployment)
+- `/overture:sail --full "<problem>"` — force full pipeline (clarify → team → boss → final card)
+- `/overture:sail --quick "<problem>"` — clarify only (regular scaffold, no team)
+- `/overture:sail --no-boss "<problem>"` — skip boss review at end of full pipeline (combines with default or --full)
 - `/overture:sail --resume <session-id>` — continue a prior session
+
+Default mode (no flag) auto-routes based on `decision_density` and `stakes_confidence` — see Step 6.
 
 ---
 
@@ -116,12 +119,11 @@ If user passes `--quick` AND clarify computes density==low: still emit regular s
 
 If `--full` / `--quick` not specified: run `/overture:clarify` first, then branch on the resulting AnalysisSnapshot.
 
-#### Step 6a — `decision_density == "low"` → MinimalScaffold path (no further action)
+#### Step 6a — `decision_density == "low"` → MinimalScaffold path (clarify already rendered)
 
-Clarify Step 5a already wrote `versions/{label}/minimal_scaffold.json` AND set `session.phase = "complete"`. Sail's job here:
-- Print a one-line confirmation ("Minimal mode — bikeshed prevention. 1줄 권장이 위에 있습니다.").
-- DO NOT offer team deployment, DO NOT offer boss review, DO NOT AskUserQuestion. The user already got their answer.
-- Exit.
+Clarify Step 5a already printed the minimal card AND wrote `versions/{label}/minimal_scaffold.json` AND set `session.phase = "complete"`. The user has their answer on screen.
+
+Sail's job here: **exit silently**. No re-print, no AskUserQuestion, no Step 7 invocation. Anything sail prints now is duplicative with clarify's output and wastes screen space.
 
 **Why no AskUserQuestion here**: rule 4 in clarify Step 2 already gated this with strict conditions (reversibility==reversible AND framing_confidence>=80 AND single-action AND no >5min checkpoint). Adding a confirmation prompt re-introduces the bikeshed cost we just saved. The user can override with `/overture:sail --full "<problem>"` if they disagree — that's the escape hatch printed in clarify Step 5a output.
 
@@ -170,36 +172,25 @@ Use AskUserQuestion:
 Why these 4 options (not the legacy 3): "전부 자동 진행" is the new default. "boss 생략" is a one-shot equivalent of `--no-boss`. The other two are unchanged.
 
 **After Step 6c picks a path (auto or asked):**
-- "전부 자동 진행" → invoke `/overture:team`, then (unless `--no-boss` or boss-skip selected) `/overture:boss`, then **Step 7 final card**.
-- "팀까지만" → `/overture:team` only, then Step 7.
-- "빠른 스캐폴드만" → already have clarify regular scaffold; jump to Step 7.
+- "전부 자동 진행" → invoke `/overture:team --invoked-via-sail`, then (unless `--no-boss` or boss-skip selected) `/overture:boss --invoked-via-sail`, then **Step 7 final card**.
+- "팀까지만" → `/overture:team --invoked-via-sail` only, then Step 7.
+- "빠른 스캐폴드만" → clarify Step 5b output is already the user-facing view (skeleton + hidden_assumptions). **No Step 7** (no scaffold.json to render). Exit.
 - "일단 멈추자" → write a stub `versions/{label}/meta.json` `{phase_at_pause: "conversing"}`. Print "/overture:sail --resume {{session.id}} 으로 이어가세요." Exit.
 
 ### Step 7 — Final decision card (consolidated one-screen output)
 
-After clarify (and team and/or boss if they ran), sail emits ONE consolidated view. The user should NOT have to read JSON files in `versions/{label}/` to know what was decided. Per locale.
+**Invoked only after team or boss ran (Step 4 --full path or Step 6c team-running path).** Step 6a (minimal mode) does NOT invoke Step 7 — clarify already rendered.
+
+Step 7 emits ONE consolidated view. The user should NOT have to read JSON files in `versions/{label}/` to know what was decided. Per locale.
 
 #### Source data
 
 Read the latest `versions/{label}/`:
 - `analysis.json` → `reframed_question`, `framing_confidence`
-- `minimal_scaffold.json` (if exists) → `recommendation`, `one_check`, `caveat_if_signal_appears`
-- `scaffold.json` (FinalScaffold, if team ran) → `key_trade_offs[0]`, `team_contradictions[]`, `hidden_assumptions[]` (filter doubtful), `human_required_checkpoints[]`, `next_actions[0..1]`
+- `scaffold.json` (FinalScaffold) → `key_trade_offs[0]`, `team_contradictions[]`, `hidden_assumptions[]` (filter doubtful), `human_required_checkpoints[]`, `next_actions[0..1]`
 - `boss_feedback.json` (if boss ran) → `approval_condition`, top critical concern (if any)
 
-#### Render — minimal mode (decision_density == "low")
-
-```
-## Overture · {{session_id}}
-
-**결정:** {{minimal_scaffold.recommendation}}
-**확인 1개 (5분):** {{minimal_scaffold.one_check}}
-{{if caveat_if_signal_appears}}**조심:** {{caveat_if_signal_appears}}{{endif}}
-
-📁 .overture/sessions/{{session_id}}/versions/{{label}}/   ·   재시도: `/overture:sail --full "..."`
-```
-
-#### Render — full mode (team and/or boss ran)
+#### Render
 
 ```
 ## Overture · {{session_id}} · {{label}}
@@ -248,7 +239,15 @@ The full JSON files remain in `versions/{label}/` for chart and revise to consum
 
 ## Output
 
-Sail's final output is **always** the Step 7 decision card — minimal-mode card if `decision_density == "low"`, full-mode card otherwise. No JSON dumps, no path-only summaries. The card is the consumable artifact; the JSON files in `versions/{label}/` are inspectable by `/overture:chart` when the user wants depth.
+Sail has three terminal user-facing outputs depending on the path taken:
+
+| Path | What user sees | Renderer |
+|---|---|---|
+| Step 6a (low density) | clarify Step 5a minimal card (recommendation + 1 check + optional caveat) | clarify |
+| Step 5 / Step 6c "빠른 스캐폴드만" (--quick or quick option) | clarify Step 5b regular scaffold (skeleton + hidden_assumptions) | clarify |
+| Step 4 (--full) / Step 6c team-running paths | Step 7 consolidated decision card (~12-18 lines) | sail |
+
+No JSON dumps, no path-only summaries. The card or scaffold is the consumable artifact; the JSON files in `versions/{label}/` are inspectable by `/overture:chart` when the user wants depth.
 
 ---
 
