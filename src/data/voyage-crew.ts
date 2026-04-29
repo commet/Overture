@@ -87,14 +87,14 @@ export const CREW_DIVISIONS: CrewDivision[] = [
   },
   {
     id: 'concertmaster',
-    label: { ko: '악장', en: 'Concertmaster' },
+    label: { ko: '일등 항해사', en: 'First Mate' },
     role: {
       ko: '모든 선원의 목소리를 하나로 묶어 선장에게 전한다',
-      en: "First mate — binds every voice into one for the captain",
+      en: 'Binds every voice into one for the captain',
     },
     stationLabel: { ko: '조타륜 옆', en: 'Beside the helm' },
     members: [
-      { name: '악장', personaRole: { ko: '종합 검토자', en: 'Maestro' } },
+      { name: '일등 항해사', personaRole: { ko: '종합 검토자', en: 'First mate' } },
     ],
   },
 ];

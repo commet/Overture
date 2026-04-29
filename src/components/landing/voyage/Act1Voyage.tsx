@@ -66,37 +66,56 @@ export function Act1Voyage() {
           >
             {locale === 'ko' ? (
               <>
-                어디로 갈지 정하는 것 —
+                당신의 항해는 —
                 <br />
-                <span style={{ color: 'var(--bp-ink-soft)' }}>그게 가장 어려운 일이었다.</span>
+                <span style={{ color: 'var(--bp-ink-soft)' }}>왜 종착지에 닿지 못했는가.</span>
               </>
             ) : (
               <>
-                Choosing the heading
+                Why hasn&rsquo;t your voyage
                 <br />
-                <span style={{ color: 'var(--bp-ink-soft)' }}>was always the hardest part.</span>
+                <span style={{ color: 'var(--bp-ink-soft)' }}>reached its shore?</span>
               </>
             )}
           </h1>
 
+          {/* Sub-1: AI siren reveal — italic, voice-over feel */}
           <p
-            className={`bp-fade-up mt-6 md:mt-8 max-w-2xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
+            className={`bp-fade-up mt-5 md:mt-7 max-w-3xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
             style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
               color: 'var(--bp-ink-soft)',
-              fontSize: 'clamp(15px, 1.2vw, 18px)',
-              lineHeight: 1.6,
+              fontSize: 'clamp(15px, 1.4vw, 22px)',
+              lineHeight: 1.55,
               animationDelay: '460ms',
             }}
           >
             {L(
-              '이제 17명의 팀이 함께합니다. 키는 당신이 잡습니다.',
-              'Now seventeen crew sail alongside. You hold the helm.',
+              '— AI라는 감미로운 목소리에 홀려, 그 답에 정박해버린 채로.',
+              '— Lured by the sweet voice of AI, anchored at its answer.',
+            )}
+          </p>
+
+          {/* Sub-2: the promise — multi-perspective companionship */}
+          <p
+            className={`bp-fade-up mt-5 md:mt-7 max-w-2xl mx-auto ${locale === 'ko' ? 'break-keep' : ''}`}
+            style={{
+              color: 'var(--bp-ink-soft)',
+              fontSize: 'clamp(15px, 1.2vw, 18px)',
+              lineHeight: 1.6,
+              animationDelay: '600ms',
+            }}
+          >
+            {L(
+              '옆에서 같이 보고, 같이 묻고, 같이 갑니다. 키는 당신이 잡습니다.',
+              'They watch with you, ask with you, sail with you. You hold the helm.',
             )}
           </p>
 
           <div
             className="bp-fade-up mt-8 md:mt-10 inline-flex items-center gap-3"
-            style={{ animationDelay: '600ms' }}
+            style={{ animationDelay: '760ms' }}
           >
             <a
               href="#orchestration"

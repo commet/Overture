@@ -84,9 +84,18 @@ export function Act2Cutaway() {
             animationDelay: '240ms',
           }}
         >
-          {L(
-            '망루는 위에서, 정찰조는 선수에서, 제도사는 메인마스트 아래 해도 테이블에서. 자리마다 역할이 있고, 자리들 사이엔 정보가 흐릅니다.',
-            'Watch up top, Scouts at the bow, Cartographers under the mainmast at the chart table. Each station has its purpose; information flows between them.',
+          {locale === 'ko' ? (
+            <>
+              멀리 보는, 깊이 가는, 그리는, 만드는 사람들.
+              <br />
+              그리고 다 듣고 묶는 한 사람.
+            </>
+          ) : (
+            <>
+              Those who watch far, go deep, draw, and build.
+              <br />
+              And one who listens to all — and binds.
+            </>
           )}
         </p>
 
@@ -96,7 +105,7 @@ export function Act2Cutaway() {
           style={{
             width: '100%',
             maxWidth: 1100,
-            aspectRatio: '1200 / 600',
+            aspectRatio: '1200 / 500',
             animationDelay: '360ms',
           }}
         >
