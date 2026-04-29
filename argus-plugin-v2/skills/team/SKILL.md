@@ -1,13 +1,13 @@
 ---
 name: team
-description: Deploy a team of specialized agents as WORKERS on a clarified problem (the crew sets out from port). Each agent does their domain work — research, numbers, critique, UX, legal, etc. — in their own voice on the actual artifact (code, PR, file, design doc). Agents are not critics here; they're producers. Output is a MixResult aggregating their work with sentence-level attribution preserved. Invoke after `/overture:clarify` has produced an AnalysisSnapshot with an `execution_plan`. This is where Overture's differentiator lives: agents act on REAL artifacts with distinct voices, and contradictions between them are preserved, not averaged. Invoked as `/overture:team`.
+description: Deploy a team of specialized agents as WORKERS on a clarified problem (the crew sets out from port). Each agent does their domain work — research, numbers, critique, UX, legal, etc. — in their own voice on the actual artifact (code, PR, file, design doc). Agents are not critics here; they're producers. Output is a MixResult aggregating their work with sentence-level attribution preserved. Invoke after `/argus:clarify` has produced an AnalysisSnapshot with an `execution_plan`. This is where Argus's differentiator lives: agents act on REAL artifacts with distinct voices, and contradictions between them are preserved, not averaged. Invoked as `/argus:team`.
 ---
 
-# /overture:team
+# /argus:team
 
 **What this skill does:** Takes a clarified problem + execution plan, classifies it, selects the right 2–4 agents, deploys them in parallel as WORKERS (not critics), and aggregates their work.
 
-**Why this matters (M9 — Workers not critics):** The legacy 4R plugin had agents as "persona reviewers." This skill rejects that model. Agents here PRODUCE artifacts — research notes, ROI tables, UX critiques, compliance checklists. Critique is a separate downstream step (`/overture:boss`). This is the shift from web app's reality, not the old plugin's.
+**Why this matters (M9 — Workers not critics):** The legacy 4R plugin had agents as "persona reviewers." This skill rejects that model. Agents here PRODUCE artifacts — research notes, ROI tables, UX critiques, compliance checklists. Critique is a separate downstream step (`/argus:boss`). This is the shift from web app's reality, not the old plugin's.
 
 **Why this matters (M3 — Contradiction preservation):** For `stakes: critical` problems, this skill runs a two-stage pipeline with an explicit debate step. Agent disagreements are stored in `team_contradictions[]`, not aggregated away. M4 final scaffold requires this field populated when debate ran.
 
@@ -16,11 +16,11 @@ description: Deploy a team of specialized agents as WORKERS on a clarified probl
 ## When to run
 
 Invoke after:
-- `/overture:clarify` has written `versions/v{X}/analysis.json` with `execution_plan.steps` ≥ 2
-- User explicitly runs `/overture:team` with a prior session in conversing phase
+- `/argus:clarify` has written `versions/v{X}/analysis.json` with `execution_plan.steps` ≥ 2
+- User explicitly runs `/argus:team` with a prior session in conversing phase
 
 Refuse to run when:
-- No session exists → direct user to `/overture:clarify` first
+- No session exists → direct user to `/argus:clarify` first
 - Latest snapshot lacks `execution_plan` → direct user to run another round of clarify
 - Unless `--force` flag is passed (prints warning)
 
@@ -28,7 +28,7 @@ Refuse to run when:
 
 ## Inputs
 
-- **Session ID** (optional): from `--session <id>`. Defaults to most recently modified session in `.overture/sessions/`.
+- **Session ID** (optional): from `--session <id>`. Defaults to most recently modified session in `.argus/sessions/`.
 - **Force flag** (optional): `--force` skips the analysis_readiness check.
 - **Override agents** (optional): `--agents sujin,donghyuk,jieun` — bypass automatic selection. Use sparingly; classification is usually better.
 - **Sail-invocation flag** (optional): `--invoked-via-sail` — suppress Step 11 verbose print block. JSON files are still written; sail's Step 7 will compose the consolidated decision card from them. Use this to avoid double-rendering when sail orchestrates the chain.
@@ -39,15 +39,15 @@ Refuse to run when:
 
 ### Step 1 — Load session state
 
-1. Find session: latest `.overture/sessions/*/session.json` or specified via `--session`.
+1. Find session: latest `.argus/sessions/*/session.json` or specified via `--session`.
 2. Read latest snapshot from `session.snapshots[-1]`.
 3. Assert `execution_plan.steps` has ≥ 2 entries. If not, halt with direction to run more clarify rounds.
-4. Compute next version label using rules from `~/.claude/overture-lib/session/version-numbering.md`:
-   - v0.1 directory exists already (created by `/overture:clarify`).
+4. Compute next version label using rules from `~/.claude/argus-lib/session/version-numbering.md`:
+   - v0.1 directory exists already (created by `/argus:clarify`).
    - **Marker-file detection for re-run**: a version is considered "team-completed" when `versions/{label}/workers.json` exists. If the latest version's `workers.json` exists, this invocation is a re-run → compute next label via `nextChildLabel(latest_label, existing_siblings_under_same_parent)` from version-numbering.md. Typically produces `v0.2` (main-line) or `v0.1.1` (branch from v0.1 when v0.2 already exists).
    - If `workers.json` does NOT exist in the latest version dir, this is the first team run for that version → use the existing label (do NOT create a new version dir). The team populates the same dir clarify already opened.
 5. Create `versions/{label}/` directory only if a new version was computed; otherwise reuse existing.
-6. Read locale from `.overture/config.yaml` (default `ko`). All user-facing text in this skill (AskUserQuestion options, report strings, worker instructions) uses this locale.
+6. Read locale from `.argus/config.yaml` (default `ko`). All user-facing text in this skill (AskUserQuestion options, report strings, worker instructions) uses this locale.
 
 ### Step 1.5 — Gather repo context (CRITICAL for M1 code-native)
 
@@ -56,7 +56,7 @@ Refuse to run when:
 **Three paths:**
 
 **(A) Explicit target** — `session.invoking_context.target_type` in `{pr, file, branch, issue, design_doc}`:
-- `pr` → already expanded by `/overture:clarify` at session start. Re-read `versions/v0.1/meta.json` for `pr_context.diff`, `pr_context.description`, `pr_context.files_changed`. Pass forward.
+- `pr` → already expanded by `/argus:clarify` at session start. Re-read `versions/v0.1/meta.json` for `pr_context.diff`, `pr_context.description`, `pr_context.files_changed`. Pass forward.
 - `file` → re-read the file contents. Include `git log -5 <file>` for recent context.
 - `branch` → re-run `git diff main...<branch>` + `git log main..<branch>`.
 - `issue` → re-fetch via `gh issue view <N>`.
@@ -72,7 +72,7 @@ Refuse to run when:
 **(C) No git repo / no files** (edge case — user in empty directory):
 - Skip repo gathering.
 - Set `repo_context: null` and flag in session.json that workers will operate in hypothetical mode.
-- User-facing warning at end of Step 11: "⚠ No codebase detected. Workers returned hypothetical-mode outputs (marked `[hypothetical]`). For code-native results, run Overture from within a project repo."
+- User-facing warning at end of Step 11: "⚠ No codebase detected. Workers returned hypothetical-mode outputs (marked `[hypothetical]`). For code-native results, run Argus from within a project repo."
 
 **Write** the gathered context to `versions/{label}/repo_context.json`:
 ```json
@@ -96,13 +96,13 @@ This file becomes input to EVERY worker spawn. Workers can read it + Grep for sp
 
 ### Step 2 — Classify (LLM runtime)
 
-**Reference: `~/.claude/overture-data/classification.yaml`**
+**Reference: `~/.claude/argus-data/classification.yaml`**
 
 **Read upstream signals first:** load `session.classification.stakes` (if user-confirmed via sail Step 6b — `session.classification.stakes_user_confirmed == true`, treat as authoritative; do NOT re-classify, only fill `stakes_confidence: 100` and proceed to step breakdown). Otherwise read `snapshot.stakes_guess` + `snapshot.stakes_confidence` from clarify as prior.
 
 Prompt yourself:
 
-> You are classifying a problem for agent team deployment. Use the vocabulary from `~/.claude/overture-data/classification.yaml`.
+> You are classifying a problem for agent team deployment. Use the vocabulary from `~/.claude/argus-data/classification.yaml`.
 >
 > Given:
 > - Real question: {{snapshot.real_question}}
@@ -133,7 +133,7 @@ Write classification to `versions/{label}/classification.json`. Persist `stakes_
 
 ### Step 3 — Select agents (LLM + capabilities)
 
-**Reference: `~/.claude/overture-data/agents.yaml`** — each agent has `capabilities: {task_types, domains, output_types, anti_patterns}`.
+**Reference: `~/.claude/argus-data/agents.yaml`** — each agent has `capabilities: {task_types, domains, output_types, anti_patterns}`.
 
 For each step, compute best agent by:
 
@@ -167,7 +167,7 @@ Apply (a), then (b), then (c) in order. Each step may resolve the overage partia
 **(c) Drop lowest-scoring steps iteratively.** While `steps.length > agent_count_max`: compute best-match agent score for every remaining step, drop the ONE with lowest score. Preserve each dropped step in `classification.json:dropped_steps[]` with its reason and best-agent score. Repeat until budget matches.
 - **Mandatory surfacing**: every dropped step MUST be represented in the final `scaffold.human_required_checkpoints[]` with `checkpoint: "<original task>", why: "dropped from automated pipeline — over_agent_budget"`. This preserves transparency (M4) and gives the user a path to manually cover the dropped area.
 
-**(d) Forbidden fallback**: one agent assigned to two un-merged steps. Do NOT do this silently. If (a)–(c) all failed (e.g., stakes already critical AND no mergeable pairs AND budget still exceeded), halt with error message explaining the conflict and suggesting the user increase `team.max_agents_override` in config.yaml or split the execution_plan into two `/overture:team` invocations.
+**(d) Forbidden fallback**: one agent assigned to two un-merged steps. Do NOT do this silently. If (a)–(c) all failed (e.g., stakes already critical AND no mergeable pairs AND budget still exceeded), halt with error message explaining the conflict and suggesting the user increase `team.max_agents_override` in config.yaml or split the execution_plan into two `/argus:team` invocations.
 
 After reconciliation, `steps.length ≤ agent_count_max` is guaranteed.
 
@@ -197,6 +197,11 @@ Produce `versions/{label}/team_plan.json`:
   ]
 }
 ```
+
+**Role of team_plan.json — internal orchestration + forensic.**
+- **Step 4–6 read it** to know which agent runs in which stage with which framework. It IS the working plan.
+- **Kept post-execution** so `/argus:chart` (or any future debugger) can answer "why did *this* team get deployed for this decision?" If a deployment looked weird, the assignment scoring + reconciliation results that produced it are inspectable here.
+- **Not consumed by sail Step 7** — the final decision card draws from `scaffold.json` + `boss_feedback.json`. team_plan is intentionally *upstream* of the user-facing artifact: it's how the team was planned, not what the team produced.
 
 Stage rules:
 - `stakes: routine | important` → single stage (all workers parallel).
@@ -346,7 +351,7 @@ If multiple axes have opposing stances simultaneously, write multiple entries to
 
 Prompt yourself:
 
-> Aggregate the team's work into a MixResult (schema: `~/.claude/overture-data/schemas/mix-result.json`).
+> Aggregate the team's work into a MixResult (schema: `~/.claude/argus-data/schemas/mix-result.json`).
 >
 > Team outputs:
 > {{all worker results with agent names}}
@@ -371,7 +376,7 @@ Write result to `versions/{label}/mix.json`.
 
 This is the PLUGIN-SPECIFIC divergence from webapp. Webapp produces a markdown document; plugin produces a decision scaffold.
 
-Construct `FinalScaffold` (schema: `~/.claude/overture-data/schemas/final-scaffold.json`):
+Construct `FinalScaffold` (schema: `~/.claude/argus-data/schemas/final-scaffold.json`):
 - `reframed_question`: from snapshot
 - `key_trade_offs[]`: extract from team outputs + debate. Each trade-off = axis + side_a + side_b.
 - `hidden_assumptions[]`: from mix.key_assumptions, with `evaluation` (likely_true / uncertain / doubtful) based on team's validation
@@ -407,10 +412,10 @@ That's it. No print of contradictions/assumptions/checkpoints (sail Step 7 surfa
 
 #### Step 11b — Direct invocation (no `--invoked-via-sail`) → full report
 
-User typed `/overture:team` directly without going through sail. Render the full block:
+User typed `/argus:team` directly without going through sail. Render the full block:
 
 ```
-## Overture · Team · {{label}}
+## Argus · Team · {{label}}
 
 **Classification:** {{stakes}} · {{decision_type}} ({{agent_count}} agents)
 
@@ -439,7 +444,7 @@ User typed `/overture:team` directly without going through sail. Render the full
 - {{checkpoint}} — {{why AI cannot}}
 {{endfor}}
 
-**Next step:** `/overture:boss` for stakeholder review, or `/overture:chart` to see the version tree.
+**Next step:** `/argus:boss` for stakeholder review, or `/argus:chart` to see the version tree.
 ```
 
 ---
@@ -466,7 +471,7 @@ User typed `/overture:team` directly without going through sail. Render the full
 
 ## Forbidden patterns
 
-- Running `/overture:team` without prior `/overture:clarify` session.
+- Running `/argus:team` without prior `/argus:clarify` session.
 - Spawning agents sequentially when they should be parallel (you MUST use multiple Task tool calls in a single message for stage-1 workers).
 - Collapsing team_contradictions into a "consensus" bullet.
 - Letting stage-1 workers critique each other. They don't see each other's work until stage 2 (critical stakes only).
