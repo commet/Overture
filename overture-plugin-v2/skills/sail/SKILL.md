@@ -38,11 +38,19 @@ User's session artifacts live in `<cwd>/.overture/sessions/`.
 
 ### Step 0 — Load config
 
-Read `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`). If missing, prompt via AskUserQuestion:
-- **ko**: "Overture 설정 파일이 없네요. `~/.claude/overture-lib/config.example.yaml` 기반으로 만들까요?" → Options: "네, 만들어줘", "나중에 할게 (기본값 사용)"
-- **en**: "No Overture config found. Create from `~/.claude/overture-lib/config.example.yaml` template?" → Options: "Yes, create it", "Not now (use defaults)"
+Read `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`).
 
-All downstream skills inherit `locale` from this config.
+**If missing, silently create from `~/.claude/overture-lib/config.example.yaml`** (no AskUserQuestion — first-run friction was the discoverability killer). Print ONE line in detected locale:
+- ko: "ℹ `.overture/config.yaml` 자동 생성 (ISTJ 박 팀장 기본). 다른 boss 원하면 그 파일 편집."
+- en: "ℹ `.overture/config.yaml` auto-created (ISTJ default boss). Edit it if you want a different stakeholder."
+
+Locale detection when no config exists yet:
+- If `LANG` env starts with `ko` OR system locale is Korean → ko
+- Else → en
+
+All downstream skills inherit `locale` from the (now-existing) config.
+
+**Why no prompt:** the user just typed `/overture:sail "..."` — they want a decision, not a setup dialog. The default config is reversible (one file edit). Asking for permission to create a config they obviously want is the kind of ceremoniousness this plugin's reality test (TC1, 2026-04-28) marked as a fail.
 
 ### Step 1 — Parse input + detect intent
 

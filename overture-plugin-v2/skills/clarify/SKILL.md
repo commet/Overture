@@ -55,7 +55,7 @@ If multiple candidates, use **AskUserQuestion** to disambiguate: "Which of these
 
 ### Step 1 — Session bootstrap
 
-1. **Read config**: Load `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`). If file missing, ask user via AskUserQuestion whether to create from `~/.claude/overture-lib/config.example.yaml` template. If user declines, proceed with defaults (`locale: ko`, no boss). All user-facing text in this skill uses `config.locale`.
+1. **Read config**: Load `.overture/config.yaml` (schema: `~/.claude/overture-data/schemas/config.json`). If clarify is invoked via `/overture:sail`, the config is already loaded and present (sail Step 0 silent-creates it). If clarify is invoked DIRECTLY by the user with no config, silent-create from `~/.claude/overture-lib/config.example.yaml` (same logic as sail Step 0) — print one line "ℹ config 자동 생성 (ISTJ 기본)" and proceed. No AskUserQuestion. All user-facing text in this skill uses `config.locale`.
 2. Compute session ID: `YYYY-MM-DD-<kebab-of-first-N-words-of-problem>`. Collision-safe by appending `-2`, `-3`.
 3. Create `.overture/sessions/{id}/` directory.
 4. Create `session.json` at the root with schema from `~/.claude/overture-data/schemas/session.json`. Fields:
@@ -141,7 +141,11 @@ If `framing_confidence < 70`:
 
 ### Step 4 — Q&A loop (deepening rounds)
 
-Repeat up to `max_rounds` times (default 3) or until the snapshot contains a filled `execution_plan`:
+**Skip entirely when `decision_density == "low"` AND `--no-minimal` not set.** Minimal mode produces no execution_plan and no team — there's nothing to deepen toward. The Q&A loop's purpose is filling execution_plan for team deployment; it has no value for a 1-line decision card. (False-low density would be caught by M-density meta-check before reaching here.)
+
+**Skip when `framing_confidence >= 90` AND execution_plan already produced in Step 2.** Some clear questions yield execution_plan in the initial round; no deepening needed.
+
+Otherwise, repeat up to `max_rounds` times (default 3) or until the snapshot contains a filled `execution_plan`:
 
 1. **Generate next question** based on latest snapshot. Priorities:
    - If `framing_confidence < 90` and not yet asked: ask a **strategic_fork** question to clarify the decision. Example: "이 결정에서 가장 중요한 건 (A) 속도 (B) 확실성 (C) 장기 유지보수 중 어느 쪽인가?"
@@ -283,7 +287,7 @@ If any gate fails, revise before emitting files.
 ## Error modes
 
 - **No `.overture/` directory**: create it. First-time use.
-- **`.overture/config.yaml` missing**: proceed without boss. Note in session.json that boss is not configured.
+- **`.overture/config.yaml` missing**: silent-create from `~/.claude/overture-lib/config.example.yaml`. Print one ack line. No prompts. (Legacy behavior of "proceed without boss" is removed — first-run users would never realize they could fix it.)
 - **User provides no problem text and git state is clean**: prompt for problem text via AskUserQuestion.
 - **PR/issue reference fails** (gh not installed, unauthorized): degrade gracefully — ask user to paste the text, note fallback in meta.json.
 - **LLM returns malformed JSON**: retry once with stricter schema emphasis. If still fails, write what you got to `versions/v0.1/raw_analysis.txt` and explain the issue to user.
