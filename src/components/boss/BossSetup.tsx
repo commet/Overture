@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { TypeToggle } from './TypeToggle';
-import { BehavioralToggle } from './BehavioralToggle';
+import { BehavioralToggle, type AnsweredAxes } from './BehavioralToggle';
 import { useBossStore } from '@/stores/useBossStore';
 import { AnimatedPlaceholder } from '@/components/ui/AnimatedPlaceholder';
 import { getLocalizedPersonalityType } from '@/lib/boss/personality-types';
@@ -86,6 +86,10 @@ export function BossSetup() {
   // Default to "easy" mode — workplace-language quiz. Power users / Korean MBTI fans
   // can flip to MBTI-direct toggle. Both modes share the same axis state.
   const [axisMode, setAxisMode] = useState<'easy' | 'mbti'>('easy');
+  // Lifted from BehavioralToggle so flipping Easy ↔ MBTI does not lose progress.
+  const [answeredAxes, setAnsweredAxes] = useState<AnsweredAxes>({
+    ei: false, sn: false, tf: false, jp: false,
+  });
   const demoConsumedRef = useRef(false);
 
   const typeCode = `${axes.ei}${axes.sn}${axes.tf}${axes.jp}`;
@@ -215,7 +219,14 @@ export function BossSetup() {
             </button>
           </div>
         </div>
-        {axisMode === 'easy' ? <BehavioralToggle /> : <TypeToggle />}
+        {axisMode === 'easy' ? (
+          <BehavioralToggle
+            answered={answeredAxes}
+            onAnswered={(key) => setAnsweredAxes((s) => ({ ...s, [key]: true }))}
+          />
+        ) : (
+          <TypeToggle />
+        )}
 
         {/* Personality — always visible card */}
         <AnimatePresence mode="wait">

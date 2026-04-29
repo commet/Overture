@@ -244,6 +244,22 @@ export function BossChat() {
     return () => clearTimeout(t);
   }, [verdict]);
 
+  // Anon-friendly calibration prompt: previously the "얼마나 비슷해?" rating
+  // only appeared after the user clicked Save. Anonymous visitors (the bulk of
+  // share-link traffic) often never save, so we collected zero similarity
+  // signals from them. Now the prompt also surfaces ~3.5s after a verdict
+  // lands, regardless of save state. Reinforcement logic stays gated on
+  // loadedAgentId — anon clicks only fire the analytics event, no agent
+  // mutation.
+  useEffect(() => {
+    if (!verdict) return;
+    if (saved) return; // Save flow already triggered calibration
+    if (loadedAgentId) return; // Loaded boss — already calibrated previously
+    if (calibrationStep !== 'none') return;
+    const t = setTimeout(() => setCalibrationStep('similarity'), 3500);
+    return () => clearTimeout(t);
+  }, [verdict, saved, loadedAgentId, calibrationStep]);
+
   // 컴포넌트 언마운트 시 패시브 교정 자동 적용
   useEffect(() => {
     return () => {
@@ -785,8 +801,10 @@ export function BossChat() {
         )}
       </AnimatePresence>
 
-      {/* Force-verdict shortcut — appears once user has fed enough context */}
-      {!verdict && !isStreaming && messages.filter(m => m.role === 'user').length >= 3 && (
+      {/* Force-verdict shortcut — appears after the first in-chat reply
+          (situation + at least one back-and-forth). Lower threshold so casual
+          visitors who exit early still reach a verdict / shareable moment. */}
+      {!verdict && !isStreaming && messages.filter(m => m.role === 'user').length >= 2 && (
         <div className="bc-force-verdict-row">
           <button
             type="button"

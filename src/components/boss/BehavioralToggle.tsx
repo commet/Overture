@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { useBossStore } from '@/stores/useBossStore';
 import { useLocale } from '@/hooks/useLocale';
 import { track } from '@/lib/analytics';
+
+export type AnsweredAxes = Record<'ei' | 'sn' | 'tf' | 'jp', boolean>;
 
 /**
  * Quiz-style alternative to TypeToggle.
@@ -106,24 +107,25 @@ function getQuiz(locale: 'ko' | 'en'): AxisQuiz[] {
   ];
 }
 
-export function BehavioralToggle() {
+interface BehavioralToggleProps {
+  // State lifted to BossSetup so toggling Easy ↔ MBTI mode does not lose
+  // the user's answered marks (this component remounts on mode switch).
+  answered: AnsweredAxes;
+  onAnswered: (key: AxisKey) => void;
+}
+
+export function BehavioralToggle({ answered, onAnswered }: BehavioralToggleProps) {
   const axes = useBossStore((s) => s.axes);
   const setAxis = useBossStore((s) => s.setAxis);
   const locale = useLocale();
   const quiz = getQuiz(locale === 'ko' ? 'ko' : 'en');
-  // Track which axes the user has explicitly answered in this Easy session.
-  // Default state is ESTJ in the store; without this, every row would look
-  // pre-selected and the user can't tell what they have actually committed to.
-  const [answered, setAnswered] = useState<Record<AxisKey, boolean>>({
-    ei: false, sn: false, tf: false, jp: false,
-  });
   const answeredCount = (['ei','sn','tf','jp'] as AxisKey[]).filter((k) => answered[k]).length;
 
   const handleSelect = (key: AxisKey, value: string) => {
     const previousAnswered = answered[key];
     if (axes[key] === value && previousAnswered) return;
     if (axes[key] !== value) setAxis(key, value);
-    if (!previousAnswered) setAnswered((s) => ({ ...s, [key]: true }));
+    if (!previousAnswered) onAnswered(key);
     track('boss_axis_changed', { axis: key, from: axes[key], to: value, mode: 'easy' });
   };
 

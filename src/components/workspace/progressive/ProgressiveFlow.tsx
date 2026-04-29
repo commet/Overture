@@ -37,11 +37,12 @@ import type { FlowQuestion, FlowAnswer, AnalysisSnapshot, DMConcern, MixResult, 
 import { findEffectForAnswer, applySnapshotPatch } from '@/lib/question-types';
 import type { StrategicForkEffect, WeaknessCheckEffect } from '@/lib/question-types';
 import { WorkerReportBlock } from './WorkerCard';
+import { PersonaPoolModal } from './PersonaPoolModal';
 import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
-import { ChevronRight, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2, Plus } from 'lucide-react';
 import { useLocale } from '@/hooks/useLocale';
 import { t } from '@/lib/i18n';
 import { localizePersona } from '@/lib/worker-personas';
@@ -117,7 +118,13 @@ function getParticle(name: string): string {
   return '는';
 }
 
-/* ═══ Progress line ═══ */
+/* ═══ Phase Header — top-of-page orientation card ═══
+ * The earlier "minimal stepper" assumed PhaseStatusBar would carry the live
+ * state; in practice first-time users couldn't tell what stage they were in
+ * or what to do next. This card answers both questions explicitly:
+ *   1. Where am I? (big stage label + N/4)
+ *   2. What happens next? (one-line guide that updates per phase/state)
+ */
 const PHASES_KO = ['상황 분석', '팀 작업', '피드백', '완성'] as const;
 const PHASES_EN = ['Analysis', 'Teamwork', 'Feedback', 'Complete'] as const;
 
@@ -129,45 +136,164 @@ function phaseIdx(phase: string, round: number, hasMix: boolean): number {
   return 0;
 }
 
-function ProgressLine({ phase, round, hasMix }: { phase: string; round: number; hasMix: boolean }) {
+function ProgressLine({
+  phase, round, hasMix, busy, hasQuestion, deployReady, shouldMix, workersDone, workersTotal, hasDmFb,
+}: {
+  phase: string; round: number; hasMix: boolean;
+  busy: boolean; hasQuestion: boolean; deployReady: boolean; shouldMix: boolean;
+  workersDone: number; workersTotal: number; hasDmFb: boolean;
+}) {
   const locale = useLocale();
+  const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const PHASES = locale === 'ko' ? PHASES_KO : PHASES_EN;
-  const idx = phaseIdx(phase, round, hasMix);
-  const pct = Math.min((idx / 4) * 100, 100);
+  const rawIdx = phaseIdx(phase, round, hasMix);
+  const idx = Math.min(rawIdx, 3);
+  const isComplete = phase === 'complete';
+  const pct = Math.min((rawIdx / 4) * 100, 100);
+
+  // Friendly one-liner that tells the user what's happening *and* what to do.
+  // Most cases also include a directional hint (👇 / ⬇) since the next action
+  // is almost always below the fold.
+  const guide: string = (() => {
+    if (isComplete) return L('완성됐어요. 복사하거나 공유하세요.', 'Done — copy or share below.');
+    if (rawIdx === 0) {
+      if (hasQuestion && !busy) return L('👇 아래 질문에 답해주세요', '👇 Answer the question below');
+      if (busy) return L('답변을 받아 상황을 다시 정리하고 있어요', 'Re-analyzing with your answer');
+      if (deployReady) return L('👇 팀이 자동 구성됐어요. 아래에서 확인하고 시작하세요', '👇 Team assembled — confirm and start below');
+      return L('질문에 답하면 팀이 자동 구성돼요', 'Answer to assemble the team');
+    }
+    if (rawIdx === 1) {
+      if (busy) return L('팀이 분야별로 작업 중이에요', 'Team is working in parallel');
+      if (workersTotal > 0 && workersDone < workersTotal) return L(`팀 ${workersDone}/${workersTotal} 진행 중`, `Team ${workersDone}/${workersTotal} in progress`);
+      if (shouldMix) return L('👇 팀 분석 끝났어요. 초안 작성을 시작하세요', '👇 Team done — start drafting below');
+      return L('팀 작업 결과를 모으고 있어요', 'Gathering team output');
+    }
+    if (rawIdx === 2) {
+      if (phase === 'mixing' || phase === 'lead_synthesizing') return L('초안을 작성 중이에요 (30~45초)', 'Drafting (30–45s)');
+      // Note: once mix lands, the store flips phase to 'dm_feedback', so
+      // hasMix at idx=2 is essentially never true — the "draft ready" line
+      // lives at idx=3 below.
+      return L('초안을 정리하고 있어요', 'Preparing draft');
+    }
+    if (rawIdx === 3) {
+      if (busy && phase === 'refining') return L('피드백 반영해 최종본 다듬는 중', 'Applying feedback to the final draft');
+      if (busy) return L('리뷰어가 초안을 읽고 있어요', 'Reviewer is reading');
+      if (hasDmFb) return L('👇 반영할 피드백을 고르고 마무리하세요', '👇 Pick feedback to apply, then finalize');
+      // mix arrived but DM feedback not yet — user is looking at MixPreview.
+      if (hasMix) return L('👇 초안이 나왔어요. 리뷰를 받아보세요', '👇 Draft ready — get a review');
+      return L('피드백을 정리 중이에요', 'Preparing feedback');
+    }
+    return '';
+  })();
+
   return (
-    <div className="mb-6">
-      {/* Minimal phase labels — smaller dots, tighter spacing.
-          PhaseStatusBar carries the live state; this gives orientation only. */}
-      <div className="flex items-center justify-between mb-2">
-        {PHASES.map((label, i) => {
-          const done = i < idx;
-          const active = i === idx && phase !== 'complete';
-          const final_ = phase === 'complete' && i === 3;
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className="mb-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-4 md:p-5 shadow-[var(--shadow-sm)]"
+    >
+      {/* Stage hero — N/4 + big label */}
+      <div className="flex items-baseline gap-2.5 mb-3">
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] tabular-nums">
+          {Math.min(rawIdx + 1, 4)} / 4
+        </span>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={isComplete ? 'complete' : idx}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            className="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] tracking-tight"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {PHASES[isComplete ? 3 : idx]}
+          </motion.span>
+        </AnimatePresence>
+        {workersTotal > 0 && rawIdx === 1 && (
+          <span className="ml-auto text-[11px] text-[var(--text-tertiary)] tabular-nums">
+            {workersDone} / {workersTotal}
+          </span>
+        )}
+      </div>
+
+      {/* Progress bar with milestone markers */}
+      <div className="relative h-[6px] rounded-full bg-[var(--border-subtle)] mb-2.5">
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: 'var(--gradient-gold)' }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.9, ease: EASE }}
+        />
+        {[0, 1, 2, 3].map(i => {
+          const left = (i / 3) * 100;
+          const done = i < idx || (isComplete && i <= 3);
+          const active = !isComplete && i === idx;
           return (
-            <div key={label} className="flex items-center gap-1.5 flex-1 min-w-0">
-              <div className={`w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 transition-all duration-700 ${
-                done || final_
-                  ? 'bg-[var(--accent)] text-white'
+            <div
+              key={i}
+              className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ring-[2px] transition-all duration-500 ${
+                done
+                  ? 'bg-[var(--accent)] ring-[var(--surface)]'
                   : active
-                    ? 'bg-[var(--accent)]/15 text-[var(--accent)] ring-[1.5px] ring-[var(--accent)]/40'
-                    : 'bg-[var(--border-subtle)] text-[var(--text-tertiary)]'
-              }`} style={{ transitionTimingFunction: 'cubic-bezier(0.32,0.72,0,1)' }}>
-                {done || final_ ? '✓' : i + 1}
-              </div>
-              <span className={`text-[10px] font-medium truncate transition-colors duration-700 ${
-                done || final_ ? 'text-[var(--accent)]' : active ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'
-              }`}>
-                {label}
-              </span>
+                    ? 'bg-[var(--surface)] ring-[var(--accent)] shadow-[0_0_0_3px_rgba(180,160,100,0.18)]'
+                    : 'bg-[var(--border)] ring-[var(--surface)]'
+              }`}
+              style={{ left: `calc(${left}% - 6px)` }}
+            >
+              {active && (
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-[var(--accent)]/30"
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+                />
+              )}
             </div>
           );
         })}
       </div>
-      <div className="relative h-[2px] rounded-full bg-[var(--border-subtle)] overflow-hidden">
-        <motion.div className="absolute inset-y-0 left-0 rounded-full" style={{ background: 'var(--gradient-gold)' }}
-          animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: EASE }} />
+
+      {/* Step labels under bar */}
+      <div className="grid grid-cols-4 mb-3 px-1">
+        {PHASES.map((label, i) => {
+          const done = i < idx || (isComplete && i <= 3);
+          const active = !isComplete && i === idx;
+          return (
+            <span
+              key={label}
+              className={`text-[10px] md:text-[11px] truncate transition-colors duration-500 ${
+                i === 0 ? 'text-left' : i === PHASES.length - 1 ? 'text-right' : 'text-center'
+              } ${
+                done
+                  ? 'text-[var(--accent)] font-medium'
+                  : active
+                    ? 'text-[var(--text-primary)] font-semibold'
+                    : 'text-[var(--text-tertiary)]'
+              }`}
+            >
+              {label}
+            </span>
+          );
+        })}
       </div>
-    </div>
+
+      {/* Friendly guide line */}
+      {guide && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={guide}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            className="flex items-center gap-2 pt-3 border-t border-[var(--border-subtle)]/60 text-[12px] md:text-[13px] text-[var(--text-secondary)] leading-relaxed"
+          >
+            {guide}
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </motion.div>
   );
 }
 
@@ -752,7 +878,7 @@ function PhaseStatusBar({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`sticky top-14 z-30 mx-auto mb-6 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm transition-colors duration-500 ${
+      className={`mx-auto mb-3 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm transition-colors duration-500 ${
         mode === 'ai_working'
           ? showLongWait
             ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-300/25'
@@ -766,19 +892,39 @@ function PhaseStatusBar({
           <div className={`w-2.5 h-2.5 rounded-full ${showLongWait ? 'bg-amber-500' : 'bg-[var(--accent)]'}`} />
         </div>
       ) : (
-        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--gradient-gold)' }}>
+        // your_turn: gentle bounce on the gold chip so the user's eye is
+        // pulled toward "your move" without being noisy.
+        <motion.div
+          animate={{ y: [0, -1.5, 0] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'var(--gradient-gold)' }}
+        >
           <UserCheck size={11} className="text-white" />
-        </div>
+        </motion.div>
       )}
       <div className="flex-1 min-w-0">
-        <span className={`text-[13px] font-semibold ${
+        <span className={`${mode === 'your_turn' ? 'text-[14px]' : 'text-[13px]'} font-semibold ${
           mode === 'ai_working'
             ? showLongWait ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-primary)]'
             : 'text-[var(--accent)]'
         }`}>
           {showLongWait ? L('오래 걸리고 있어요 — 계속 진행 중', 'Taking longer than usual — still working') : label}
         </span>
-        {!showLongWait && sub && <span className="text-[12px] text-[var(--text-tertiary)] ml-2">{sub}</span>}
+        {!showLongWait && sub && (
+          <span className={`ml-2 ${mode === 'your_turn' ? 'text-[12px] text-[var(--text-secondary)]' : 'text-[12px] text-[var(--text-tertiary)]'}`}>
+            {sub}
+            {mode === 'your_turn' && (
+              <motion.span
+                animate={{ y: [0, 2, 0] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                className="inline-block ml-1.5 align-middle"
+              >
+                <ChevronDown size={12} className="inline text-[var(--accent)]" />
+              </motion.span>
+            )}
+          </span>
+        )}
         {mode === 'ai_working' && substage && (
           <AnimatePresence mode="wait">
             <motion.span
@@ -990,25 +1136,51 @@ function PhaseDivider({ done, next, yourTurn }: { done: string; next: string; yo
 }
 
 /* ═══ Team Deploy Banner — 팀 구성 확인 ═══ */
-function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
+const MAX_PERSONAS_PER_GROUP = 5;
+
+function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRemoveWorker }: {
   workers: WorkerTask[];
   onDeploy: () => void;
   onUpdateWorker?: (id: string, partial: Partial<WorkerTask>) => void;
+  /** Open the persona-pool modal for a given task group (Manual assignment). */
+  onOpenPool?: (taskGroupId: string) => void;
+  /** Remove a single worker. The store enforces the "last-survivor" rule. */
+  onRemoveWorker?: (workerId: string) => void;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
 
-  // Single ordered list: AI → Self → Human (groups preserved but without
-  // color-coded section headers — type indicator moves into the row itself)
-  const ordered: WorkerTask[] = [
-    ...workers.filter(w => (w.agent_type || 'ai') === 'ai'),
-    ...workers.filter(w => w.agent_type === 'self'),
-    ...workers.filter(w => w.agent_type === 'human'),
-  ];
-  const total = ordered.length;
+  // Group workers by task_group_id so users can see which personas are
+  // tackling the same task. Legacy sessions without group ids fall back to
+  // worker.id (each worker = its own group of 1, identical to old behavior).
+  const groups = (() => {
+    const map = new Map<string, WorkerTask[]>();
+    const order: string[] = [];
+    for (const w of workers) {
+      const gid = w.task_group_id || w.id;
+      const existing = map.get(gid);
+      if (existing) {
+        existing.push(w);
+      } else {
+        map.set(gid, [w]);
+        order.push(gid);
+      }
+    }
+    return order.map(gid => {
+      const members = (map.get(gid) || []).slice();
+      // Sort: AI first (preserve add order), then self, then human.
+      members.sort((a, b) => {
+        const at = (a.agent_type || 'ai') === 'ai' ? 0 : a.agent_type === 'self' ? 1 : 2;
+        const bt = (b.agent_type || 'ai') === 'ai' ? 0 : b.agent_type === 'self' ? 1 : 2;
+        return at - bt;
+      });
+      return { groupId: gid, members, seed: members[0] };
+    }).sort((a, b) => a.seed.step_index - b.seed.step_index);
+  })();
+  const total = workers.length;
   const staggerDelay = 0.07;
 
-  const renderRow = (w: WorkerTask, i: number) => {
+  const renderRow = (w: WorkerTask, i: number, groupSize: number) => {
     const displayName = w.agent_type === 'human'
       ? (w.contact?.name || w.question_to_human?.slice(0, 15) || L('외부 확인', 'External'))
       : w.agent_type === 'self'
@@ -1020,12 +1192,13 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
         ? L('세션 중 직접 답변', 'Answered in session')
         : personaRole(w.persona, locale);
 
+    const canRemove = !!onRemoveWorker && groupSize > 1;
     return (
       <motion.div key={w.id}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 + i * staggerDelay, duration: 0.3, ease: EASE }}
-        className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+        transition={{ delay: 0.05 + i * staggerDelay, duration: 0.3, ease: EASE }}
+        className="group/row flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
         {/* Avatar */}
         {w.agent_type === 'human'
           ? <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex items-center justify-center text-[14px] shrink-0 mt-0.5 border border-[var(--border-subtle)]">👤</div>
@@ -1043,10 +1216,15 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
               <span className="text-[11px] text-[var(--text-tertiary)]">{roleText}</span>
             )}
           </div>
-          <p className="text-[12px] text-[var(--text-secondary)] line-clamp-2 mt-0.5 leading-[1.5]">{w.task}</p>
+          {/* Persona expertise — only shown for AI workers; helps user judge fit */}
+          {(w.agent_type || 'ai') === 'ai' && w.persona?.expertise && (
+            <p className="text-[11px] text-[var(--text-tertiary)] line-clamp-1 mt-0.5">
+              {w.persona.expertise}
+            </p>
+          )}
           {/* Scope preview — neutral tone, no color pills */}
           {(w.ai_scope || w.self_scope) && (
-            <div className="mt-2 space-y-0.5 text-[11px] leading-[1.55]">
+            <div className="mt-1.5 space-y-0.5 text-[11px] leading-[1.55]">
               {w.ai_scope && (
                 <div className="flex gap-1.5">
                   <span className="text-[var(--text-tertiary)] font-medium shrink-0 min-w-[1.5rem]">AI</span>
@@ -1083,6 +1261,18 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
             </div>
           )}
         </div>
+        {/* Remove button — only when there's another worker in the same group.
+            Visible by default on touch (always), revealed on hover for desktop. */}
+        {canRemove && (
+          <button
+            onClick={() => onRemoveWorker!(w.id)}
+            className="shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer opacity-60 group-hover/row:opacity-100"
+            aria-label={L('이 팀원 빼기', 'Remove this member')}
+            title={L('이 팀원 빼기', 'Remove this member')}
+          >
+            <XIcon size={13} />
+          </button>
+        )}
       </motion.div>
     );
   };
@@ -1091,28 +1281,84 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker }: {
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
       className="rounded-2xl bg-[var(--surface)] border border-[var(--border-subtle)] p-5 md:p-6">
 
-      {/* Header — quiet eyebrow + count */}
-      <div className="flex items-baseline justify-between mb-4">
-        <div>
+      {/* Header — quiet eyebrow + count + customization hint */}
+      <div className="flex items-baseline justify-between mb-4 gap-3">
+        <div className="min-w-0">
           <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.14em] mb-1">
             {L('팀 구성', 'Your Team')}
           </div>
           <p className="text-[14px] text-[var(--text-secondary)]">
             {L(`${total}명이 함께 분석할 준비가 됐어요`, `${total} ready to analyze together`)}
           </p>
+          {onOpenPool && (
+            <p className="text-[11px] text-[var(--text-tertiary)] mt-1">
+              {L('각 task에 팀원을 추가하거나 뺄 수 있어요 · 한 task당 최대 5명', 'Add or remove members for each task · up to 5 per task')}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Worker list — single flow, dividers between items */}
-      <div className="divide-y divide-[var(--border-subtle)]/60 border-y border-[var(--border-subtle)]/60">
-        {ordered.map((w, i) => renderRow(w, i))}
+      {/* Groups — each task gets its own block with members + add button */}
+      <div className="space-y-3">
+        {groups.map((g, gi) => {
+          const groupSize = g.members.length;
+          const canAdd = !!onOpenPool && groupSize < MAX_PERSONAS_PER_GROUP;
+          const baseIndex = gi * 3; // approximate stagger across groups
+          return (
+            <motion.div
+              key={g.groupId}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: gi * staggerDelay, duration: 0.35, ease: EASE }}
+              className="rounded-xl border border-[var(--border-subtle)]/70 bg-[var(--bg)]/40 px-4 py-3.5"
+            >
+              {/* Task heading + add button */}
+              <div className="flex items-start justify-between gap-3 mb-2.5">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
+                    {L(`Task ${gi + 1}`, `Task ${gi + 1}`)}
+                    {groupSize > 1 && (
+                      <span className="ml-1.5 text-[var(--accent)] normal-case tracking-normal">
+                        · {groupSize}{L('명', '×')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[13px] text-[var(--text-primary)] leading-snug line-clamp-2">
+                    {g.seed.task}
+                  </p>
+                </div>
+                {onOpenPool && (
+                  <button
+                    onClick={() => canAdd && onOpenPool(g.groupId)}
+                    disabled={!canAdd}
+                    className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                      canAdd
+                        ? 'text-[var(--accent)] bg-[var(--accent)]/[0.06] hover:bg-[var(--accent)]/[0.12] border border-[var(--accent)]/25 cursor-pointer'
+                        : 'text-[var(--text-tertiary)] bg-[var(--bg)] border border-[var(--border-subtle)] cursor-not-allowed opacity-60'
+                    }`}
+                    title={canAdd
+                      ? L('이 task에 팀원 추가', 'Add a member to this task')
+                      : L('최대 5명까지 추가할 수 있어요', 'Up to 5 personas per task')}
+                  >
+                    <Plus size={11} />
+                    {canAdd ? L('추가', 'Add') : L('가득', 'Full')}
+                  </button>
+                )}
+              </div>
+              {/* Members */}
+              <div className="divide-y divide-[var(--border-subtle)]/40 border-t border-[var(--border-subtle)]/40 pt-1">
+                {g.members.map((w, mi) => renderRow(w, baseIndex + mi, groupSize))}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Start button — primary CTA */}
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 + total * staggerDelay, duration: 0.4, ease: EASE }}
+        transition={{ delay: 0.15 + groups.length * staggerDelay, duration: 0.4, ease: EASE }}
         className="mt-5 w-full flex items-center justify-center gap-2 px-5 py-3.5 text-white rounded-xl text-[14px] font-semibold cursor-pointer shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] transition-shadow"
         style={{ background: 'var(--gradient-gold)' }}>
         {L('시작', 'Start')} <ChevronRight size={14} />
@@ -1268,6 +1514,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  // Manual team-assignment modal state — kept on the parent so children can
+  // open it with a single callback while we own the data shape it needs.
+  const [poolModalGroupId, setPoolModalGroupId] = useState<string | null>(null);
   // Which response shape the current stream represents. Handlers set this
   // because phase alone isn't enough — e.g. onFinalize streams while
   // phase === 'refining', but the stream is a doc, not feedback.
@@ -1609,7 +1858,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const onAnswer = async (value: string) => {
     if (!curQ || busy || !latest) return;
     const ans: FlowAnswer = { question_id: curQ.id, value };
-    store.addAnswer(ans); store.setPhase('analyzing'); track('flow_answer', { round }); setBusy(true); setError(null); scroll();
+    store.addAnswer(ans); store.setPhase('analyzing'); track('flow_answer', { round }); setBusy(true); setError(null); scrollToRef(statusBarRef);
     // Tell the sidebar agents "new input just landed" — triggers flash
     useAgentAttentionStore.getState().ping('answer');
 
@@ -1708,7 +1957,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   };
 
   const onMix = async () => {
-    setBusy(true); setError(null); store.setPhase('mixing'); scroll();
+    setBusy(true); setError(null); store.setPhase('mixing'); scrollToRef(statusBarRef);
     setSubstage(L('팀 결과 모으는 중', 'Gathering team results'));
     abortRef.current = new AbortController();
     try {
@@ -1720,18 +1969,40 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const qa = qaPairs.filter(q => q.answer).map(q => ({ question: q.question, answer: q.answer! }));
       // Collect mixable worker results — final + preliminary + pending_human
       const enrichedResults = store.mixableWorkerResults();
-      const workerResults = enrichedResults.map(w => ({
+      // Group same-task results so the LLM sees them adjacent. Group order
+      // mirrors first-worker step_index from initWorkers; within a group
+      // results stay in their original order.
+      const groupOrder = new Map<string, number>();
+      enrichedResults.forEach((w, i) => {
+        if (!groupOrder.has(w.taskGroupId)) groupOrder.set(w.taskGroupId, i);
+      });
+      const sortedResults = enrichedResults.slice().sort((a, b) => {
+        const ga = groupOrder.get(a.taskGroupId) ?? 0;
+        const gb = groupOrder.get(b.taskGroupId) ?? 0;
+        return ga - gb;
+      });
+      const workerResults = sortedResults.map(w => ({
         workerId: w.workerId,
         name: w.agentName || w.persona || undefined,
         task: w.type === 'preliminary' ? `[${L('참고', 'Ref')}] ${w.task}` : w.type === 'pending_human' ? `[${L('대기', 'Pending')}] ${w.task}` : w.task,
         result: w.result,
+        // Pass taskGroupId so the Mix prompt can render same-task multi-persona
+        // results as a single block with sub-bullets.
+        taskGroupId: w.taskGroupId,
       }));
 
       // 악장 메타 리뷰 + debate (해금 시만, 비차단)
       if (workerResults.length > 0) {
         const cmWorkers = session!.workers
           .filter(w => w.approved !== false && w.result)
-          .map(w => ({ agentName: personaName(w.persona, locale) || L('에이전트', 'Agent'), agentRole: personaRole(w.persona, locale), task: w.task, result: w.result || '' }));
+          .map(w => ({
+            agentName: personaName(w.persona, locale) || L('에이전트', 'Agent'),
+            agentRole: personaRole(w.persona, locale),
+            task: w.task,
+            result: w.result || '',
+            // Same-task multi-persona signal for the Concertmaster prompt.
+            taskGroupId: w.task_group_id || w.id,
+          }));
         runConcertmasterReview(session!.problem_text, cmWorkers)
           .then(r => { if (r && mountedRef.current) setCmReview(r); })
           .catch(() => {});
@@ -1751,6 +2022,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
                 name: undefined,
                 task: locale === 'ko' ? `[팀 내 반론] ${debateRes.targetAgent}의 분석에 대한 비판` : `[Team Dissent] Critique of ${debateRes.targetAgent}'s analysis`,
                 result: locale === 'ko' ? `${debateRes.challenge}\n\n약점: ${debateRes.weakestClaim}\n\n대안: ${debateRes.alternativeView}` : `${debateRes.challenge}\n\nWeakness: ${debateRes.weakestClaim}\n\nAlternative: ${debateRes.alternativeView}`,
+                taskGroupId: 'debate',
               });
             }
           } catch { /* debate 실패해도 mix는 진행 */ }
@@ -1779,6 +2051,8 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             agentRole: w.agentRole || '',
             task: w.task,
             result: w.result,
+            // Same-task multi-persona signal for Lead synthesis.
+            taskGroupId: w.taskGroupId,
           }));
           const realQ = latest?.real_question || session!.problem_text;
           // Lead synthesis를 비동기로 시작 (await 하지 않음)
@@ -1847,7 +2121,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   };
 
   const onDM = async () => {
-    if (!mix) return; setBusy(true); setError(null); scroll();
+    if (!mix) return; setBusy(true); setError(null); scrollToRef(statusBarRef);
     abortRef.current = new AbortController();
     try {
       // Boss agent가 연결되어 있으면 Boss 성격 DM 피드백
@@ -1953,7 +2227,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   };
 
   const onFinalize = async () => {
-    if (!mix || !dmFb) return; setBusy(true); setError(null); scroll();
+    if (!mix || !dmFb) return; setBusy(true); setError(null); scrollToRef(statusBarRef);
     setSubstage(L('피드백 반영 + 최종본 다듬는 중', 'Applying feedback + polishing'));
     setStreamKind('doc');
     setStreamingText('');
@@ -2055,10 +2329,47 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         transition={{ duration: 0.8, ease: EASE }}>
 
         <PingToast />
-        <ProgressLine phase={phase} round={round} hasMix={!!mix} />
+        {/* Manual team-assignment modal — derives task info & exclude-list
+            from current worker state at render time so it always reflects the
+            latest store. */}
+        {(() => {
+          if (!poolModalGroupId) return null;
+          const groupMembers = workers.filter(w => (w.task_group_id || w.id) === poolModalGroupId);
+          if (groupMembers.length === 0) return null;
+          const seed = groupMembers[0];
+          return (
+            <PersonaPoolModal
+              isOpen
+              onClose={() => setPoolModalGroupId(null)}
+              taskInfo={{ task: seed.task, ai_scope: seed.ai_scope, expected_output: seed.expected_output }}
+              excludePersonaIds={groupMembers.map(w => w.persona?.id).filter((x): x is string => !!x)}
+              groupFull={groupMembers.length >= 5}
+              onAdd={(persona) => {
+                const newId = store.addWorkerToGroup(poolModalGroupId, persona);
+                if (newId) setPoolModalGroupId(null);
+              }}
+            />
+          );
+        })()}
+        <ProgressLine
+          phase={phase}
+          round={round}
+          hasMix={!!mix}
+          busy={busy}
+          hasQuestion={!!curQ && !busy && phase === 'conversing'}
+          deployReady={deployPhase === 'ready' && workers.length > 0}
+          shouldMix={shouldMix && !busy && phase === 'conversing' && !curQ}
+          workersDone={workers.filter(w => w.status === 'done').length}
+          workersTotal={workers.length}
+          hasDmFb={!!dmFb}
+        />
 
-        {/* PhaseStatusBar — sticky, always visible during work */}
-        <div ref={statusBarRef}>
+        {/* PhaseStatusBar + StreamSnippet — sticky wrapper so progress info
+            stays glued to the top while the user scrolls through the long
+            page. Sticky lives on the wrapper, not the bar itself, so the
+            wrapper provides the scroll travel room (its bottom is the body
+            of the page). */}
+        <div ref={statusBarRef} className="sticky top-14 z-30 mb-6 pt-2 pb-1 bg-[var(--bg)]/85 backdrop-blur-sm">
           <PhaseStatusBar
             phase={phase} busy={busy}
             hasQuestion={!!curQ && !busy && phase === 'conversing'}
@@ -2103,7 +2414,13 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
           {/* Team deploy banner — 사용자 확인 후 worker 실행 */}
           {deployPhase === 'ready' && workers.length > 0 && (
-            <TeamDeployBanner workers={workers} onDeploy={onDeployWorkers} onUpdateWorker={(id, partial) => store.updateWorker(id, partial)} />
+            <TeamDeployBanner
+              workers={workers}
+              onDeploy={onDeployWorkers}
+              onUpdateWorker={(id, partial) => store.updateWorker(id, partial)}
+              onOpenPool={(groupId) => setPoolModalGroupId(groupId)}
+              onRemoveWorker={(id) => store.removeWorker(id)}
+            />
           )}
 
           {/* Resume banner — 크래시/새로고침 후 미완료 작업 재개 */}
