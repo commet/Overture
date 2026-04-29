@@ -252,3 +252,72 @@ Phases 0 → 5 completed in one session. Phase 6 (hooks + auto-detection) and Ph
 - Do devils-advocate attack as gate before proceeding to Phase 7
 
 Per user's directive on 2026-04-24: "진행하다가 너가 놓쳤던 정보가 있었거나, 수정이 필요하겠다고 판단되면 다시 경로와 예상 프로덕트를 바꿔야 돼." No mid-build course corrections required. Most ambiguous decision was runtime LLM classification (option b) — implemented as specified. Most surprising find was the already-existing Draft tree + version numbering in webapp (preserved exactly).
+
+---
+
+# 2026-04-29 — Reality test follow-up + convenience pass
+
+## Trigger
+
+Reality test on 2026-04-28 (`TEST_PLAN.md`, results in `.overture/test-observations.md`) ran 4 TCs through `/overture:sail` and produced PASS/FAIL evidence per critique. Two failure modes surfaced:
+
+1. **TC1 over-engineering** (#5 commodity FAIL) — quick mode routed correctly for a tab-rename decision but still emitted a 5-section FinalScaffold. The scaffold schema architecturally precluded a 1-line answer.
+2. **TC-meta self-audit ceiling** (#7 PARTIAL) — agents recommended trimming MBTI/persona edges but stayed away from questioning core architecture (4R + plugin v2 + 7 schema all survived stage-1 consensus).
+
+Two PASS-confirmed strengths preserved (no changes touch these paths):
+- Worker/critic separation (#1) — donghyuk's risk-analysis-as-work pattern landed.
+- Contradiction preservation (#2) — debate.json fired correctly on critical, populated genuinely with unresolved=true.
+
+## What changed (4 commits)
+
+| Commit | Phase | Files | Substance |
+|---|---|---|---|
+| `c023c32` (mixed with boss webapp work) | 1+2 | `data/schemas/{minimal-scaffold,analysis-snapshot,session}.json`, `data/classification.yaml`, `skills/{clarify,sail,team}/SKILL.md` | New `MinimalScaffold` schema. `decision_density` (low→minimal-mode gate, medium/high→regular). `stakes_guess` + `stakes_confidence` from clarify. team produces `stakes_confidence`; <75 ⇒ sail Step 6b AskUserQuestion. |
+| `37eaaec` | 3 | `skills/{sail,team,boss}/SKILL.md` | sail Step 6c auto-proceeds when confidence ≥ 80 (no routing dialog). sail Step 7 emits ~12-18 line consolidated decision card. team/boss accept `--invoked-via-sail` to suppress own verbose prints when sail orchestrates. |
+| `8362aaf` | 4 | `skills/{sail,clarify}/SKILL.md` | Step 0 silent default config (no "create config?" prompt). clarify Step 4 Q&A loop skips when `decision_density==low` or framing already strong with execution_plan present. |
+| `aaaac73` | spec | `skills/sail/SKILL.md` | Internal consistency: Step 6a fully terminal (clarify Step 5a renders, sail no double-print). Step 7 minimal-mode dead branch removed. `--quick` and `빠른 스캐폴드만` paths terminate at clarify Step 5b (no Step 7). `--no-boss` flag added to top-level When-to-run list. |
+
+## What is NOT changed (preserves PASS critiques)
+
+- `agents.yaml` — 17 agent voice_markers + worker_mode_examples untouched (#3 voice differentiation).
+- Critical-path two-stage pipeline + `debate.json` detection + canonical axes (#1, #2).
+- `final-scaffold.json` schema for medium/high density (#5 anti-commodity shape).
+- `boss-types.yaml` — 16 MBTI types untouched.
+
+## Verification status
+
+**File-system verification (this session, complete):**
+- `grep` confirmed all new fields/branches present in installed files.
+- Symlinks from `~/.claude/skills/*` resolve to plugin-v2 source.
+- 4 commits in `git log` of plugin-v2 source.
+
+**Live runtime verification (incomplete — gated by Claude Code session caching):**
+- Discovery: Claude Code caches SKILL.md body at session start. In-session edits to plugin files DO NOT affect the running session's behavior.
+- This session's `/overture:sail` invocation received the OLD (pre-c023c32) sail SKILL body.
+- Live verify of new behavior REQUIRES Claude Code restart in a fresh session.
+
+**Real-user verification (Phase 4-original — pending):**
+- 2-3 real users (1 dev / 1 PM / 1 founder) running TC1/TC2/TC-meta-equivalent with their own decisions.
+- Kill criteria: if 2 of 3 still show TC1 over-engineering signal post-fix, schema compression was insufficient.
+
+## Predicted post-restart behavior (for next-session verify)
+
+| Path | Predicted output | Verify against |
+|---|---|---|
+| `/overture:sail "<reversible 1-action question>"` (e.g., README first line tweak) | clarify Step 5a 3-5 line minimal card. No team. No boss. | TC1's 30+ line over-engineered output |
+| `/overture:sail "<typical product decision>"` (high stakes_confidence) | "✓ Clarify · 팀 배치 중..." → "✓ Team · Boss 검토 중..." → "✓ Boss · 결정 카드 ↓" → ~15 line consolidated card. **No** "어떻게 진행할까요?" dialog. | TC2's 3-section output split across team + boss runs |
+| `/overture:sail "<borderline stakes>"` (clarify confidence 60-79) | One AskUserQuestion: "이 결정이 X로 보이는데(N/100) 맞나요?" → user picks → auto-proceed. | (no prior baseline — new behavior) |
+
+## Open issues / next priorities
+
+1. **Live verification post-restart** — predictions above need to be validated. If reality diverges, spec revisions needed.
+2. **Real-user round** — only check that AI-judging-AI loop is broken (donghyuk's TC-meta meta-warning).
+3. **`/overture:revise` skill** — referenced in chart spec but not yet implemented (post-MVP per original BUILD_STATUS).
+4. **Self-audit hard-gate** (Phase 3-original from convenience plan, deferred) — heuristic detection of self-references + force external-review checkpoint.
+5. **Plugin reload UX** — discovered cache-at-session-start behavior. Worth surfacing in install.sh post-install message.
+
+## Build confidence
+
+- **Spec (file-system) confidence: 95%.** Schema and skill text reviewed, internally consistent post-aaaac73 cleanup. 5% uncertainty on edge cases not yet exercised (e.g., framing_confidence between 79-81, density vs stakes mismatch).
+- **Runtime confidence: untested.** Cannot self-verify in this session due to caching.
+- **Real-user confidence: untested.** Phase 4-original gate.

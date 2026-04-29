@@ -63,9 +63,25 @@ Agents are workers (not critics). Each has a distinct voice, domain, and thinkin
 | **Special** | 악장 (concertmaster — revision worker) |
 
 The `/overture:team` skill auto-selects 2–4 based on task classification. Stakes determines count:
-- `routine` → 2 agents
+- `routine` → 2 agents (often skipped — see Routing below)
 - `important` → 3 agents
 - `critical` → 4 agents, two-stage pipeline with mandatory donghyuk review
+
+## Routing — what `/overture:sail` actually does
+
+`/overture:sail "..."` doesn't always run the full pipeline. It auto-routes by `decision_density` and `stakes_confidence` (both produced by clarify):
+
+| Your question shape | Output | Why |
+|---|---|---|
+| Reversible single-action (rename, label, toggle) with high framing confidence | **MinimalScaffold** — 3 lines: recommendation + 1 quick check + optional caveat. No team, no boss. | A 5-section decision scaffold for a tab-rename is bikeshed-grade over-engineering. (TC1 fail mode from 2026-04-28 reality test.) |
+| Important/critical question with confident stakes (≥80) | Auto-chains team → boss → ~15-line consolidated decision card. One-line progress notices between steps. | Asking "어떻게 진행할까요?" when stakes are obviously important wastes the user's first input. |
+| Borderline stakes (clarify confidence 60–79) | One AskUserQuestion: "이 결정이 X로 보이는데(N/100) 맞나요?" → user picks → auto-proceeds. | Preserves user agency only where it matters. |
+| Anything else | Standard 4-option dialog (full / team-only / quick / pause). | Last-resort fallback. |
+
+Override paths:
+- `/overture:sail --full "..."` — force full pipeline regardless of density
+- `/overture:sail --quick "..."` — clarify only, regular scaffold (no MinimalScaffold collapse)
+- `/overture:sail --no-boss "..."` — skip boss review at end
 
 ## Boss personalities
 
@@ -96,31 +112,31 @@ Three things, in order of importance:
 
 ## Configuration
 
-On first run, `/overture:configure` (coming soon in post-MVP) sets up:
-- Your boss's MBTI type, name, gender, locale
-- Default language (Korean / English)
-
-Until then, create `.overture/config.yaml` manually:
+**No setup required for first run.** `/overture:sail` auto-creates `.overture/config.yaml` from the bundled template (ISTJ default boss) on first invocation. Edit the file to change boss MBTI, name, or locale.
 
 ```yaml
 boss:
-  mbti_code: ISTJ
+  mbti_code: ISTJ        # ISTJ ISFJ INFJ INTJ ISTP ISFP INFP INTP
+                         # ESTP ESFP ENFP ENTP ESTJ ESFJ ENFJ ENTJ
   name: "박 팀장"
-  gender: 남
-  locale: ko
-locale: ko
+  gender: 남             # 남 | 여 (KR) or male | female (EN)
+  role: "팀장"
+locale: ko               # ko | en
 ```
+
+After editing skill files (development mode): **restart Claude Code** to apply. Skill bodies cache at session start; symlinked file changes don't take effect mid-session.
 
 ## Schemas
 
 Plugin artifacts conform to JSON schemas in `data/schemas/`:
-- `analysis-snapshot.json` — `/overture:clarify` output
+- `analysis-snapshot.json` — `/overture:clarify` output (incl. `decision_density`, `stakes_guess`, `stakes_confidence`, `reversibility` for routing)
+- `minimal-scaffold.json` — 3-field directive output for routine reversible decisions (recommendation + 1 check + optional caveat)
 - `worker-result.json` — individual agent output
 - `mix-result.json` — aggregated team output
 - `dm-feedback.json` — boss review output
-- `final-scaffold.json` — plugin-native decision scaffold
+- `final-scaffold.json` — plugin-native decision scaffold for medium/high density
 - `draft.json` — version tree node
-- `session.json` — top-level session record
+- `session.json` — top-level session record (incl. `classification.stakes_confidence`, `stakes_user_confirmed`)
 
 ## Relationship to the webapp
 

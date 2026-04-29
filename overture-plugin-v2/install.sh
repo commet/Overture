@@ -181,16 +181,22 @@ echo ""
 if [ $ERRORS -eq 0 ]; then
   echo -e "${GREEN}${BOLD}  Installed successfully (v2.0.0)${NC}"
   if [ "$LINK_MODE" = true ]; then
-    echo -e "  ${DIM}Mode: symlink (edit overture-plugin-v2/ → changes reflect immediately)${NC}"
+    echo -e "  ${DIM}Mode: symlink — file edits reflect on next Claude Code restart (skill bodies cache at session start)${NC}"
   fi
   echo ""
-  echo "  Restart Claude Code, then try:"
+  echo -e "  ${BOLD}Restart Claude Code${NC}, then try:"
   echo ""
   echo -e "    ${BOLD}/overture:sail${NC} \"A technical decision I'm stuck on\""
   echo -e "    ${BOLD}/overture:sail${NC} @PR#123     ${DIM}# Work through a specific PR${NC}"
   echo -e "    ${BOLD}/overture:sail${NC} @src/auth.ts  ${DIM}# Think about a file${NC}"
   echo ""
+  echo -e "  ${DIM}First run auto-creates .overture/config.yaml (ISTJ default boss). No setup dialog.${NC}"
   echo -e "  ${DIM}Each session writes to .overture/sessions/ in your repo. Commit it to share with team.${NC}"
+  if [ "$LINK_MODE" = true ]; then
+    echo ""
+    echo -e "  ${YELLOW}Dev note:${NC} ${DIM}If you edit skill .md files mid-session, restart Claude Code to apply.${NC}"
+    echo -e "  ${DIM}Symlinks update files instantly, but Claude caches skill bodies on session start.${NC}"
+  fi
 else
   fail "Installation incomplete."
 fi
