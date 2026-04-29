@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, clearUserCache } from './supabase';
 import { clearAllStorage } from './storage';
 import { setAnalyticsUser } from './analytics';
+import { getCurrentLanguage } from './i18n';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -19,18 +20,42 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ERROR_KO: Record<string, string> = {
-  'Invalid login credentials': '이메일 또는 비밀번호가 올바르지 않습니다',
-  // Intentionally vague to prevent email enumeration
-  'User already registered': '가입을 완료할 수 없습니다. 이미 계정이 있다면 로그인해주세요.',
-  'Email not confirmed': '가입을 완료할 수 없습니다. 이미 계정이 있다면 로그인해주세요.',
-  'Password should be at least 6 characters': '비밀번호는 최소 6자 이상이어야 합니다',
-  'Signup requires a valid password': '유효한 비밀번호를 입력해주세요',
-};
+// Each entry: Supabase error substring → { ko, en } localized message.
+// EN users were previously getting Korean messages from this map; the table
+// now carries both translations and the lookup picks via getCurrentLanguage().
+const AUTH_ERRORS: Array<{ match: string; ko: string; en: string }> = [
+  {
+    match: 'Invalid login credentials',
+    ko: '이메일 또는 비밀번호가 올바르지 않습니다.',
+    en: "Email or password doesn't match.",
+  },
+  // Intentionally vague to prevent email enumeration.
+  {
+    match: 'User already registered',
+    ko: '가입을 완료할 수 없습니다. 이미 계정이 있다면 로그인해주세요.',
+    en: "Couldn't complete sign-up. If you already have an account, please sign in.",
+  },
+  {
+    match: 'Email not confirmed',
+    ko: '가입을 완료할 수 없습니다. 이미 계정이 있다면 로그인해주세요.',
+    en: "Couldn't complete sign-up. If you already have an account, please sign in.",
+  },
+  {
+    match: 'Password should be at least 6 characters',
+    ko: '비밀번호는 최소 6자 이상이어야 합니다.',
+    en: 'Password must be at least 6 characters.',
+  },
+  {
+    match: 'Signup requires a valid password',
+    ko: '유효한 비밀번호를 입력해주세요.',
+    en: 'Please enter a valid password.',
+  },
+];
 
 function translateError(msg: string): string {
-  for (const [en, ko] of Object.entries(ERROR_KO)) {
-    if (msg.includes(en)) return ko;
+  const ko = getCurrentLanguage() === 'ko';
+  for (const entry of AUTH_ERRORS) {
+    if (msg.includes(entry.match)) return ko ? entry.ko : entry.en;
   }
   return msg;
 }

@@ -566,8 +566,11 @@ export default function SettingsPage() {
       <LearningHealthCard />
 
       <Modal open={resetModal} onClose={() => setResetModal(false)} title={L('데이터 초기화', 'Reset Data')}>
-        <p className="text-[14px] text-[var(--text-primary)] mb-4">
-          {L('모든 악보 해석, 편곡, 리허설, 합주 연습 이력이 영구 삭제됩니다.', 'All score interpretations, arrangements, rehearsals, and ensemble practice history will be permanently deleted.')}
+        <p className="text-[14px] text-[var(--text-primary)] mb-2">
+          {L('모든 악보 해석, 편곡, 리허설, 조율 이력이 영구 삭제됩니다.', 'All Reframe, Recast, Rehearse, and Synthesize records will be permanently deleted.')}
+        </p>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+          {L('저장한 팀장과 에이전트도 함께 사라집니다. 되돌릴 수 없어요.', 'Saved bosses and agents will be cleared too. This cannot be undone.')}
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setResetModal(false)}>{L('취소', 'Cancel')}</Button>
