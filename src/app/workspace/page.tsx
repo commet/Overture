@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useWorkspaceStore, type StepId } from '@/stores/useWorkspaceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
+import { useAgentStore } from '@/stores/useAgentStore';
 import { ReframeStep } from '@/components/workspace/ReframeStep';
 import { RecastStep } from '@/components/workspace/RecastStep';
 import { RehearseStep } from '@/components/workspace/RehearseStep';
@@ -580,6 +581,11 @@ function WorkspaceContent() {
     loadProjects();
     loadSettings();
     progressiveStore.loadSessions();
+    // Required so ReviewerBadge can resolve ?reviewer=<agentId> when the user
+    // arrives from Boss's "기획안 만들기" link. Without this, agents stays
+    // empty and the badge silently returns null even though the reviewer
+    // is correctly attached to the session.
+    useAgentStore.getState().loadAgents();
     track('workspace_enter', { has_user: !!user, has_projects: projects.length > 0 });
   }, [loadProjects, loadSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
