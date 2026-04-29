@@ -1,18 +1,22 @@
 'use client';
 
 /**
- * VoyageChart — 해도 (nautical chart) showing the user's decision voyage.
+ * VoyageChart — 해도 (nautical chart) showing the user's decision voyage
+ * as a real branching graph, not a linear list.
  *
- * Renders the active branch as a vertical timeline of waypoints
- * (checkpoints), pinning the destination (anchor stage) at the bottom even
- * when not yet reached — so the user always sees where they're heading.
- * Sibling branches (different choices made earlier) surface as small spurs
- * off the active path; clicking a checkpoint opens an action menu where
- * the user can rewind to that moment, automatically forking a new branch.
+ * The earlier version was a vertical timeline that duplicated the stepper
+ * up top. This version draws an actual chart: a graticule (lat/long grid)
+ * background, a dashed main route from origin down to the current
+ * position, sibling spurs branching out laterally where the user could
+ * have chosen differently, and a destination glyph pinned at the end of
+ * a ghost route so users see where they're heading.
+ *
+ * Layout: SVG-driven. Main route lives at x=MAIN_X, sibling branches
+ * spread to the right at x=BRANCH_X. Each row is ROW_H tall. Labels are
+ * rendered with foreignObject so HTML text styling stays consistent.
  *
  * Backend wiring: reads `session.checkpoints` + `session.active_checkpoint_id`
- * from useProgressiveStore. The store records checkpoints automatically at
- * each stage transition; this component is purely a view + restore caller.
+ * from useProgressiveStore and calls `restoreCheckpoint(id)` on rewind.
  */
 
 import { useMemo, useState } from 'react';
@@ -22,6 +26,16 @@ import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useLocale } from '@/hooks/useLocale';
 import type { VoyageCheckpoint, VoyageStage } from '@/stores/types';
 import { EASE } from './shared/constants';
+
+// Layout constants — tuned to fit the agent-sidebar width (~256-288px).
+const VIEW_W = 240;
+const MAIN_X = 28;        // main route x-position
+const BRANCH_X = 152;     // sibling branch x-position
+const ROW_H = 56;         // vertical spacing between waypoints
+const NODE_R = 8;         // main node radius
+const BRANCH_NODE_R = 4.5;// sibling node radius
+const LABEL_X = MAIN_X + 16;  // text label offset on main path
+const LABEL_W = BRANCH_X - LABEL_X - 14;
 
 const STAGE_ORDER: VoyageStage[] = [
   'origin', 'briefing', 'crew_set', 'crew_done', 'mix', 'review', 'anchor',
@@ -40,33 +54,17 @@ const STAGE_GLYPH: Record<VoyageStage, string> = {
 function stageLabel(stage: VoyageStage, locale: 'ko' | 'en'): string {
   if (locale === 'ko') {
     return ({
-      origin: '출발',
-      briefing: '항해 준비',
-      crew_set: '선원 배정',
-      crew_done: '항해 완료',
-      mix: '항해 보고서',
-      review: '검토',
-      anchor: '정박',
+      origin: '출발', briefing: '항해 준비', crew_set: '선원 배정',
+      crew_done: '항해 완료', mix: '항해 보고서', review: '검토', anchor: '정박',
     } as Record<VoyageStage, string>)[stage];
   }
   return ({
-    origin: 'Origin',
-    briefing: 'Briefing',
-    crew_set: 'Crew',
-    crew_done: 'Voyage done',
-    mix: 'Report',
-    review: 'Review',
-    anchor: 'Anchor',
+    origin: 'Origin', briefing: 'Briefing', crew_set: 'Crew',
+    crew_done: 'Voyage done', mix: 'Report', review: 'Review', anchor: 'Anchor',
   } as Record<VoyageStage, string>)[stage];
 }
 
-/** Walk parent links from `activeId` back to root, returning the path in
- *  chronological order (root → leaf). Falls back to empty when activeId
- *  is null or detached. */
-function computeActivePath(
-  checkpoints: VoyageCheckpoint[],
-  activeId: string | null,
-): VoyageCheckpoint[] {
+function computeActivePath(checkpoints: VoyageCheckpoint[], activeId: string | null): VoyageCheckpoint[] {
   if (!activeId) return [];
   const byId = new Map(checkpoints.map(c => [c.id, c]));
   const path: VoyageCheckpoint[] = [];
@@ -80,251 +78,374 @@ function computeActivePath(
   return path;
 }
 
-/** Count siblings (other children of the same parent) for a checkpoint —
- *  used to render the "다른 항로 (N)" branch indicator next to a node. */
-function countSiblingBranches(
-  checkpoints: VoyageCheckpoint[],
-  cp: VoyageCheckpoint,
-): number {
-  if (!cp.parent_id) return 0;
-  return checkpoints.filter(c => c.parent_id === cp.parent_id && c.id !== cp.id).length;
-}
-
 export function VoyageChart() {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
   const session = useProgressiveStore(s => s.sessions.find(ss => ss.id === s.currentSessionId));
   const restoreCheckpoint = useProgressiveStore(s => s.restoreCheckpoint);
-  const [popoverId, setPopoverId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [showSiblingsOf, setShowSiblingsOf] = useState<string | null>(null);
 
   const checkpoints = useMemo(() => session?.checkpoints || [], [session?.checkpoints]);
   const activeId = session?.active_checkpoint_id ?? null;
-  const activePath = useMemo(
-    () => computeActivePath(checkpoints, activeId),
-    [checkpoints, activeId],
-  );
+  const activePath = useMemo(() => computeActivePath(checkpoints, activeId), [checkpoints, activeId]);
 
-  // Future stages — what's still ahead. Pin the anchor as destination
-  // even when nothing has been reached yet (per design: "끝점 visibility").
-  const reachedStageSet = useMemo(
-    () => new Set(activePath.map(c => c.stage)),
-    [activePath],
-  );
+  // Future stages — what's still ahead. Always pin the anchor as a
+  // destination glyph at the bottom for "끝점 visibility".
+  const reachedStages = useMemo(() => new Set(activePath.map(c => c.stage)), [activePath]);
   const lastIdx = activePath.length > 0
     ? STAGE_ORDER.indexOf(activePath[activePath.length - 1].stage)
     : -1;
   const futureStages = useMemo(
-    () => STAGE_ORDER.slice(lastIdx + 1).filter(s => !reachedStageSet.has(s)),
-    [lastIdx, reachedStageSet],
+    () => STAGE_ORDER.slice(lastIdx + 1).filter(s => !reachedStages.has(s)),
+    [lastIdx, reachedStages],
   );
 
-  // Sibling lookup — children of a parent grouped together
-  const siblingsByParent = useMemo(() => {
+  // Siblings of each active-path node (alternative branches the user
+  // could have taken from the same parent). Drawn as lateral spurs.
+  const siblingsByActiveId = useMemo(() => {
     const map = new Map<string, VoyageCheckpoint[]>();
-    for (const c of checkpoints) {
-      if (!c.parent_id) continue;
-      const list = map.get(c.parent_id) || [];
-      list.push(c);
-      map.set(c.parent_id, list);
+    const activeIds = new Set(activePath.map(c => c.id));
+    for (const cp of activePath) {
+      if (!cp.parent_id) continue;
+      const siblings = checkpoints.filter(
+        c => c.parent_id === cp.parent_id && c.id !== cp.id && !activeIds.has(c.id),
+      );
+      if (siblings.length > 0) map.set(cp.id, siblings);
     }
     return map;
-  }, [checkpoints]);
+  }, [activePath, checkpoints]);
 
   if (!session || checkpoints.length === 0) return null;
 
-  const handlePick = (id: string) => {
-    setPopoverId(prev => prev === id ? null : id);
+  const totalRows = activePath.length + futureStages.length;
+  const chartHeight = totalRows * ROW_H + 24;
+
+  // Coordinates
+  const yForActiveIdx = (i: number) => i * ROW_H + 28;
+  const yForFutureIdx = (i: number) => (activePath.length + i) * ROW_H + 28;
+
+  const handleNodeClick = (id: string) => {
+    setSelectedId(prev => prev === id ? null : id);
   };
 
-  const handleRestore = (id: string) => {
+  const handleRestoreRequest = (id: string) => {
     setConfirmId(id);
-    setPopoverId(null);
+    setSelectedId(null);
   };
 
-  const handleConfirmRestore = () => {
+  const handleConfirm = () => {
     if (confirmId) restoreCheckpoint(confirmId);
     setConfirmId(null);
   };
 
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)]/85 backdrop-blur-sm overflow-hidden">
-      {/* Header */}
+      {/* Header — chart title + waypoint count + faux bearing */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-subtle)]/60">
         <Compass size={12} className="text-[var(--accent)]" />
         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">
           {L('해도', 'Chart')}
         </span>
-        <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">
-          {L(`기점 ${activePath.length}`, `${activePath.length} waypoints`)}
+        <span className="ml-auto text-[9px] tracking-[0.16em] uppercase text-[var(--accent)]/55 font-mono">
+          N · {activePath.length}/{STAGE_ORDER.length}
         </span>
       </div>
 
-      {/* Body — vertical timeline */}
-      <div className="px-4 py-4 space-y-3">
-        {activePath.map((cp, i) => {
-          const branchCount = countSiblingBranches(checkpoints, cp);
-          const siblings = cp.parent_id
-            ? (siblingsByParent.get(cp.parent_id) || []).filter(s => s.id !== cp.id)
-            : [];
-          const isActive = cp.id === activeId;
-          const hasNext = i < activePath.length - 1 || futureStages.length > 0;
-          const showSiblings = showSiblingsOf === cp.id;
-          return (
-            <div key={cp.id} className="relative pl-7">
-              {/* Vertical connector down to next node */}
-              {hasNext && (
-                <div className="absolute left-[10px] top-5 bottom-[-12px] border-l border-dashed border-[var(--accent)]/35" />
-              )}
-              {/* Node — circular with stage glyph + active pulse */}
-              <button
-                type="button"
-                onClick={() => handlePick(cp.id)}
-                className={`absolute left-0 top-0 w-[22px] h-[22px] rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[var(--accent)] ring-[3px] ring-[var(--accent)]/22 shadow-[0_2px_6px_rgba(180,160,100,0.25)]'
-                    : 'bg-[var(--accent)]/82 hover:bg-[var(--accent)] ring-2 ring-[var(--surface)]'
-                }`}
-                aria-label={cp.label}
-              >
-                <span className="text-[9px] leading-none">{STAGE_GLYPH[cp.stage]}</span>
+      {/* Chart body — SVG graph with graticule, route, branches, destination. */}
+      <div className="relative px-2 py-3">
+        <svg
+          width="100%"
+          viewBox={`0 0 ${VIEW_W} ${chartHeight}`}
+          className="overflow-visible"
+          preserveAspectRatio="xMinYMin meet"
+        >
+          <defs>
+            {/* Graticule — lat/long grid, very faint. Sells the chart vibe. */}
+            <pattern id="voyage-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" stroke="currentColor" strokeWidth="0.4" fill="none" />
+            </pattern>
+          </defs>
+          <rect
+            x="0" y="0" width={VIEW_W} height={chartHeight}
+            fill="url(#voyage-grid)"
+            className="text-[var(--text-tertiary)]"
+            opacity="0.13"
+          />
+
+          {/* Main route — dashed line connecting active-path nodes. */}
+          {activePath.length > 1 && (
+            <line
+              x1={MAIN_X}
+              y1={yForActiveIdx(0)}
+              x2={MAIN_X}
+              y2={yForActiveIdx(activePath.length - 1)}
+              stroke="currentColor"
+              className="text-[var(--accent)]"
+              strokeWidth="1.4"
+              strokeDasharray="3 3"
+              strokeLinecap="round"
+            />
+          )}
+
+          {/* Ghost line from current to destination — what's still ahead. */}
+          {futureStages.length > 0 && activePath.length > 0 && (
+            <line
+              x1={MAIN_X}
+              y1={yForActiveIdx(activePath.length - 1)}
+              x2={MAIN_X}
+              y2={yForFutureIdx(futureStages.length - 1)}
+              stroke="currentColor"
+              className="text-[var(--text-tertiary)]"
+              strokeWidth="1"
+              strokeDasharray="2 5"
+              strokeLinecap="round"
+              opacity="0.55"
+            />
+          )}
+
+          {/* Sibling branches — lateral curved spurs out of the parent.
+              Curve goes from the *parent* node (above the active node) out
+              to the right where the alternative waypoint sits. */}
+          {activePath.map((cp, i) => {
+            const sibs = siblingsByActiveId.get(cp.id) || [];
+            if (sibs.length === 0) return null;
+            // Spur originates at the parent (i-1 on the main path).
+            const parentY = i > 0 ? yForActiveIdx(i - 1) : yForActiveIdx(i) - 24;
+            return sibs.map((sib, j) => {
+              const sibY = parentY + (j + 1) * 22;
+              const cx = (MAIN_X + BRANCH_X) / 2;
+              return (
+                <g key={sib.id}>
+                  <path
+                    d={`M ${MAIN_X + 4},${parentY + 6} Q ${cx},${sibY} ${BRANCH_X - BRANCH_NODE_R - 1},${sibY}`}
+                    stroke="currentColor"
+                    className="text-[var(--text-tertiary)]"
+                    strokeWidth="0.9"
+                    strokeDasharray="2 3"
+                    fill="none"
+                    opacity="0.7"
+                  />
+                  <circle
+                    cx={BRANCH_X}
+                    cy={sibY}
+                    r={BRANCH_NODE_R}
+                    className="fill-[var(--bg)] stroke-[var(--text-tertiary)] hover:stroke-[var(--accent)] hover:fill-[var(--accent)]/10 cursor-pointer transition-colors"
+                    strokeWidth="1.2"
+                    onClick={() => handleRestoreRequest(sib.id)}
+                  >
+                    <title>{sib.label}</title>
+                  </circle>
+                </g>
+              );
+            });
+          })}
+
+          {/* Active-path nodes — drawn after lines so they sit on top. */}
+          {activePath.map((cp, i) => {
+            const isActive = cp.id === activeId;
+            const cy = yForActiveIdx(i);
+            return (
+              <g key={cp.id}>
+                {/* Active pulse */}
                 {isActive && (
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-[var(--accent)]/40"
-                    animate={{ scale: [1, 1.7, 1], opacity: [0.6, 0, 0.6] }}
+                  <motion.circle
+                    cx={MAIN_X}
+                    cy={cy}
+                    r={NODE_R}
+                    className="fill-[var(--accent)]"
+                    initial={{ opacity: 0.55 }}
+                    animate={{ scale: [1, 1.7, 1], opacity: [0.55, 0, 0.55] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+                    style={{ transformOrigin: `${MAIN_X}px ${cy}px` }}
                   />
                 )}
-              </button>
-              {/* Label + branch hint */}
-              <div className="min-h-[22px] flex items-baseline gap-2 flex-wrap">
+                <circle
+                  cx={MAIN_X}
+                  cy={cy}
+                  r={NODE_R}
+                  className={`cursor-pointer transition-colors ${
+                    isActive
+                      ? 'fill-[var(--accent)] stroke-[var(--accent)]'
+                      : 'fill-[var(--accent)]/82 stroke-[var(--surface)] hover:fill-[var(--accent)]'
+                  }`}
+                  strokeWidth={isActive ? 0 : 2}
+                  onClick={() => handleNodeClick(cp.id)}
+                />
+                <text
+                  x={MAIN_X}
+                  y={cy + 3}
+                  textAnchor="middle"
+                  className="select-none pointer-events-none"
+                  fontSize="9"
+                  fill="white"
+                >
+                  {STAGE_GLYPH[cp.stage]}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Future ghost nodes (including destination). */}
+          {futureStages.map((stage, i) => {
+            const isDestination = stage === 'anchor';
+            const cy = yForFutureIdx(i);
+            return (
+              <g key={`future-${stage}`}>
+                <circle
+                  cx={MAIN_X}
+                  cy={cy}
+                  r={NODE_R}
+                  className={
+                    isDestination
+                      ? 'fill-[var(--accent)]/8 stroke-[var(--accent)]'
+                      : 'fill-transparent stroke-[var(--text-tertiary)]'
+                  }
+                  strokeWidth="1.2"
+                  strokeDasharray="2 2"
+                />
+                <text
+                  x={MAIN_X}
+                  y={cy + 3}
+                  textAnchor="middle"
+                  className="select-none pointer-events-none"
+                  fontSize="9"
+                  opacity="0.5"
+                >
+                  {STAGE_GLYPH[stage]}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Labels — HTML text via foreignObject so styling matches the
+              rest of the app and label widths can flow naturally. */}
+          {activePath.map((cp, i) => {
+            const isActive = cp.id === activeId;
+            return (
+              <foreignObject
+                key={`label-${cp.id}`}
+                x={LABEL_X}
+                y={yForActiveIdx(i) - 10}
+                width={LABEL_W}
+                height="22"
+              >
                 <button
                   type="button"
-                  onClick={() => handlePick(cp.id)}
-                  className={`text-[11.5px] font-medium leading-snug text-left cursor-pointer transition-colors ${
+                  onClick={() => handleNodeClick(cp.id)}
+                  className={`text-[11px] font-medium leading-[1.1] cursor-pointer transition-colors text-left truncate w-full ${
                     isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {cp.label}
                 </button>
-                {branchCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowSiblingsOf(showSiblings ? null : cp.id)}
-                    className="text-[9.5px] text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
-                  >
-                    ↪ {L(`다른 항로 ${branchCount}`, `${branchCount} alt`)}
-                  </button>
-                )}
-              </div>
-
-              {/* Popover — actions for this checkpoint */}
-              <AnimatePresence>
-                {popoverId === cp.id && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -2 }}
-                    transition={{ duration: 0.18 }}
-                    className="mt-1.5 rounded-lg border border-[var(--accent)]/25 bg-[var(--surface)] px-3 py-2 text-[10.5px] shadow-[var(--shadow-sm)]"
-                  >
-                    <div className="text-[var(--text-tertiary)] mb-1.5">
-                      {new Date(cp.created_at).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                      })}
-                    </div>
-                    {!isActive && (
-                      <button
-                        type="button"
-                        onClick={() => handleRestore(cp.id)}
-                        className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
-                      >
-                        <RotateCcw size={11} />
-                        {L('이 분기로 돌아가기', 'Rewind here')}
-                        <ChevronRight size={10} className="ml-auto" />
-                      </button>
-                    )}
-                    {isActive && (
-                      <div className="px-2 py-1 text-[var(--text-tertiary)]">
-                        {L('현재 위치', 'Current waypoint')}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Sibling branches expanded */}
-              <AnimatePresence>
-                {showSiblings && siblings.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.22, ease: EASE }}
-                    className="overflow-hidden"
-                  >
-                    <div className="ml-3 mt-2 pl-3 border-l border-dotted border-[var(--text-tertiary)]/30 space-y-1.5">
-                      {siblings.map(sib => (
-                        <button
-                          key={sib.id}
-                          type="button"
-                          onClick={() => handleRestore(sib.id)}
-                          className="w-full text-left flex items-center gap-2 text-[10.5px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors group cursor-pointer"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]/40 group-hover:bg-[var(--accent)] shrink-0 transition-colors" />
-                          <span className="truncate">{sib.label}</span>
-                          <RotateCcw size={9} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-
-        {/* Future stages — ghost nodes with dashed connector. Always shows
-            the destination (anchor) so users see where they're heading. */}
-        {futureStages.map((stage, i) => {
-          const isDestination = stage === 'anchor';
-          const isLast = i === futureStages.length - 1;
-          return (
-            <div key={`future-${stage}`} className="relative pl-7">
-              {!isLast && (
-                <div className="absolute left-[10px] top-5 bottom-[-12px] border-l border-dotted border-[var(--text-tertiary)]/25" />
-              )}
-              <div
-                className={`absolute left-0 top-0 w-[22px] h-[22px] rounded-full flex items-center justify-center border-[1.5px] border-dashed ${
-                  isDestination
-                    ? 'border-[var(--accent)]/55 bg-[var(--accent)]/[0.04]'
-                    : 'border-[var(--text-tertiary)]/35 bg-transparent'
-                }`}
+              </foreignObject>
+            );
+          })}
+          {futureStages.map((stage, i) => {
+            const isDestination = stage === 'anchor';
+            return (
+              <foreignObject
+                key={`label-future-${stage}`}
+                x={LABEL_X}
+                y={yForFutureIdx(i) - 10}
+                width={LABEL_W}
+                height="22"
               >
-                {isDestination
-                  ? <Anchor size={10} className="text-[var(--accent)]/75" />
-                  : <span className="text-[9px] leading-none opacity-45">{STAGE_GLYPH[stage]}</span>}
-              </div>
-              <div className={`text-[11.5px] leading-snug ${
-                isDestination
-                  ? 'text-[var(--accent)] font-semibold'
-                  : 'text-[var(--text-tertiary)]'
-              }`}>
-                {stageLabel(stage, locale === 'ko' ? 'ko' : 'en')}
-                {isDestination && (
-                  <span className="ml-1.5 text-[9.5px] font-normal text-[var(--accent)]/70">
-                    {L('· 도착지', '· destination')}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                <div className={`text-[11px] leading-[1.1] truncate ${
+                  isDestination
+                    ? 'text-[var(--accent)] font-semibold'
+                    : 'text-[var(--text-tertiary)]'
+                }`}>
+                  {stageLabel(stage, locale === 'ko' ? 'ko' : 'en')}
+                  {isDestination && (
+                    <span className="ml-1 text-[9.5px] font-normal text-[var(--accent)]/70">
+                      {L('· 도착지', '· dest.')}
+                    </span>
+                  )}
+                </div>
+              </foreignObject>
+            );
+          })}
+
+          {/* Destination override — replace the anchor stage glyph with a
+              proper anchor icon for emphasis. */}
+          {futureStages.includes('anchor') && (() => {
+            const i = futureStages.indexOf('anchor');
+            const cy = yForFutureIdx(i);
+            return (
+              <foreignObject x={MAIN_X - 7} y={cy - 7} width="14" height="14">
+                <Anchor size={12} className="text-[var(--accent)]/80" />
+              </foreignObject>
+            );
+          })()}
+        </svg>
+
+        {/* Footer hint — subtle interaction cue */}
+        {checkpoints.length > 1 && (
+          <div className="text-[9.5px] text-[var(--text-tertiary)] mt-2 px-1 leading-tight">
+            {L('기점이나 다른 항로를 클릭해서 그 시점으로 돌아갈 수 있어요', 'Click a waypoint or alt route to rewind there')}
+          </div>
+        )}
       </div>
 
-      {/* Confirm modal — rewinding loses the current branch tip but
-          preserves it as a sibling once the user takes their next action. */}
+      {/* Selection popover — appears below the chart since space inside the
+          SVG is tight. Surfaces metadata + restore action for the picked
+          checkpoint without disrupting the chart layout. */}
+      <AnimatePresence>
+        {selectedId && (() => {
+          const cp = checkpoints.find(c => c.id === selectedId);
+          if (!cp) return null;
+          const isActive = cp.id === activeId;
+          return (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: EASE }}
+              className="overflow-hidden border-t border-[var(--accent)]/20 bg-[var(--accent)]/[0.04]"
+            >
+              <div className="px-4 py-3">
+                <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                  <span className="text-[11px] font-semibold text-[var(--text-primary)]">{cp.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    aria-label={L('닫기', 'Close')}
+                  >
+                    <XIcon size={11} />
+                  </button>
+                </div>
+                <div className="text-[10px] text-[var(--text-tertiary)] mb-2.5">
+                  {new Date(cp.created_at).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                  })}
+                </div>
+                {!isActive ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreRequest(cp.id)}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold text-[var(--accent)] border border-[var(--accent)]/35 hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw size={11} />
+                    {L('이 분기로 돌아가기', 'Rewind here')}
+                    <ChevronRight size={10} />
+                  </button>
+                ) : (
+                  <div className="text-[10.5px] text-[var(--text-tertiary)] text-center py-1">
+                    {L('현재 위치', 'Current waypoint')}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Confirm modal — shown when the user picks a non-active waypoint
+          to rewind to. Spells out that the current branch isn't lost,
+          just preserved as a sibling once they take the next action. */}
       <AnimatePresence>
         {confirmId && (() => {
           const target = checkpoints.find(c => c.id === confirmId);
@@ -377,7 +498,7 @@ export function VoyageChart() {
                       {L('취소', 'Cancel')}
                     </button>
                     <button
-                      onClick={handleConfirmRestore}
+                      onClick={handleConfirm}
                       className="flex-1 px-3 py-2.5 rounded-lg text-[12.5px] font-semibold text-white shadow-[var(--shadow-sm)] cursor-pointer"
                       style={{ background: 'var(--gradient-gold)' }}
                     >
