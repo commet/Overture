@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { useLocale } from '@/hooks/useLocale';
-import { CREW_DIVISIONS, TOTAL_CREW, type DivisionId } from '@/data/voyage-crew';
+import { CREW_DIVISIONS, type DivisionId } from '@/data/voyage-crew';
 import { PaperGrain } from './atmosphere/PaperGrain';
 import { PlateLabel } from './ui/PlateLabel';
 import { StationCard } from './ui/StationCard';
@@ -62,15 +62,15 @@ export function Act2Cutaway() {
         >
           {locale === 'ko' ? (
             <>
-              {TOTAL_CREW}명, 다섯 개의 자리.
+              각자 자기 자리에서,
               <br />
-              <span style={{ color: 'var(--bp-ink-soft)' }}>한 척의 배 안에 다 있다.</span>
+              <span style={{ color: 'var(--bp-ink-soft)' }}>한 척의 배 안에.</span>
             </>
           ) : (
             <>
-              Seventeen crew, five stations.
+              Each at their station —
               <br />
-              <span style={{ color: 'var(--bp-ink-soft)' }}>All aboard one vessel.</span>
+              <span style={{ color: 'var(--bp-ink-soft)' }}>aboard one vessel.</span>
             </>
           )}
         </h2>
@@ -101,11 +101,11 @@ export function Act2Cutaway() {
 
         {/* Cutaway diagram */}
         <div
-          className="bp-fade-up relative mx-auto mt-12 md:mt-16"
+          className="bp-fade-up relative mx-auto mt-10 md:mt-12"
           style={{
             width: '100%',
-            maxWidth: 1100,
-            aspectRatio: '1200 / 500',
+            maxWidth: 1040,
+            aspectRatio: '1200 / 540',
             animationDelay: '360ms',
           }}
         >
@@ -114,7 +114,7 @@ export function Act2Cutaway() {
 
         {/* Five station cards */}
         <div
-          className="bp-fade-up mt-10 md:mt-14 grid gap-3 md:gap-4"
+          className="bp-fade-up mt-6 md:mt-8 grid gap-3 md:gap-4"
           style={{
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             animationDelay: '480ms',

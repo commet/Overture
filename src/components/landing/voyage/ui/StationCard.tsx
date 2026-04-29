@@ -26,7 +26,7 @@ export function StationCard({
 }) {
   return (
     <div style={{ width: '100%' }}>
-      <Cartouche padding={18} active={active}>
+      <Cartouche padding={14} active={active}>
         {/* Top row: index + count badge */}
         <div
           className="bp-mono"
