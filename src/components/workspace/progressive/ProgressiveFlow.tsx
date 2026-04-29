@@ -42,7 +42,8 @@ import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
-import { ChevronRight, ChevronDown, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2, Plus, Brain, Pencil } from 'lucide-react';
+import { getAgentStats, getSessionDeltas } from '@/lib/agent-stats';
 import { useLocale } from '@/hooks/useLocale';
 import { t } from '@/lib/i18n';
 import { localizePersona } from '@/lib/worker-personas';
@@ -739,6 +740,7 @@ function FinalCard({
   mix,
   releasedContent,
   releasedLabel,
+  sessionId,
 }: {
   content: string;
   mix?: MixResult | null;
@@ -748,6 +750,10 @@ function FinalCard({
    *  released version per Decision #5 (a). */
   releasedContent?: string | null;
   releasedLabel?: string | null;
+  /** Drives the agent-growth footer. When provided, FinalCard derives the
+   *  per-agent XP/level deltas accrued during this session from the
+   *  activities log and renders a small celebration footer. */
+  sessionId?: string | null;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
@@ -806,6 +812,46 @@ function FinalCard({
           ) : (
             <div className="p-5 md:p-8 space-y-1">{renderMd(content)}</div>
           )}
+          {/* Agent-growth footer — surfaces XP/level changes from this
+              session so the user sees their team becoming more theirs. Only
+              renders when at least one agent earned XP in this session. */}
+          {sessionId && (() => {
+            const deltas = getSessionDeltas(sessionId);
+            if (deltas.length === 0) return null;
+            // Surface up to 4 agents to avoid clutter; the rest summed.
+            const top = deltas.slice(0, 4);
+            const rest = deltas.slice(4);
+            const restXp = rest.reduce((acc, d) => acc + d.xpGained, 0);
+            const anyLevelUp = deltas.some(d => d.leveledUp);
+            return (
+              <div className="px-5 md:px-7 py-4 border-t border-[var(--border-subtle)]/60 bg-[var(--accent)]/[0.02]">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--accent)] mb-2 flex items-center gap-1.5">
+                  <Sparkles size={11} />
+                  {anyLevelUp
+                    ? L('이번 분석으로 팀이 한 단계 성장했어요', 'Your team leveled up from this run')
+                    : L('이번 분석으로 팀이 더 똑똑해졌어요', 'Your team grew from this run')}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[12px] text-[var(--text-secondary)]">
+                  {top.map(d => (
+                    <span key={d.agentId} className="inline-flex items-baseline gap-1">
+                      <span className="text-[var(--text-primary)] font-medium">{d.name}</span>
+                      <span className="text-[var(--accent)] tabular-nums">+{d.xpGained}XP</span>
+                      {d.leveledUp && (
+                        <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded">
+                          Lv.{d.fromLevel}→{d.toLevel}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                  {rest.length > 0 && (
+                    <span className="text-[var(--text-tertiary)] tabular-nums">
+                      {L(`외 ${rest.length}명 +${restXp}XP`, `+${rest.length} more (+${restXp}XP)`)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </motion.div>
@@ -1138,17 +1184,27 @@ function PhaseDivider({ done, next, yourTurn }: { done: string; next: string; yo
 /* ═══ Team Deploy Banner — 팀 구성 확인 ═══ */
 const MAX_PERSONAS_PER_GROUP = 5;
 
-function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRemoveWorker }: {
+function TeamDeployBanner({
+  workers, onDeploy, onUpdateWorker, onOpenPool, onRemoveWorker, onUpdateTask, onOpenFreePool,
+}: {
   workers: WorkerTask[];
   onDeploy: () => void;
   onUpdateWorker?: (id: string, partial: Partial<WorkerTask>) => void;
-  /** Open the persona-pool modal for a given task group (Manual assignment). */
+  /** Open the persona-pool modal in *task mode* for a given task group. */
   onOpenPool?: (taskGroupId: string) => void;
   /** Remove a single worker. The store enforces the "last-survivor" rule. */
   onRemoveWorker?: (workerId: string) => void;
+  /** Save a new task description for the entire group. */
+  onUpdateTask?: (taskGroupId: string, newText: string) => void;
+  /** Open the persona-pool modal in *free mode* — no specific target. */
+  onOpenFreePool?: () => void;
 }) {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
+  // Inline edit state — only one group is in edit mode at a time. Captured
+  // on enter, committed on blur/Enter, discarded on Escape.
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Group workers by task_group_id so users can see which personas are
   // tackling the same task. Legacy sessions without group ids fall back to
@@ -1215,6 +1271,30 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRem
             {roleText && (
               <span className="text-[11px] text-[var(--text-tertiary)]">{roleText}</span>
             )}
+            {/* Origin badge — manual additions surface the user's own intent */}
+            {w.added_manually && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--accent)] bg-[var(--accent)]/[0.08] border border-[var(--accent)]/20 px-1.5 py-0.5 rounded-full">
+                {L('직접 추가', 'Added')}
+              </span>
+            )}
+            {/* Agent growth cue — Lv + 함께 횟수, only for agent-backed AI workers */}
+            {(w.agent_type || 'ai') === 'ai' && w.agent_id && (() => {
+              const stats = getAgentStats(w.agent_id);
+              if (!stats) return null;
+              const together = stats.totalTasks + stats.totalSyntheses;
+              return (
+                <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                  Lv.{stats.agent.level}
+                  {together > 0 && <span className="ml-1 text-[var(--text-tertiary)]">· {together}{L('회 함께', '× w/ you')}</span>}
+                  {together === 0 && <span className="ml-1 text-[var(--accent)]/70">· {L('처음', 'first')}</span>}
+                  {stats.observationCount >= 3 && (
+                    <span className="ml-1 inline-flex items-center gap-0.5 text-[var(--accent)]/70">
+                      <Brain size={9} className="inline" />{stats.observationCount}
+                    </span>
+                  )}
+                </span>
+              );
+            })()}
           </div>
           {/* Persona expertise — only shown for AI workers; helps user judge fit */}
           {(w.agent_type || 'ai') === 'ai' && w.persona?.expertise && (
@@ -1292,7 +1372,9 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRem
           </p>
           {onOpenPool && (
             <p className="text-[11px] text-[var(--text-tertiary)] mt-1">
-              {L('각 task에 팀원을 추가하거나 뺄 수 있어요 · 한 task당 최대 5명', 'Add or remove members for each task · up to 5 per task')}
+              {onOpenFreePool
+                ? L('각 task에 다른 시각을 추가하거나 빼고, 새 팀원도 자동 매칭으로 추가할 수 있어요 · 한 task당 최대 5명', 'Add another lens to a task, remove one, or auto-match a new member · up to 5 per task')
+                : L('각 task에 팀원을 추가하거나 뺄 수 있어요 · 한 task당 최대 5명', 'Add or remove members for each task · up to 5 per task')}
             </p>
           )}
         </div>
@@ -1304,28 +1386,77 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRem
           const groupSize = g.members.length;
           const canAdd = !!onOpenPool && groupSize < MAX_PERSONAS_PER_GROUP;
           const baseIndex = gi * 3; // approximate stagger across groups
+          // Origin signals — drive the group's visual accent + heading badge.
+          const hasManual = g.members.some(m => m.added_manually);
+          const taskEdited = !!g.seed.original_task && g.seed.task !== g.seed.original_task;
+          const userTouched = hasManual || taskEdited;
           return (
             <motion.div
               key={g.groupId}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: gi * staggerDelay, duration: 0.35, ease: EASE }}
-              className="rounded-xl border border-[var(--border-subtle)]/70 bg-[var(--bg)]/40 px-4 py-3.5"
+              className={`rounded-xl border px-4 py-3.5 transition-colors ${
+                userTouched
+                  ? 'border-[var(--accent)]/30 bg-[var(--accent)]/[0.025]'
+                  : 'border-[var(--border-subtle)]/70 bg-[var(--bg)]/40'
+              }`}
             >
               {/* Task heading + add button */}
               <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
-                    {L(`Task ${gi + 1}`, `Task ${gi + 1}`)}
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1 flex items-center gap-1.5 flex-wrap">
+                    <span>{L(`Task ${gi + 1}`, `Task ${gi + 1}`)}</span>
                     {groupSize > 1 && (
-                      <span className="ml-1.5 text-[var(--accent)] normal-case tracking-normal">
+                      <span className="text-[var(--accent)] normal-case tracking-normal">
                         · {groupSize}{L('명', '×')}
                       </span>
                     )}
+                    {taskEdited && (
+                      <span className="inline-flex items-center gap-0.5 text-[var(--accent)] normal-case tracking-normal font-medium">
+                        <Pencil size={9} />
+                        {L('수정됨', 'edited')}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[13px] text-[var(--text-primary)] leading-snug line-clamp-2">
-                    {g.seed.task}
-                  </p>
+                  {editingGroupId === g.groupId && onUpdateTask ? (
+                    // Inline edit mode — saves on blur or Enter, discards on Escape.
+                    <textarea
+                      autoFocus
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onBlur={() => {
+                        const next = editText.trim();
+                        if (next && next !== g.seed.task) {
+                          onUpdateTask(g.groupId, next);
+                        }
+                        setEditingGroupId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          (e.target as HTMLTextAreaElement).blur();
+                        } else if (e.key === 'Escape') {
+                          setEditingGroupId(null);
+                        }
+                      }}
+                      maxLength={280}
+                      rows={2}
+                      className="w-full text-[13px] text-[var(--text-primary)] leading-snug bg-[var(--surface)] border border-[var(--accent)]/40 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--accent)] resize-none"
+                    />
+                  ) : (
+                    <p
+                      onClick={() => {
+                        if (!onUpdateTask) return;
+                        setEditingGroupId(g.groupId);
+                        setEditText(g.seed.task);
+                      }}
+                      className={`text-[13px] text-[var(--text-primary)] leading-snug line-clamp-2 ${onUpdateTask ? 'cursor-text hover:bg-[var(--bg)]/50 -mx-1 px-1 rounded transition-colors' : ''}`}
+                      title={onUpdateTask ? L('클릭해서 수정', 'Click to edit') : undefined}
+                    >
+                      {g.seed.task}
+                    </p>
+                  )}
                 </div>
                 {onOpenPool && (
                   <button
@@ -1337,11 +1468,11 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRem
                         : 'text-[var(--text-tertiary)] bg-[var(--bg)] border border-[var(--border-subtle)] cursor-not-allowed opacity-60'
                     }`}
                     title={canAdd
-                      ? L('이 task에 팀원 추가', 'Add a member to this task')
+                      ? L('이 task에 다른 시각 추가', 'Add another perspective to this task')
                       : L('최대 5명까지 추가할 수 있어요', 'Up to 5 personas per task')}
                   >
                     <Plus size={11} />
-                    {canAdd ? L('추가', 'Add') : L('가득', 'Full')}
+                    {canAdd ? L('다른 시각', 'Another lens') : L('가득', 'Full')}
                   </button>
                 )}
               </div>
@@ -1353,6 +1484,32 @@ function TeamDeployBanner({ workers, onDeploy, onUpdateWorker, onOpenPool, onRem
           );
         })}
       </div>
+
+      {/* Free-mode "+ 새 팀원 추가" — agent-centric. The pool modal computes
+          the best-matching task per persona and adds them directly. */}
+      {onOpenFreePool && (() => {
+        const everyGroupFull = groups.length > 0 && groups.every(g => g.members.length >= MAX_PERSONAS_PER_GROUP);
+        return (
+          <button
+            onClick={() => !everyGroupFull && onOpenFreePool()}
+            disabled={everyGroupFull}
+            className={`mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[12px] font-medium border-dashed transition-all ${
+              everyGroupFull
+                ? 'border border-[var(--border-subtle)] text-[var(--text-tertiary)] cursor-not-allowed opacity-60'
+                : 'border border-[var(--accent)]/25 text-[var(--accent)] hover:bg-[var(--accent)]/[0.04] hover:border-[var(--accent)]/45 cursor-pointer'
+            }`}
+            title={everyGroupFull
+              ? L('모든 task가 5명으로 가득 찼어요', 'Every task is at 5 personas')
+              : L('어울리는 task에 자동으로 배정됩니다', 'Automatically matched to the best-fitting task')}
+          >
+            <Plus size={12} />
+            {L('새 팀원 추가', 'Add a team member')}
+            <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
+              {everyGroupFull ? '' : L(' · 어울리는 task에 자동 배정', ' · auto-match to a task')}
+            </span>
+          </button>
+        );
+      })()}
 
       {/* Start button — primary CTA */}
       <motion.button onClick={onDeploy} whileTap={{ scale: 0.98 }}
@@ -1514,9 +1671,12 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showMix, setShowMix] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
-  // Manual team-assignment modal state — kept on the parent so children can
-  // open it with a single callback while we own the data shape it needs.
-  const [poolModalGroupId, setPoolModalGroupId] = useState<string | null>(null);
+  // Manual team-assignment modal — kept on the parent so children can open
+  // it with a single callback while we own the data shape it needs. Two
+  // modes: `task` (add to a specific group) and `free` (auto-match a
+  // persona to the best-fitting open group).
+  type PoolModalState = { mode: 'task'; targetGroupId: string } | { mode: 'free' } | null;
+  const [poolModal, setPoolModal] = useState<PoolModalState>(null);
   // Which response shape the current stream represents. Handlers set this
   // because phase alone isn't enough — e.g. onFinalize streams while
   // phase === 'refining', but the stream is a doc, not feedback.
@@ -2061,6 +2221,15 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               const currentSession = store.currentSession();
               if (currentSession?.id !== session?.id) return null;
               store.setLeadSynthesis(result);
+              // Record synthesis activity so the lead's growth (XP / level /
+              // last_used_at) reflects the work it just did. Without this,
+              // the lead never accrues XP from synthesis work.
+              useAgentStore.getState().recordActivity(
+                leadConfig.agentId,
+                'synthesis_completed',
+                session!.problem_text.slice(0, 100),
+                session!.id,
+              );
               return result;
             })
             .catch(() => null);
@@ -2329,24 +2498,53 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         transition={{ duration: 0.8, ease: EASE }}>
 
         <PingToast />
-        {/* Manual team-assignment modal — derives task info & exclude-list
-            from current worker state at render time so it always reflects the
-            latest store. */}
+        {/* Manual team-assignment modal — derives task/group info from the
+            current worker state at render time so it always reflects the
+            latest store. Both modes (task / free) share the same modal
+            component; mode-specific UI lives inside the modal. */}
         {(() => {
-          if (!poolModalGroupId) return null;
-          const groupMembers = workers.filter(w => (w.task_group_id || w.id) === poolModalGroupId);
-          if (groupMembers.length === 0) return null;
-          const seed = groupMembers[0];
+          if (!poolModal) return null;
+          // Build group info list (used by both modes — task-mode uses the
+          // target group's data, free-mode iterates for best-match).
+          const groupBuckets = new Map<string, WorkerTask[]>();
+          const groupOrder: string[] = [];
+          for (const w of workers) {
+            const gid = w.task_group_id || w.id;
+            if (!groupBuckets.has(gid)) {
+              groupBuckets.set(gid, []);
+              groupOrder.push(gid);
+            }
+            groupBuckets.get(gid)!.push(w);
+          }
+          const groupInfos = groupOrder.map(gid => {
+            const members = groupBuckets.get(gid)!;
+            const seed = members[0];
+            return {
+              groupId: gid,
+              task: seed.task,
+              aiScope: seed.ai_scope ?? null,
+              expectedOutput: seed.expected_output ?? null,
+              memberCount: members.length,
+              personaIds: members.map(m => m.persona?.id).filter((x): x is string => !!x),
+            };
+          });
+
+          if (poolModal.mode === 'task') {
+            const target = groupInfos.find(g => g.groupId === poolModal.targetGroupId);
+            if (!target) return null;
+          }
+
           return (
             <PersonaPoolModal
               isOpen
-              onClose={() => setPoolModalGroupId(null)}
-              taskInfo={{ task: seed.task, ai_scope: seed.ai_scope, expected_output: seed.expected_output }}
-              excludePersonaIds={groupMembers.map(w => w.persona?.id).filter((x): x is string => !!x)}
-              groupFull={groupMembers.length >= 5}
-              onAdd={(persona) => {
-                const newId = store.addWorkerToGroup(poolModalGroupId, persona);
-                if (newId) setPoolModalGroupId(null);
+              mode={poolModal.mode}
+              targetGroupId={poolModal.mode === 'task' ? poolModal.targetGroupId : undefined}
+              groups={groupInfos}
+              maxPerGroup={5}
+              onClose={() => setPoolModal(null)}
+              onSelect={(persona, matchedGroupId) => {
+                const newId = store.addWorkerToGroup(matchedGroupId, persona);
+                if (newId) setPoolModal(null);
               }}
             />
           );
@@ -2418,8 +2616,10 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
               workers={workers}
               onDeploy={onDeployWorkers}
               onUpdateWorker={(id, partial) => store.updateWorker(id, partial)}
-              onOpenPool={(groupId) => setPoolModalGroupId(groupId)}
+              onOpenPool={(groupId) => setPoolModal({ mode: 'task', targetGroupId: groupId })}
+              onOpenFreePool={() => setPoolModal({ mode: 'free' })}
               onRemoveWorker={(id) => store.removeWorker(id)}
+              onUpdateTask={(groupId, text) => store.updateGroupTask(groupId, text)}
             />
           )}
 
@@ -2737,6 +2937,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             <FinalCard
               content={final_}
               mix={finalMix}
+              sessionId={session?.id ?? null}
               releasedContent={(() => {
                 const rid = session?.released_draft_id;
                 if (!rid) return null;

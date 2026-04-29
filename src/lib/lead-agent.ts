@@ -144,7 +144,7 @@ export function buildLeadSynthesisPrompt(
   lead: LeadAgentConfig,
   problemText: string,
   realQuestion: string,
-  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string }>,
+  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string; taskGroupId?: string }>,
   locale: Locale = 'en',
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
@@ -158,9 +158,29 @@ export function buildLeadSynthesisPrompt(
     ? `\nYour analysis frameworks:\n${skills.frameworks.map(f => `- ${f}`).join('\n')}`
     : '';
 
-  const resultsBlock = workerResults.map((w, i) =>
-    `[${i + 1}. ${w.agentName}(${w.agentRole}) — ${w.task}]\n${w.result.slice(0, 1500)}`,
-  ).join('\n\n');
+  // Group by task_group_id (fallback to task text). Same-task multi-persona
+  // results render as sub-bullets so the Lead synthesizes them as ONE task
+  // with multiple lenses, not as multiple unrelated tasks.
+  const groupOrder: string[] = [];
+  const groupMap = new Map<string, typeof workerResults>();
+  for (const w of workerResults) {
+    const gid = w.taskGroupId || w.task;
+    if (!groupMap.has(gid)) { groupMap.set(gid, []); groupOrder.push(gid); }
+    groupMap.get(gid)!.push(w);
+  }
+  const resultsBlock = groupOrder.map((gid, i) => {
+    const members = groupMap.get(gid)!;
+    if (members.length === 1) {
+      const w = members[0];
+      return `[${i + 1}. ${w.agentName}(${w.agentRole}) — ${w.task}]\n${w.result.slice(0, 1500)}`;
+    }
+    const taskHeader = `[${i + 1}. ${members[0].task}] (${members.length} perspectives — intentional team diversity)`;
+    const subBullets = members.map(w => {
+      const indented = w.result.slice(0, 1000).split('\n').map(l => `    ${l}`).join('\n');
+      return `  · ${w.agentName}(${w.agentRole}):\n${indented}`;
+    }).join('\n');
+    return `${taskHeader}\n${subBullets}`;
+  }).join('\n\n');
 
   return {
     system: `You are ${name}, ${role}.
@@ -175,7 +195,8 @@ ${directive}
 Rules:
 - This is NOT a summary of each worker's output. It's YOUR expert synthesis — an integrated view that creates meaning no single worker could produce alone.
 - Identify connections between workers' findings that they couldn't see individually.
-- If workers contradict each other, make a judgment call and explain your reasoning.
+- A task labeled "(N perspectives — intentional team diversity)" means the user deliberately assigned multiple personas to that task; the sub-bullets are different lenses on the SAME task. Synthesize where they agree and surface where they meaningfully diverge — but treat it as one task in your integrated analysis, not N tasks.
+- If workers contradict each other (across DIFFERENT tasks), make a judgment call and explain your reasoning.
 - Be specific. Use actual numbers, names, and facts from the worker results.
 - 3-5 key findings. Each must be a genuine insight, not a restatement.
 - State your recommendation direction clearly — the decision maker should know what you'd advise.

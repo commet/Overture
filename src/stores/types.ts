@@ -750,6 +750,27 @@ export interface WorkerTask {
   id: string;
   step_index: number;
   task: string;
+  /**
+   * Identifies which "task group" this worker belongs to. Workers that share
+   * the same task_group_id are working on the same task with different
+   * personas (Manual team-assignment feature). When undefined (legacy
+   * sessions), each worker is treated as its own group via worker.id.
+   */
+  task_group_id?: string;
+  /**
+   * True when this worker was added by the user via the persona-pool modal
+   * (vs. being part of the auto-assigned execution plan). Drives the "직접
+   * 추가" badge in TeamDeployBanner so users can see their own intent
+   * reflected in the team. Undefined on legacy sessions = treated as auto.
+   */
+  added_manually?: boolean;
+  /**
+   * The task description as it stood when initWorkers (or the manual
+   * addition) created this worker. Compared against `task` to detect that
+   * the user has edited the task heading — drives the "✏ 수정됨" cue.
+   * Undefined on legacy sessions = treated as never edited.
+   */
+  original_task?: string;
   /** @deprecated Use agent_type instead. Kept for backward compatibility with persisted sessions. */
   who: 'ai' | 'human' | 'both';
   expected_output: string;

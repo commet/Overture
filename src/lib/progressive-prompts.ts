@@ -361,7 +361,7 @@ export function buildMixPrompt(
   snapshots: AnalysisSnapshot[],
   questionsAndAnswers: Array<{ question: FlowQuestion; answer: FlowAnswer }>,
   decisionMaker: string | null,
-  workerResults?: Array<{ task: string; result: string; name?: string; workerId?: string }>,
+  workerResults?: Array<{ task: string; result: string; name?: string; workerId?: string; taskGroupId?: string }>,
   locale: Locale = 'en',
   leadSynthesis?: LeadSynthesisResult | null,
 ): { system: string; user: string } {
@@ -420,6 +420,12 @@ NARRATIVE FLOW — this separates a good draft from a great one:
 - Weave worker findings together — if one worker found the problem and another found the solution, connect them explicitly: "X라는 문제가 확인됐고, 이를 Y 전략으로 뒤집을 수 있습니다."
 - The document should read as ONE STORY: Context (why now) → Opportunity (what we found) → Strategy (how we solve it) → Evidence (proof it works) → Risks (what could go wrong) → Action (what to do next).
 
+MULTI-PERSPECTIVE TASKS:
+- A task header in the form "[task] (N perspectives — intentional team diversity)" means the user deliberately assigned multiple personas to that task. Their results are listed as sub-bullets ("· Name:" lines).
+- Treat them as ONE task with multiple lenses, not as multiple unrelated tasks. Synthesize where they agree, surface where they meaningfully diverge.
+- For sentence-level "contributors", list every persona whose finding genuinely informs that sentence (1-3 names is normal; padding with all members is wrong).
+- Don't write a separate paragraph per persona — the user added them to enrich the analysis, not to fragment it.
+
 ATTRIBUTION (required when worker results are provided):
 - Use ONLY names from the provided worker list. Never invent or mis-spell names.
 - Two levels of attribution — prefer sentence-level when possible:
@@ -442,20 +448,47 @@ Recommendation: ${leadSynthesis.recommendation_direction}
 ${leadSynthesis.unresolved_tensions.length > 0 ? `\nUnresolved tensions:\n${leadSynthesis.unresolved_tensions.map(t => `- ${t}`).join('\n')}` : ''}`
     : '';
 
+  // Group worker results by task_group_id (or task text fallback) so the LLM
+  // sees same-task multi-persona output as one block instead of repeated
+  // unrelated entries. The "(N perspectives — intentional team diversity)"
+  // header is the explicit signal that the user manually added members.
   const workerBlock = workerResults?.length
-    ? `
+    ? (() => {
+        const groupOrder: string[] = [];
+        const groupMap = new Map<string, typeof workerResults>();
+        for (const w of workerResults) {
+          const gid = w.taskGroupId || w.task;
+          if (!groupMap.has(gid)) {
+            groupMap.set(gid, []);
+            groupOrder.push(gid);
+          }
+          groupMap.get(gid)!.push(w);
+        }
+        const blocks = groupOrder.map(gid => {
+          const members = groupMap.get(gid)!;
+          if (members.length === 1) {
+            const w = members[0];
+            const label = w.name ? `[${sanitize(w.name)} — ${sanitize(w.task)}]` : `[${sanitize(w.task)}]`;
+            return `${label}\n${sanitize(w.result)}`;
+          }
+          const taskHeader = `[${sanitize(members[0].task)}] (${members.length} perspectives — intentional team diversity)`;
+          const subBullets = members.map(w => {
+            const indented = sanitize(w.result).split('\n').map(l => `    ${l}`).join('\n');
+            return w.name ? `  · ${sanitize(w.name)}:\n${indented}` : `  · ${indented.trimStart()}`;
+          }).join('\n');
+          return `${taskHeader}\n${subBullets}`;
+        });
+        return `
 Worker research results (supporting evidence):
-${workerResults.map(w => {
-  const label = w.name ? `[${sanitize(w.name)} — ${sanitize(w.task)}]` : `[${sanitize(w.task)}]`;
-  return `${label}\n${sanitize(w.result)}`;
-}).join('\n\n')}
+${blocks.join('\n\n')}
 
 ${leadSynthesis
   ? 'Use these as supporting evidence for the lead\'s synthesis.'
   : 'Make sure to incorporate specific numbers/facts from the worker results into the document.'}
 
 AVAILABLE CONTRIBUTOR NAMES (cite these EXACTLY in "contributors" per section):
-${workerResults.filter(w => w.name).map(w => `- ${sanitize(w.name!)}`).join('\n') || '(none)'}`
+${workerResults.filter(w => w.name).map(w => `- ${sanitize(w.name!)}`).join('\n') || '(none)'}`;
+      })()
     : '';
 
   const sectionSchema = workerResults?.length
@@ -733,13 +766,32 @@ JSON format:
 
 export function buildConcertmasterReviewPrompt(
   problemText: string,
-  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string }>,
+  workerResults: Array<{ agentName: string; agentRole: string; task: string; result: string; taskGroupId?: string }>,
   locale: Locale = 'en',
 ): { system: string; user: string } {
   const lang = locale === 'ko' ? 'Korean' : 'English';
-  const resultsBlock = workerResults.map((w, i) =>
-    `[${i + 1}. ${sanitize(w.agentName)}(${sanitize(w.agentRole)}) \u2014 ${sanitize(w.task)}]\n${sanitize(w.result.slice(0, 600))}`,
-  ).join('\n\n');
+
+  // Same task_group sub-bullet form as Mix \u2014 keeps the Concertmaster from
+  // flagging intentional multi-persona diversity as a contradiction.
+  const groupOrder: string[] = [];
+  const groupMap = new Map<string, typeof workerResults>();
+  for (const w of workerResults) {
+    const gid = w.taskGroupId || w.task;
+    if (!groupMap.has(gid)) { groupMap.set(gid, []); groupOrder.push(gid); }
+    groupMap.get(gid)!.push(w);
+  }
+  const resultsBlock = groupOrder.map((gid, i) => {
+    const members = groupMap.get(gid)!;
+    if (members.length === 1) {
+      const w = members[0];
+      return `[${i + 1}. ${sanitize(w.agentName)}(${sanitize(w.agentRole)}) \u2014 ${sanitize(w.task)}]\n${sanitize(w.result.slice(0, 600))}`;
+    }
+    const taskHeader = `[${i + 1}. ${sanitize(members[0].task)}] (${members.length} perspectives \u2014 intentional team diversity)`;
+    const subBullets = members.map(w =>
+      `  \u00b7 ${sanitize(w.agentName)}(${sanitize(w.agentRole)}): ${sanitize(w.result.slice(0, 400))}`
+    ).join('\n');
+    return `${taskHeader}\n${subBullets}`;
+  }).join('\n\n');
 
   return {
     system: `You are the Concertmaster. Like an orchestra's first violinist, you listen to the entire team's harmony.
@@ -748,8 +800,9 @@ Role: Survey individual agents' outputs holistically and identify what the team 
 Tone: Observational. Not criticism \u2014 observation. Short and sharp.
 
 Rules:
-- If there are contradictions between agents, flag them (A said X while B said Y)
-- If a perspective was missed by everyone, flag it
+- If there are contradictions between agents on DIFFERENT tasks, flag them (A said X while B said Y).
+- A task labeled "(N perspectives \u2014 intentional team diversity)" is the user's deliberate multi-lens setup. Don't flag in-group emphasis differences as contradictions unless they materially undermine the conclusion.
+- If a perspective was missed by everyone, flag it.
 - Overall quality judgment: "Is this ready to show the decision maker?"
 - 3-5 sentences. No rambling.
 Always respond in ${lang}.`,

@@ -26,6 +26,7 @@ import type {
   InterviewSignals,
   PipelineStage,
   WorkerTask,
+  WorkerPersona,
   WorkerDeployPhase,
   LeadSynthesisResult,
   Draft,
@@ -101,9 +102,22 @@ interface ProgressiveState {
   approveWorker: (workerId: string) => void;
   rejectWorker: (workerId: string) => void;
   allWorkersDone: () => boolean;
+  /** Manual team assignment — clone a peer in the same task group, replacing
+   *  the persona only. Returns the new worker id (or null if validation
+   *  fails: group not found, max-5 reached, or persona already in group). */
+  addWorkerToGroup: (taskGroupId: string, persona: WorkerPersona) => string | null;
+  /** Remove a worker. No-op if it is the last surviving worker in its group
+   *  (auto-assigned tasks must always have at least one worker). */
+  removeWorker: (workerId: string) => boolean;
+  /** Replace just the persona on an existing worker; resets execution state. */
+  replaceWorkerPersona: (workerId: string, persona: WorkerPersona) => void;
+  /** Edit the task text for an entire group. All workers sharing the
+   *  task_group_id receive the same updated task string. Empty/whitespace-only
+   *  input is ignored. */
+  updateGroupTask: (taskGroupId: string, newText: string) => void;
   /** @deprecated Use mixableWorkerResults instead */
   approvedWorkerResults: () => Array<{ task: string; result: string; type?: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
-  mixableWorkerResults: () => Array<{ workerId: string; task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null }>;
+  mixableWorkerResults: () => Array<{ workerId: string; task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null; taskGroupId: string }>;
 
   // Lead Agent
   setLeadAgent: (agentId: string, agentName: string, domain: string) => void;
@@ -673,6 +687,13 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
 
       return {
         id: generateId(),
+        // task_group_id seeds at init so users can later add a peer worker
+        // to the same group (Manual team assignment). Each auto-assigned
+        // task starts as its own group of 1.
+        task_group_id: generateId(),
+        // origin tracking — auto-assigned, original task captured for diff.
+        added_manually: false,
+        original_task: steps[si].task,
         step_index: si,
         task: steps[si].task,
         who,
@@ -864,6 +885,142 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
     }
   },
 
+  // ─── Manual team assignment ───
+  // Cap on parallel personas per task group. Each entry in the group runs
+  // its own LLM call, so we keep a hard ceiling regardless of UI state.
+  // Ceiling matches the user-facing limit advertised in PersonaPoolModal.
+
+  addWorkerToGroup: (taskGroupId, persona) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return null;
+    const session = get().currentSession();
+    if (!session) return null;
+    const groupMembers = session.workers.filter(w => (w.task_group_id || w.id) === taskGroupId);
+    if (groupMembers.length === 0) return null;
+    if (groupMembers.length >= 5) return null;
+    if (groupMembers.some(w => w.persona?.id === persona.id)) return null;
+
+    // Use the first member as a template. Manual additions are always 'ai'
+    // type — self/human still go through the existing toggle on the row.
+    const seed = groupMembers[0];
+    const newId = generateId();
+    // Match the picked persona to a real Agent when one exists with the same
+    // id — this is what wires manual additions into the XP/level/observation
+    // system. Custom personas (no matching agent) keep agent_id undefined.
+    const matchedAgent = useAgentStore.getState().getAgent(persona.id);
+    const newWorker: WorkerTask = {
+      ...seed,
+      id: newId,
+      task_group_id: taskGroupId,
+      who: 'ai',
+      agent_type: 'ai',
+      persona,
+      agent_id: matchedAgent?.id,
+      level: matchedAgent ? numericLevelToAgentLevel(matchedAgent.level) : 'junior',
+      // origin tracking — manual addition. original_task inherits from seed
+      // so the "수정됨" cue still works correctly in the new worker's view.
+      added_manually: true,
+      original_task: seed.original_task ?? seed.task,
+      // Reset execution state so the new persona starts fresh.
+      status: 'pending',
+      stream_text: '',
+      result: null,
+      human_input: null,
+      error: null,
+      approved: null,
+      completion_note: null,
+      started_at: null,
+      completed_at: null,
+      ai_preliminary: null,
+      // Drop human-specific fields when cloning from a non-AI seed.
+      contact: undefined,
+      question_to_human: undefined,
+      sent_at: undefined,
+      response_at: undefined,
+      // Drop quality/retry/plan state — those belong to a specific run.
+      validation_score: undefined,
+      validation_feedback: undefined,
+      validation_passed: undefined,
+      retry_count: undefined,
+      plan: undefined,
+      plan_step_results: undefined,
+      delegation_depth: undefined,
+      delegated_to: undefined,
+      delegated_from: undefined,
+    };
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: [...s.workers, newWorker],
+    }));
+    persist(sessions);
+    set({ sessions });
+    return newId;
+  },
+
+  removeWorker: (workerId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return false;
+    const session = get().currentSession();
+    if (!session) return false;
+    const target = session.workers.find(w => w.id === workerId);
+    if (!target) return false;
+    const groupId = target.task_group_id || target.id;
+    const groupSize = session.workers.filter(w => (w.task_group_id || w.id) === groupId).length;
+    if (groupSize <= 1) return false; // Last survivor — auto-assigned task must persist.
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.filter(w => w.id !== workerId),
+    }));
+    persist(sessions);
+    set({ sessions });
+    return true;
+  },
+
+  replaceWorkerPersona: (workerId, persona) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w => {
+        if (w.id !== workerId) return w;
+        return {
+          ...w,
+          persona,
+          agent_id: undefined,
+          // Reset execution state — new persona, fresh run.
+          status: 'pending',
+          stream_text: '',
+          result: null,
+          error: null,
+          approved: null,
+          completion_note: null,
+          started_at: null,
+          completed_at: null,
+          ai_preliminary: null,
+          validation_score: undefined,
+          validation_feedback: undefined,
+          validation_passed: undefined,
+          retry_count: undefined,
+        };
+      }),
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  updateGroupTask: (taskGroupId, newText) => {
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      workers: s.workers.map(w =>
+        (w.task_group_id || w.id) === taskGroupId ? { ...w, task: trimmed } : w,
+      ),
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
   allWorkersDone: () => {
     const session = get().currentSession();
     if (!session || session.workers.length === 0) return true;
@@ -898,6 +1055,10 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
           persona: w.persona?.name ?? null,
           agentName: agent?.name ?? w.persona?.name ?? null,
           agentRole: agent?.role ?? w.persona?.role ?? null,
+          // Surface group id so callers can sort/group same-task results
+          // before sending to the mix prompt. Falls back to worker.id for
+          // legacy sessions (each worker = its own singleton group).
+          taskGroupId: w.task_group_id || w.id,
         };
 
         if (w.status === 'done' && w.result) {
