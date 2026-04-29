@@ -78,16 +78,16 @@ Decision table:
 
 Run sequentially:
 1. `/overture:clarify --no-minimal` (until ready for mix, or max rounds). The `--no-minimal` flag suppresses Step 6a auto-collapse — `--full` is an explicit user override.
-2. `/overture:team` (on the snapshot's execution_plan)
-3. `/overture:boss` (unless `--no-boss`)
-4. `/overture:chart` (final — show scaffold + tree)
+2. `/overture:team --invoked-via-sail` (on the snapshot's execution_plan). The `--invoked-via-sail` flag tells team to suppress its own verbose Step 11 print block; sail's Step 7 will render the consolidated card.
+3. `/overture:boss --invoked-via-sail` (unless `--no-boss`). Same flag — suppresses boss's verbose narration; sail Step 7 surfaces approval_condition + top critical concern only.
+4. **Step 7 — final decision card** (see below).
 
 Clarify still computes `decision_density` (for telemetry/logging in meta.json) but Step 5 emits the regular scaffold instead of MinimalScaffold.
 
-Between skills, report brief transition to user:
-> "Clarify done. Deploying team..."
-> "Team done ({{N}} agents). Running boss review..."
-> "Boss review done. Final scaffold below."
+Between skills, report ONE-line transition to user (terse — verbose narration was the legacy boss-of-friction problem):
+> "✓ Clarify · 팀 배치 중..."
+> "✓ Team ({{N}} agents) · Boss({{mbti}}) 검토 중..."
+> "✓ Boss · 결정 카드 ↓"
 
 ### Step 5 — `--quick` mode
 
@@ -136,24 +136,111 @@ If `stakes_confidence >= 75`: skip directly to Step 6c without asking — clarif
 
 #### Step 6c — Standard routing (medium/high density, stakes locked)
 
-- If snapshot has clear `execution_plan` and stakes is important/critical → offer to proceed to team.
-- If stakes is routine but density wasn't low (e.g. routine but irreversible signal, or routine with framing_confidence<80) → offer quick scaffold.
+**Auto-proceed when confidence is high.** This is the convenience layer: if clarify produced strong signals, do not stop the user with a 3-option AskUserQuestion. They typed `/overture:sail` because they want a decision, not a routing dialog.
+
+Decision matrix:
+
+| stakes (locked) | stakes_confidence | density | Auto-action | User asked? |
+|---|---|---|---|---|
+| `critical` | ≥ 80 | medium/high | run team → boss → final card | No (just one-line "auto-proceeding" notice) |
+| `important` | ≥ 80 | medium/high | run team → boss → final card | No (one-line notice) |
+| `routine` | ≥ 80 | medium (non-low) | run quick scaffold (clarify --no-minimal already done in Step 6 path; emit final card on snapshot only) | No |
+| any | 75–79 | medium/high | ask once: 3 options below | Yes |
+| any | < 75 | any | should have been caught by Step 6b | n/a |
+
+**Auto-action notice (when skipping the prompt):** print one line in config.locale before chaining.
+- ko: "자동 진행 — `{{stakes}}` ({{confidence}}/100). 팀 배치 후 boss 검토 + 최종 카드까지 이어갑니다. (멈추려면 Ctrl-C)"
+- en: "Auto-proceeding — `{{stakes}}` ({{confidence}}/100). Chaining team → boss → final card. (Ctrl-C to halt)"
+
+**When asking is necessary (75–79 borderline):**
 
 Use AskUserQuestion:
 - Title: "다음 단계"
-- Question: "어떻게 진행할까요?"
-- Options: "팀 배치 (3-5 에이전트)", "빠른 스캐폴드만 (에이전트 없이)", "일단 멈추자 — 더 생각해볼게"
+- Question: "stakes={{stakes}} (confidence {{confidence}}/100) — 어떻게 진행할까요?"
+- Options: "전부 자동 진행 (team → boss → 최종)", "팀까지만, boss 생략", "빠른 스캐폴드만 (에이전트 없이)", "일단 멈추자 — 더 생각해볼게"
+
+Why these 4 options (not the legacy 3): "전부 자동 진행" is the new default. "boss 생략" is a one-shot equivalent of `--no-boss`. The other two are unchanged.
+
+**After Step 6c picks a path (auto or asked):**
+- "전부 자동 진행" → invoke `/overture:team`, then (unless `--no-boss` or boss-skip selected) `/overture:boss`, then **Step 7 final card**.
+- "팀까지만" → `/overture:team` only, then Step 7.
+- "빠른 스캐폴드만" → already have clarify regular scaffold; jump to Step 7.
+- "일단 멈추자" → write a stub `versions/{label}/meta.json` `{phase_at_pause: "conversing"}`. Print "/overture:sail --resume {{session.id}} 으로 이어가세요." Exit.
+
+### Step 7 — Final decision card (consolidated one-screen output)
+
+After clarify (and team and/or boss if they ran), sail emits ONE consolidated view. The user should NOT have to read JSON files in `versions/{label}/` to know what was decided. Per locale.
+
+#### Source data
+
+Read the latest `versions/{label}/`:
+- `analysis.json` → `reframed_question`, `framing_confidence`
+- `minimal_scaffold.json` (if exists) → `recommendation`, `one_check`, `caveat_if_signal_appears`
+- `scaffold.json` (FinalScaffold, if team ran) → `key_trade_offs[0]`, `team_contradictions[]`, `hidden_assumptions[]` (filter doubtful), `human_required_checkpoints[]`, `next_actions[0..1]`
+- `boss_feedback.json` (if boss ran) → `approval_condition`, top critical concern (if any)
+
+#### Render — minimal mode (decision_density == "low")
+
+```
+## Overture · {{session_id}}
+
+**결정:** {{minimal_scaffold.recommendation}}
+**확인 1개 (5분):** {{minimal_scaffold.one_check}}
+{{if caveat_if_signal_appears}}**조심:** {{caveat_if_signal_appears}}{{endif}}
+
+📁 .overture/sessions/{{session_id}}/versions/{{label}}/   ·   재시도: `/overture:sail --full "..."`
+```
+
+#### Render — full mode (team and/or boss ran)
+
+```
+## Overture · {{session_id}} · {{label}}
+
+**질문:** {{reframed_question}}
+
+{{if boss_feedback exists}}
+**Boss({{boss.mbti}}) 결론:** {{boss_feedback.approval_condition}}
+{{else}}
+**팀 권장:** {{next_actions[0].action}}
+{{endif}}
+
+**우선 행동 (이번 주):** {{next_actions[0].action}}{{if next_actions[1]}} · {{next_actions[1].action}}{{endif}}
+
+{{if team_contradictions length > 0}}
+**⚠ 미해결 갈등 ({{team_contradictions.length}}건):** {{team_contradictions[0].topic}} {{if team_contradictions.length > 1}}외 {{team_contradictions.length - 1}}건{{endif}}
+{{endif}}
+
+{{if hidden_assumptions filter doubtful length > 0}}
+**⚠ 의심 가정 ({{N}}건):** {{first.assumption}}{{if N > 1}} 외 {{N-1}}건{{endif}}
+{{endif}}
+
+{{if human_required_checkpoints length > 0}}
+**👤 사용자 작업 ({{N}}건):** {{first.checkpoint}}
+{{endif}}
+
+{{if boss_feedback critical concerns}}
+**🛑 Boss critical 우려:** {{first critical concern}}
+{{endif}}
+
+📁 `.overture/sessions/{{session_id}}/versions/{{label}}/`
+🗺  전체 트리: `/overture:chart`
+```
+
+Target length: 12–18 lines. The user should be able to read it in one screen.
+
+The full JSON files remain in `versions/{label}/` for chart and revise to consume. The card is the SUMMARY — anyone wanting more depth opens the files. This is the "한 화면 결정 카드" the user actually consumes.
+
+---
+
+### Boss skip handling
+
+`--no-boss` flag (sail) OR `boss = null` in config.yaml OR user picked "팀까지만, boss 생략" in Step 6c → skip boss step. Step 7 still emits the card; just without the boss line. `boss_feedback.json` is not produced.
 
 ---
 
 ## Output
 
-Final message from orchestrator should summarize:
-- Session id + path
-- Version label of result
-- Key findings (1-2 sentences from mix.executive_summary)
-- Any unresolved contradictions
-- Suggested next step
+Sail's final output is **always** the Step 7 decision card — minimal-mode card if `decision_density == "low"`, full-mode card otherwise. No JSON dumps, no path-only summaries. The card is the consumable artifact; the JSON files in `versions/{label}/` are inspectable by `/overture:chart` when the user wants depth.
 
 ---
 
@@ -176,6 +263,8 @@ Final message from orchestrator should summarize:
 ## Forbidden patterns
 
 - Running `/overture:team` before `/overture:clarify`. The whole pipeline is invalidated.
-- Skipping `/overture:boss` silently when user didn't pass `--no-boss`. Boss is default unless explicitly skipped.
+- Skipping `/overture:boss` silently when user didn't pass `--no-boss` AND boss is configured. Boss is default unless explicitly skipped or unconfigured.
 - Collapsing the pipeline into a single monolithic prompt "to save time." The pipeline IS the product.
 - Renaming sessions or modifying existing versions — orchestrator only creates new sessions or advances phases.
+- **Asking the user "어떻게 진행할까요?" when stakes_confidence ≥ 80** — this is the friction that made the plugin feel ceremonious. Auto-proceed and inform with one line. (Step 6c table is the spec — follow it.)
+- **Letting team or boss print their full Step 11 / Step output blocks when invoked via sail.** The `--invoked-via-sail` flag must suppress that; sail Step 7 owns the user-visible final view. Otherwise the user sees the same content rendered twice (team print + sail card), which is exactly the verbose pattern we removed.

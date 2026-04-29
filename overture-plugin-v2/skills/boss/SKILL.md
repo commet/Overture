@@ -29,6 +29,7 @@ Refuse when:
 - **Session ID** (optional): defaults to latest.
 - **Mode** (optional): `--quick` (default, ~150 words) or `--deep` (~400 words with would_ask + failure_scenario + untested_assumptions).
 - **Boss override** (optional): `--mbti INTJ` — use a specific MBTI for this run without changing config.
+- **Sail-invocation flag** (optional): `--invoked-via-sail` — suppress the boss's verbose narration print at the end. JSON file (`boss_feedback.json`) is still written; sail's Step 7 will surface `approval_condition` + top critical concern in the consolidated decision card.
 
 ---
 
@@ -224,6 +225,22 @@ If boss output contains explicit new requirements that don't fit any of these th
 - Update `updated_at`
 
 ### Step 10 — Report to user
+
+**Branch on `--invoked-via-sail`.**
+
+#### Step 10a — `--invoked-via-sail` set → minimal one-line ack
+
+Sail Step 7 will compose the consolidated card with `approval_condition` + the highest-severity concern. Boss only emits a transition line:
+
+```
+✓ Boss({{mbti_code}}) done — {{N_concerns}} concerns ({{N_critical}} critical) · approval: {{approval_condition[:60]}}...
+```
+
+Full JSON in `versions/{label}/boss_feedback.json` for sail to read.
+
+#### Step 10b — Direct invocation → full narrated report
+
+User typed `/overture:boss` directly. Render the boss's voice in full:
 
 ```
 ## Overture · Boss · {{mbti_code}} {{emoji}}

@@ -31,6 +31,7 @@ Refuse to run when:
 - **Session ID** (optional): from `--session <id>`. Defaults to most recently modified session in `.overture/sessions/`.
 - **Force flag** (optional): `--force` skips the analysis_readiness check.
 - **Override agents** (optional): `--agents sujin,donghyuk,jieun` — bypass automatic selection. Use sparingly; classification is usually better.
+- **Sail-invocation flag** (optional): `--invoked-via-sail` — suppress Step 11 verbose print block. JSON files are still written; sail's Step 7 will compose the consolidated decision card from them. Use this to avoid double-rendering when sail orchestrates the chain.
 
 ---
 
@@ -391,6 +392,22 @@ Write to `versions/{label}/scaffold.json`.
 - Update `updated_at`
 
 ### Step 11 — Report to user
+
+**Branch on `--invoked-via-sail`.**
+
+#### Step 11a — `--invoked-via-sail` set → minimal one-line ack
+
+Sail's Step 7 will render the consolidated decision card. Team only emits a transition line so the user sees that team is done:
+
+```
+✓ Team done — {{N}} agents · {{stakes}} · {{contradictions_count}} contradictions preserved
+```
+
+That's it. No print of contradictions/assumptions/checkpoints (sail Step 7 surfaces them). JSON files in `versions/{label}/` are still written — sail reads them.
+
+#### Step 11b — Direct invocation (no `--invoked-via-sail`) → full report
+
+User typed `/overture:team` directly without going through sail. Render the full block:
 
 ```
 ## Overture · Team · {{label}}
