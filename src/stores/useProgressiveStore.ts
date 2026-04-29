@@ -30,7 +30,26 @@ import type {
   WorkerDeployPhase,
   LeadSynthesisResult,
   Draft,
+  VoyageCheckpoint,
+  VoyageStage,
+  VoyageCheckpointState,
 } from '@/stores/types';
+
+/** Auto-generated label per stage. Locale-aware fallback when callers
+ *  don't provide their own. */
+function defaultCheckpointLabel(stage: VoyageStage, round: number): string {
+  const lang = getCurrentLanguage();
+  const ko = lang === 'ko';
+  switch (stage) {
+    case 'origin':     return ko ? '출발' : 'Origin';
+    case 'briefing':   return ko ? `항해 준비 ${round}` : `Briefing ${round}`;
+    case 'crew_set':   return ko ? '선원 배정' : 'Crew assigned';
+    case 'crew_done':  return ko ? '선원 작업 완료' : 'Crew done';
+    case 'mix':        return ko ? '항해 보고서' : 'Mix';
+    case 'review':     return ko ? '리뷰어 검토' : 'Review';
+    case 'anchor':     return ko ? '정박' : 'Anchor';
+  }
+}
 
 /**
  * Args for `addDraft` — the internal id/label/created_at are computed by the
@@ -115,6 +134,17 @@ interface ProgressiveState {
    *  task_group_id receive the same updated task string. Empty/whitespace-only
    *  input is ignored. */
   updateGroupTask: (taskGroupId: string, newText: string) => void;
+
+  // ─── Voyage chart (decision checkpoints) ───
+  /** Record a checkpoint at the current state. Called automatically at
+   *  each stage transition. Returns the new checkpoint, or null if no
+   *  active session. */
+  recordCheckpoint: (stage: VoyageStage, label?: string) => VoyageCheckpoint | null;
+  /** Rewind to a checkpoint: replaces the live session fields with that
+   *  waypoint's snapshot and moves active_checkpoint_id to it. The next
+   *  recordCheckpoint() call will then attach to it as parent — producing
+   *  a fresh branch automatically. */
+  restoreCheckpoint: (checkpointId: string) => void;
   /** @deprecated Use mixableWorkerResults instead */
   approvedWorkerResults: () => Array<{ task: string; result: string; type?: string; persona: string | null; agentName: string | null; agentRole: string | null }>;
   mixableWorkerResults: () => Array<{ workerId: string; task: string; result: string; type: 'final' | 'preliminary' | 'pending_human'; persona: string | null; agentName: string | null; agentRole: string | null; taskGroupId: string }>;
@@ -1016,6 +1046,84 @@ export const useProgressiveStore = create<ProgressiveState>((set, get) => ({
       workers: s.workers.map(w =>
         (w.task_group_id || w.id) === taskGroupId ? { ...w, task: trimmed } : w,
       ),
+    }));
+    persist(sessions);
+    set({ sessions });
+  },
+
+  // ─── Voyage chart ───
+
+  recordCheckpoint: (stage, label) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return null;
+    const session = get().currentSession();
+    if (!session) return null;
+
+    // Avoid duplicate origin: if this is the very first checkpoint and
+    // the session has nothing meaningful yet, still record it — that's
+    // the rewindable "before anything happened" state.
+    const state_snapshot: VoyageCheckpointState = {
+      phase: session.phase,
+      round: session.round,
+      questions: session.questions.slice(),
+      answers: session.answers.slice(),
+      snapshots: session.snapshots.slice(),
+      workers: session.workers.slice(),
+      worker_deploy_phase: session.worker_deploy_phase,
+      mix: session.mix,
+      dm_feedback: session.dm_feedback,
+      final_deliverable: session.final_deliverable,
+      final_mix: session.final_mix ?? null,
+      user_notes: session.user_notes ?? null,
+      decision_maker: session.decision_maker,
+      lead_synthesis: session.lead_synthesis ?? null,
+    };
+
+    const checkpoint: VoyageCheckpoint = {
+      id: generateId(),
+      parent_id: session.active_checkpoint_id ?? null,
+      stage,
+      label: label || defaultCheckpointLabel(stage, session.round),
+      created_at: new Date().toISOString(),
+      state_snapshot,
+    };
+
+    const sessions = updateSession(get().sessions, currentSessionId, (s) => ({
+      checkpoints: [...(s.checkpoints || []), checkpoint],
+      active_checkpoint_id: checkpoint.id,
+    }));
+    persist(sessions);
+    set({ sessions });
+    return checkpoint;
+  },
+
+  restoreCheckpoint: (checkpointId) => {
+    const { currentSessionId } = get();
+    if (!currentSessionId) return;
+    const session = get().currentSession();
+    if (!session) return;
+    const target = (session.checkpoints || []).find(c => c.id === checkpointId);
+    if (!target) return;
+    // Replace live fields with the snapshot. The checkpoint itself stays
+    // intact in the array — the previous branch is preserved as siblings
+    // of any future checkpoint that gets recorded after the fork.
+    const snap = target.state_snapshot;
+    const sessions = updateSession(get().sessions, currentSessionId, () => ({
+      phase: snap.phase,
+      round: snap.round,
+      questions: snap.questions,
+      answers: snap.answers,
+      snapshots: snap.snapshots,
+      workers: snap.workers,
+      worker_deploy_phase: snap.worker_deploy_phase,
+      mix: snap.mix,
+      dm_feedback: snap.dm_feedback,
+      final_deliverable: snap.final_deliverable,
+      final_mix: snap.final_mix,
+      user_notes: snap.user_notes,
+      decision_maker: snap.decision_maker,
+      lead_synthesis: snap.lead_synthesis,
+      active_checkpoint_id: checkpointId,
     }));
     persist(sessions);
     set({ sessions });

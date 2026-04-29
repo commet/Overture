@@ -13,6 +13,7 @@ import { SynthesizeStep } from '@/components/workspace/SynthesizeStep';
 import { ProgressiveFlow } from '@/components/workspace/progressive/ProgressiveFlow';
 import { WorkerDrawer, useWorkers } from '@/components/workspace/progressive/WorkerPanel';
 import { AgentSidebar } from '@/components/workspace/progressive/AgentSidebar';
+import { VoyageChart } from '@/components/workspace/progressive/VoyageChart';
 import { QuickChatBar } from '@/components/workspace/QuickChatBar';
 import { ConcertmasterStrip } from '@/components/workspace/ConcertmasterStrip';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -88,6 +89,13 @@ function ProgressiveLayout({ projectId, projectName, onReset }: { projectId: str
           {hasWorkers && (
             <div className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-120px)] overflow-y-auto border-l border-[var(--border-subtle)]/50">
               <AgentSidebar />
+              {/* Voyage chart — sits beneath the agent sidebar so it's
+                  always within reach but doesn't displace the live worker
+                  view. Hidden on mobile in v1; will get a drawer tab in
+                  a follow-up. */}
+              <div className="px-4 pb-6 mt-4">
+                <VoyageChart />
+              </div>
             </div>
           )}
         </div>
@@ -107,7 +115,7 @@ type HeroPhase = 'idle' | 'assembling' | 'analyzing' | 'ready';
 
 function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: {
   onReady: (projectId: string) => void;
-  projects: Array<{ id: string; name: string }>;
+  projects: Array<{ id: string; name: string; updated_at?: string; created_at?: string }>;
   user: unknown;
   reviewerAgentId?: string;
   initialProblem?: string;
@@ -267,14 +275,22 @@ function HeroFlow({ onReady, projects, user, reviewerAgentId, initialProblem }: 
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, ease: EASE }}>
 
-              {/* Returning user: previous projects — compact rows */}
+              {/* Returning user: previous projects — compact rows.
+                  Show 3 most recently updated projects (fall back to created_at when missing). */}
               {projects.length > 0 && (
                 <div className="mb-6">
                   <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] font-semibold mb-2">
                     {L('이어서 작업', 'Continue')}
                   </p>
                   <div className="space-y-1">
-                    {projects.slice(0, 3).map((p) => (
+                    {[...projects]
+                      .sort((a, b) => {
+                        const aT = a.updated_at || a.created_at || '';
+                        const bT = b.updated_at || b.created_at || '';
+                        return bT.localeCompare(aT);
+                      })
+                      .slice(0, 3)
+                      .map((p) => (
                       <button key={p.id} onClick={() => onReady(p.id)}
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 md:py-2 min-h-[44px] md:min-h-0 rounded-lg hover:bg-[var(--surface)] hover:shadow-[var(--shadow-sm)] cursor-pointer transition-all group">
                         <FolderOpen size={12} className="text-[var(--accent)] shrink-0" />

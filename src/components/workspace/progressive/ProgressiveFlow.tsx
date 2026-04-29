@@ -1834,6 +1834,19 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     };
   }, []);
 
+  // Auto-create the origin checkpoint on first mount of an active session
+  // that has at least an initial snapshot but no checkpoints yet. Lets
+  // legacy (pre-checkpoint) sessions populate naturally as the user
+  // continues — and gives new sessions an "origin" rewind target.
+  useEffect(() => {
+    if (!session) return;
+    if ((session.checkpoints || []).length > 0) return;
+    if (session.snapshots.length === 0) return;
+    store.recordCheckpoint('origin');
+    // Single fire per session — guarded by checkpoints.length === 0.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.snapshots.length]);
+
   // Supabase Realtime: subscribe to session updates (human agent responses)
   useEffect(() => {
     if (!session?.id) return;
@@ -2000,8 +2013,10 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     if (sawWorkingRef.current && !workersPingedRef.current) {
       workersPingedRef.current = true;
       useAgentAttentionStore.getState().ping('workers_done');
+      // Voyage chart — workers all reached terminal state.
+      store.recordCheckpoint('crew_done');
     }
-  }, [workers, deployPhase]);
+  }, [workers, deployPhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session) return null;
 
@@ -2067,6 +2082,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
     if (deployPhase === 'deployed') return;
     const preDeployWorkers = store.currentSession()?.workers ?? [];
     if (preDeployWorkers.length === 0) return;
+    // Voyage chart — capture crew composition right before they set off,
+    // so the user can rewind to "before deploy" and try a different team.
+    store.recordCheckpoint('crew_set');
     store.deployWorkers();
     useAgentAttentionStore.getState().ping('deploy');
     const ws = store.currentSession()?.workers ?? [];
@@ -2211,6 +2229,10 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
         store.addQuestion(r.question); store.setPhase('conversing');
         scrollToRef(questionRef);
       }
+      // Voyage chart checkpoint — captures the post-answer state. Recorded
+      // after addSnapshot/addQuestion so the snapshot reflects the user's
+      // most recent answer.
+      store.recordCheckpoint('briefing');
     } catch (e) { setStreamingText(null); if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : L('분석 실패', 'Analysis failed')); store.setPhase('conversing'); scrollToRef(statusBarRef); }
     finally { setBusy(false); abortRef.current = null; }
   };
@@ -2356,6 +2378,9 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       // Lead가 Mix보다 늦게 끝났으면 비동기로 저장 (Mix에는 미포함이지만 UI에는 표시)
       if (!leadSynthesis) leadPromise.then(late => { if (late) store.setLeadSynthesis(late); });
       store.setMix(m); setShowMix(false); track('flow_mix', { rounds: round, has_lead: !!leadSynthesis });
+      // Voyage chart — mix landed; user can rewind here to try a different
+      // mix (e.g., add user_notes and re-run).
+      store.recordCheckpoint('mix');
 
       // Phase 6: Boss reviewer가 있으면 자동 DM 피드백
       let autoDMFired = false;
@@ -2368,6 +2393,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
           const f = await runBossDMFeedback(m, reviewerAgent, session.problem_text, abortRef.current.signal, 'quick', (text) => setStreamingText(text));
           setStreamingText(null);
           store.setDMFeedback(f);
+          store.recordCheckpoint('review');
           autoDMFired = true;
           import('@/lib/observation-engine').then(({ onBossReviewCompleted }) => {
             onBossReviewCompleted(reviewerAgent.id, f);
@@ -2411,6 +2437,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       setStreamingText(null);
       store.setDMFeedback(f);
+      store.recordCheckpoint('review');
       useAgentAttentionStore.getState().ping('dm_ready');
       scrollToRef(dmFeedbackRef, 'bottom');
 
@@ -2444,6 +2471,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
 
       setStreamingText(null);
       store.setDMFeedback(f);
+      store.recordCheckpoint('review', L('심화 검토', 'Deep review'));
       useAgentAttentionStore.getState().ping('dm_ready');
       scrollToRef(dmFeedbackRef, 'bottom');
       track('flow_deepen', { has_boss: !!reviewerAgent });
@@ -2489,6 +2517,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       ...(mix.next_steps.length ? [`## ${L('다음 단계', 'Next Steps')}`, '', ...mix.next_steps.map(s => `- ${s}`), ''] : [])].join('\n');
     // Skip keeps the original mix intact → attribution survives for FinalCard.
     store.setFinalDeliverable(md, mix);
+    store.recordCheckpoint('anchor', L('정박 (피드백 건너뜀)', 'Anchor (skipped review)'));
     setError(null);
     useAgentAttentionStore.getState().ping('final_done');
     scrollToRef(finalRef, 'top');
@@ -2509,6 +2538,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
       const { markdown, finalMix } = await runFinalDeliverable(mix, dmFb, abortRef.current.signal, workerSources, (text) => setStreamingText(text));
       setStreamingText(null);
       store.setFinalDeliverable(markdown, finalMix);
+      store.recordCheckpoint('anchor');
       useAgentAttentionStore.getState().ping('final_done');
       scrollToRef(finalRef, 'top');
       track('flow_done', { project_id: projectId, rounds: round });

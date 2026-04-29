@@ -858,6 +858,69 @@ export interface PipelineStage {
 // Workers 배치 단계
 export type WorkerDeployPhase = 'none' | 'ready' | 'deployed';
 
+// ─── Voyage Chart — decision checkpoints ───
+
+/**
+ * Stage of the voyage at which a checkpoint was captured. Each transition
+ * between stages auto-records a checkpoint so users can step back later.
+ *
+ *   origin     — session start (initial analysis just landed)
+ *   briefing   — after each Q&A round; the team's understanding sharpens
+ *   crew_set   — team has been assembled, awaiting deploy
+ *   crew_done  — every worker reached a terminal state
+ *   mix        — the draft is assembled
+ *   review     — DM/reviewer feedback received
+ *   anchor     — final deliverable produced (voyage end)
+ */
+export type VoyageStage =
+  | 'origin'
+  | 'briefing'
+  | 'crew_set'
+  | 'crew_done'
+  | 'mix'
+  | 'review'
+  | 'anchor';
+
+/**
+ * Full snapshot of session state at the moment a checkpoint was recorded.
+ * Restoring a checkpoint replaces the live session fields with these
+ * values; the snapshot is therefore the "rewind tape" for the voyage.
+ *
+ * Stored as a complete copy (not a delta) per design decision — keeps
+ * the implementation simple and avoids cascading corruption when the
+ * data model evolves. Sessions are small enough that the storage cost
+ * is acceptable for v1.
+ */
+export interface VoyageCheckpointState {
+  phase: ProgressivePhase;
+  round: number;
+  questions: FlowQuestion[];
+  answers: FlowAnswer[];
+  snapshots: AnalysisSnapshot[];
+  workers: WorkerTask[];
+  worker_deploy_phase: WorkerDeployPhase;
+  mix: MixResult | null;
+  dm_feedback: DMFeedbackResult | null;
+  final_deliverable: string | null;
+  final_mix: MixResult | null;
+  user_notes: string | null;
+  decision_maker: string | null;
+  lead_synthesis: LeadSynthesisResult | null;
+}
+
+export interface VoyageCheckpoint {
+  id: string;
+  /** Tree linkage: parent waypoint on the same branch. null only for the
+   *  origin checkpoint. */
+  parent_id: string | null;
+  stage: VoyageStage;
+  /** Human-readable label for the chart UI. Auto-generated from stage +
+   *  round, but callers may override (e.g. "다른 답으로 분기"). */
+  label: string;
+  created_at: string;
+  state_snapshot: VoyageCheckpointState;
+}
+
 // ── Unified Review types (shared by web app + plugin) ──
 
 export interface ReviewConcern {
@@ -991,6 +1054,22 @@ export interface ProgressiveSession {
   active_draft_id?: string | null;
   /** Draft marked as the released v1.0+. Used by ShareBar/export preference. */
   released_draft_id?: string | null;
+
+  // ─── Voyage chart (pre-anchor decision checkpoints) ───
+  /**
+   * Tree of decision checkpoints captured at every stage transition. Lets
+   * users walk back to any waypoint and pick a different course; the old
+   * route is preserved as a sibling branch. Distinct from `drafts` (which
+   * tracks the post-anchor final-doc iteration tree) — checkpoints span
+   * the entire voyage from origin to anchor.
+   * Optional + backward-compat: legacy sessions default to empty array.
+   */
+  checkpoints?: VoyageCheckpoint[];
+  /** Latest waypoint on the active branch. New checkpoints attach here as
+   *  parent. When the user forks, this pointer moves to the chosen
+   *  ancestor — subsequent recordCheckpoint calls naturally produce a
+   *  new branch off that point. */
+  active_checkpoint_id?: string | null;
 
   // Boss/Reviewer 연결
   reviewer_agent_id?: string;   // Boss agent가 DM 리뷰어로 연결
