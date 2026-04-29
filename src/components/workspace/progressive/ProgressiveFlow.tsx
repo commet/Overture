@@ -42,7 +42,7 @@ import { WorkerAvatar, AvatarRow } from './WorkerAvatar';
 import { useWorkerActions } from '@/hooks/useWorkerActions';
 import { useWorkerContext, useWorkers } from './WorkerPanel';
 import { useStaggeredReveal } from '@/hooks/useStaggeredReveal';
-import { ChevronRight, ChevronDown, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2, Plus, Brain, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, Loader2, Check, AlertTriangle, Sparkles, UserCheck, ArrowRight, History, GitBranch, X as XIcon, Wand2, Plus, Brain, Pencil, Compass, Navigation } from 'lucide-react';
 import { getAgentStats, getSessionDeltas } from '@/lib/agent-stats';
 import { useLocale } from '@/hooks/useLocale';
 import { t } from '@/lib/i18n';
@@ -715,7 +715,7 @@ function FinalCard({
             </div>
             <ShareBar
               getText={() => copyTarget}
-              getTitle={() => mix?.title || L('Overture 기획안', 'Overture Document')}
+              getTitle={() => mix?.title || L('Argus 기획안', 'Argus Document')}
               copyLabel={copyLabel}
             />
           </div>
@@ -1464,6 +1464,61 @@ function TeamDeployBanner({
  *  돌아보기 — 셋 중 명확히 결정하게 한다. 사용자 피드백: "과거에 내린
  *  '선택'에 대해서도 다시 뒤로 돌아가서 다시 선택하고 싶어하는 사람들이
  *  많았다"는 점을 받아 "돌아보기" CTA를 명시적으로 노출. */
+/**
+ * Compass rose used as a subtle watermark in VoyagePrepSummary. Inline
+ * SVG kept here so we don't ship an asset for what is decorative trim.
+ * Renders at very low opacity — present in peripheral vision, not
+ * competing with content.
+ */
+function CompassRose({ size = 96 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="50" cy="50" r="42" strokeWidth="0.6" />
+      <circle cx="50" cy="50" r="30" strokeWidth="0.5" />
+      <circle cx="50" cy="50" r="2.4" fill="currentColor" stroke="none" />
+      {/* Cardinal axes */}
+      <line x1="50" y1="6" x2="50" y2="94" strokeWidth="0.6" />
+      <line x1="6" y1="50" x2="94" y2="50" strokeWidth="0.6" />
+      {/* Diagonal axes (shorter) */}
+      <line x1="20" y1="20" x2="80" y2="80" strokeWidth="0.4" />
+      <line x1="80" y1="20" x2="20" y2="80" strokeWidth="0.4" />
+      {/* North fleur */}
+      <path d="M50 14 L46 50 L50 44 L54 50 Z" strokeWidth="0.6" />
+      {/* Cardinal letters */}
+      <text x="50" y="11" fontSize="6.5" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="700">N</text>
+      <text x="92" y="52" fontSize="5" textAnchor="middle" fill="currentColor" stroke="none">E</text>
+      <text x="50" y="97" fontSize="5" textAnchor="middle" fill="currentColor" stroke="none">S</text>
+      <text x="8" y="52" fontSize="5" textAnchor="middle" fill="currentColor" stroke="none">W</text>
+    </svg>
+  );
+}
+
+/**
+ * Wave divider — soft sine-curve line to break sections inside the
+ * voyage card without using a hard rule. Pure decoration.
+ */
+function WaveDivider({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 200 8" className={className} preserveAspectRatio="none" fill="none" aria-hidden>
+      <path
+        d="M0 4 Q 12.5 0, 25 4 T 50 4 T 75 4 T 100 4 T 125 4 T 150 4 T 175 4 T 200 4"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function VoyagePrepSummary({
   snapshot, onMix, onMore, onRevisit, busy,
 }: {
@@ -1483,53 +1538,86 @@ function VoyagePrepSummary({
       transition={{ duration: 0.7, ease: EASE }}
       className="my-2"
     >
-      {/* Stage marker — visual break between Q&A loop and crew assembly. */}
-      <div className="flex items-center gap-3 mb-4 px-1">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-[var(--accent)]/30" />
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] flex items-center gap-1.5">
+      {/* Stage marker — dashed route line "departure ⚓ destination".
+          The two endpoints (filled dot ↔ Navigation arrow) read as a
+          map waypoint annotation. */}
+      <div className="flex items-center gap-2.5 mb-4 px-1">
+        <div className="w-2 h-2 rounded-full bg-[var(--accent)]/45 shrink-0" />
+        <div className="flex-1 border-t border-dashed border-[var(--accent)]/30" />
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] flex items-center gap-1.5 shrink-0">
           <span>⚓</span>
           {L('항해 준비 완료', 'Ready to sail')}
         </div>
-        <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[var(--accent)]/30 to-[var(--accent)]/30" />
+        <div className="flex-1 border-t border-dashed border-[var(--accent)]/30" />
+        <Navigation size={11} className="text-[var(--accent)]/65 shrink-0 -rotate-12" />
       </div>
 
-      <div className="rounded-2xl md:rounded-[2rem] p-[1.5px] bg-gradient-to-b from-[var(--accent)]/30 via-[var(--accent)]/10 to-transparent shadow-[var(--shadow-md)]">
-        <div className="rounded-[calc(1rem-1.5px)] md:rounded-[calc(2rem-1.5px)] bg-[var(--surface)]">
-          <div className="p-6 md:p-8">
-            <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight mb-5"
+      {/* Card with subtle nautical chrome — gradient border, compass-rose
+          watermark, wave divider. Decoration sits at low opacity so the
+          content stays legible. */}
+      <div className="relative rounded-2xl md:rounded-[2rem] p-[1.5px] bg-gradient-to-b from-[var(--accent)]/35 via-[var(--accent)]/12 to-transparent shadow-[var(--shadow-md)]">
+        <div className="relative rounded-[calc(1rem-1.5px)] md:rounded-[calc(2rem-1.5px)] bg-[var(--surface)] overflow-hidden">
+          {/* Compass rose watermark — top-right corner, subtle. */}
+          <div className="absolute top-3 right-3 md:top-5 md:right-5 text-[var(--accent)] opacity-[0.07] pointer-events-none select-none">
+            <CompassRose size={108} />
+          </div>
+          {/* Bearing micro-coordinate — small detail nodding to nautical
+              charts. Pure flavor; no functional meaning. */}
+          <div className="absolute top-4 right-4 md:top-6 md:right-7 text-[9px] tracking-[0.18em] uppercase text-[var(--accent)]/55 font-mono pointer-events-none select-none">
+            N · 새 항로
+          </div>
+
+          <div className="relative p-6 md:p-8">
+            <h2 className="text-[20px] md:text-[24px] font-bold text-[var(--text-primary)] leading-[1.3] tracking-tight mb-5 pr-20"
               style={{ fontFamily: 'var(--font-display)' }}>
               {L('이 방향으로 출항해도 될까요?', 'Set sail in this direction?')}
             </h2>
 
-            {/* Direction summary — single focal sentence + (optional) one
-                key assumption. Compact on purpose: this is a decision
-                point, not a re-read. The full analysis lives in the
-                AnalysisCard above (still expandable). */}
-            <div className="mb-5 pl-4 border-l-[2px] border-[var(--accent)]/40">
-              <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1.5">
-                {L('잡은 항로', 'Course')}
+            {/* Course summary — focal sentence framed with a Compass icon
+                eyebrow. Keeps the metaphor consistent without leaning on
+                emoji. */}
+            <div className="mb-5 pl-4 border-l-[2px] border-[var(--accent)]/45">
+              <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.15em] mb-1.5 flex items-center gap-1.5">
+                <Compass size={11} className="shrink-0" />
+                {L('잡은 항로', 'Course plotted')}
               </div>
               <p className="text-[15px] md:text-[16px] text-[var(--text-primary)] leading-relaxed font-medium">
                 {snapshot.real_question}
               </p>
               {topAssumption && (
-                <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed mt-2.5">
-                  <span className="text-[var(--text-secondary)] font-medium">{L('전제: ', 'Premise: ')}</span>
-                  {topAssumption}
-                </p>
+                <div className="mt-3 pt-2.5 border-t border-dashed border-[var(--border-subtle)]">
+                  <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
+                    <span className="text-[var(--text-secondary)] font-medium">{L('전제 조건  ', 'Premise · ')}</span>
+                    {topAssumption}
+                  </p>
+                </div>
               )}
             </div>
 
-            {/* Primary CTA — set sail. */}
+            {/* Wave divider — section break before CTA. Soft and silent. */}
+            <div className="mb-5 text-[var(--accent)]/25">
+              <WaveDivider className="w-full h-2" />
+            </div>
+
+            {/* Primary CTA — gradient gold, "set sail" with Navigation
+                arrow tilted like a sail. */}
             <motion.button onClick={onMix} disabled={busy} whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-xl text-[15px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer disabled:opacity-50"
+              className="group/sail w-full flex items-center justify-center gap-2.5 px-6 py-4 text-white rounded-xl text-[15px] font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all cursor-pointer disabled:opacity-50"
               style={{ background: 'var(--gradient-gold)' }}>
               {busy
                 ? <><Loader2 size={16} className="animate-spin" /> {L('조합 중...', 'Combining...')}</>
-                : <>{L('이 방향으로 출항', 'Set sail this way')} <ChevronRight size={15} /></>}
+                : (
+                  <>
+                    {L('이 방향으로 출항', 'Set sail this way')}
+                    <Navigation
+                      size={15}
+                      className="-rotate-12 transition-transform duration-500 ease-out group-hover/sail:rotate-0 group-hover/sail:translate-x-0.5"
+                    />
+                  </>
+                )}
             </motion.button>
 
-            {/* Secondary actions — keep them as link-style so the primary
+            {/* Secondary actions — keep them link-style so the primary
                 CTA stays unambiguous. */}
             {!busy && (
               <div className="flex items-center justify-center gap-4 mt-4">
@@ -1996,7 +2084,7 @@ export function ProgressiveFlow({ projectId }: { projectId: string }) {
             const qContext = hw.ai_preliminary ? t('progressive.humanQContext', { ai: hw.ai_preliminary }) : '';
             const body = hw.contact?.channel === 'slack'
               ? { userId: hw.contact.address, title: qTitle, content: `${hw.question_to_human || hw.task}${qContext ? `\n\n${qContext}` : ''}`, sessionId: session.id, workerId: hw.id }
-              : { to: hw.contact!.address, subject: qTitle, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Overture', sessionId: session.id, workerId: hw.id };
+              : { to: hw.contact!.address, subject: qTitle, question: hw.question_to_human || hw.task, context: hw.ai_preliminary || '', senderName: session.decision_maker || 'Argus', sessionId: session.id, workerId: hw.id };
             fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
               .then(r => r.json())
               .then(r => {
