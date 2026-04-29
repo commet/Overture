@@ -1,156 +1,158 @@
 # Overture (Plugin v2)
 
-**Judgment harness for AI.** Decide inside your actual codebase — a team of agents deploys as workers on your real code, PRs, files, or design docs. Output is a **decision scaffold**, not a solution.
+[**English**](./README.md) · [한국어](./README.ko.md)
 
-## What this is (and isn't)
+**Judgment harness for Claude Code.** A team of agents helps you structure decisions inside your actual codebase — not generate code, not review PRs, **decide**.
 
-Overture is NOT:
-- A code generator (use Cursor).
-- An automated code reviewer (use Copilot Review).
-- A "multi-agent AI framework" for you to customize (use CrewAI, LangGraph).
+---
 
-Overture IS:
-- A **pipeline** for structuring a decision — from the initial "what am I even deciding?" to a scaffold with preserved trade-offs, hidden assumptions, team contradictions, and human-required checkpoints.
-- **Code-native** — agents work on your actual files/PRs, not abstract prose.
-- **Version-tree aware** — every decision iteration is a tagged version (`v0.1`, `v0.2`, `v1.0`). Branch freely; return to earlier versions and fork from there.
-- **Stored with your code** — `.overture/sessions/` commits alongside your repo. Teams share decision history via `git`.
+## What you get in one screen
 
-## Installation
+Most decisions are reversible and don't need a 30-minute team review. Type `/overture:sail "your question"` and get this:
+
+```
+## Overture · Minimal · v0.1
+
+Recommendation: Just rename it to '작업실'. Zero user signal = zero downside.
+One check (<5 min): Any support tickets mentioning the old label? 0 = ship it.
+Watch out: If users say "feels off" within 1 week of release, roll back.
+
+─────
+density: low (reversible UI label) · team & boss skipped
+Force full pipeline: /overture:sail --full "..."
+```
+
+That's the entire output for a routine reversible call. **No team. No JSON. ~30 seconds.**
+
+When the question is meatier, you get a 15-line decision card preserving the trade-offs and disagreements that came up. (See § "The other shape" below.)
+
+---
+
+## When to use vs not use
+
+**Good fits**
+- "Should we migrate from Firestore to Supabase?" — multi-stakeholder, hard to undo, you want trade-offs surfaced
+- "Review my PR #42" — code-native, real artifact for agents to work on
+- "Is our auth middleware design wrong?" — needs technical + risk + UX angles together
+- "Boss feature: leave in webapp or absorb into plugin?" — product strategy with frame conflict
+
+**Bad fits (use ChatGPT or just decide)**
+- "What's the syntax for X?" — Cursor or docs are faster
+- "Write me boilerplate for Y" — code generation, not judgment
+- Anything you'd commit before lunch with no team consultation
+- Decisions where you already know the answer and want validation — Overture preserves disagreement; that's not what you want here
+
+---
+
+## Install (30 seconds)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/commet/Overture/main/overture-plugin-v2/install.sh | bash
 ```
 
-Restart Claude Code.
+Restart Claude Code. Then in any repo:
 
-## Quick start
-
-```bash
-# Structure a decision from scratch
-/overture:sail "Should we migrate from Firestore to Supabase?"
-
-# Work through a specific PR
-/overture:sail @PR#42
-
-# Think about a file you're stuck on
-/overture:sail @src/auth/middleware.ts
-
-# See the version tree of your decisions
-/overture:chart
+```
+/overture:sail "Your decision question here"
 ```
 
-Each invocation writes to `.overture/sessions/{id}/versions/v0.1/` etc. Commit these to your repo to share decision history with your team.
+No setup needed. `.overture/config.yaml` auto-creates with sensible defaults (ISTJ stakeholder boss, locale auto-detected from `$LANG`). Edit later if you want a different boss persona.
 
-## The pipeline
+---
 
-`/overture:sail` routes to the right sub-skill based on your intent. The full pipeline:
+## The other shape: full decision card
 
-1. **`/overture:clarify`** — Sharpen the question. Surfaces hidden assumptions, reframes surface request into real question, produces an execution plan.
-2. **`/overture:team`** — Deploy 2–4 agents as WORKERS on the actual artifact. Each produces domain-specific output in their voice. Critical-stakes path runs a two-stage pipeline with explicit debate preservation.
-3. **`/overture:boss`** — Your configured stakeholder (set via MBTI archetype) reviews the scaffold. Returns concerns with severity + fix suggestions.
-4. **`/overture:chart`** — Navigate the version tree. Promote a draft to `v1.0`. Branch from an older version. Switch active draft.
+When clarify decides your question is genuinely meaty (important/critical stakes, multiple frames in tension), sail auto-chains: clarify → 3-4 agents in parallel → boss review → consolidated card. You see brief progress lines between steps, then this:
 
-## The 17-agent team
+```
+## Overture · 2026-04-29-boss-absorption · v0.1
 
-Agents are workers (not critics). Each has a distinct voice, domain, and thinking framework.
+Question: Are the two surfaces' user bases separate enough to justify
+          maintaining duplicate Boss code?
 
-| Chain | Agents |
-|-------|--------|
-| **Research** | 하윤 (intern), 다은 (researcher), 도윤 (director) |
-| **Strategy** | 정민 (jr), 현우 (lead), 승현 (chief) |
-| **Production** | 서연 (copy), 규민 (numbers), 혜연 (finance), 민서 (marketing), 수진 (people), 준서 (engineer), 예린 (PM) |
-| **Validation** | 동혁 (risk), 지은 (UX), 윤석 (legal) |
-| **Special** | 악장 (concertmaster — revision worker) |
+Boss (ISTJ Park): Approve once you (1) spike 4hr migration sizing
+                  and (2) define rollback kill criteria.
 
-The `/overture:team` skill auto-selects 2–4 based on task classification. Stakes determines count:
-- `routine` → 2 agents (often skipped — see Routing below)
-- `important` → 3 agents
-- `critical` → 4 agents, two-stage pipeline with mandatory donghyuk review
+Top action this week: Pull DAU split by surface · 4hr migration spike
 
-## Routing — what `/overture:sail` actually does
+⚠ Doubtful assumption: Plugin Boss can match webapp depth (16 MBTI,
+  deep mode, mass consultation) within 6 months.
 
-`/overture:sail "..."` doesn't always run the full pipeline. It auto-routes by `decision_density` and `stakes_confidence` (both produced by clarify):
+⚠ Unresolved tension (1): Cost saving ($1,520/6mo) is small —
+  positioning argument vs raw $ argument.
+
+👤 Human-required (3): Confirm DAU ratio (only you can see it)
+
+📁 .overture/sessions/2026-04-29-boss-absorption/versions/v0.1/
+🗺  Full tree: /overture:chart
+```
+
+Behind it: 5 JSON files preserving every agent's voice + the debate that surfaced. Open them via `/overture:chart` when you want depth.
+
+---
+
+## How sail routes
+
+`/overture:sail "..."` doesn't always run the full pipeline. It auto-routes by `decision_density` and `stakes_confidence` — both produced by clarify in seconds:
 
 | Your question shape | Output | Why |
 |---|---|---|
-| Reversible single-action (rename, label, toggle) with high framing confidence | **MinimalScaffold** — 3 lines: recommendation + 1 quick check + optional caveat. No team, no boss. | A 5-section decision scaffold for a tab-rename is bikeshed-grade over-engineering. (TC1 fail mode from 2026-04-28 reality test.) |
-| Important/critical question with confident stakes (≥80) | Auto-chains team → boss → ~15-line consolidated decision card. One-line progress notices between steps. | Asking "어떻게 진행할까요?" when stakes are obviously important wastes the user's first input. |
-| Borderline stakes (clarify confidence 60–79) | One AskUserQuestion: "이 결정이 X로 보이는데(N/100) 맞나요?" → user picks → auto-proceeds. | Preserves user agency only where it matters. |
+| Reversible single-action (rename, label, toggle) with high framing confidence | **MinimalScaffold** — 3 lines: recommendation + 1 quick check + optional caveat. No team, no boss. | A 5-section scaffold for a tab-rename is over-engineering. |
+| Important/critical question with confident stakes (≥80) | Auto-chains team → boss → ~15-line consolidated card. One-line progress notices between steps. | Asking "what should I run?" when stakes are obvious wastes your first input. |
+| Borderline stakes (clarify confidence 60–79) | One AskUserQuestion: "I read this as X stakes (N/100) — right?" → auto-proceeds. | User agency where it matters; not where it doesn't. |
 | Anything else | Standard 4-option dialog (full / team-only / quick / pause). | Last-resort fallback. |
 
-Override paths:
+**Override paths**
 - `/overture:sail --full "..."` — force full pipeline regardless of density
 - `/overture:sail --quick "..."` — clarify only, regular scaffold (no MinimalScaffold collapse)
-- `/overture:sail --no-boss "..."` — skip boss review at end
+- `/overture:sail --no-boss "..."` — skip boss review at the end
+- `/overture:sail --resume <session-id>` — continue a paused session
 
-## Boss personalities
-
-Set once with `/overture:configure`. Choose from 16 MBTI archetypes — each has distinct speech patterns, feedback style, and trigger priorities. Example: ISTJ focuses on process + precedent; ENTJ demands alternatives + decisiveness; INFP reads emotional undertone first.
-
-## Version tree ("해도")
-
-Every completed scaffold is a versioned draft. Drafts form a tree:
-
-```
-v0.1 ─┬── v0.2 ──── v0.3 ─── (promoted to v1.0) ← released
-      └── v0.1.1 (branch — alternate approach)
-```
-
-- `/overture:chart --checkout v0.1` — navigate to an earlier version
-- `/overture:chart --promote v0.3` — mark as `v1.0` release
-- Branch freely; return to earlier versions and fork new paths
-
-Because `.overture/sessions/` lives in your repo, the decision history ships with your code.
-
-## What makes this different
-
-Three things, in order of importance:
-
-1. **Workers, not critics.** Agents produce domain artifacts (research notes, ROI tables, UX critiques) on the real problem. Critique is one step (boss review), not the whole interaction.
-2. **Contradictions preserved.** When agents disagree on critical-stakes decisions, the disagreement is stored in the scaffold, not averaged away. You see the tension; you resolve it.
-3. **Decision scaffold, not solution.** Output shape: `reframed_question` + `key_trade_offs[]` + `hidden_assumptions[]` + `human_required_checkpoints[]`. The plugin refuses to tell you what to do; it tells you what you're deciding.
+---
 
 ## Configuration
 
-**No setup required for first run.** `/overture:sail` auto-creates `.overture/config.yaml` from the bundled template (ISTJ default boss) on first invocation. Edit the file to change boss MBTI, name, or locale.
+First run: zero setup. `.overture/config.yaml` auto-created on first `/overture:sail`. Sensible defaults (ISTJ default boss). Edit only if you want different MBTI / locale / role label:
 
 ```yaml
 boss:
   mbti_code: ISTJ        # ISTJ ISFJ INFJ INTJ ISTP ISFP INFP INTP
                          # ESTP ESFP ENFP ENTP ESTJ ESFJ ENFJ ENTJ
-  name: "박 팀장"
-  gender: 남             # 남 | 여 (KR) or male | female (EN)
-  role: "팀장"
-locale: ko               # ko | en
+  name: "Park"
+  gender: male           # male | female (EN) or 남 | 여 (KR)
+  role: "Team Lead"
+locale: en               # en | ko
 ```
 
-After editing skill files (development mode): **restart Claude Code** to apply. Skill bodies cache at session start; symlinked file changes don't take effect mid-session.
+Per-repo. Commits with your code. Sessions in `.overture/sessions/` ship with the repo, so teams share decision history via git.
 
-## Schemas
+**Dev mode** (symlink install via `--link`): edit skill `.md` files → restart Claude Code to apply. Skill bodies cache at session start; symlinked file changes don't take effect mid-session.
 
-Plugin artifacts conform to JSON schemas in `data/schemas/`:
-- `analysis-snapshot.json` — `/overture:clarify` output (incl. `decision_density`, `stakes_guess`, `stakes_confidence`, `reversibility` for routing)
-- `minimal-scaffold.json` — 3-field directive output for routine reversible decisions (recommendation + 1 check + optional caveat)
-- `worker-result.json` — individual agent output
-- `mix-result.json` — aggregated team output
-- `dm-feedback.json` — boss review output
-- `final-scaffold.json` — plugin-native decision scaffold for medium/high density
-- `draft.json` — version tree node
-- `session.json` — top-level session record (incl. `classification.stakes_confidence`, `stakes_user_confirmed`)
+---
 
-## Relationship to the webapp
+## What's behind the scenes
 
-Overture has a webapp at `overture.so` (Next.js) with a richer UI. The plugin shares:
-- Agent identities + capabilities + frameworks (data parity via one-way sync from webapp source)
-- Boss MBTI archetypes
-- Draft tree model + version numbering
+`/overture:sail` orchestrates four sub-skills:
+- `/overture:clarify` — sharpen the question (often emits the answer for low-density)
+- `/overture:team` — deploy 2–4 agents as workers on the actual artifact
+- `/overture:boss` — your stakeholder reviews (one of 16 MBTI personas)
+- `/overture:chart` — version tree view + draft management
 
-The plugin diverges:
-- **Output shape** — scaffold (not markdown doc)
-- **Agent role** — workers (not multi-persona reviewers)
-- **Environment** — code-native (real files, not abstract prose)
-- **Persistence** — filesystem (not Supabase)
+**The 17-agent team** auto-selects 2–4 per session based on task type. Each agent has a distinct voice (research / strategy / numbers / UX / legal / risk / etc.). Critical-stakes decisions add a mandatory risk reviewer (Blake) for stage-2 critique.
 
-## License
+**Three properties make this different from Cursor / Copilot Review / ChatGPT:**
+1. **Workers, not critics.** Agents produce domain artifacts (research notes, ROI tables, UX critiques) on the real problem. Critique is one separate step (boss review), not the whole interaction.
+2. **Contradictions preserved.** When agents disagree on critical-stakes decisions, the disagreement is stored in the scaffold's `team_contradictions[]`, never averaged away. You see the tension; you resolve it.
+3. **Decision scaffold, not solution.** Output shape: `reframed_question` + `key_trade_offs[]` + `hidden_assumptions[]` + `human_required_checkpoints[]`. The plugin refuses to tell you what to do; it tells you what you're deciding.
 
-MIT
+---
+
+## Reference
+
+- Full agent roster — `data/agents.yaml`
+- Boss MBTI personalities — `data/boss-types.yaml`
+- JSON schemas — `data/schemas/*.json` (analysis-snapshot, minimal-scaffold, final-scaffold, draft, session, etc.)
+- Version tree mechanics — `lib/session/version-numbering.md`
+- Build status, decision log, fix history — `BUILD_STATUS.md`
+- **Webapp** — [overture.so](https://overture.so) (Next.js with richer UI). Plugin shares agent identities + MBTI archetypes + draft tree model. Plugin diverges on output shape (scaffold vs markdown), agent role (workers vs reviewers), environment (code-native vs prose), and persistence (filesystem vs Supabase).
+- **License** — MIT
