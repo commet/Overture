@@ -2,18 +2,26 @@
 
 /**
  * VoyageChart — 해도 (nautical chart) showing the user's decision voyage
- * as a real branching graph, not a linear list.
+ * as a real branching graph.
  *
- * The earlier version was a vertical timeline that duplicated the stepper
- * up top. This version draws an actual chart: a graticule (lat/long grid)
- * background, a dashed main route from origin down to the current
- * position, sibling spurs branching out laterally where the user could
- * have chosen differently, and a destination glyph pinned at the end of
- * a ghost route so users see where they're heading.
- *
- * Layout: SVG-driven. Main route lives at x=MAIN_X, sibling branches
- * spread to the right at x=BRANCH_X. Each row is ROW_H tall. Labels are
- * rendered with foreignObject so HTML text styling stays consistent.
+ * v2 polish (Tier 1+2+3 from objective review):
+ *   - Lucide icons replace OS-specific emoji glyphs (consistent)
+ *   - Invisible hit circles around every node so 9px branches are still
+ *     comfortably tappable (radius bumped to 14px hit-area on top of the
+ *     8px visual)
+ *   - Up to 2 sibling branches rendered laterally; "+N" badge for the
+ *     overflow with a popover that lists them all
+ *   - Wider label column (BRANCH_X bumped to 180), labels wrap to 2 lines
+ *     instead of truncating
+ *   - Tighter ROW_H so the chart fits inside the agent sidebar without
+ *     fighting it for vertical space
+ *   - Footer copy adapts to whether the user has any alt branches yet —
+ *     so first-timers get a hint that nudges them to try forking
+ *   - Header coordinate hint replaced with plain "M / N waypoints"
+ *   - Branch nodes get a small inline label (no more hover-only tooltip)
+ *   - Destination's anchor icon no longer overlaps a stage glyph below it
+ *   - Graticule opacity nudged up so the chart vibe reads even in light
+ *     mode
  *
  * Backend wiring: reads `session.checkpoints` + `session.active_checkpoint_id`
  * from useProgressiveStore and calls `restoreCheckpoint(id)` on rewind.
@@ -21,34 +29,46 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Compass, Anchor, X as XIcon, RotateCcw, ChevronRight } from 'lucide-react';
+import {
+  Compass, Anchor, X as XIcon, RotateCcw, ChevronRight,
+  Circle, Users, Sailboat, FileText, Eye, Flag,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useProgressiveStore } from '@/stores/useProgressiveStore';
 import { useLocale } from '@/hooks/useLocale';
 import type { VoyageCheckpoint, VoyageStage } from '@/stores/types';
 import { EASE } from './shared/constants';
 
-// Layout constants — tuned to fit the agent-sidebar width (~256-288px).
+// ─── Layout constants ────────────────────────────────────────────────
+// Tuned to fit the agent sidebar width (~256-288px after padding).
 const VIEW_W = 240;
-const MAIN_X = 28;        // main route x-position
-const BRANCH_X = 152;     // sibling branch x-position
-const ROW_H = 56;         // vertical spacing between waypoints
-const NODE_R = 8;         // main node radius
-const BRANCH_NODE_R = 4.5;// sibling node radius
-const LABEL_X = MAIN_X + 16;  // text label offset on main path
-const LABEL_W = BRANCH_X - LABEL_X - 14;
+const MAIN_X = 26;          // main route x-position
+const BRANCH_X = 180;        // sibling branch x-position (was 152)
+const ROW_H = 48;            // vertical spacing per waypoint (was 56)
+const NODE_R = 8;            // visible main node radius
+const HIT_R = 14;            // invisible click hit-area radius
+const BRANCH_NODE_R = 5;     // visible branch node radius (was 4.5)
+const BRANCH_HIT_R = 11;     // hit-area for branch node
+const LABEL_X = MAIN_X + 14; // label column start
+const LABEL_W = BRANCH_X - LABEL_X - 18; // label column width (~122)
+const LABEL_H = 26;          // label box height (allows two lines @ 11px)
+const TOP_PAD = 24;
+const MAX_VISIBLE_SIBLINGS = 2;
 
 const STAGE_ORDER: VoyageStage[] = [
   'origin', 'briefing', 'crew_set', 'crew_done', 'mix', 'review', 'anchor',
 ];
 
-const STAGE_GLYPH: Record<VoyageStage, string> = {
-  origin: '⊙',
-  briefing: '⚓',
-  crew_set: '👥',
-  crew_done: '⛵',
-  mix: '📜',
-  review: '👁',
-  anchor: '🏁',
+// Lucide icons per stage — consistent with the rest of the app and
+// color-controllable (unlike emoji glyphs).
+const STAGE_ICON: Record<VoyageStage, LucideIcon> = {
+  origin: Circle,
+  briefing: Compass,
+  crew_set: Users,
+  crew_done: Sailboat,
+  mix: FileText,
+  review: Eye,
+  anchor: Anchor,
 };
 
 function stageLabel(stage: VoyageStage, locale: 'ko' | 'en'): string {
@@ -64,7 +84,10 @@ function stageLabel(stage: VoyageStage, locale: 'ko' | 'en'): string {
   } as Record<VoyageStage, string>)[stage];
 }
 
-function computeActivePath(checkpoints: VoyageCheckpoint[], activeId: string | null): VoyageCheckpoint[] {
+function computeActivePath(
+  checkpoints: VoyageCheckpoint[],
+  activeId: string | null,
+): VoyageCheckpoint[] {
   if (!activeId) return [];
   const byId = new Map(checkpoints.map(c => [c.id, c]));
   const path: VoyageCheckpoint[] = [];
@@ -78,6 +101,22 @@ function computeActivePath(checkpoints: VoyageCheckpoint[], activeId: string | n
   return path;
 }
 
+// Render a Lucide icon centered at (cx, cy) with the given size and class.
+// Inlined as a foreignObject so the icon stays color-controllable and
+// crisp even inside the SVG canvas.
+function NodeIcon({
+  Icon, cx, cy, size, className,
+}: { Icon: LucideIcon; cx: number; cy: number; size: number; className?: string }) {
+  const half = size / 2;
+  return (
+    <foreignObject x={cx - half} y={cy - half} width={size} height={size}>
+      <div className="w-full h-full flex items-center justify-center pointer-events-none">
+        <Icon size={size} className={className} />
+      </div>
+    </foreignObject>
+  );
+}
+
 export function VoyageChart() {
   const locale = useLocale();
   const L = (ko: string, en: string) => locale === 'ko' ? ko : en;
@@ -85,13 +124,12 @@ export function VoyageChart() {
   const restoreCheckpoint = useProgressiveStore(s => s.restoreCheckpoint);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [overflowParentId, setOverflowParentId] = useState<string | null>(null);
 
   const checkpoints = useMemo(() => session?.checkpoints || [], [session?.checkpoints]);
   const activeId = session?.active_checkpoint_id ?? null;
   const activePath = useMemo(() => computeActivePath(checkpoints, activeId), [checkpoints, activeId]);
 
-  // Future stages — what's still ahead. Always pin the anchor as a
-  // destination glyph at the bottom for "끝점 visibility".
   const reachedStages = useMemo(() => new Set(activePath.map(c => c.stage)), [activePath]);
   const lastIdx = activePath.length > 0
     ? STAGE_ORDER.indexOf(activePath[activePath.length - 1].stage)
@@ -102,7 +140,9 @@ export function VoyageChart() {
   );
 
   // Siblings of each active-path node (alternative branches the user
-  // could have taken from the same parent). Drawn as lateral spurs.
+  // could have taken from the same parent). Capped at MAX_VISIBLE_SIBLINGS
+  // to avoid overlap with the next active node — overflow surfaces in a
+  // popover.
   const siblingsByActiveId = useMemo(() => {
     const map = new Map<string, VoyageCheckpoint[]>();
     const activeIds = new Set(activePath.map(c => c.id));
@@ -116,24 +156,27 @@ export function VoyageChart() {
     return map;
   }, [activePath, checkpoints]);
 
+  const totalBranchCount = useMemo(
+    () => Array.from(siblingsByActiveId.values()).reduce((sum, list) => sum + list.length, 0),
+    [siblingsByActiveId],
+  );
+
   if (!session || checkpoints.length === 0) return null;
 
   const totalRows = activePath.length + futureStages.length;
-  const chartHeight = totalRows * ROW_H + 24;
+  const chartHeight = totalRows * ROW_H + TOP_PAD + 8;
 
-  // Coordinates
-  const yForActiveIdx = (i: number) => i * ROW_H + 28;
-  const yForFutureIdx = (i: number) => (activePath.length + i) * ROW_H + 28;
+  const yForActiveIdx = (i: number) => i * ROW_H + TOP_PAD;
+  const yForFutureIdx = (i: number) => (activePath.length + i) * ROW_H + TOP_PAD;
 
   const handleNodeClick = (id: string) => {
     setSelectedId(prev => prev === id ? null : id);
   };
-
   const handleRestoreRequest = (id: string) => {
     setConfirmId(id);
     setSelectedId(null);
+    setOverflowParentId(null);
   };
-
   const handleConfirm = () => {
     if (confirmId) restoreCheckpoint(confirmId);
     setConfirmId(null);
@@ -141,18 +184,21 @@ export function VoyageChart() {
 
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)]/85 backdrop-blur-sm overflow-hidden">
-      {/* Header — chart title + waypoint count + faux bearing */}
+      {/* Header — chart title + clearer waypoint count */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-subtle)]/60">
         <Compass size={12} className="text-[var(--accent)]" />
         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">
           {L('해도', 'Chart')}
         </span>
-        <span className="ml-auto text-[9px] tracking-[0.16em] uppercase text-[var(--accent)]/55 font-mono">
-          N · {activePath.length}/{STAGE_ORDER.length}
+        <span className="ml-auto text-[10px] text-[var(--text-tertiary)]">
+          {L(
+            `${activePath.length} / ${STAGE_ORDER.length} 기점`,
+            `${activePath.length} / ${STAGE_ORDER.length} waypoints`,
+          )}
         </span>
       </div>
 
-      {/* Chart body — SVG graph with graticule, route, branches, destination. */}
+      {/* Chart body */}
       <div className="relative px-2 py-3">
         <svg
           width="100%"
@@ -161,19 +207,19 @@ export function VoyageChart() {
           preserveAspectRatio="xMinYMin meet"
         >
           <defs>
-            {/* Graticule — lat/long grid, very faint. Sells the chart vibe. */}
             <pattern id="voyage-grid" width="20" height="20" patternUnits="userSpaceOnUse">
               <path d="M 20 0 L 0 0 0 20" stroke="currentColor" strokeWidth="0.4" fill="none" />
             </pattern>
           </defs>
+          {/* Graticule — slightly more present than v1 (0.13 → 0.18) */}
           <rect
             x="0" y="0" width={VIEW_W} height={chartHeight}
             fill="url(#voyage-grid)"
             className="text-[var(--text-tertiary)]"
-            opacity="0.13"
+            opacity="0.18"
           />
 
-          {/* Main route — dashed line connecting active-path nodes. */}
+          {/* Main route — dashed line through active-path nodes */}
           {activePath.length > 1 && (
             <line
               x1={MAIN_X}
@@ -187,8 +233,7 @@ export function VoyageChart() {
               strokeLinecap="round"
             />
           )}
-
-          {/* Ghost line from current to destination — what's still ahead. */}
+          {/* Ghost line current → destination */}
           {futureStages.length > 0 && activePath.length > 0 && (
             <line
               x1={MAIN_X}
@@ -204,47 +249,117 @@ export function VoyageChart() {
             />
           )}
 
-          {/* Sibling branches — lateral curved spurs out of the parent.
-              Curve goes from the *parent* node (above the active node) out
-              to the right where the alternative waypoint sits. */}
+          {/* Sibling branches (curved spurs) — capped at MAX_VISIBLE_SIBLINGS */}
           {activePath.map((cp, i) => {
             const sibs = siblingsByActiveId.get(cp.id) || [];
             if (sibs.length === 0) return null;
-            // Spur originates at the parent (i-1 on the main path).
-            const parentY = i > 0 ? yForActiveIdx(i - 1) : yForActiveIdx(i) - 24;
-            return sibs.map((sib, j) => {
-              const sibY = parentY + (j + 1) * 22;
-              const cx = (MAIN_X + BRANCH_X) / 2;
-              return (
-                <g key={sib.id}>
-                  <path
-                    d={`M ${MAIN_X + 4},${parentY + 6} Q ${cx},${sibY} ${BRANCH_X - BRANCH_NODE_R - 1},${sibY}`}
-                    stroke="currentColor"
-                    className="text-[var(--text-tertiary)]"
-                    strokeWidth="0.9"
-                    strokeDasharray="2 3"
-                    fill="none"
-                    opacity="0.7"
-                  />
-                  <circle
-                    cx={BRANCH_X}
-                    cy={sibY}
-                    r={BRANCH_NODE_R}
-                    className="fill-[var(--bg)] stroke-[var(--text-tertiary)] hover:stroke-[var(--accent)] hover:fill-[var(--accent)]/10 cursor-pointer transition-colors"
-                    strokeWidth="1.2"
-                    onClick={() => handleRestoreRequest(sib.id)}
-                  >
-                    <title>{sib.label}</title>
-                  </circle>
-                </g>
-              );
-            });
+            const visible = sibs.slice(0, MAX_VISIBLE_SIBLINGS);
+            const overflow = Math.max(0, sibs.length - MAX_VISIBLE_SIBLINGS);
+
+            // Spur originates near the parent (the node above on main path)
+            const parentY = i > 0 ? yForActiveIdx(i - 1) : yForActiveIdx(i) - 18;
+            const cx = (MAIN_X + BRANCH_X) / 2;
+
+            return (
+              <g key={`sibs-${cp.id}`}>
+                {visible.map((sib, j) => {
+                  const sibY = parentY + (j + 1) * 16;
+                  return (
+                    <g key={sib.id}>
+                      <path
+                        d={`M ${MAIN_X + 4},${parentY + 5} Q ${cx},${sibY} ${BRANCH_X - BRANCH_NODE_R - 1},${sibY}`}
+                        stroke="currentColor"
+                        className="text-[var(--text-tertiary)]"
+                        strokeWidth="0.9"
+                        strokeDasharray="2 3"
+                        fill="none"
+                        opacity="0.7"
+                      />
+                      {/* Visible branch node */}
+                      <circle
+                        cx={BRANCH_X}
+                        cy={sibY}
+                        r={BRANCH_NODE_R}
+                        className="fill-[var(--bg)] stroke-[var(--text-tertiary)]"
+                        strokeWidth="1.3"
+                      />
+                      {/* Invisible larger hit area */}
+                      <circle
+                        cx={BRANCH_X}
+                        cy={sibY}
+                        r={BRANCH_HIT_R}
+                        fill="transparent"
+                        className="cursor-pointer"
+                        onClick={() => handleRestoreRequest(sib.id)}
+                      >
+                        <title>{sib.label}</title>
+                      </circle>
+                      {/* Inline mini-label below the branch node — no more
+                          hover-only tooltip. Truncates if very long. */}
+                      <foreignObject
+                        x={BRANCH_X - 28}
+                        y={sibY + BRANCH_NODE_R + 1}
+                        width="56"
+                        height="14"
+                      >
+                        <div
+                          className="text-[9px] text-[var(--text-tertiary)] leading-none truncate text-center pointer-events-none"
+                          title={sib.label}
+                        >
+                          {sib.label.length > 10 ? `${sib.label.slice(0, 9)}…` : sib.label}
+                        </div>
+                      </foreignObject>
+                    </g>
+                  );
+                })}
+                {/* Overflow indicator */}
+                {overflow > 0 && (() => {
+                  const overflowY = parentY + (visible.length + 1) * 16;
+                  return (
+                    <g>
+                      <path
+                        d={`M ${MAIN_X + 4},${parentY + 5} Q ${cx},${overflowY} ${BRANCH_X - BRANCH_NODE_R - 1},${overflowY}`}
+                        stroke="currentColor"
+                        className="text-[var(--text-tertiary)]"
+                        strokeWidth="0.7"
+                        strokeDasharray="1.5 3"
+                        fill="none"
+                        opacity="0.5"
+                      />
+                      <circle
+                        cx={BRANCH_X}
+                        cy={overflowY}
+                        r={BRANCH_HIT_R}
+                        fill="transparent"
+                        className="cursor-pointer"
+                        onClick={() => setOverflowParentId(overflowParentId === cp.id ? null : cp.id)}
+                      />
+                      <foreignObject
+                        x={BRANCH_X - 14}
+                        y={overflowY - 7}
+                        width="28"
+                        height="14"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOverflowParentId(overflowParentId === cp.id ? null : cp.id)}
+                          className="w-full text-[9px] font-semibold text-[var(--text-tertiary)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+                        >
+                          +{overflow}
+                        </button>
+                      </foreignObject>
+                    </g>
+                  );
+                })()}
+              </g>
+            );
           })}
 
-          {/* Active-path nodes — drawn after lines so they sit on top. */}
+          {/* Active-path nodes (drawn after lines so they sit on top) */}
           {activePath.map((cp, i) => {
             const isActive = cp.id === activeId;
             const cy = yForActiveIdx(i);
+            const Icon = STAGE_ICON[cp.stage];
             return (
               <g key={cp.id}>
                 {/* Active pulse */}
@@ -260,36 +375,39 @@ export function VoyageChart() {
                     style={{ transformOrigin: `${MAIN_X}px ${cy}px` }}
                   />
                 )}
+                {/* Visible node */}
                 <circle
                   cx={MAIN_X}
                   cy={cy}
                   r={NODE_R}
-                  className={`cursor-pointer transition-colors ${
+                  className={`transition-colors ${
                     isActive
-                      ? 'fill-[var(--accent)] stroke-[var(--accent)]'
-                      : 'fill-[var(--accent)]/82 stroke-[var(--surface)] hover:fill-[var(--accent)]'
+                      ? 'fill-[var(--accent)]'
+                      : 'fill-[var(--accent)]/82 stroke-[var(--surface)]'
                   }`}
                   strokeWidth={isActive ? 0 : 2}
+                  pointerEvents="none"
+                />
+                {/* Lucide icon, white on filled accent */}
+                <NodeIcon Icon={Icon} cx={MAIN_X} cy={cy} size={10} className="text-white" />
+                {/* Invisible hit area */}
+                <circle
+                  cx={MAIN_X}
+                  cy={cy}
+                  r={HIT_R}
+                  fill="transparent"
+                  className="cursor-pointer"
                   onClick={() => handleNodeClick(cp.id)}
                 />
-                <text
-                  x={MAIN_X}
-                  y={cy + 3}
-                  textAnchor="middle"
-                  className="select-none pointer-events-none"
-                  fontSize="9"
-                  fill="white"
-                >
-                  {STAGE_GLYPH[cp.stage]}
-                </text>
               </g>
             );
           })}
 
-          {/* Future ghost nodes (including destination). */}
+          {/* Future ghost nodes */}
           {futureStages.map((stage, i) => {
             const isDestination = stage === 'anchor';
             const cy = yForFutureIdx(i);
+            const Icon = STAGE_ICON[stage];
             return (
               <g key={`future-${stage}`}>
                 <circle
@@ -303,38 +421,38 @@ export function VoyageChart() {
                   }
                   strokeWidth="1.2"
                   strokeDasharray="2 2"
+                  pointerEvents="none"
                 />
-                <text
-                  x={MAIN_X}
-                  y={cy + 3}
-                  textAnchor="middle"
-                  className="select-none pointer-events-none"
-                  fontSize="9"
-                  opacity="0.5"
-                >
-                  {STAGE_GLYPH[stage]}
-                </text>
+                <NodeIcon
+                  Icon={Icon}
+                  cx={MAIN_X}
+                  cy={cy}
+                  size={10}
+                  className={isDestination ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'}
+                />
               </g>
             );
           })}
 
-          {/* Labels — HTML text via foreignObject so styling matches the
-              rest of the app and label widths can flow naturally. */}
+          {/* Labels — multi-line wrapping (line-clamp-2) instead of truncate
+              so longer Korean labels don't get chopped to ellipsis */}
           {activePath.map((cp, i) => {
             const isActive = cp.id === activeId;
             return (
               <foreignObject
                 key={`label-${cp.id}`}
                 x={LABEL_X}
-                y={yForActiveIdx(i) - 10}
+                y={yForActiveIdx(i) - LABEL_H / 2}
                 width={LABEL_W}
-                height="22"
+                height={LABEL_H}
               >
                 <button
                   type="button"
                   onClick={() => handleNodeClick(cp.id)}
-                  className={`text-[11px] font-medium leading-[1.1] cursor-pointer transition-colors text-left truncate w-full ${
-                    isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  className={`text-[11px] font-medium leading-[1.2] cursor-pointer transition-colors text-left w-full h-full flex items-center line-clamp-2 ${
+                    isActive
+                      ? 'text-[var(--text-primary)]'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {cp.label}
@@ -348,55 +466,44 @@ export function VoyageChart() {
               <foreignObject
                 key={`label-future-${stage}`}
                 x={LABEL_X}
-                y={yForFutureIdx(i) - 10}
+                y={yForFutureIdx(i) - LABEL_H / 2}
                 width={LABEL_W}
-                height="22"
+                height={LABEL_H}
               >
-                <div className={`text-[11px] leading-[1.1] truncate ${
+                <div className={`text-[11px] leading-[1.2] flex items-center h-full ${
                   isDestination
                     ? 'text-[var(--accent)] font-semibold'
                     : 'text-[var(--text-tertiary)]'
                 }`}>
-                  {stageLabel(stage, locale === 'ko' ? 'ko' : 'en')}
-                  {isDestination && (
-                    <span className="ml-1 text-[9.5px] font-normal text-[var(--accent)]/70">
-                      {L('· 도착지', '· dest.')}
-                    </span>
-                  )}
+                  <span className="line-clamp-2">
+                    {stageLabel(stage, locale === 'ko' ? 'ko' : 'en')}
+                    {isDestination && (
+                      <span className="ml-1.5 text-[9.5px] font-normal text-[var(--accent)]/70">
+                        {L('· 도착지', '· dest.')}
+                      </span>
+                    )}
+                  </span>
                 </div>
               </foreignObject>
             );
           })}
-
-          {/* Destination override — replace the anchor stage glyph with a
-              proper anchor icon for emphasis. */}
-          {futureStages.includes('anchor') && (() => {
-            const i = futureStages.indexOf('anchor');
-            const cy = yForFutureIdx(i);
-            return (
-              <foreignObject x={MAIN_X - 7} y={cy - 7} width="14" height="14">
-                <Anchor size={12} className="text-[var(--accent)]/80" />
-              </foreignObject>
-            );
-          })()}
         </svg>
 
-        {/* Footer hint — subtle interaction cue */}
-        {checkpoints.length > 1 && (
-          <div className="text-[9.5px] text-[var(--text-tertiary)] mt-2 px-1 leading-tight">
-            {L('기점이나 다른 항로를 클릭해서 그 시점으로 돌아갈 수 있어요', 'Click a waypoint or alt route to rewind there')}
-          </div>
-        )}
+        {/* Footer hint — adapts to whether the user has any branches yet.
+            First-timers get a "try forking" nudge; veterans get a how-to. */}
+        <div className="text-[10px] text-[var(--text-tertiary)] mt-2 px-1 leading-tight">
+          {totalBranchCount === 0
+            ? L('아직 한 항로예요. 기점을 클릭해서 다른 길로 분기해 볼 수 있어요.', 'Single course so far. Click a waypoint to fork a new one.')
+            : L('기점이나 다른 항로를 클릭해서 그 시점으로 돌아갈 수 있어요.', 'Click a waypoint or alt route to rewind there.')}
+        </div>
       </div>
 
-      {/* Selection popover — appears below the chart since space inside the
-          SVG is tight. Surfaces metadata + restore action for the picked
-          checkpoint without disrupting the chart layout. */}
+      {/* Selection popover (slides in below the chart for the picked
+          waypoint). Active-waypoint clicks just close — no empty popover. */}
       <AnimatePresence>
         {selectedId && (() => {
           const cp = checkpoints.find(c => c.id === selectedId);
-          if (!cp) return null;
-          const isActive = cp.id === activeId;
+          if (!cp || cp.id === activeId) return null;
           return (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -406,12 +513,12 @@ export function VoyageChart() {
               className="overflow-hidden border-t border-[var(--accent)]/20 bg-[var(--accent)]/[0.04]"
             >
               <div className="px-4 py-3">
-                <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                  <span className="text-[11px] font-semibold text-[var(--text-primary)]">{cp.label}</span>
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <span className="text-[11.5px] font-semibold text-[var(--text-primary)]">{cp.label}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
-                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
                     aria-label={L('닫기', 'Close')}
                   >
                     <XIcon size={11} />
@@ -422,30 +529,72 @@ export function VoyageChart() {
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                   })}
                 </div>
-                {!isActive ? (
-                  <button
-                    type="button"
-                    onClick={() => handleRestoreRequest(cp.id)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold text-[var(--accent)] border border-[var(--accent)]/35 hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
-                  >
-                    <RotateCcw size={11} />
-                    {L('이 분기로 돌아가기', 'Rewind here')}
-                    <ChevronRight size={10} />
-                  </button>
-                ) : (
-                  <div className="text-[10.5px] text-[var(--text-tertiary)] text-center py-1">
-                    {L('현재 위치', 'Current waypoint')}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleRestoreRequest(cp.id)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[11px] font-semibold text-[var(--accent)] border border-[var(--accent)]/35 hover:bg-[var(--accent)]/10 transition-colors cursor-pointer min-h-[36px]"
+                >
+                  <RotateCcw size={11} />
+                  {L('이 분기로 돌아가기', 'Rewind here')}
+                  <ChevronRight size={10} />
+                </button>
               </div>
             </motion.div>
           );
         })()}
       </AnimatePresence>
 
-      {/* Confirm modal — shown when the user picks a non-active waypoint
-          to rewind to. Spells out that the current branch isn't lost,
-          just preserved as a sibling once they take the next action. */}
+      {/* Overflow popover — siblings beyond MAX_VISIBLE_SIBLINGS */}
+      <AnimatePresence>
+        {overflowParentId && (() => {
+          const sibs = siblingsByActiveId.get(overflowParentId) || [];
+          if (sibs.length <= MAX_VISIBLE_SIBLINGS) return null;
+          const overflow = sibs.slice(MAX_VISIBLE_SIBLINGS);
+          return (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: EASE }}
+              className="overflow-hidden border-t border-[var(--text-tertiary)]/20 bg-[var(--bg)]/40"
+            >
+              <div className="px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                    {L(`다른 항로 ${overflow.length}개`, `${overflow.length} more alt routes`)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOverflowParentId(null)}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
+                    aria-label={L('닫기', 'Close')}
+                  >
+                    <XIcon size={11} />
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {overflow.map(sib => (
+                    <button
+                      key={sib.id}
+                      type="button"
+                      onClick={() => handleRestoreRequest(sib.id)}
+                      className="w-full text-left flex items-center gap-2 px-2 py-2 rounded hover:bg-[var(--accent)]/8 transition-colors cursor-pointer group min-h-[32px]"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]/50 group-hover:bg-[var(--accent)] shrink-0 transition-colors" />
+                      <span className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate flex-1">
+                        {sib.label}
+                      </span>
+                      <RotateCcw size={10} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--accent)] shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Confirm modal */}
       <AnimatePresence>
         {confirmId && (() => {
           const target = checkpoints.find(c => c.id === confirmId);
